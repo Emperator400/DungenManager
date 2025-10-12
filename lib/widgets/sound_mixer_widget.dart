@@ -3,116 +3,204 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../database/database_helper.dart';
-import '../models/sound_scene.dart';
-import '../models/scene_sound_link.dart';
 import '../models/sound.dart';
+
+// Helfer-Klasse, um einen Player und seinen Zustand zu verwalten
+class ActivePlayer {
+  final AudioPlayer player;
+  double volume;
+  final Sound sound;
+
+  ActivePlayer({required this.player, this.volume = 0.8, required this.sound});
+}
 
 class SoundMixerWidget extends StatefulWidget {
   const SoundMixerWidget({super.key});
-
   @override
   State<SoundMixerWidget> createState() => _SoundMixerWidgetState();
 }
 
 class _SoundMixerWidgetState extends State<SoundMixerWidget> {
   final dbHelper = DatabaseHelper.instance;
-  late Future<List<SoundScene>> _scenesFuture;
-  
-  // Wir verwalten eine Liste von aktiven Audio-Playern
-  final Map<String, AudioPlayer> _activePlayers = {};
+  late Future<List<Sound>> _soundsFuture;
+
+  // Wir speichern jetzt ALLE aktiven Player in einer einzigen Map
+  final Map<String, ActivePlayer> _activePlayers = {};
 
   @override
   void initState() {
     super.initState();
-    _scenesFuture = dbHelper.getAllSoundScenes();
+    _soundsFuture = dbHelper.getAllSounds();
   }
 
   @override
   void dispose() {
-    // Stoppe und entsorge alle Player, wenn der Bildschirm verlassen wird
-    for (var player in _activePlayers.values) {
-      player.stop();
-      player.dispose();
-    }
+    _stopAllSounds();
     super.dispose();
   }
 
-  Future<void> _toggleScene(SoundScene scene) async {
-    final sceneId = scene.id;
-
-    // Wenn die Szene bereits aktiv ist, stoppe sie
-    if (_activePlayers.containsKey(sceneId)) {
-      final player = _activePlayers[sceneId];
-      await player?.stop();
-      setState(() {
-        _activePlayers.remove(sceneId);
-      });
-      return;
+  // NEUE METHODE: Stoppt absolut alles
+  Future<void> _stopAllSounds() async {
+    for (var activePlayer in _activePlayers.values) {
+      await activePlayer.player.stop();
+      await activePlayer.player.dispose();
     }
+    setState(() {
+      _activePlayers.clear();
+    });
+    print("[DEBUG] Alle Player gestoppt und entsorgt.");
+  }
 
-    // Ansonsten, starte die Szene
-    final links = await dbHelper.getLinksForScene(sceneId);
-    for (final link in links) {
-      final sound = await dbHelper.getSoundById(link.soundId);
-      if (sound != null && sound.soundType == SoundType.Ambiente) {
-        final player = AudioPlayer();
-        await player.setSource(DeviceFileSource(sound.filePath));
-        await player.setVolume(link.volume);
-        await player.setReleaseMode(ReleaseMode.loop); // Ambiente-Sounds loopen
-        await player.resume();
-        setState(() {
-          _activePlayers[sceneId] = player;
-        });
-        // Da wir nur einen Ambiente-Sound pro Szene haben wollen (vereinfacht), brechen wir hier ab
-        break; 
-      }
+  // Startet oder stoppt einen AMBIENTE-Sound
+  Future<void> _toggleAmbience(Sound sound) async {
+    final soundId = sound.id;
+    if (_activePlayers.containsKey(soundId)) {
+      final activePlayer = _activePlayers[soundId]!;
+      await activePlayer.player.stop();
+      await activePlayer.player.dispose();
+      setState(() { _activePlayers.remove(soundId); });
+    } else {
+      final player = AudioPlayer();
+      await player.setSource(DeviceFileSource(sound.filePath));
+      await player.setVolume(0.8);
+      await player.setReleaseMode(ReleaseMode.loop);
+      await player.resume();
+      setState(() {
+        _activePlayers[soundId] = ActivePlayer(player: player, sound: sound);
+      });
     }
   }
 
-  Future<void> _playEffect(SceneSoundLink link) async {
-    final sound = await dbHelper.getSoundById(link.soundId);
-    if (sound != null) {
-      final player = AudioPlayer();
-      await player.setSource(DeviceFileSource(sound.filePath));
-      await player.setVolume(link.volume);
-      await player.resume();
-      // Der Player wird automatisch entsorgt, nachdem der Effekt abgespielt wurde
-      player.onPlayerComplete.listen((event) {
-        player.dispose();
+  // Spielt einen EFFEKT ab (und fügt ihn zur Liste hinzu)
+  Future<void> _playEffect(Sound effect) async {
+    final soundId = effect.id;
+    // Wenn der Effekt schon läuft, starte ihn nicht nochmal
+    if (_activePlayers.containsKey(soundId)) return;
+
+    final player = AudioPlayer();
+    await player.setSource(DeviceFileSource(effect.filePath));
+    await player.setVolume(0.8);
+    await player.resume();
+    setState(() {
+      _activePlayers[soundId] = ActivePlayer(player: player, sound: effect, volume: 1.0);
+    });
+    
+    player.onPlayerComplete.listen((event) {
+      setState(() {
+        _activePlayers.remove(soundId);
       });
+      player.dispose();
+    });
+  }
+
+  // Stoppt einen einzelnen EFFEKT
+  Future<void> _stopEffect(String soundId) async {
+    if (_activePlayers.containsKey(soundId)) {
+      final activePlayer = _activePlayers[soundId]!;
+      await activePlayer.player.stop();
+      await activePlayer.player.dispose();
+      setState(() {
+        _activePlayers.remove(soundId);
+      });
+    }
+  }
+
+  // Passt die Lautstärke eines beliebigen laufenden Sounds an
+  void _setVolume(String soundId, double volume) {
+    if (_activePlayers.containsKey(soundId)) {
+      final activePlayer = _activePlayers[soundId]!;
+      setState(() {
+        activePlayer.volume = volume;
+      });
+      activePlayer.player.setVolume(volume);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<SoundScene>>(
-      future: _scenesFuture,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-        final scenes = snapshot.data!;
-        if (scenes.isEmpty) return const Center(child: Text("Keine Klang-Szenen erstellt."));
-        
-        return ListView.builder(
-          itemCount: scenes.length,
-          itemBuilder: (context, index) {
-            final scene = scenes[index];
-            final bool isPlaying = _activePlayers.containsKey(scene.id);
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+          child: OutlinedButton.icon(
+            icon: const Icon(Icons.stop, color: Colors.redAccent),
+            label: const Text("Alle Sounds stoppen"),
+            onPressed: _stopAllSounds,
+            style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent, side: const BorderSide(color: Colors.redAccent)),
+          ),
+        ),
+        const Divider(),
+        Expanded(
+          child: FutureBuilder<List<Sound>>(
+            future: _soundsFuture,
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+              final allSounds = snapshot.data!;
+              if (allSounds.isEmpty) return const Center(child: Text("Keine Sounds in der Bibliothek.", style: TextStyle(color: Colors.grey)));
 
-            return Card(
-              color: isPlaying ? Colors.green.withOpacity(0.3) : null,
-              child: ListTile(
-                leading: IconButton(
-                  icon: Icon(isPlaying ? Icons.stop_circle_outlined : Icons.play_circle_outline),
-                  onPressed: () => _toggleScene(scene),
-                  iconSize: 30,
+              final ambientSounds = allSounds.where((s) => s.soundType == SoundType.Ambiente).toList();
+              final effectSounds = allSounds.where((s) => s.soundType == SoundType.Effekt).toList();
+
+              return SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Text("Ambiente & Musik", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                    ),
+                    ...ambientSounds.map((sound) => _buildSoundChannel(sound)).toList(),
+                    const Divider(height: 24),
+                    const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Text("Sound-Effekte", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                    ),
+                    ...effectSounds.map((sound) => _buildSoundChannel(sound)).toList(),
+                  ],
                 ),
-                title: Text(scene.name),
-                // Hier könnten wir die Effekt-Knöpfe anzeigen
-              ),
-            );
-          },
-        );
-      },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // EINZIGE, UNIVERSELLE METHODE ZUM BAUEN EINES SOUND-KANALS
+  Widget _buildSoundChannel(Sound sound) {
+    final activePlayer = _activePlayers[sound.id];
+    final bool isPlaying = activePlayer != null;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+      child: Row(
+        children: [
+          // Play/Stop Knopf
+          IconButton(
+            icon: Icon(isPlaying ? Icons.stop : (sound.soundType == SoundType.Ambiente ? Icons.play_arrow : Icons.volume_up)),
+            color: isPlaying ? Colors.green : Theme.of(context).iconTheme.color,
+            onPressed: () {
+              if (sound.soundType == SoundType.Ambiente) {
+                _toggleAmbience(sound);
+              } else {
+                if (isPlaying) {
+                  _stopEffect(sound.id);
+                } else {
+                  _playEffect(sound);
+                }
+              }
+            },
+          ),
+          Expanded(flex: 2, child: Text(sound.name, overflow: TextOverflow.ellipsis)),
+          Expanded(
+            flex: 3,
+            child: Slider(
+              value: activePlayer?.volume ?? 0.0,
+              onChanged: isPlaying ? (newVolume) => _setVolume(sound.id, newVolume) : null,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -185,9 +185,11 @@ await db.execute('''
     await db.execute('''
       CREATE TABLE sound_scenes (
         id TEXT PRIMARY KEY,
-        name TEXT NOT NULL
+        name TEXT NOT NULL,
+        type TEXT NOT NULL
       )
     ''');
+
     await db.execute('''
       CREATE TABLE scene_sound_links (
         id TEXT PRIMARY KEY,

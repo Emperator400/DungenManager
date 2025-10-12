@@ -8,10 +8,10 @@ class SoundScenesTab extends StatefulWidget {
   const SoundScenesTab({super.key});
 
   @override
-  State<SoundScenesTab> createState() => _SoundScenesTabState();
+  State<SoundScenesTab> createState() => SoundScenesTabState();
 }
 
-class _SoundScenesTabState extends State<SoundScenesTab> {
+class SoundScenesTabState extends State<SoundScenesTab> {
   final dbHelper = DatabaseHelper.instance;
   late Future<List<SoundScene>> _scenesFuture;
 
@@ -29,25 +29,50 @@ class _SoundScenesTabState extends State<SoundScenesTab> {
 
   Future<void> _createNewScene() async {
     final nameController = TextEditingController();
-    final String? sceneName = await showDialog(
+    SoundSceneType selectedType = SoundSceneType.Ambiente;
+
+    final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Neue Klang-Szene erstellen"),
-        content: TextField(controller: nameController, decoration: const InputDecoration(labelText: "Name der Szene"), autofocus: true),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text("Abbrechen")),
-          ElevatedButton(onPressed: () => Navigator.of(ctx).pop(nameController.text), child: const Text("Erstellen")),
-        ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text("Neue Klang-Szene erstellen"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: "Name der Szene"), autofocus: true),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<SoundSceneType>(
+                  value: selectedType,
+                  decoration: const InputDecoration(labelText: "Szenen-Typ"),
+                  items: SoundSceneType.values.map((type) => DropdownMenuItem(value: type, child: Text(type.toString().split('.').last))).toList(),
+                  onChanged: (val) => setDialogState(() => selectedType = val!),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text("Abbrechen")),
+              ElevatedButton(
+                onPressed: () {
+                  if (nameController.text.isNotEmpty) {
+                    Navigator.of(ctx).pop({'name': nameController.text, 'type': selectedType});
+                  }
+                },
+                child: const Text("Erstellen"),
+              ),
+            ],
+          );
+        },
       ),
     );
 
-    if (sceneName != null && sceneName.isNotEmpty) {
-      await dbHelper.insertSoundScene(SoundScene(name: sceneName));
+    if (result != null) {
+      await dbHelper.insertSoundScene(SoundScene(name: result['name'], type: result['type']));
       _loadScenes();
     }
   }
 
-  // NEUE METHODE: Zeigt den Bestätigungs-Dialog und löscht die Szene
+  // DIESE METHODE HATTE IN MEINER LETZTEN ANTWORT GEFEHLT
   Future<void> _deleteScene(SoundScene scene) async {
     final bool? confirm = await showDialog(
       context: context,
@@ -65,7 +90,8 @@ class _SoundScenesTabState extends State<SoundScenesTab> {
     );
 
     if (confirm == true) {
-      await dbHelper.deleteSoundSceneAndLinks(scene.id);
+      // Wir verwenden die Methode, die die Szene UND ihre Verknüpfungen löscht
+      await dbHelper.deleteSoundSceneAndLinks(scene.id); 
       _loadScenes();
     }
   }
@@ -85,14 +111,13 @@ class _SoundScenesTabState extends State<SoundScenesTab> {
             itemBuilder: (context, index) {
               final scene = scenes[index];
               return ListTile(
-                leading: const Icon(Icons.movie_filter),
+                leading: Icon(scene.type == SoundSceneType.Ambiente ? Icons.music_video : Icons.surround_sound),
                 title: Text(scene.name),
-                // Ein Klick auf die Kachel öffnet den Editor
+                subtitle: Text(scene.type.toString().split('.').last),
                 onTap: () async {
                   await Navigator.of(context).push(MaterialPageRoute(builder: (ctx) => EditSoundSceneScreen(soundScene: scene)));
                   _loadScenes();
                 },
-                // Das Trailing ist jetzt ein Pop-up-Menü für mehr Aktionen
                 trailing: PopupMenuButton<String>(
                   onSelected: (value) {
                     if (value == 'delete') {

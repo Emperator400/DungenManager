@@ -1,24 +1,35 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
-// Keine Model- oder Hive-Imports mehr nötig!
-import 'screens/campaign_list_screen.dart';
 import 'dart:io';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'screens/campaign_list_screen.dart';
+
+// NEU: Import für das Audio-Player-Paket
+import 'package:audioplayers/audioplayers.dart';
 
 
 void main() async {
 
+  WidgetsFlutterBinding.ensureInitialized();
 
-   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-    // Initialisiere die FFI-Bibliotheken
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     sqfliteFfiInit();
-    // Sage sqflite, dass es die FFI-Implementierung verwenden soll
     databaseFactory = databaseFactoryFfi;
   }
-  // Wichtig für sqflite, um sicherzustellen, dass alles bereit ist.
-  WidgetsFlutterBinding.ensureInitialized();
   
-  // Alle Hive-Initialisierungen, Adapter und Boxen sind entfernt.
+  await AudioPlayer.global.setAudioContext( AudioContext(
+    iOS: AudioContextIOS(
+      category: AVAudioSessionCategory.playback,
+      options: {AVAudioSessionOptions.mixWithOthers},
+    ),
+    android: AudioContextAndroid(
+      isSpeakerphoneOn: true,
+      stayAwake: true,
+      contentType: AndroidContentType.music,
+      usageType: AndroidUsageType.media,
+      audioFocus: AndroidAudioFocus.gain,
+    ),
+  ));
   
   runApp(const DmApp());
 }
