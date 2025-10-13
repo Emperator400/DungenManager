@@ -17,7 +17,7 @@ import '../models/scene_sound_link.dart';
 
 class DatabaseHelper {
   static const _databaseName = "dnd_helper.db";
-  static const _databaseVersion = 14;
+  static const _databaseVersion = 15;
 
   DatabaseHelper._privateConstructor();
   static final DatabaseHelper instance = DatabaseHelper._privateConstructor();
@@ -174,14 +174,16 @@ await db.execute('''
       )
     ''');
 
-    await db.execute('''
+        await db.execute('''
       CREATE TABLE sounds (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         filePath TEXT NOT NULL,
-        soundType TEXT NOT NULL
+        soundType TEXT NOT NULL,
+        description TEXT NOT NULL -- NEUE SPALTE
       )
     ''');
+    
     await db.execute('''
       CREATE TABLE sound_scenes (
         id TEXT PRIMARY KEY,
