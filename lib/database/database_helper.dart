@@ -209,8 +209,37 @@ await db.execute('''
     return List.generate(maps.length, (i) => Campaign.fromMap(maps[i]));
   }
   Future<int> updateCampaign(Campaign campaign) async => await (await database).update('campaigns', campaign.toMap(), where: 'id = ?', whereArgs: [campaign.id]);
-  Future<int> deleteCampaign(String id) async => await (await database).delete('campaigns', where: 'id = ?', whereArgs: [id]);
+  Future<void> deleteCampaignAndAssociatedData(String campaignId) async {
+    final db = await instance.database;
+    // Beginne eine "Transaktion", um sicherzustellen, dass alles oder nichts gelöscht wird
+    await db.transaction((txn) async {
+      // 1. Finde alle Sessions, die zur Kampagne gehören
+      final sessions = await txn.query('sessions', where: 'campaignId = ?', whereArgs: [campaignId]);
+      for (var session in sessions) {
+        // 2. Lösche alle Szenen, die zu jeder Session gehören
+        await txn.delete('scenes', where: 'sessionId = ?', whereArgs: [session['id']]);
+      }
+      // 3. Lösche alle Sessions der Kampagne
+      await txn.delete('sessions', where: 'campaignId = ?', whereArgs: [campaignId]);
 
+      // 4. Finde alle Helden der Kampagne
+      final playerCharacters = await txn.query('player_characters', where: 'campaignId = ?', whereArgs: [campaignId]);
+      for (var pc in playerCharacters) {
+        // 5. Lösche das gesamte Inventar für jeden Helden
+        await txn.delete('inventory_items', where: 'ownerId = ?', whereArgs: [pc['id']]);
+      }
+      // 6. Lösche alle Helden der Kampagne
+      await txn.delete('player_characters', where: 'campaignId = ?', whereArgs: [campaignId]);
+
+      // 7. Lösche alle Quest-Verknüpfungen der Kampagne
+      await txn.delete('campaign_quests', where: 'campaignId = ?', whereArgs: [campaignId]);
+
+      // 8. Zum Schluss, lösche die Kampagne selbst
+      await txn.delete('campaigns', where: 'id = ?', whereArgs: [campaignId]);
+    });
+    print("Kampagne $campaignId und alle zugehörigen Daten gelöscht.");
+  }
+  
   // --- PlayerCharacter CRUD ---
   Future<int> insertPlayerCharacter(PlayerCharacter pc) async => await (await database).insert('player_characters', pc.toMap());
   Future<List<PlayerCharacter>> getPlayerCharactersForCampaign(String campaignId) async {

@@ -31,8 +31,11 @@ class _LiveNotesWidgetState extends State<LiveNotesWidget> {
 
   @override
   void dispose() {
+    // Sage dem Controller, dass er seine Listener entfernen soll
     _liveNotesController.removeListener(_onNotesChanged);
+    // Zerstöre den Controller, um Speicher freizugeben
     _liveNotesController.dispose();
+    // Breche den laufenden Timer ab, falls einer aktiv ist
     _debounce?.cancel();
     super.dispose();
   }

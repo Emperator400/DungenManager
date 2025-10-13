@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
 import '../models/campaign.dart';
 import 'edit_campaign_screen.dart'; 
-import 'campaign_dashboard_screen.dart'; // Dieser Import ist jetzt wichtig
+import 'campaign_dashboard_screen.dart';
 
 class CampaignListScreen extends StatefulWidget {
   const CampaignListScreen({super.key});
@@ -19,13 +19,36 @@ class _CampaignListScreenState extends State<CampaignListScreen> {
   @override
   void initState() {
     super.initState();
-    _campaignsFuture = dbHelper.getAllCampaigns();
+    _refreshCampaigns();
   }
 
   void _refreshCampaigns() {
     setState(() {
       _campaignsFuture = dbHelper.getAllCampaigns();
     });
+  }
+
+  // NEUE METHODE: Zeigt den Bestätigungs-Dialog und löscht die Kampagne
+  Future<void> _deleteCampaign(Campaign campaign) async {
+    final bool? confirm = await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Kampagne löschen?"),
+        content: Text("Möchtest du die Kampagne '${campaign.title}' und ALLE zugehörigen Helden, Sitzungen, Szenen etc. wirklich endgültig löschen? Diese Aktion kann nicht rückgängig gemacht werden."),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text("Abbrechen")),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text("Endgültig Löschen", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await dbHelper.deleteCampaignAndAssociatedData(campaign.id);
+      _refreshCampaigns();
+    }
   }
 
   @override
@@ -41,45 +64,46 @@ class _CampaignListScreenState extends State<CampaignListScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text("Keine Kampagnen erstellt."),
-                  SizedBox(height: 10),
-                  Text("Klicke auf '+' um zu beginnen!", style: TextStyle(color: Colors.grey)),
-                ],
-              ),
-            );
+            return const Center( /* ... "Keine Kampagnen"-Text ... */ );
           }
           final campaigns = snapshot.data!;
           return ListView.builder(
             itemCount: campaigns.length,
             itemBuilder: (context, index) {
               final campaign = campaigns[index];
-              return Card( // Wir packen die ListTile in eine Card für schöneres Design
+              return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: ListTile(
                   leading: const Icon(Icons.book, size: 40, color: Colors.brown),
                   title: Text(campaign.title, style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text(campaign.description, maxLines: 2, overflow: TextOverflow.ellipsis),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.edit),
-                    tooltip: "Kampagne bearbeiten",
-                    onPressed: (){
-                       Navigator.of(context).push(MaterialPageRoute(
-                         builder: (ctx) => EditCampaignScreen(campaignToEdit: campaign),
-                       )).then((_) => _refreshCampaigns());
-                    },
-                  ),
-                  // ==========================================================
-                  // HIER IST DIE HINZUGEFÜGTE FUNKTION
-                  // ==========================================================
                   onTap: () {
                     Navigator.of(context).push(MaterialPageRoute(
                       builder: (ctx) => CampaignDashboardScreen(campaign: campaign),
                     ));
                   },
+                  // GEÄNDERT: Ein sauberes Menü für Aktionen
+                  trailing: PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        Navigator.of(context).push(MaterialPageRoute(
+                          builder: (ctx) => EditCampaignScreen(campaignToEdit: campaign),
+                        )).then((_) => _refreshCampaigns());
+                      } else if (value == 'delete') {
+                        _deleteCampaign(campaign);
+                      }
+                    },
+                    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                      const PopupMenuItem<String>(
+                        value: 'edit',
+                        child: ListTile(leading: Icon(Icons.edit_note), title: Text('Bearbeiten')),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'delete',
+                        child: ListTile(leading: Icon(Icons.delete_forever, color: Colors.red), title: Text('Löschen', style: TextStyle(color: Colors.red))),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },

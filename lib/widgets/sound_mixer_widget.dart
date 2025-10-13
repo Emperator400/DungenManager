@@ -45,10 +45,17 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
       await activePlayer.player.stop();
       await activePlayer.player.dispose();
     }
+    // Wichtig: KEIN setState hier, da diese Methode aus dispose() aufgerufen werden kann
+    _activePlayers.clear();
+    // Wenn die Methode von einem Knopf aufgerufen wird, brauchen wir setState
+    // Wir trennen das also auf.
+  }
+  
+  // Eigene Methode für den UI-Knopf
+  void _onStopAllSoundsPressed() {
     setState(() {
-      _activePlayers.clear();
+      _stopAllSounds();
     });
-    print("[DEBUG] Alle Player gestoppt und entsorgt.");
   }
 
   // Startet oder stoppt einen AMBIENTE-Sound
@@ -125,7 +132,7 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
           child: OutlinedButton.icon(
             icon: const Icon(Icons.stop, color: Colors.redAccent),
             label: const Text("Alle Sounds stoppen"),
-            onPressed: _stopAllSounds,
+            onPressed:  _onStopAllSoundsPressed,
             style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent, side: const BorderSide(color: Colors.redAccent)),
           ),
         ),

@@ -54,7 +54,8 @@ class _CampaignDashboardScreenState extends State<CampaignDashboardScreen> with 
             await Navigator.of(context).push(MaterialPageRoute(
               builder: (ctx) => EditPlayerCharacterScreen(campaignId: widget.campaign.id),
             ));
-            // KORREKTUR: Ruft die öffentliche Methode auf
+            // SICHERHEITS-PRÜFUNG HINZUGEFÜGT
+            if (!mounted) return;
             _heroesKey.currentState?.loadPcs();
           },
           child: const Icon(Icons.add),
@@ -65,10 +66,16 @@ class _CampaignDashboardScreenState extends State<CampaignDashboardScreen> with 
           onPressed: () async {
             final newSession = Session(campaignId: widget.campaign.id, title: "Neue Sitzung");
             await dbHelper.insertSession(newSession);
+            
+            // SICHERHEITS-PRÜFUNG HINZUGEFÜGT
+            if (!mounted) return;
+
             await Navigator.of(context).push(MaterialPageRoute(
               builder: (ctx) => EditSessionScreen(session: newSession),
             ));
-            // KORREKTUR: Ruft die öffentliche Methode auf
+            
+            // SICHERHEITS-PRÜFUNG HINZUGEFÜGT
+            if (!mounted) return;
             _sessionsKey.currentState?.loadSessions();
           },
           child: const Icon(Icons.add),
@@ -99,7 +106,6 @@ class _CampaignDashboardScreenState extends State<CampaignDashboardScreen> with 
         children: [
           CampaignOverviewTab(campaign: widget.campaign),
           CampaignHeroesTab(key: _heroesKey, campaign: widget.campaign),
-          // KORREKTUR: onSessionsUpdated wird nicht mehr übergeben
           CampaignSessionsTab(key: _sessionsKey, campaign: widget.campaign),
           CampaignQuestsTab(key: _questsKey, campaign: widget.campaign),
         ],

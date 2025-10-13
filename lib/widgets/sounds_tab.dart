@@ -33,6 +33,7 @@ class _SoundsTabState extends State<SoundsTab> {
   }
 
   void _loadSounds() {
+    // setState ist sicher, weil es am Anfang der Methode steht
     setState(() {
       _soundsFuture = dbHelper.getAllSounds();
     });
@@ -40,20 +41,16 @@ class _SoundsTabState extends State<SoundsTab> {
 
   Future<void> _previewSound(Sound sound) async {
     await _previewPlayer.stop();
+    // Kein 'mounted'-Check nötig, da wir nicht auf den State oder Context zugreifen
     await _previewPlayer.play(DeviceFileSource(sound.filePath));
   }
 
-   Future<void> _addNewSound() async {
+  Future<void> _addNewSound() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.audio);
-
-    // WICHTIGE PRÜFUNG 1: Existiert der Bildschirm noch nach der Dateiauswahl?
     if (!mounted || result == null || result.files.single.path == null) return;
 
     File sourceFile = File(result.files.single.path!);
-    
     final directory = await getApplicationDocumentsDirectory();
-    
-    // WICHTIGE PRÜFUNG 2: Existiert der Bildschirm noch nach der Ordnersuche?
     if (!mounted) return;
 
     final String fileName = p.basename(sourceFile.path);
@@ -65,13 +62,9 @@ class _SoundsTabState extends State<SoundsTab> {
     }
     
     final File destinationFile = await sourceFile.copy(destinationPath);
-    
-    // WICHTIGE PRÜFUNG 3: Existiert der Bildschirm noch nach dem Dateikopieren?
     if (!mounted) return;
 
     final soundDetails = await _showSoundDetailsDialog();
-
-    // WICHTIGE PRÜFUNG 4: Existiert der Bildschirm noch nach dem Dialog?
     if (!mounted || soundDetails == null) return;
 
     final newSound = Sound(
@@ -81,9 +74,11 @@ class _SoundsTabState extends State<SoundsTab> {
       description: soundDetails['description'],
     );
     await dbHelper.insertSound(newSound);
-    _loadSounds(); // setState() ist hier sicher, da kein 'await' mehr folgt
+    
+    // HIER WAR EIN FEHLER: Der Check hat gefehlt!
+    if (!mounted) return; 
+    _loadSounds();
   }
-
 
   Future<Map<String, dynamic>?> _showSoundDetailsDialog({Sound? sound}) {
     final nameController = TextEditingController(text: sound?.name ?? '');
@@ -97,21 +92,18 @@ class _SoundsTabState extends State<SoundsTab> {
           return AlertDialog(
             title: Text(sound == null ? "Neuen Sound anlegen" : "Sound bearbeiten"),
             content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(controller: nameController, decoration: const InputDecoration(labelText: "Name des Sounds")),
-                  const SizedBox(height: 16),
-                  TextField(controller: descriptionController, decoration: const InputDecoration(labelText: "Beschreibung (z.B. wofür er ist)")),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<SoundType>(
-                    value: selectedType,
-                    decoration: const InputDecoration(labelText: "Sound-Typ"),
-                    items: SoundType.values.map((type) => DropdownMenuItem(value: type, child: Text(type.toString().split('.').last))).toList(),
-                    onChanged: (val) => setDialogState(() => selectedType = val!),
-                  ),
-                ],
-              ),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: "Name des Sounds")),
+                const SizedBox(height: 16),
+                TextField(controller: descriptionController, decoration: const InputDecoration(labelText: "Beschreibung (z.B. wofür er ist)")),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<SoundType>(
+                  value: selectedType,
+                  decoration: const InputDecoration(labelText: "Sound-Typ"),
+                  items: SoundType.values.map((type) => DropdownMenuItem(value: type, child: Text(type.toString().split('.').last))).toList(),
+                  onChanged: (val) => setDialogState(() => selectedType = val!),
+                ),
+              ]),
             ),
             actions: [
               TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Abbrechen")),
@@ -145,11 +137,7 @@ class _SoundsTabState extends State<SoundsTab> {
             itemBuilder: (context, index) {
               final sound = sounds[index];
               return ListTile(
-                leading: IconButton(
-                  icon: const Icon(Icons.play_arrow),
-                  tooltip: "Vorschau abspielen",
-                  onPressed: () => _previewSound(sound),
-                ),
+                leading: IconButton(icon: const Icon(Icons.play_arrow), tooltip: "Vorschau abspielen", onPressed: () => _previewSound(sound)),
                 title: Text(sound.name),
                 subtitle: Text(sound.description, maxLines: 1, overflow: TextOverflow.ellipsis),
                 trailing: IconButton(
@@ -158,6 +146,8 @@ class _SoundsTabState extends State<SoundsTab> {
                     final file = File(sound.filePath);
                     if (await file.exists()) await file.delete();
                     await dbHelper.deleteSound(sound.id);
+                    // HIER WAR EIN FEHLER: Der Check hat gefehlt!
+                    if (!mounted) return;
                     _loadSounds();
                   },
                 ),
@@ -166,13 +156,12 @@ class _SoundsTabState extends State<SoundsTab> {
                    if (!mounted || soundDetails == null) return;
 
                    final updatedSound = Sound(
-                    id: sound.id,
-                    filePath: sound.filePath,
-                    name: soundDetails['name'],
-                    soundType: soundDetails['type'],
-                    description: soundDetails['description'],
+                    id: sound.id, filePath: sound.filePath, name: soundDetails['name'],
+                    soundType: soundDetails['type'], description: soundDetails['description'],
                   );
                   await dbHelper.updateSound(updatedSound);
+                  // HIER WAR EIN FEHLER: Der Check hat gefehlt!
+                  if (!mounted) return;
                   _loadSounds();
                 },
               );
@@ -180,11 +169,7 @@ class _SoundsTabState extends State<SoundsTab> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addNewSound,
-        child: const Icon(Icons.add),
-        tooltip: "Neuen Sound importieren",
-      ),
+      floatingActionButton: FloatingActionButton(onPressed: _addNewSound, child: const Icon(Icons.add), tooltip: "Neuen Sound importieren"),
     );
   }
 }
