@@ -7,8 +7,10 @@ import '../widgets/campaign_heroes_tab.dart';
 import '../widgets/campaign_sessions_tab.dart';
 import '../widgets/campaign_overview_tab.dart';
 import '../widgets/campaign_quests_tab.dart';
+import '../widgets/campaign_dnd_data_tab.dart';
 import 'edit_pc_screen.dart';
 import 'edit_session_screen.dart';
+import 'official_monsters_screen.dart';
 
 class CampaignDashboardScreen extends StatefulWidget {
   final Campaign campaign;
@@ -30,7 +32,7 @@ class _CampaignDashboardScreenState extends State<CampaignDashboardScreen> with 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) return;
       setState(() {
@@ -98,6 +100,7 @@ class _CampaignDashboardScreenState extends State<CampaignDashboardScreen> with 
             Tab(icon: Icon(Icons.groups), text: "Helden"),
             Tab(icon: Icon(Icons.map), text: "Sitzungen"),
             Tab(icon: Icon(Icons.flag), text: "Quests"),
+            Tab(icon: Icon(Icons.games), text: "D&D-Daten"),
           ],
         ),
       ),
@@ -108,6 +111,7 @@ class _CampaignDashboardScreenState extends State<CampaignDashboardScreen> with 
           CampaignHeroesTab(key: _heroesKey, campaign: widget.campaign),
           CampaignSessionsTab(key: _sessionsKey, campaign: widget.campaign),
           CampaignQuestsTab(key: _questsKey, campaign: widget.campaign),
+          CampaignDndDataTab(campaign: widget.campaign),
         ],
       ),
       floatingActionButton: _buildFab(),

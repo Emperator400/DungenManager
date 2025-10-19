@@ -17,7 +17,7 @@ import '../models/scene_sound_link.dart';
 
 class DatabaseHelper {
   static const _databaseName = "dnd_helper.db";
-  static const _databaseVersion = 15;
+  static const _databaseVersion = 17;
 
   DatabaseHelper._privateConstructor();
   static final DatabaseHelper instance = DatabaseHelper._privateConstructor();
@@ -42,19 +42,18 @@ class DatabaseHelper {
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
     // Einfache Entwicklungs-Strategie: Alles löschen und neu erstellen
-    await db.execute('DROP TABLE IF EXISTS campaigns');
-    await db.execute('DROP TABLE IF EXISTS player_characters');
-    await db.execute('DROP TABLE IF EXISTS sessions');
-    await db.execute('DROP TABLE IF EXISTS creatures');
-    await db.execute('DROP TABLE IF EXISTS wiki_entries');
-    await db.execute('DROP TABLE IF EXISTS inventory_items');
-    await db.execute('DROP TABLE IF EXISTS items');
-    await db.execute('DROP TABLE IF EXISTS quests');
-    await db.execute('DROP TABLE IF EXISTS campaign_quests');
-    await db.execute('DROP TABLE IF EXISTS scenes');
-    await db.execute('DROP TABLE IF EXISTS sounds');
-    await db.execute('DROP TABLE IF EXISTS sound_scenes');
-    await db.execute('DROP TABLE IF EXISTS scene_sound_links');
+    final List<String> tables = [
+      'campaigns', 'player_characters', 'sessions', 'creatures', 'wiki_entries',
+      'inventory_items', 'items', 'quests', 'campaign_quests', 'scenes',
+      'sounds', 'sound_scenes', 'scene_sound_links', 'campaign_wiki_links',
+      'official_monsters', 'official_spells', 'official_classes', 'official_races',
+      'official_items', 'official_locations'
+    ];
+    
+    for (final table in tables) {
+      await db.execute('DROP TABLE IF EXISTS $table');
+    }
+    
     await _createTables(db, newVersion);
   }
 
@@ -104,7 +103,11 @@ class DatabaseHelper {
       CREATE TABLE campaigns (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,
-        description TEXT NOT NULL
+        description TEXT NOT NULL,
+        available_monsters TEXT,
+        available_spells TEXT,
+        available_items TEXT,
+        available_npcs TEXT
       )
     ''');
 
@@ -126,7 +129,26 @@ await db.execute('''
         armorClass INTEGER NOT NULL,
         speed TEXT NOT NULL,
         attacks TEXT NOT NULL,
-        initiativeBonus INTEGER NOT NULL
+        initiativeBonus INTEGER NOT NULL,
+        strength INTEGER NOT NULL,
+        dexterity INTEGER NOT NULL,
+        constitution INTEGER NOT NULL,
+        intelligence INTEGER NOT NULL,
+        wisdom INTEGER NOT NULL,
+        charisma INTEGER NOT NULL,
+        isPlayer INTEGER DEFAULT 0,
+        official_monster_id TEXT,
+        official_spell_ids TEXT,
+        official_item_ids TEXT,
+        size TEXT,
+        type TEXT,
+        subtype TEXT,
+        alignment TEXT,
+        challenge_rating INTEGER,
+        special_abilities TEXT,
+        legendary_actions TEXT,
+        is_custom INTEGER DEFAULT 1,
+        description TEXT
       )
     ''');
     await db.execute('''
@@ -200,6 +222,175 @@ await db.execute('''
         volume REAL NOT NULL
       )
     ''');
+
+    // Offizielle D&D-Daten Tabellen
+    await db.execute('''
+      CREATE TABLE official_monsters (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        size TEXT NOT NULL,
+        type TEXT NOT NULL,
+        subtype TEXT,
+        alignment TEXT NOT NULL,
+        armor_class TEXT NOT NULL,
+        hit_points INTEGER NOT NULL,
+        hit_dice TEXT NOT NULL,
+        speed TEXT NOT NULL,
+        strength INTEGER NOT NULL,
+        dexterity INTEGER NOT NULL,
+        constitution INTEGER NOT NULL,
+        intelligence INTEGER NOT NULL,
+        wisdom INTEGER NOT NULL,
+        charisma INTEGER NOT NULL,
+        saving_throws TEXT,
+        skills TEXT,
+        damage_vulnerabilities TEXT,
+        damage_resistances TEXT,
+        damage_immunities TEXT,
+        condition_immunities TEXT,
+        senses TEXT,
+        languages TEXT,
+        challenge_rating REAL NOT NULL,
+        xp INTEGER NOT NULL,
+        special_abilities TEXT,
+        actions TEXT,
+        legendary_actions TEXT,
+        lair_actions TEXT,
+        description TEXT,
+        source TEXT NOT NULL,
+        page INTEGER,
+        is_custom INTEGER DEFAULT 0,
+        version TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE official_spells (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        level INTEGER NOT NULL,
+        school TEXT NOT NULL,
+        ritual INTEGER DEFAULT 0,
+        casting_time TEXT NOT NULL,
+        range TEXT NOT NULL,
+        duration TEXT NOT NULL,
+        components TEXT,
+        materials TEXT,
+        description TEXT NOT NULL,
+        higher_levels TEXT,
+        classes TEXT,
+        source TEXT NOT NULL,
+        page INTEGER,
+        is_custom INTEGER DEFAULT 0,
+        version TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE official_classes (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        hit_die TEXT NOT NULL,
+        proficiency_choices TEXT,
+        starting_proficiencies TEXT,
+        equipment TEXT,
+        class_table TEXT,
+        spellcasting TEXT,
+        features TEXT,
+        subclasses TEXT,
+        source TEXT NOT NULL,
+        page INTEGER,
+        is_custom INTEGER DEFAULT 0,
+        version TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE official_races (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        ability_bonuses TEXT,
+        age TEXT,
+        alignment TEXT,
+        size TEXT NOT NULL,
+        speed TEXT NOT NULL,
+        languages TEXT,
+        traits TEXT,
+        subraces TEXT,
+        source TEXT NOT NULL,
+        page INTEGER,
+        is_custom INTEGER DEFAULT 0,
+        version TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE official_items (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        item_type TEXT NOT NULL,
+        rarity TEXT,
+        requires_attunement INTEGER DEFAULT 0,
+        weight REAL,
+        cost REAL,
+        weapon_category TEXT,
+        weapon_range TEXT,
+        damage TEXT,
+        properties TEXT,
+        armor_category TEXT,
+        armor_class TEXT,
+        stealth_disadvantage INTEGER DEFAULT 0,
+        strength_requirement INTEGER,
+        description TEXT NOT NULL,
+        source TEXT NOT NULL,
+        page INTEGER,
+        is_custom INTEGER DEFAULT 0,
+        version TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE official_locations (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        location_type TEXT NOT NULL,
+        description TEXT NOT NULL,
+        region TEXT,
+        parent_location_id TEXT,
+        coordinates TEXT,
+        notable_npcs TEXT,
+        notable_locations TEXT,
+        quests TEXT,
+        encounters TEXT,
+        source TEXT NOT NULL,
+        page INTEGER,
+        is_custom INTEGER DEFAULT 0,
+        version TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    ''');
+
+    // Performance-Indizes für die offiziellen Tabellen
+    await db.execute('CREATE INDEX idx_monsters_name ON official_monsters(name)');
+    await db.execute('CREATE INDEX idx_monsters_cr ON official_monsters(challenge_rating)');
+    await db.execute('CREATE INDEX idx_monsters_type ON official_monsters(type)');
+    await db.execute('CREATE INDEX idx_spells_level ON official_spells(level)');
+    await db.execute('CREATE INDEX idx_spells_school ON official_spells(school)');
+    await db.execute('CREATE INDEX idx_items_name ON official_items(name)');
+    await db.execute('CREATE INDEX idx_items_type ON official_items(item_type)');
+    await db.execute('CREATE INDEX idx_locations_name ON official_locations(name)');
+    await db.execute('CREATE INDEX idx_locations_type ON official_locations(location_type)');
   }
 
   // --- Campaign CRUD ---
@@ -445,7 +636,314 @@ await db.execute('''
     return displaySounds;
   }
 
+  // --- Offizielle D&D-Daten CRUD Methoden ---
 
+  // --- Official Monsters CRUD ---
+  Future<int> insertOfficialMonster(Map<String, dynamic> monster) async => 
+      await (await database).insert('official_monsters', monster);
+  
+  Future<List<Map<String, dynamic>>> getAllOfficialMonsters({
+    int page = 0,
+    int limit = 50,
+    String? search,
+    String? type,
+    double? minCr,
+    double? maxCr,
+    String? orderBy = 'name',
+    bool ascending = true,
+  }) async {
+    final offset = page * limit;
+    String whereClause = '';
+    List<dynamic> whereArgs = [];
+    
+    if (search != null && search.isNotEmpty) {
+      whereClause += 'name LIKE ?';
+      whereArgs.add('%$search%');
+    }
+    
+    if (type != null && type.isNotEmpty) {
+      if (whereClause.isNotEmpty) whereClause += ' AND ';
+      whereClause += 'type = ?';
+      whereArgs.add(type);
+    }
+    
+    if (minCr != null) {
+      if (whereClause.isNotEmpty) whereClause += ' AND ';
+      whereClause += 'challenge_rating >= ?';
+      whereArgs.add(minCr);
+    }
+    
+    if (maxCr != null) {
+      if (whereClause.isNotEmpty) whereClause += ' AND ';
+      whereClause += 'challenge_rating <= ?';
+      whereArgs.add(maxCr);
+    }
+    
+    final direction = ascending ? 'ASC' : 'DESC';
+    
+    return await (await database).query(
+      'official_monsters',
+      where: whereClause.isNotEmpty ? whereClause : null,
+      whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
+      limit: limit,
+      offset: offset,
+      orderBy: '$orderBy $direction',
+    );
+  }
+  
+  Future<Map<String, dynamic>?> getOfficialMonsterById(String id) async {
+    final maps = await (await database).query(
+      'official_monsters', 
+      where: 'id = ?', 
+      whereArgs: [id]
+    );
+    return maps.isNotEmpty ? maps.first : null;
+  }
+  
+  Future<int> updateOfficialMonster(Map<String, dynamic> monster) async => 
+      await (await database).update(
+        'official_monsters', 
+        monster, 
+        where: 'id = ?', 
+        whereArgs: [monster['id']]
+      );
+  
+  Future<int> deleteOfficialMonster(String id) async => 
+      await (await database).delete(
+        'official_monsters', 
+        where: 'id = ?', 
+        whereArgs: [id]
+      );
 
+  // --- Official Spells CRUD ---
+  Future<int> insertOfficialSpell(Map<String, dynamic> spell) async => 
+      await (await database).insert('official_spells', spell);
+  
+  Future<List<Map<String, dynamic>>> getAllOfficialSpells({
+    int page = 0,
+    int limit = 50,
+    String? search,
+    String? school,
+    int? minLevel,
+    int? maxLevel,
+    String? orderBy = 'name',
+    bool ascending = true,
+  }) async {
+    final offset = page * limit;
+    String whereClause = '';
+    List<dynamic> whereArgs = [];
+    
+    if (search != null && search.isNotEmpty) {
+      whereClause += 'name LIKE ?';
+      whereArgs.add('%$search%');
+    }
+    
+    if (school != null && school.isNotEmpty) {
+      if (whereClause.isNotEmpty) whereClause += ' AND ';
+      whereClause += 'school = ?';
+      whereArgs.add(school);
+    }
+    
+    if (minLevel != null) {
+      if (whereClause.isNotEmpty) whereClause += ' AND ';
+      whereClause += 'level >= ?';
+      whereArgs.add(minLevel);
+    }
+    
+    if (maxLevel != null) {
+      if (whereClause.isNotEmpty) whereClause += ' AND ';
+      whereClause += 'level <= ?';
+      whereArgs.add(maxLevel);
+    }
+    
+    final direction = ascending ? 'ASC' : 'DESC';
+    
+    return await (await database).query(
+      'official_spells',
+      where: whereClause.isNotEmpty ? whereClause : null,
+      whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
+      limit: limit,
+      offset: offset,
+      orderBy: '$orderBy $direction',
+    );
+  }
+  
+  Future<Map<String, dynamic>?> getOfficialSpellById(String id) async {
+    final maps = await (await database).query(
+      'official_spells', 
+      where: 'id = ?', 
+      whereArgs: [id]
+    );
+    return maps.isNotEmpty ? maps.first : null;
+  }
+
+  // --- Official Classes CRUD ---
+  Future<int> insertOfficialClass(Map<String, dynamic> dndClass) async => 
+      await (await database).insert('official_classes', dndClass);
+  
+  Future<List<Map<String, dynamic>>> getAllOfficialClasses() async {
+    return await (await database).query(
+      'official_classes',
+      orderBy: 'name ASC',
+    );
+  }
+  
+  Future<Map<String, dynamic>?> getOfficialClassById(String id) async {
+    final maps = await (await database).query(
+      'official_classes', 
+      where: 'id = ?', 
+      whereArgs: [id]
+    );
+    return maps.isNotEmpty ? maps.first : null;
+  }
+
+  // --- Official Races CRUD ---
+  Future<int> insertOfficialRace(Map<String, dynamic> race) async => 
+      await (await database).insert('official_races', race);
+  
+  Future<List<Map<String, dynamic>>> getAllOfficialRaces() async {
+    return await (await database).query(
+      'official_races',
+      orderBy: 'name ASC',
+    );
+  }
+  
+  Future<Map<String, dynamic>?> getOfficialRaceById(String id) async {
+    final maps = await (await database).query(
+      'official_races', 
+      where: 'id = ?', 
+      whereArgs: [id]
+    );
+    return maps.isNotEmpty ? maps.first : null;
+  }
+
+  // --- Official Items CRUD ---
+  Future<int> insertOfficialItem(Map<String, dynamic> item) async => 
+      await (await database).insert('official_items', item);
+  
+  Future<List<Map<String, dynamic>>> getAllOfficialItems({
+    int page = 0,
+    int limit = 50,
+    String? search,
+    String? itemType,
+    String? rarity,
+    String? orderBy = 'name',
+    bool ascending = true,
+  }) async {
+    final offset = page * limit;
+    String whereClause = '';
+    List<dynamic> whereArgs = [];
+    
+    if (search != null && search.isNotEmpty) {
+      whereClause += 'name LIKE ?';
+      whereArgs.add('%$search%');
+    }
+    
+    if (itemType != null && itemType.isNotEmpty) {
+      if (whereClause.isNotEmpty) whereClause += ' AND ';
+      whereClause += 'item_type = ?';
+      whereArgs.add(itemType);
+    }
+    
+    if (rarity != null && rarity.isNotEmpty) {
+      if (whereClause.isNotEmpty) whereClause += ' AND ';
+      whereClause += 'rarity = ?';
+      whereArgs.add(rarity);
+    }
+    
+    final direction = ascending ? 'ASC' : 'DESC';
+    
+    return await (await database).query(
+      'official_items',
+      where: whereClause.isNotEmpty ? whereClause : null,
+      whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
+      limit: limit,
+      offset: offset,
+      orderBy: '$orderBy $direction',
+    );
+  }
+  
+  Future<Map<String, dynamic>?> getOfficialItemById(String id) async {
+    final maps = await (await database).query(
+      'official_items', 
+      where: 'id = ?', 
+      whereArgs: [id]
+    );
+    return maps.isNotEmpty ? maps.first : null;
+  }
+
+  // --- Official Locations CRUD ---
+  Future<int> insertOfficialLocation(Map<String, dynamic> location) async => 
+      await (await database).insert('official_locations', location);
+  
+  Future<List<Map<String, dynamic>>> getAllOfficialLocations({
+    int page = 0,
+    int limit = 50,
+    String? search,
+    String? locationType,
+    String? region,
+    String? orderBy = 'name',
+    bool ascending = true,
+  }) async {
+    final offset = page * limit;
+    String whereClause = '';
+    List<dynamic> whereArgs = [];
+    
+    if (search != null && search.isNotEmpty) {
+      whereClause += 'name LIKE ?';
+      whereArgs.add('%$search%');
+    }
+    
+    if (locationType != null && locationType.isNotEmpty) {
+      if (whereClause.isNotEmpty) whereClause += ' AND ';
+      whereClause += 'location_type = ?';
+      whereArgs.add(locationType);
+    }
+    
+    if (region != null && region.isNotEmpty) {
+      if (whereClause.isNotEmpty) whereClause += ' AND ';
+      whereClause += 'region = ?';
+      whereArgs.add(region);
+    }
+    
+    final direction = ascending ? 'ASC' : 'DESC';
+    
+    return await (await database).query(
+      'official_locations',
+      where: whereClause.isNotEmpty ? whereClause : null,
+      whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
+      limit: limit,
+      offset: offset,
+      orderBy: '$orderBy $direction',
+    );
+  }
+  
+  Future<Map<String, dynamic>?> getOfficialLocationById(String id) async {
+    final maps = await (await database).query(
+      'official_locations', 
+      where: 'id = ?', 
+      whereArgs: [id]
+    );
+    return maps.isNotEmpty ? maps.first : null;
+  }
+
+  // --- Daten-Update Methoden ---
+  Future<void> clearOfficialData(String tableName) async {
+    await (await database).execute('DELETE FROM $tableName');
+  }
+  
+  Future<int> getOfficialDataCount(String tableName) async {
+    final result = await (await database).rawQuery('SELECT COUNT(*) as count FROM $tableName');
+    return result.first['count'] as int;
+  }
+  
+  Future<String?> getLatestVersion(String tableName) async {
+    final result = await (await database).query(
+      tableName,
+      orderBy: 'updated_at DESC',
+      limit: 1,
+    );
+    return result.isNotEmpty ? result.first['version'] as String? : null;
+  }
 
 }

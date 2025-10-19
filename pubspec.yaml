@@ -1,4 +1,4 @@
-name: DoungenManager
+name: DoungenMenager
 description: A new Flutter project.
 publish_to: 'none'
 version: 1.0.0+1
@@ -17,6 +17,7 @@ dependencies:
   image_picker:
   flutter_markdown:
   uuid:
+  http: ^1.1.0       # Für den Datenimport von 5e.tools
 
     # NEUE PAKETE FÜR DAS SOUND-SYSTEM
   file_picker:       # Zum Auswählen von Dateien (unseren MP3s)

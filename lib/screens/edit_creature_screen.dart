@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../database/database_helper.dart';
 import '../models/creature.dart';
+import '../models/official_monster.dart';
+import 'official_monsters_screen.dart';
 
 class EditCreatureScreen extends StatefulWidget {
   final Creature? creatureToEdit;
@@ -58,12 +60,42 @@ class _EditCreatureScreenState extends State<EditCreatureScreen> {
     }
   }
 
+  Future<void> _importFromOfficialMonster() async {
+    final selectedMonster = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (ctx) => const OfficialMonstersScreen(),
+      ),
+    );
+
+    if (selectedMonster != null && mounted) {
+      setState(() {
+        _nameController.text = selectedMonster.name;
+        _hpController.text = selectedMonster.hitPoints.toString();
+        _acController.text = selectedMonster.armorClass;
+        _speedController.text = selectedMonster.speed;
+        _attacksController.text = selectedMonster.actions.map((a) => '${a.name}: ${a.description}').join('\n');
+        _initBonusController.text = '0'; // Initiative-Bonus wird aus Dexterity berechnet
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${selectedMonster.name} wurde importiert')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.creatureToEdit == null ? 'Neues Monster/NSC' : 'Monster/NSC bearbeiten'),
-        actions: [IconButton(icon: const Icon(Icons.save), onPressed: _saveForm)],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download),
+            onPressed: _importFromOfficialMonster,
+            tooltip: 'Aus offiziellem Monster importieren',
+          ),
+          IconButton(icon: const Icon(Icons.save), onPressed: _saveForm),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 // Wichtig: Stelle sicher, dass 'dein_projekt_name' mit dem Namen in deiner pubspec.yaml übereinstimmt
-import 'package:hive_test_projekt/main.dart' as app; 
+import 'package:DoungenMenager/main.dart' as app; // ANGEPASST: Importiere die Haupt-App
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
