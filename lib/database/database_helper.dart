@@ -10,14 +10,20 @@ import '../models/quest.dart';
 import '../models/inventory_item.dart';
 import '../models/scene.dart';
 import '../models/item.dart';
+import '../models/equip_slot.dart';
 import '../models/sound.dart';
 import '../models/sound_scene.dart';
 import '../models/scene_sound_link.dart';
+import '../models/official_monster.dart';
+import '../models/item_effect.dart';
+import 'package:uuid/uuid.dart';
+
+final _uuid = const Uuid();
 
 
 class DatabaseHelper {
   static const _databaseName = "dnd_helper.db";
-  static const _databaseVersion = 17;
+  static const _databaseVersion = 19;
 
   DatabaseHelper._privateConstructor();
   static final DatabaseHelper instance = DatabaseHelper._privateConstructor();
@@ -41,20 +47,132 @@ class DatabaseHelper {
   Future _onCreate(Database db, int version) async => await _createTables(db, version);
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Einfache Entwicklungs-Strategie: Alles löschen und neu erstellen
-    final List<String> tables = [
-      'campaigns', 'player_characters', 'sessions', 'creatures', 'wiki_entries',
-      'inventory_items', 'items', 'quests', 'campaign_quests', 'scenes',
-      'sounds', 'sound_scenes', 'scene_sound_links', 'campaign_wiki_links',
-      'official_monsters', 'official_spells', 'official_classes', 'official_races',
-      'official_items', 'official_locations'
-    ];
-    
-    for (final table in tables) {
-      await db.execute('DROP TABLE IF EXISTS $table');
+    // Schrittweise Migration für bestehende Daten
+    if (oldVersion < 18) {
+      // Gold-Felder zur creatures-Tabelle hinzufügen
+      try {
+        await db.execute('ALTER TABLE creatures ADD COLUMN gold REAL DEFAULT 0.0');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE creatures ADD COLUMN silver REAL DEFAULT 0.0');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE creatures ADD COLUMN copper REAL DEFAULT 0.0');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      // Neue Felder zur creatures-Tabelle hinzufügen
+      try {
+        await db.execute('ALTER TABLE creatures ADD COLUMN source_type TEXT DEFAULT \'custom\'');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE creatures ADD COLUMN source_id TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE creatures ADD COLUMN is_favorite INTEGER DEFAULT 0');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE creatures ADD COLUMN version TEXT DEFAULT \'1.0\'');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      // Performance-Indizes für die neue Felder
+      try {
+        await db.execute('CREATE INDEX idx_creatures_source_type ON creatures(source_type)');
+      } catch (e) {
+        // Index existiert bereits
+      }
+      
+      try {
+        await db.execute('CREATE INDEX idx_creatures_is_favorite ON creatures(is_favorite)');
+      } catch (e) {
+        // Index existiert bereits
+      }
+      
+      // Sicherstellen, dass quantity Spalte in inventory_items existiert und DEFAULT 1 hat
+      try {
+        await db.execute('ALTER TABLE inventory_items ADD COLUMN quantity INTEGER DEFAULT 1');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
     }
     
-    await _createTables(db, newVersion);
+    // Migration für Version 19: Ausrüstungs-System
+    if (oldVersion < 19) {
+      // Ausrüstungs-Felder zur inventory_items Tabelle hinzufügen
+      try {
+        await db.execute('ALTER TABLE inventory_items ADD COLUMN isEquipped INTEGER DEFAULT 0');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE inventory_items ADD COLUMN equipSlot TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      // Durability-Felder zur items Tabelle hinzufügen
+      try {
+        await db.execute('ALTER TABLE items ADD COLUMN hasDurability INTEGER DEFAULT 0');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE items ADD COLUMN maxDurability INTEGER');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE items ADD COLUMN isRepairable INTEGER DEFAULT 0');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      // Performance-Indizes für Ausrüstung
+      try {
+        await db.execute('CREATE INDEX idx_inventory_equipped ON inventory_items(isEquipped)');
+      } catch (e) {
+        // Index existiert bereits
+      }
+      
+      try {
+        await db.execute('CREATE INDEX idx_inventory_slot ON inventory_items(equipSlot)');
+      } catch (e) {
+        // Index existiert bereits
+      }
+    }
+    
+    // Für größere Versionsunterschiede könnten hier weitere Migrationen folgen
+    if (oldVersion < 17) {
+      // Alte Migrationen für Version 17 und darunter
+      await _migrateToVersion17(db);
+    }
+  }
+  
+  // Alte Migration für Version 17
+  Future _migrateToVersion17(Database db) async {
+    // Hier könnten alte Migrationen für Version 17 implementiert werden
+    // Aktuell nicht benötigt, da wir direkt auf Version 18 migrieren
   }
 
   // Diese eine Methode erstellt den GESAMTEN, AKTUELLEN Zustand der Datenbank
@@ -86,7 +204,10 @@ class DatabaseHelper {
         strengthRequirement INTEGER,
         stealthDisadvantage INTEGER,
         rarity TEXT,
-        requiresAttunement INTEGER
+        requiresAttunement INTEGER,
+        hasDurability INTEGER DEFAULT 0,
+        maxDurability INTEGER,
+        isRepairable INTEGER DEFAULT 0
       )
     ''');
 
@@ -95,7 +216,9 @@ class DatabaseHelper {
         id TEXT PRIMARY KEY,
         ownerId TEXT NOT NULL,
         itemId TEXT NOT NULL,
-        quantity INTEGER NOT NULL
+        quantity INTEGER NOT NULL DEFAULT 1,
+        isEquipped INTEGER DEFAULT 0,
+        equipSlot TEXT
       )
     ''');
 
@@ -137,6 +260,9 @@ await db.execute('''
         wisdom INTEGER NOT NULL,
         charisma INTEGER NOT NULL,
         isPlayer INTEGER DEFAULT 0,
+        gold REAL DEFAULT 0.0,
+        silver REAL DEFAULT 0.0,
+        copper REAL DEFAULT 0.0,
         official_monster_id TEXT,
         official_spell_ids TEXT,
         official_item_ids TEXT,
@@ -148,7 +274,11 @@ await db.execute('''
         special_abilities TEXT,
         legendary_actions TEXT,
         is_custom INTEGER DEFAULT 1,
-        description TEXT
+        description TEXT,
+        source_type TEXT DEFAULT 'custom',
+        source_id TEXT,
+        is_favorite INTEGER DEFAULT 0,
+        version TEXT DEFAULT '1.0'
       )
     ''');
     await db.execute('''
@@ -381,6 +511,53 @@ await db.execute('''
       )
     ''');
 
+    // Item Effects Tabellen
+    await db.execute('''
+      CREATE TABLE item_effects (
+        id TEXT PRIMARY KEY,
+        item_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL,
+        effect_type TEXT NOT NULL,
+        value INTEGER NOT NULL,
+        duration TEXT NOT NULL,
+        duration_value INTEGER,
+        requires_concentration INTEGER DEFAULT 0,
+        requires_attunement INTEGER DEFAULT 0,
+        max_charges INTEGER DEFAULT 1,
+        current_charges INTEGER DEFAULT 1,
+        last_used TEXT,
+        is_active INTEGER DEFAULT 0,
+        activated_at TEXT,
+        target_character_id TEXT,
+        FOREIGN KEY (item_id) REFERENCES items (id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE active_effects (
+        id TEXT PRIMARY KEY,
+        character_id TEXT NOT NULL,
+        item_effect_id TEXT NOT NULL,
+        source_item_name TEXT NOT NULL,
+        effect_name TEXT NOT NULL,
+        description TEXT NOT NULL,
+        effect_type TEXT NOT NULL,
+        value INTEGER NOT NULL,
+        started_at TEXT NOT NULL,
+        expires_at TEXT,
+        requires_concentration INTEGER DEFAULT 0,
+        FOREIGN KEY (character_id) REFERENCES player_characters (id) ON DELETE CASCADE,
+        FOREIGN KEY (item_effect_id) REFERENCES item_effects (id) ON DELETE CASCADE
+      )
+    ''');
+
+    // Performance-Indizes für Item Effects
+    await db.execute('CREATE INDEX idx_item_effects_item_id ON item_effects(item_id)');
+    await db.execute('CREATE INDEX idx_item_effects_type ON item_effects(effect_type)');
+    await db.execute('CREATE INDEX idx_active_effects_character_id ON active_effects(character_id)');
+    await db.execute('CREATE INDEX idx_active_effects_item_effect_id ON active_effects(item_effect_id)');
+
     // Performance-Indizes für die offiziellen Tabellen
     await db.execute('CREATE INDEX idx_monsters_name ON official_monsters(name)');
     await db.execute('CREATE INDEX idx_monsters_cr ON official_monsters(challenge_rating)');
@@ -474,12 +651,191 @@ await db.execute('''
 
   // --- Creature (Bestiary) CRUD ---
   Future<int> insertCreature(Creature creature) async => await (await database).insert('creatures', creature.toMap());
+  
   Future<List<Creature>> getAllCreatures() async {
     final maps = await (await database).query('creatures', orderBy: 'name ASC');
     return List.generate(maps.length, (i) => Creature.fromMap(maps[i]));
   }
+  
+  // Neue Methoden für Unified Bestiarum
+  Future<List<Creature>> getAllCreaturesUnified({
+    int page = 0,
+    int limit = 50,
+    String? search,
+    String? sourceType,
+    String? type,
+    double? minCr,
+    double? maxCr,
+    bool? isFavorite,
+    String? orderBy = 'name',
+    bool ascending = true,
+  }) async {
+    final offset = page * limit;
+    String whereClause = '';
+    List<dynamic> whereArgs = [];
+    
+    if (search != null && search.isNotEmpty) {
+      whereClause += 'name LIKE ?';
+      whereArgs.add('%$search%');
+    }
+    
+    if (sourceType != null && sourceType.isNotEmpty) {
+      if (whereClause.isNotEmpty) whereClause += ' AND ';
+      whereClause += 'source_type = ?';
+      whereArgs.add(sourceType);
+    }
+    
+    if (type != null && type.isNotEmpty) {
+      if (whereClause.isNotEmpty) whereClause += ' AND ';
+      whereClause += 'type = ?';
+      whereArgs.add(type);
+    }
+    
+    if (minCr != null) {
+      if (whereClause.isNotEmpty) whereClause += ' AND ';
+      whereClause += '(challenge_rating >= ? OR challenge_rating IS NULL)';
+      whereArgs.add(minCr);
+    }
+    
+    if (maxCr != null) {
+      if (whereClause.isNotEmpty) whereClause += ' AND ';
+      whereClause += '(challenge_rating <= ? OR challenge_rating IS NULL)';
+      whereArgs.add(maxCr);
+    }
+    
+    if (isFavorite != null) {
+      if (whereClause.isNotEmpty) whereClause += ' AND ';
+      whereClause += 'is_favorite = ?';
+      whereArgs.add(isFavorite ? 1 : 0);
+    }
+    
+    final direction = ascending ? 'ASC' : 'DESC';
+    
+    return await (await database).query(
+      'creatures',
+      where: whereClause.isNotEmpty ? whereClause : null,
+      whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
+      limit: limit,
+      offset: offset,
+      orderBy: '$orderBy $direction',
+    ).then((maps) => List.generate(maps.length, (i) => Creature.fromMap(maps[i])));
+  }
+  
+  Future<List<Creature>> getCreaturesBySourceType(String sourceType) async {
+    final maps = await (await database).query(
+      'creatures',
+      where: 'source_type = ?',
+      whereArgs: [sourceType],
+      orderBy: 'name ASC',
+    );
+    return List.generate(maps.length, (i) => Creature.fromMap(maps[i]));
+  }
+  
+  Future<List<Creature>> getFavoriteCreatures() async {
+    final maps = await (await database).query(
+      'creatures',
+      where: 'is_favorite = 1',
+      orderBy: 'name ASC',
+    );
+    return List.generate(maps.length, (i) => Creature.fromMap(maps[i]));
+  }
+  
+  Future<void> toggleCreatureFavorite(String id) async {
+    final creature = await getCreatureById(id);
+    if (creature != null) {
+      await (await database).update(
+        'creatures',
+        {'is_favorite': creature.isFavorite ? 0 : 1},
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+    }
+  }
+  
+  Future<void> updateCreatureSource(String id, String sourceType, String? sourceId) async {
+    await (await database).update(
+      'creatures',
+      {
+        'source_type': sourceType,
+        'source_id': sourceId,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+  
+  Future<Creature?> getCreatureById(String id) async {
+    final maps = await (await database).query('creatures', where: 'id = ?', whereArgs: [id]);
+    return maps.isNotEmpty ? Creature.fromMap(maps.first) : null;
+  }
+  
   Future<int> updateCreature(Creature creature) async => await (await database).update('creatures', creature.toMap(), where: 'id = ?', whereArgs: [creature.id]);
   Future<int> deleteCreature(String id) async => await (await database).delete('creatures', where: 'id = ?', whereArgs: [id]);
+  Future<int> deleteAllCreatures() async => await (await database).delete('creatures');
+  
+  // Neue Methoden für Synchronisation mit offiziellen Monstern
+  Future<List<Creature>> syncOfficialMonstersToCreatures() async {
+    final officialMonsters = await getAllOfficialMonsters(limit: 1000);
+    final syncedCreatures = <Creature>[];
+    
+    for (final officialData in officialMonsters) {
+      final officialMonster = OfficialMonster.fromMap(officialData);
+      
+      // Prüfen, ob das Monster bereits als Creature existiert
+      final existing = await (await database).query(
+        'creatures',
+        where: 'source_id = ? AND source_type = ?',
+        whereArgs: [officialMonster.id, 'official'],
+      );
+      
+      if (existing.isEmpty) {
+        // Neues Creature aus offiziellem Monster erstellen
+        final creature = Creature.fromOfficialMonster(
+          officialMonsterId: officialMonster.id,
+          name: officialMonster.name,
+          maxHp: officialMonster.hitPoints,
+          armorClass: int.tryParse(officialMonster.armorClass) ?? 10,
+          speed: officialMonster.speed,
+          strength: officialMonster.strength,
+          dexterity: officialMonster.dexterity,
+          constitution: officialMonster.constitution,
+          intelligence: officialMonster.intelligence,
+          wisdom: officialMonster.wisdom,
+          charisma: officialMonster.charisma,
+          size: officialMonster.size,
+          type: officialMonster.type,
+          subtype: officialMonster.subtype,
+          alignment: officialMonster.alignment,
+          challengeRating: officialMonster.challengeRating.toInt(),
+          specialAbilities: officialMonster.specialAbilities.isNotEmpty 
+              ? officialMonster.specialAbilities.map((a) => '${a.name}: ${a.description}').join('\n\n')
+              : null,
+          legendaryActions: officialMonster.legendaryActions?.isNotEmpty == true
+              ? officialMonster.legendaryActions!.map((a) => '${a.name}: ${a.description}').join('\n\n')
+              : null,
+          description: officialMonster.description,
+        );
+        
+        await insertCreature(creature);
+        syncedCreatures.add(creature);
+      }
+    }
+    
+    return syncedCreatures;
+  }
+  
+  Future<int> getCreaturesCount({String? sourceType}) async {
+    if (sourceType != null) {
+      final result = await (await database).rawQuery(
+        'SELECT COUNT(*) as count FROM creatures WHERE source_type = ?',
+        [sourceType],
+      );
+      return result.first['count'] as int;
+    } else {
+      final result = await (await database).rawQuery('SELECT COUNT(*) as count FROM creatures');
+      return result.first['count'] as int;
+    }
+  }
 
   // --- Item (Armory) CRUD ---
   Future<int> insertItem(Item item) async => await (await database).insert('items', item.toMap());
@@ -513,6 +869,97 @@ await db.execute('''
       }
     }
     return displayItems;
+  }
+
+  // --- Ausrüstungs-spezifische Methoden ---
+  
+  // Item ausrüsten
+  Future<void> equipItem(String inventoryItemId, EquipSlot slot) async {
+    final db = await database;
+    
+    // Prüfen, ob bereits ein Item in diesem Slot ausgerüstet ist
+    final existingItems = await db.query(
+      'inventory_items',
+      where: 'ownerId = (SELECT ownerId FROM inventory_items WHERE id = ?) AND equipSlot = ? AND isEquipped = 1',
+      whereArgs: [inventoryItemId, slot.toString()],
+    );
+    
+    // Bestehendes Item im selben Slot unequirüsten
+    if (existingItems.isNotEmpty) {
+      for (final existing in existingItems) {
+        await db.update(
+          'inventory_items',
+          {'isEquipped': 0, 'equipSlot': null},
+          where: 'id = ?',
+          whereArgs: [existing['id']],
+        );
+      }
+    }
+    
+    // Neues Item ausrüsten
+    await db.update(
+      'inventory_items',
+      {'isEquipped': 1, 'equipSlot': slot.toString()},
+      where: 'id = ?',
+      whereArgs: [inventoryItemId],
+    );
+  }
+  
+  // Item unequirüsten
+  Future<void> unequipItem(String inventoryItemId) async {
+    final db = await database;
+    await db.update(
+      'inventory_items',
+      {'isEquipped': 0, 'equipSlot': null},
+      where: 'id = ?',
+      whereArgs: [inventoryItemId],
+    );
+  }
+  
+  // Alle ausgerüsteten Items eines Charakters holen
+  Future<List<DisplayInventoryItem>> getEquippedItems(String ownerId) async {
+    final maps = await (await database).query(
+      'inventory_items',
+      where: 'ownerId = ? AND isEquipped = 1',
+      whereArgs: [ownerId],
+    );
+    
+    final List<DisplayInventoryItem> equippedItems = [];
+    for (final map in maps) {
+      final inventoryItem = InventoryItem.fromMap(map);
+      final item = await getItemById(inventoryItem.itemId);
+      if (item != null) {
+        equippedItems.add(DisplayInventoryItem(inventoryItem: inventoryItem, item: item));
+      }
+    }
+    return equippedItems;
+  }
+  
+  // Nicht ausgerüstete Items eines Charakters holen
+  Future<List<DisplayInventoryItem>> getUnequippedItems(String ownerId) async {
+    final maps = await (await database).query(
+      'inventory_items',
+      where: 'ownerId = ? AND isEquipped = 0',
+      whereArgs: [ownerId],
+    );
+    
+    final List<DisplayInventoryItem> unequippedItems = [];
+    for (final map in maps) {
+      final inventoryItem = InventoryItem.fromMap(map);
+      final item = await getItemById(inventoryItem.itemId);
+      if (item != null) {
+        unequippedItems.add(DisplayInventoryItem(inventoryItem: inventoryItem, item: item));
+      }
+    }
+    return unequippedItems;
+  }
+  
+  // Prüfen, ob ein Item in einen bestimmten Slot kann
+  Future<bool> canEquipInSlot(String itemId, EquipSlot slot) async {
+    final item = await getItemById(itemId);
+    if (item == null) return false;
+    
+    return slot.allowedItemTypes.contains(item.itemType);
   }
 
   // --- WikiEntry (Lore Keeper) CRUD ---
@@ -925,6 +1372,175 @@ await db.execute('''
       whereArgs: [id]
     );
     return maps.isNotEmpty ? maps.first : null;
+  }
+
+  // --- Item Effects CRUD ---
+  Future<int> insertItemEffect(ItemEffect effect) async => 
+      await (await database).insert('item_effects', effect.toMap());
+  
+  Future<List<ItemEffect>> getEffectsForItem(String itemId) async {
+    final maps = await (await database).query(
+      'item_effects', 
+      where: 'item_id = ?', 
+      whereArgs: [itemId],
+      orderBy: 'name ASC',
+    );
+    return List.generate(maps.length, (i) => ItemEffect.fromMap(maps[i]));
+  }
+  
+  Future<int> updateItemEffect(ItemEffect effect) async => 
+      await (await database).update(
+        'item_effects', 
+        effect.toMap(), 
+        where: 'id = ?', 
+        whereArgs: [effect.id]
+      );
+  
+  Future<int> deleteItemEffect(String id) async => 
+      await (await database).delete(
+        'item_effects', 
+        where: 'id = ?', 
+        whereArgs: [id]
+      );
+
+  // --- Active Effects CRUD ---
+  Future<int> insertActiveEffect(ActiveEffect effect) async => 
+      await (await database).insert('active_effects', effect.toMap());
+  
+  Future<List<ActiveEffect>> getActiveEffectsForCharacter(String characterId) async {
+    final maps = await (await database).query(
+      'active_effects', 
+      where: 'character_id = ?', 
+      whereArgs: [characterId],
+      orderBy: 'started_at DESC',
+    );
+    return List.generate(maps.length, (i) => ActiveEffect.fromMap(maps[i]));
+  }
+  
+  Future<int> updateActiveEffect(ActiveEffect effect) async => 
+      await (await database).update(
+        'active_effects', 
+        effect.toMap(), 
+        where: 'id = ?', 
+        whereArgs: [effect.id]
+      );
+  
+  Future<int> deleteActiveEffect(String id) async => 
+      await (await database).delete(
+        'active_effects', 
+        where: 'id = ?', 
+        whereArgs: [id]
+      );
+  
+  Future<void> deleteExpiredActiveEffects() async {
+    final db = await database;
+    await db.delete(
+      'active_effects',
+      where: 'expires_at IS NOT NULL AND expires_at < ?',
+      whereArgs: [DateTime.now().toIso8601String()],
+    );
+  }
+
+  // --- Effect Application Methods ---
+  Future<void> useItemEffect(String itemId, String characterId) async {
+    final effects = await getEffectsForItem(itemId);
+    
+    for (final effect in effects) {
+      if (effect.canUse) {
+        // Aufladungen reduzieren
+        final updatedEffect = effect.copyWith(
+          currentCharges: effect.currentCharges - 1,
+          lastUsed: DateTime.now(),
+        );
+        await updateItemEffect(updatedEffect);
+        
+        // Wenn sofortiger Effekt, direkt anwenden
+        if (effect.effectType == EffectType.healHitPoints) {
+          final activeEffect = ActiveEffect(
+            id: _uuid.v4(),
+            characterId: characterId,
+            itemEffectId: effect.id,
+            sourceItemName: (await getItemById(itemId))?.name ?? 'Unbekanntes Item',
+            effectName: effect.name,
+            description: effect.description,
+            effectType: effect.effectType,
+            value: effect.value,
+            startedAt: DateTime.now(),
+            expiresAt: effect.duration == EffectDuration.instant 
+                ? DateTime.now().add(const Duration(seconds: 1))
+                : _calculateExpiryTime(effect.duration, effect.durationValue),
+            requiresConcentration: effect.requiresConcentration,
+          );
+          await insertActiveEffect(activeEffect);
+        } else if (effect.duration != EffectDuration.instant) {
+          // Temporären Effekt aktivieren
+          final updatedEffect = effect.copyWith(
+            isActive: true,
+            activatedAt: DateTime.now(),
+            targetCharacterId: characterId,
+          );
+          await updateItemEffect(updatedEffect);
+        }
+      }
+    }
+  }
+
+  DateTime? _calculateExpiryTime(EffectDuration duration, int? durationValue) {
+    final now = DateTime.now();
+    
+    switch (duration) {
+      case EffectDuration.shortRest:
+        return now.add(const Duration(hours: 1));
+      case EffectDuration.longRest:
+        return now.add(const Duration(hours: 8));
+      case EffectDuration.oneHour:
+        return now.add(const Duration(hours: 1));
+      case EffectDuration.eightHours:
+        return now.add(const Duration(hours: 8));
+      case EffectDuration.twentyFourHours:
+        return now.add(const Duration(hours: 24));
+      case EffectDuration.custom:
+        if (durationValue != null) {
+          return now.add(Duration(minutes: durationValue!));
+        }
+        return null;
+      case EffectDuration.permanent:
+      case EffectDuration.concentration:
+        return null; // Kein Ablauf
+      default:
+        return null;
+    }
+  }
+
+  Future<void> endActiveEffect(String activeEffectId) async {
+    final effect = await (await database).query(
+      'active_effects',
+      where: 'id = ?',
+      whereArgs: [activeEffectId],
+    );
+    
+    if (effect.isNotEmpty) {
+      final itemEffectId = effect.first['item_effect_id'] as String;
+      
+      // Item-Effect deaktivieren
+      await (await database).update(
+        'item_effects',
+        {'is_active': 0, 'activated_at': null},
+        where: 'id = ?',
+        whereArgs: [itemEffectId],
+      );
+      
+      // Aktiven Effekt entfernen
+      await deleteActiveEffect(activeEffectId);
+    }
+  }
+
+  Future<int> getActiveEffectsCount(String characterId) async {
+    final result = await (await database).rawQuery(
+      'SELECT COUNT(*) as count FROM active_effects WHERE character_id = ? AND expires_at > ?',
+      [characterId, DateTime.now().toIso8601String()],
+    );
+    return result.first['count'] as int;
   }
 
   // --- Daten-Update Methoden ---

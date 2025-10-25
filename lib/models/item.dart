@@ -29,6 +29,11 @@ class Item {
   final String? rarity;
   final bool? requiresAttunement;
 
+  // Optionale Durability-Felder
+  final bool? hasDurability;     // Flag ob Haltbarkeit aktiv ist
+  final int? maxDurability;       // Maximale Haltbarkeit (wenn aktiv)
+  final bool? isRepairable;      // Ob das Item reparierbar ist
+
   Item({
     String? id,
     required this.name,
@@ -43,6 +48,9 @@ class Item {
     this.stealthDisadvantage,
     this.rarity,
     this.requiresAttunement,
+    this.hasDurability,
+    this.maxDurability,
+    this.isRepairable,
   }) : id = id ?? uuid.v4();
 
   Map<String, dynamic> toMap() {
@@ -60,6 +68,9 @@ class Item {
       'stealthDisadvantage': stealthDisadvantage == true ? 1 : 0,
       'rarity': rarity,
       'requiresAttunement': requiresAttunement == true ? 1 : 0,
+      'hasDurability': hasDurability == true ? 1 : 0,
+      'maxDurability': maxDurability,
+      'isRepairable': isRepairable == true ? 1 : 0,
     };
   }
 
@@ -78,6 +89,9 @@ class Item {
       stealthDisadvantage: map['stealthDisadvantage'] == 1,
       rarity: map['rarity'],
       requiresAttunement: map['requiresAttunement'] == 1,
+      hasDurability: map['hasDurability'] == 1,
+      maxDurability: map['maxDurability'],
+      isRepairable: map['isRepairable'] == 1,
     );
   }
 }

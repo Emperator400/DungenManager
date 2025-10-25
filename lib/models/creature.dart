@@ -30,6 +30,11 @@ class Creature {
 
   // Inventar für Spieler-Charaktere
   final List<DisplayInventoryItem> inventory;
+  
+  // Gold und Währung für NPCs/Monster
+  final double gold;
+  final double silver;
+  final double copper;
 
   // NEU: Integration mit offiziellen D&D-Daten
   final String? officialMonsterId; // Verknüpfung zu offiziellem Monster
@@ -44,6 +49,12 @@ class Creature {
   final String? legendaryActions;  // Legendäre Aktionen
   final bool isCustom;            // Ob es ein benutzerdefiniertes Monster ist
   final String? description;       // Beschreibung des Monsters/NPCs
+
+  // NEU: Felder für Unified Bestiarum
+  final String sourceType;        // 'custom', 'official', 'hybrid'
+  final String? sourceId;         // Verweis auf Original-Quelle
+  final bool isFavorite;          // Ob das Monster favorisiert ist
+  final String version;           // Version des Monsters
 
   Creature({
     String? id,
@@ -64,6 +75,10 @@ class Creature {
     this.charisma = 10,
     // Standardmäßig ein leeres Inventar
     this.inventory = const [],
+    // Gold und Währung
+    this.gold = 0.0,
+    this.silver = 0.0,
+    this.copper = 0.0,
     // NEU: D&D-Integration
     this.officialMonsterId,
     this.officialSpellIds,
@@ -77,6 +92,11 @@ class Creature {
     this.legendaryActions,
     this.isCustom = true,
     this.description,
+    // NEU: Felder für Unified Bestiarum
+    this.sourceType = 'custom',
+    this.sourceId,
+    this.isFavorite = false,
+    this.version = '1.0',
   }) : id = id ?? uuid.v4();
 
   Map<String, dynamic> toMap() {
@@ -95,6 +115,9 @@ class Creature {
       'wisdom': wisdom,
       'charisma': charisma,
       'isPlayer': isPlayer ? 1 : 0,
+      'gold': gold,
+      'silver': silver,
+      'copper': copper,
       'official_monster_id': officialMonsterId,
       'official_spell_ids': officialSpellIds,
       'official_item_ids': officialItemIds,
@@ -107,6 +130,11 @@ class Creature {
       'legendary_actions': legendaryActions,
       'is_custom': isCustom ? 1 : 0,
       'description': description,
+      // NEU: Felder für Unified Bestiarum
+      'source_type': sourceType,
+      'source_id': sourceId,
+      'is_favorite': isFavorite ? 1 : 0,
+      'version': version,
     };
   }
 
@@ -127,6 +155,9 @@ class Creature {
       wisdom: map['wisdom'] ?? 10,
       charisma: map['charisma'] ?? 10,
       isPlayer: (map['isPlayer'] ?? 0) == 1,
+      gold: (map['gold'] ?? 0.0).toDouble(),
+      silver: (map['silver'] ?? 0.0).toDouble(),
+      copper: (map['copper'] ?? 0.0).toDouble(),
       officialMonsterId: map['official_monster_id'],
       officialSpellIds: map['official_spell_ids'],
       officialItemIds: map['official_item_ids'],
@@ -139,6 +170,11 @@ class Creature {
       legendaryActions: map['legendary_actions'],
       isCustom: (map['is_custom'] ?? 1) == 1,
       description: map['description'],
+      // NEU: Felder für Unified Bestiarum
+      sourceType: map['source_type'] ?? 'custom',
+      sourceId: map['source_id'],
+      isFavorite: (map['is_favorite'] ?? 0) == 1,
+      version: map['version'] ?? '1.0',
     );
   }
 
@@ -188,6 +224,11 @@ class Creature {
       description: description,
       attacks: attacks ?? "",
       isCustom: false,
+      // NEU: Felder für Unified Bestiarum
+      sourceType: 'official',
+      sourceId: officialMonsterId,
+      isFavorite: false,
+      version: '1.0',
     );
   }
 
@@ -218,6 +259,11 @@ class Creature {
     String? legendaryActions,
     bool? isCustom,
     String? description,
+    // NEU: Felder für Unified Bestiarum
+    String? sourceType,
+    String? sourceId,
+    bool? isFavorite,
+    String? version,
   }) {
     return Creature(
       id: id,
@@ -248,6 +294,11 @@ class Creature {
       legendaryActions: legendaryActions ?? this.legendaryActions,
       isCustom: isCustom ?? this.isCustom,
       description: description ?? this.description,
+      // NEU: Felder für Unified Bestiarum
+      sourceType: sourceType ?? this.sourceType,
+      sourceId: sourceId ?? this.sourceId,
+      isFavorite: isFavorite ?? this.isFavorite,
+      version: version ?? this.version,
     );
   }
 }

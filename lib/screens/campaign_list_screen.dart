@@ -4,7 +4,6 @@ import '../database/database_helper.dart';
 import '../models/campaign.dart';
 import 'edit_campaign_screen.dart'; 
 import 'campaign_dashboard_screen.dart';
-import 'official_monsters_screen.dart';
 
 class CampaignListScreen extends StatefulWidget {
   const CampaignListScreen({super.key});
@@ -57,17 +56,6 @@ class _CampaignListScreenState extends State<CampaignListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Meine Kampagnen"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.auto_awesome),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (ctx) => const OfficialMonstersScreen()),
-              );
-            },
-            tooltip: 'Offizielle D&D Monster',
-          ),
-        ],
       ),
       body: FutureBuilder<List<Campaign>>(
         future: _campaignsFuture,

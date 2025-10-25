@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../database/database_helper.dart';
 import '../models/official_monster.dart';
 import '../models/official_spell.dart';
+import '../models/creature.dart';
 import 'dnd_demo_data.dart';
 
 class DndDataImporter {
@@ -568,5 +569,205 @@ class DndDataImporter {
     await _db.clearOfficialData('official_races');
     await _db.clearOfficialData('official_items');
     await _db.clearOfficialData('official_locations');
+  }
+
+  // --- NEU: Migrationsmethoden für Unified Bestiarum ---
+  
+  /// Migriert bestehende creatures auf das neue Schema
+  Future<void> migrateCreaturesToUnifiedSchema() async {
+    try {
+      print('Starte Migration der creatures auf Unified Bestiarum...');
+      
+      // Prüfen, ob Migration bereits durchgeführt wurde
+      final db = await _db.database;
+      final tables = await db.query('sqlite_master', where: 'name = ?', whereArgs: ['creatures']);
+      if (tables.isEmpty) {
+        print('Tabelle creatures existiert nicht, Migration nicht notwendig');
+        return;
+      }
+      
+      // Prüfen, ob die neuen Felder bereits existieren
+      final pragmaResult = await db.rawQuery('PRAGMA table_info(creatures)');
+      final columns = pragmaResult.map((row) => row['name'] as String).toList();
+      
+      if (!columns.contains('source_type') || !columns.contains('source_id') || 
+          !columns.contains('is_favorite') || !columns.contains('version')) {
+        
+        print('Führe Migration für creatures durch...');
+        
+        // Hole alle bestehenden creatures
+        final existingCreatures = await db.query('creatures');
+        int migratedCount = 0;
+        
+        for (final creatureData in existingCreatures) {
+          final isCustom = (creatureData['is_custom'] ?? 1) == 1;
+          final hasOfficialMonsterId = creatureData['official_monster_id'] != null;
+          
+          // Bestimme den source_type basierend auf vorhandenen Daten
+          String sourceType = 'custom';
+          String? sourceId;
+          
+          if (hasOfficialMonsterId && !isCustom) {
+            sourceType = 'official';
+            sourceId = creatureData['official_monster_id']?.toString();
+          } else if (hasOfficialMonsterId && isCustom) {
+            sourceType = 'hybrid';
+            sourceId = creatureData['official_monster_id']?.toString();
+          }
+          
+          // Aktualisiere den Datensatz mit den neuen Feldern
+          await db.update(
+            'creatures',
+            {
+              'source_type': sourceType,
+              'source_id': sourceId,
+              'is_favorite': 0, // Standardmäßig nicht favorisiert
+              'version': '1.0', // Startversion
+            },
+            where: 'id = ?',
+            whereArgs: [creatureData['id'].toString()],
+          );
+          
+          migratedCount++;
+        }
+        
+        print('Migration abgeschlossen: $migratedCount creatures migriert');
+        
+        // Erstelle Performance-Indizes, falls sie noch nicht existieren
+        try {
+          await db.execute('CREATE INDEX IF NOT EXISTS idx_creatures_source_type ON creatures(source_type)');
+          await db.execute('CREATE INDEX IF NOT EXISTS idx_creatures_is_favorite ON creatures(is_favorite)');
+          print('Performance-Indizes erstellt');
+        } catch (e) {
+          print('Fehler beim Erstellen der Indizes: $e');
+        }
+        
+      } else {
+        print('Migration bereits durchgeführt oder nicht notwendig');
+      }
+      
+    } catch (e) {
+      print('Fehler bei der Migration der creatures: $e');
+      rethrow;
+    }
+  }
+  
+  /// Synchronisiert offizielle Monster mit der creatures-Tabelle
+  Future<Map<String, int>> syncOfficialMonstersToCreatures() async {
+    try {
+      print('Starte Synchronisation offizieller Monster mit creatures...');
+      
+      final results = <String, int>{
+        'total': 0,
+        'synced': 0,
+        'updated': 0,
+        'skipped': 0,
+      };
+      
+      // Hole alle offiziellen Monster
+      final officialMonsters = await _db.getAllOfficialMonsters(limit: 1000);
+      results['total'] = officialMonsters.length;
+      
+      for (final officialData in officialMonsters) {
+        final officialMonster = OfficialMonster.fromMap(officialData);
+        
+        // Prüfe, ob dieses Monster bereits als Creature existiert
+        final existing = await (await _db.database).query(
+          'creatures',
+          where: 'source_id = ? AND source_type = ?',
+          whereArgs: [officialMonster.id, 'official'],
+        );
+        
+        if (existing.isEmpty) {
+          // Neues Creature aus offiziellem Monster erstellen
+          final creature = Creature.fromOfficialMonster(
+            officialMonsterId: officialMonster.id,
+            name: officialMonster.name,
+            maxHp: officialMonster.hitPoints,
+            armorClass: int.tryParse(officialMonster.armorClass) ?? 10,
+            speed: officialMonster.speed,
+            strength: officialMonster.strength,
+            dexterity: officialMonster.dexterity,
+            constitution: officialMonster.constitution,
+            intelligence: officialMonster.intelligence,
+            wisdom: officialMonster.wisdom,
+            charisma: officialMonster.charisma,
+            size: officialMonster.size,
+            type: officialMonster.type,
+            subtype: officialMonster.subtype,
+            alignment: officialMonster.alignment,
+            challengeRating: officialMonster.challengeRating.toInt(),
+            specialAbilities: officialMonster.specialAbilities.isNotEmpty 
+                ? officialMonster.specialAbilities.map((a) => '${a.name}: ${a.description}').join('\n\n')
+                : null,
+            legendaryActions: officialMonster.legendaryActions?.isNotEmpty == true
+                ? officialMonster.legendaryActions!.map((a) => '${a.name}: ${a.description}').join('\n\n')
+                : null,
+            description: officialMonster.description,
+          );
+          
+          await _db.insertCreature(creature);
+          results['synced'] = (results['synced'] ?? 0) + 1;
+        } else {
+          // Prüfe, ob ein Update notwendig ist
+          final existingCreature = Creature.fromMap(existing.first);
+          final needsUpdate = existingCreature.name != officialMonster.name ||
+              existingCreature.maxHp != officialMonster.hitPoints ||
+              existingCreature.armorClass != int.tryParse(officialMonster.armorClass) ||
+              existingCreature.speed != officialMonster.speed ||
+              existingCreature.strength != officialMonster.strength ||
+              existingCreature.dexterity != officialMonster.dexterity ||
+              existingCreature.constitution != officialMonster.constitution ||
+              existingCreature.intelligence != officialMonster.intelligence ||
+              existingCreature.wisdom != officialMonster.wisdom ||
+              existingCreature.charisma != officialMonster.charisma;
+          
+          if (needsUpdate) {
+            // Aktualisiere das bestehende Creature
+            final updatedCreature = existingCreature.copyWith(
+              name: officialMonster.name,
+              maxHp: officialMonster.hitPoints,
+              armorClass: int.tryParse(officialMonster.armorClass),
+              speed: officialMonster.speed,
+              strength: officialMonster.strength,
+              dexterity: officialMonster.dexterity,
+              constitution: officialMonster.constitution,
+              intelligence: officialMonster.intelligence,
+              wisdom: officialMonster.wisdom,
+              charisma: officialMonster.charisma,
+              size: officialMonster.size,
+              type: officialMonster.type,
+              subtype: officialMonster.subtype,
+              alignment: officialMonster.alignment,
+              challengeRating: officialMonster.challengeRating.toInt(),
+              specialAbilities: officialMonster.specialAbilities.isNotEmpty 
+                  ? officialMonster.specialAbilities.map((a) => '${a.name}: ${a.description}').join('\n\n')
+                  : null,
+              legendaryActions: officialMonster.legendaryActions?.isNotEmpty == true
+                  ? officialMonster.legendaryActions!.map((a) => '${a.name}: ${a.description}').join('\n\n')
+                  : null,
+              description: officialMonster.description,
+              version: officialMonster.version ?? '1.0',
+            );
+            
+            await _db.updateCreature(updatedCreature);
+            results['updated'] = (results['updated'] ?? 0) + 1;
+          } else {
+            results['skipped'] = (results['skipped'] ?? 0) + 1;
+          }
+        }
+        
+        if (results['synced']! + results['updated']! + results['skipped']! % 50 == 0) {
+          print('Synchronisations-Fortschritt: ${results['synced']} neu, ${results['updated']} aktualisiert, ${results['skipped']} übersprungen von ${results['total']}');
+        }
+      }
+      
+      print('Synchronisation abgeschlossen: ${results['synced']} neu, ${results['updated']} aktualisiert, ${results['skipped']} übersprungen');
+      return results;
+      
+    } catch (e) {
+      print('Fehler bei der Synchronisation offizieller Monster: $e');
+      rethrow;
+    }
   }
 }
