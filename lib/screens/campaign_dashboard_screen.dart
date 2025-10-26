@@ -7,6 +7,7 @@ import '../widgets/campaign_heroes_tab.dart';
 import '../widgets/campaign_sessions_tab.dart';
 import '../widgets/campaign_overview_tab.dart';
 import '../widgets/campaign_quests_tab.dart';
+import '../widgets/character_editor/character_editor_controller.dart' show CharacterType;
 import 'edit_pc_screen.dart';
 import 'edit_session_screen.dart';
 import 'unified_character_editor_screen.dart';

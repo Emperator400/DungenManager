@@ -6,6 +6,7 @@ import '../../database/database_helper.dart';
 import '../../screens/item_library_screen.dart';
 import '../../screens/add_item_from_library_screen.dart';
 import '../../screens/unified_character_editor_screen.dart';
+import 'character_editor_controller.dart' show CharacterType;
 import 'inventory_grid_widget.dart';
 
 class InventoryTabWidget extends StatefulWidget {
@@ -374,12 +375,30 @@ class _InventoryTabWidgetState extends State<InventoryTabWidget> {
         return 'Waffe';
       case ItemType.Armor:
         return 'Rüstung';
+      case ItemType.Shield:
+        return 'Schild';
       case ItemType.AdventuringGear:
         return 'Ausrüstung';
       case ItemType.Treasure:
         return 'Schatz';
       case ItemType.MagicItem:
         return 'Magisches Item';
+      case ItemType.SPELL_WEAPON:
+        return 'Zauber';
+      case ItemType.Consumable:
+        return 'Verbrauchbar';
+      case ItemType.Tool:
+        return 'Werkzeug';
+      case ItemType.Material:
+        return 'Material';
+      case ItemType.Component:
+        return 'Komponente';
+      case ItemType.Scroll:
+        return 'Schriftrolle';
+      case ItemType.Potion:
+        return 'Trank';
+      case ItemType.Currency:
+        return 'Währung';
     }
   }
 
@@ -389,12 +408,30 @@ class _InventoryTabWidgetState extends State<InventoryTabWidget> {
         return Colors.red;
       case ItemType.Armor:
         return Colors.blue;
+      case ItemType.Shield:
+        return Colors.cyan;
       case ItemType.AdventuringGear:
         return Colors.green;
       case ItemType.Treasure:
         return Colors.amber;
       case ItemType.MagicItem:
         return Colors.purple;
+      case ItemType.SPELL_WEAPON:
+        return Colors.deepPurple;
+      case ItemType.Consumable:
+        return Colors.orange;
+      case ItemType.Tool:
+        return Colors.brown;
+      case ItemType.Material:
+        return Colors.grey;
+      case ItemType.Component:
+        return Colors.teal;
+      case ItemType.Scroll:
+        return Colors.indigo;
+      case ItemType.Potion:
+        return Colors.pink;
+      case ItemType.Currency:
+        return Colors.yellow;
     }
   }
 
@@ -404,12 +441,30 @@ class _InventoryTabWidgetState extends State<InventoryTabWidget> {
         return Icons.gavel;
       case ItemType.Armor:
         return Icons.security;
+      case ItemType.Shield:
+        return Icons.shield;
       case ItemType.AdventuringGear:
         return Icons.backpack;
       case ItemType.Treasure:
         return Icons.monetization_on;
       case ItemType.MagicItem:
         return Icons.auto_awesome;
+      case ItemType.SPELL_WEAPON:
+        return Icons.flourescent;
+      case ItemType.Consumable:
+        return Icons.restaurant;
+      case ItemType.Tool:
+        return Icons.build;
+      case ItemType.Material:
+        return Icons.category;
+      case ItemType.Component:
+        return Icons.science;
+      case ItemType.Scroll:
+        return Icons.description;
+      case ItemType.Potion:
+        return Icons.local_drink;
+      case ItemType.Currency:
+        return Icons.attach_money;
     }
   }
 }

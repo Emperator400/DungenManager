@@ -267,16 +267,26 @@ void main() {
       await navigateToCampaign(tester, campaignName);
 
       // Rapid tab switching
-      final tabs = ['Übersicht', Icons.groups, Icons.map, Icons.assignment, Icons.music_note];
       for (int i = 0; i < 3; i++) {
-        for (var tab in tabs) {
-          if (tab is String) {
-            await tester.tap(find.text(tab));
-          } else {
-            await tester.tap(find.byIcon(tab));
-          }
-          await tester.pumpAndSettle(const Duration(milliseconds: 500));
-        }
+        // Overview tab
+        await tester.tap(find.text('Übersicht'));
+        await tester.pumpAndSettle(const Duration(milliseconds: 500));
+        
+        // Heroes tab
+        await tester.tap(find.byIcon(Icons.groups));
+        await tester.pumpAndSettle(const Duration(milliseconds: 500));
+        
+        // Sessions tab
+        await tester.tap(find.byIcon(Icons.map));
+        await tester.pumpAndSettle(const Duration(milliseconds: 500));
+        
+        // Quests tab
+        await tester.tap(find.byIcon(Icons.assignment));
+        await tester.pumpAndSettle(const Duration(milliseconds: 500));
+        
+        // Sound Mixer tab
+        await tester.tap(find.byIcon(Icons.music_note));
+        await tester.pumpAndSettle(const Duration(milliseconds: 500));
       }
       
       expect(find.byType(Scaffold), findsOneWidget);

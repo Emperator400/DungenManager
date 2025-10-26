@@ -23,7 +23,7 @@ final _uuid = const Uuid();
 
 class DatabaseHelper {
   static const _databaseName = "dnd_helper.db";
-  static const _databaseVersion = 19;
+  static const _databaseVersion = 20;
 
   DatabaseHelper._privateConstructor();
   static final DatabaseHelper instance = DatabaseHelper._privateConstructor();
@@ -162,6 +162,116 @@ class DatabaseHelper {
       }
     }
     
+    // NEU: Migration für Version 20: PlayerCharacter Erweiterung mit D&D-Feldern
+    if (oldVersion < 20) {
+      // D&D-Klassifikation zur player_characters Tabelle hinzufügen
+      try {
+        await db.execute('ALTER TABLE player_characters ADD COLUMN size TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters ADD COLUMN type TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters ADD COLUMN subtype TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters ADD COLUMN alignment TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      // Beschreibung und Fähigkeiten hinzufügen
+      try {
+        await db.execute('ALTER TABLE player_characters ADD COLUMN description TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters ADD COLUMN special_abilities TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters ADD COLUMN attacks TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      // Währung hinzufügen
+      try {
+        await db.execute('ALTER TABLE player_characters ADD COLUMN gold REAL DEFAULT 0.0');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters ADD COLUMN silver REAL DEFAULT 0.0');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters ADD COLUMN copper REAL DEFAULT 0.0');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      // Erweiterte Felder hinzufügen
+      try {
+        await db.execute('ALTER TABLE player_characters ADD COLUMN source_type TEXT DEFAULT \'custom\'');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters ADD COLUMN source_id TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters ADD COLUMN is_favorite INTEGER DEFAULT 0');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters ADD COLUMN version TEXT DEFAULT \'1.0\'');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      // Performance-Indizes für neue Felder
+      try {
+        await db.execute('CREATE INDEX idx_players_source_type ON player_characters(source_type)');
+      } catch (e) {
+        // Index existiert bereits
+      }
+      
+      try {
+        await db.execute('CREATE INDEX idx_players_is_favorite ON player_characters(is_favorite)');
+      } catch (e) {
+        // Index existiert bereits
+      }
+      
+      try {
+        await db.execute('CREATE INDEX idx_players_campaign ON player_characters(campaignId)');
+      } catch (e) {
+        // Index existiert bereits
+      }
+    }
+    
     // Für größere Versionsunterschiede könnten hier weitere Migrationen folgen
     if (oldVersion < 17) {
       // Alte Migrationen für Version 17 und darunter
@@ -186,7 +296,25 @@ class DatabaseHelper {
         level INTEGER NOT NULL, maxHp INTEGER NOT NULL, armorClass INTEGER NOT NULL, 
         initiativeBonus INTEGER NOT NULL, imagePath TEXT, strength INTEGER NOT NULL, dexterity INTEGER NOT NULL, 
         constitution INTEGER NOT NULL, intelligence INTEGER NOT NULL, wisdom INTEGER NOT NULL, charisma INTEGER NOT NULL,
-        proficientSkills TEXT NOT NULL
+        proficientSkills TEXT NOT NULL,
+        -- NEU: D&D-Klassifikation
+        size TEXT,
+        type TEXT,
+        subtype TEXT,
+        alignment TEXT,
+        -- NEU: Beschreibung und Fähigkeiten
+        description TEXT,
+        special_abilities TEXT,
+        attacks TEXT,
+        -- NEU: Währung
+        gold REAL DEFAULT 0.0,
+        silver REAL DEFAULT 0.0,
+        copper REAL DEFAULT 0.0,
+        -- NEU: Erweiterte Felder
+        source_type TEXT DEFAULT 'custom',
+        source_id TEXT,
+        is_favorite INTEGER DEFAULT 0,
+        version TEXT DEFAULT '1.0'
       )
     ''');
 
@@ -616,6 +744,98 @@ await db.execute('''
   }
   Future<int> updatePlayerCharacter(PlayerCharacter pc) async => await (await database).update('player_characters', pc.toMap(), where: 'id = ?', whereArgs: [pc.id]);
   Future<int> deletePlayerCharacter(String id) async => await (await database).delete('player_characters', where: 'id = ?', whereArgs: [id]);
+  
+  // NEU: PlayerCharacter Favoriten-Management
+  Future<void> togglePlayerCharacterFavorite(String id) async {
+    final pc = await getPlayerCharacterById(id);
+    if (pc != null) {
+      await (await database).update(
+        'player_characters',
+        {'is_favorite': pc.isFavorite ? 0 : 1},
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+    }
+  }
+  
+  Future<List<PlayerCharacter>> getFavoritePlayerCharacters() async {
+    final maps = await (await database).query(
+      'player_characters',
+      where: 'is_favorite = 1',
+      orderBy: 'name ASC',
+    );
+    return List.generate(maps.length, (i) => PlayerCharacter.fromMap(maps[i]));
+  }
+  
+  Future<PlayerCharacter?> getPlayerCharacterById(String id) async {
+    final maps = await (await database).query('player_characters', where: 'id = ?', whereArgs: [id]);
+    if (maps.isNotEmpty) return PlayerCharacter.fromMap(maps.first);
+    return null;
+  }
+  
+  // NEU: PlayerCharacter Duplizieren
+  Future<String> duplicatePlayerCharacter(String id) async {
+    final original = await getPlayerCharacterById(id);
+    if (original == null) throw Exception('Character nicht gefunden: $id');
+    
+    // Neue ID und Name generieren
+    final newId = _uuid.v4();
+    final newName = '${original.name} (Kopie)';
+    
+    // Kopie erstellen
+    final copy = PlayerCharacter(
+      id: newId,
+      campaignId: original.campaignId,
+      name: newName,
+      playerName: original.playerName,
+      className: original.className,
+      raceName: original.raceName,
+      level: original.level,
+      maxHp: original.maxHp,
+      armorClass: original.armorClass,
+      initiativeBonus: original.initiativeBonus,
+      imagePath: null, // Bild zurücksetzen
+      strength: original.strength,
+      dexterity: original.dexterity,
+      constitution: original.constitution,
+      intelligence: original.intelligence,
+      wisdom: original.wisdom,
+      charisma: original.charisma,
+      proficientSkills: original.proficientSkills,
+      size: original.size,
+      type: original.type,
+      subtype: original.subtype,
+      alignment: original.alignment,
+      description: original.description,
+      specialAbilities: original.specialAbilities,
+      attacks: original.attacks,
+      gold: original.gold,
+      silver: original.silver,
+      copper: original.copper,
+      sourceType: 'custom',
+      sourceId: null,
+      isFavorite: false, // Kopien sind nicht favorisiert
+      version: '1.0',
+    );
+    
+    await insertPlayerCharacter(copy);
+    
+    // Inventar kopieren
+    final inventory = await getInventoryForOwner(id);
+    for (final item in inventory) {
+      final newInventoryItem = InventoryItem(
+        id: _uuid.v4(),
+        ownerId: newId,
+        itemId: item.itemId,
+        quantity: item.quantity,
+        isEquipped: false, // Kopien sind nicht ausgerüstet
+        equipSlot: null,
+      );
+      await insertInventoryItem(newInventoryItem);
+    }
+    
+    return newId;
+  }
   
   // --- Session CRUD ---
   Future<int> insertSession(Session session) async => await (await database).insert('sessions', session.toMap());

@@ -6,6 +6,11 @@ enum EquipSlot {
   offHand,       // Nebenhand (Schild, Dolch, Zweitwaffe)
   ranged,        // Fernkampfwaffe (Bogen, Armbrust)
   
+  // Spell-Slots (neu)
+  spellActive,      // Aktiver Spell (wie "gezogene Waffe")
+  cantripReady,     // Cantrip-Slot (immer verfügbar)
+  spellPrepared1, spellPrepared2, spellPrepared3, spellPrepared4, // Vorbereitete Spells
+  
   // Rüstung
   head,          // Helm
   chest,         // Brustpanzer/Rüstung
@@ -28,6 +33,15 @@ extension EquipSlotExtension on EquipSlot {
         return 'Nebenhand';
       case EquipSlot.ranged:
         return 'Fernkampf';
+      case EquipSlot.spellActive:
+        return 'Aktiver Zauber';
+      case EquipSlot.cantripReady:
+        return 'Cantrip';
+      case EquipSlot.spellPrepared1:
+      case EquipSlot.spellPrepared2:
+      case EquipSlot.spellPrepared3:
+      case EquipSlot.spellPrepared4:
+        return 'Vorbereiteter Zauber';
       case EquipSlot.head:
         return 'Kopf';
       case EquipSlot.chest:
@@ -56,6 +70,15 @@ extension EquipSlotExtension on EquipSlot {
         return '🛡️';
       case EquipSlot.ranged:
         return '🏹';
+      case EquipSlot.spellActive:
+        return '✨';
+      case EquipSlot.cantripReady:
+        return '🌟';
+      case EquipSlot.spellPrepared1:
+      case EquipSlot.spellPrepared2:
+      case EquipSlot.spellPrepared3:
+      case EquipSlot.spellPrepared4:
+        return '📖';
       case EquipSlot.head:
         return '👑';
       case EquipSlot.chest:
@@ -81,9 +104,16 @@ extension EquipSlotExtension on EquipSlot {
       case EquipSlot.mainHand:
         return [ItemType.Weapon];
       case EquipSlot.offHand:
-        return [ItemType.Weapon, ItemType.Armor]; // Schild oder Zweithand-Waffe
+        return [ItemType.Weapon, ItemType.Armor, ItemType.Shield]; // Schild oder Zweithand-Waffe
       case EquipSlot.ranged:
         return [ItemType.Weapon];
+      case EquipSlot.spellActive:
+      case EquipSlot.cantripReady:
+      case EquipSlot.spellPrepared1:
+      case EquipSlot.spellPrepared2:
+      case EquipSlot.spellPrepared3:
+      case EquipSlot.spellPrepared4:
+        return [ItemType.SPELL_WEAPON];
       case EquipSlot.head:
         return [ItemType.Armor];
       case EquipSlot.chest:

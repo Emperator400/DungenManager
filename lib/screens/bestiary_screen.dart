@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
 import '../models/creature.dart';
 import '../game_data/dnd_data_importer.dart';
+import '../widgets/character_editor/character_editor_controller.dart' show CharacterType;
 import 'edit_creature_screen.dart';
 import 'unified_character_editor_screen.dart';
 

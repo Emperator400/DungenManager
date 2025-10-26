@@ -35,6 +35,7 @@ class _InventoryGridWidgetState extends State<InventoryGridWidget> {
   // Ausrüstungs-Slots nach Kategorien gruppiert
   Map<String, List<EquipSlot>> get categorizedSlots => {
     'Waffen': [EquipSlot.mainHand, EquipSlot.offHand, EquipSlot.ranged],
+    'Zauber': [EquipSlot.spellActive, EquipSlot.cantripReady, EquipSlot.spellPrepared1, EquipSlot.spellPrepared2, EquipSlot.spellPrepared3, EquipSlot.spellPrepared4],
     'Rüstung': [EquipSlot.head, EquipSlot.chest, EquipSlot.hands, EquipSlot.feet, EquipSlot.cloak],
     'Accessoires': [EquipSlot.ring1, EquipSlot.ring2, EquipSlot.amulet, EquipSlot.belt],
   };
@@ -67,6 +68,10 @@ class _InventoryGridWidgetState extends State<InventoryGridWidget> {
             
             // Waffen-Slots
             _buildEquipmentCategory('Waffen', categorizedSlots['Waffen']!),
+            const SizedBox(height: 12),
+            
+            // Zauber-Slots
+            _buildEquipmentCategory('Zauber', categorizedSlots['Zauber']!),
             const SizedBox(height: 12),
             
             // Rüstungs-Slots
@@ -523,12 +528,30 @@ class _InventoryGridWidgetState extends State<InventoryGridWidget> {
         return Colors.red;
       case ItemType.Armor:
         return Colors.blue;
+      case ItemType.Shield:
+        return Colors.cyan;
       case ItemType.AdventuringGear:
         return Colors.green;
       case ItemType.Treasure:
         return Colors.amber;
       case ItemType.MagicItem:
         return Colors.purple;
+      case ItemType.SPELL_WEAPON:
+        return Colors.deepPurple;
+      case ItemType.Consumable:
+        return Colors.orange;
+      case ItemType.Tool:
+        return Colors.brown;
+      case ItemType.Material:
+        return Colors.grey;
+      case ItemType.Component:
+        return Colors.teal;
+      case ItemType.Scroll:
+        return Colors.indigo;
+      case ItemType.Potion:
+        return Colors.pink;
+      case ItemType.Currency:
+        return Colors.yellow;
     }
   }
 
@@ -538,12 +561,30 @@ class _InventoryGridWidgetState extends State<InventoryGridWidget> {
         return Icons.gavel;
       case ItemType.Armor:
         return Icons.security;
+      case ItemType.Shield:
+        return Icons.shield;
       case ItemType.AdventuringGear:
         return Icons.backpack;
       case ItemType.Treasure:
         return Icons.monetization_on;
       case ItemType.MagicItem:
         return Icons.auto_awesome;
+      case ItemType.SPELL_WEAPON:
+        return Icons.flourescent;
+      case ItemType.Consumable:
+        return Icons.restaurant;
+      case ItemType.Tool:
+        return Icons.build;
+      case ItemType.Material:
+        return Icons.category;
+      case ItemType.Component:
+        return Icons.science;
+      case ItemType.Scroll:
+        return Icons.description;
+      case ItemType.Potion:
+        return Icons.local_drink;
+      case ItemType.Currency:
+        return Icons.attach_money;
     }
   }
 

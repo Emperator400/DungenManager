@@ -2,6 +2,7 @@
 import 'package:uuid/uuid.dart';
 import 'condition.dart';
 import 'inventory_item.dart';
+import 'attack.dart';
 
 var uuid = const Uuid();
 
@@ -11,7 +12,7 @@ class Creature {
   final int maxHp;
   final int armorClass;
   final String speed;
-  final String attacks;
+  final String attacks; // Legacy String für Abwärtskompatibilität
   final int initiativeBonus;
   
   // Temporäre Kampf-Werte
@@ -49,6 +50,9 @@ class Creature {
   final String? legendaryActions;  // Legendäre Aktionen
   final bool isCustom;            // Ob es ein benutzerdefiniertes Monster ist
   final String? description;       // Beschreibung des Monsters/NPCs
+
+  // NEU: Strukturierte Angriffsliste
+  final List<Attack> attackList;   // Neue strukturierte Angriffe
 
   // NEU: Felder für Unified Bestiarum
   final String sourceType;        // 'custom', 'official', 'hybrid'
@@ -92,6 +96,8 @@ class Creature {
     this.legendaryActions,
     this.isCustom = true,
     this.description,
+    // NEU: Strukturierte Angriffe
+    this.attackList = const [],
     // NEU: Felder für Unified Bestiarum
     this.sourceType = 'custom',
     this.sourceId,
@@ -130,6 +136,8 @@ class Creature {
       'legendary_actions': legendaryActions,
       'is_custom': isCustom ? 1 : 0,
       'description': description,
+      // NEU: Strukturierte Angriffe
+      'attack_list': attackList.map((attack) => attack.toMap()).toList(),
       // NEU: Felder für Unified Bestiarum
       'source_type': sourceType,
       'source_id': sourceId,
@@ -139,6 +147,9 @@ class Creature {
   }
 
   factory Creature.fromMap(Map<String, dynamic> map) {
+    final attackListData = map['attack_list'] as List<dynamic>?;
+    final attackList = attackListData?.map((attackMap) => Attack.fromMap(attackMap)).toList() ?? <Attack>[];
+    
     return Creature(
       id: map['id'],
       name: map['name'],
@@ -170,6 +181,8 @@ class Creature {
       legendaryActions: map['legendary_actions'],
       isCustom: (map['is_custom'] ?? 1) == 1,
       description: map['description'],
+      // NEU: Strukturierte Angriffe
+      attackList: attackList,
       // NEU: Felder für Unified Bestiarum
       sourceType: map['source_type'] ?? 'custom',
       sourceId: map['source_id'],
@@ -200,6 +213,7 @@ class Creature {
     String? legendaryActions,
     String? description,
     String? attacks,
+    List<Attack>? attackList,
   }) {
     return Creature(
       officialMonsterId: officialMonsterId,
@@ -223,6 +237,8 @@ class Creature {
       legendaryActions: legendaryActions,
       description: description,
       attacks: attacks ?? "",
+      // NEU: Strukturierte Angriffe
+      attackList: attackList ?? const [],
       isCustom: false,
       // NEU: Felder für Unified Bestiarum
       sourceType: 'official',
@@ -259,6 +275,8 @@ class Creature {
     String? legendaryActions,
     bool? isCustom,
     String? description,
+    // NEU: Strukturierte Angriffe
+    List<Attack>? attackList,
     // NEU: Felder für Unified Bestiarum
     String? sourceType,
     String? sourceId,
@@ -294,11 +312,32 @@ class Creature {
       legendaryActions: legendaryActions ?? this.legendaryActions,
       isCustom: isCustom ?? this.isCustom,
       description: description ?? this.description,
+      // NEU: Strukturierte Angriffe
+      attackList: attackList ?? this.attackList,
       // NEU: Felder für Unified Bestiarum
       sourceType: sourceType ?? this.sourceType,
       sourceId: sourceId ?? this.sourceId,
       isFavorite: isFavorite ?? this.isFavorite,
       version: version ?? this.version,
     );
+  }
+  
+  // NEU: Helper-Methoden für Angriffs-Konvertierung
+  String get formattedAttacks {
+    if (attackList.isNotEmpty) {
+      return AttackHelper.attacksToString(attackList);
+    }
+    return attacks;
+  }
+  
+  List<Attack> get effectiveAttacks {
+    if (attackList.isNotEmpty) {
+      return attackList;
+    }
+    // Fallback zu Legacy-String
+    if (attacks.isNotEmpty) {
+      return AttackHelper.parseAttacksFromString(attacks);
+    }
+    return [];
   }
 }
