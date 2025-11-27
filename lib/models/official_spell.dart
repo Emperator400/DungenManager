@@ -1,7 +1,6 @@
 // lib/models/official_spell.dart
-import 'package:uuid/uuid.dart';
-
-var uuid = const Uuid();
+import '../services/uuid_service.dart';
+import '../utils/model_parsing_helper.dart';
 
 class OfficialSpell {
   final String id;
@@ -42,7 +41,7 @@ class OfficialSpell {
     this.isCustom = false,
     this.version,
     this.customData,
-  }) : id = id ?? uuid.v4();
+  }) : id = id ?? UuidService().generateId();
 
   // Konvertierung für Datenbank
   Map<String, dynamic> toMap() {
@@ -71,34 +70,34 @@ class OfficialSpell {
   // Erstellung aus Datenbank
   factory OfficialSpell.fromMap(Map<String, dynamic> map) {
     return OfficialSpell(
-      id: map['id'],
-      name: map['name'],
-      level: map['level'],
-      school: map['school'],
-      ritual: map['ritual'] == 1,
-      castingTime: map['casting_time'],
-      range: map['range'],
-      duration: map['duration'],
-      components: SpellComponents.fromMap(map['components']),
-      materials: map['materials'],
-      description: map['description'],
-      higherLevels: map['higher_levels'],
-      classes: map['classes']?.toString().split(',') ?? [],
-      source: map['source'],
-      page: map['page'] ?? 1,
-      isCustom: map['is_custom'] == 1,
-      version: map['version'],
-      customData: map['custom_data'],
+      id: ModelParsingHelper.safeId(map, 'id'),
+      name: ModelParsingHelper.safeString(map, 'name', 'Unknown Spell'),
+      level: ModelParsingHelper.safeInt(map, 'level', 0),
+      school: ModelParsingHelper.safeString(map, 'school', 'Unknown'),
+      ritual: ModelParsingHelper.safeBool(map, 'ritual', false),
+      castingTime: ModelParsingHelper.safeString(map, 'casting_time', '1 action'),
+      range: ModelParsingHelper.safeString(map, 'range', 'Self'),
+      duration: ModelParsingHelper.safeString(map, 'duration', 'Instantaneous'),
+      components: SpellComponents.fromMap(map['components'] is Map ? map['components'] as Map<String, dynamic> : {}),
+      materials: ModelParsingHelper.safeStringOrNull(map, 'materials', null),
+      description: ModelParsingHelper.safeString(map, 'description', ''),
+      higherLevels: ModelParsingHelper.safeStringOrNull(map, 'higher_levels', null),
+      classes: ModelParsingHelper.safeString(map, 'classes', '').split(',').where((s) => s.isNotEmpty).toList(),
+      source: ModelParsingHelper.safeString(map, 'source', 'Unknown'),
+      page: ModelParsingHelper.safeInt(map, 'page', 1),
+      isCustom: ModelParsingHelper.safeBool(map, 'is_custom', false),
+      version: ModelParsingHelper.safeStringOrNull(map, 'version', null),
+      customData: map['custom_data'] is Map ? map['custom_data'] as Map<String, dynamic> : null,
     );
   }
 
   // Import von 5e.tools JSON
   factory OfficialSpell.from5eToolsJson(Map<String, dynamic> json) {
     return OfficialSpell(
-      name: json['name'],
-      level: json['level'],
-      school: json['school'],
-      ritual: json['ritual'] ?? false,
+      name: ModelParsingHelper.safeString(json, 'name', 'Unknown Spell'),
+      level: ModelParsingHelper.safeInt(json, 'level', 0),
+      school: ModelParsingHelper.safeString(json, 'school', 'Unknown'),
+      ritual: ModelParsingHelper.safeBool(json, 'ritual', false),
       castingTime: _parseCastingTime(json['time']),
       range: _parseRange(json['range']),
       duration: _parseDuration(json['duration']),
@@ -107,8 +106,8 @@ class OfficialSpell {
       description: _parseDescription(json['entries']),
       higherLevels: _parseHigherLevels(json['entriesHigher']),
       classes: _parseClasses(json['classes']),
-      source: json['source'],
-      page: json['page'] ?? 1,
+      source: ModelParsingHelper.safeString(json, 'source', 'Unknown'),
+      page: ModelParsingHelper.safeInt(json, 'page', 1),
     );
   }
 
@@ -116,9 +115,9 @@ class OfficialSpell {
     if (timeData is String) return timeData;
     if (timeData is List && timeData.isNotEmpty) {
       final time = timeData.first;
-      if (time is Map) {
-        final unit = time['unit'] ?? 'action';
-        final number = time['number'] ?? 1;
+      if (time is Map<String, dynamic>) {
+        final unit = ModelParsingHelper.safeString(time, 'unit', 'action');
+        final number = ModelParsingHelper.safeInt(time, 'number', 1);
         return '$number $unit';
       }
     }
@@ -127,15 +126,14 @@ class OfficialSpell {
 
   static String _parseRange(dynamic rangeData) {
     if (rangeData is String) return rangeData;
-    if (rangeData is Map) {
-      final type = rangeData['type'] ?? '';
-      final distance = rangeData['distance'] ?? {};
-      if (distance is Map) {
-        final amount = distance['amount'] ?? 0;
-        final unit = distance['unit'] ?? 'feet';
-        return '$amount $unit';
-      }
-      return type;
+    if (rangeData is Map<String, dynamic>) {
+      final distance = rangeData['distance'] as Map? ?? {};
+        if (distance is Map<String, dynamic>) {
+          final amount = ModelParsingHelper.safeInt(distance, 'amount', 0);
+          final unit = ModelParsingHelper.safeString(distance, 'unit', 'feet');
+          return '$amount $unit';
+        }
+        return ModelParsingHelper.safeString(rangeData, 'type', '');
     }
     return '60 feet';
   }
@@ -144,27 +142,22 @@ class OfficialSpell {
     if (durationData is String) return durationData;
     if (durationData is List && durationData.isNotEmpty) {
       final duration = durationData.first;
-      if (duration is Map) {
-        final type = duration['type'] ?? 'instant';
-        final concentration = duration['concentration'] ?? false;
-        final time = duration['duration'] ?? {};
+      if (duration is Map<String, dynamic>) {
+        final concentration = ModelParsingHelper.safeBool(duration, 'concentration', false);
+        final time = duration['duration'] as Map<String, dynamic>? ?? {};
         
         String result = '';
         if (concentration) result += 'Concentration, ';
         
-        if (time is Map) {
-          final type = time['type'] ?? 'instant';
-          final amount = time['amount'] ?? 0;
-          final unit = time['unit'] ?? '';
-          if (type == 'instant') {
-            result += 'Instantaneous';
-          } else if (type == 'timed') {
-            result += 'Up to $amount $unit';
-          } else {
-            result += '$amount $unit';
-          }
+        final timeType = ModelParsingHelper.safeString(time, 'type', 'instant');
+        final amount = ModelParsingHelper.safeInt(time, 'amount', 0);
+        final unit = ModelParsingHelper.safeString(time, 'unit', '');
+        if (timeType == 'instant') {
+          result += 'Instantaneous';
+        } else if (timeType == 'timed') {
+          result += 'Up to $amount $unit';
         } else {
-          result += type;
+          result += '$amount $unit';
         }
         
         return result;
@@ -184,12 +177,12 @@ class OfficialSpell {
           if (component == 'V') verbal = true;
           if (component == 'S') somatic = true;
           if (component.startsWith('M')) material = component;
-        } else if (component is Map) {
-          final type = component['type'];
+        } else if (component is Map<String, dynamic>) {
+          final type = ModelParsingHelper.safeString(component, 'type', '');
           if (type == 'V') verbal = true;
           if (type == 'S') somatic = true;
           if (type == 'M') {
-            material = component['text'] ?? 'M';
+            material = ModelParsingHelper.safeString(component, 'text', 'M');
           }
         }
       }
@@ -205,10 +198,10 @@ class OfficialSpell {
   static String? _parseMaterials(dynamic componentsData) {
     if (componentsData is List) {
       for (final component in componentsData) {
-        if (component is Map && component['type'] == 'M') {
-          return component['text'];
+        if (component is Map<String, dynamic> && component['type'] == 'M') {
+          return ModelParsingHelper.safeString(component, 'text', 'M');
         } else if (component is String && component.startsWith('M')) {
-          return component.substring(2).trim(); // Remove "M " prefix
+          return component.length > 2 ? component.substring(2).trim() : component; // Remove "M " prefix safely
         }
       }
     }
@@ -219,7 +212,7 @@ class OfficialSpell {
     if (entriesData is List) {
       return entriesData.map((entry) {
         if (entry is String) return entry;
-        if (entry is Map && entry['type'] == 'entries') {
+        if (entry is Map<String, dynamic> && entry['type'] == 'entries') {
           return (entry['entries'] as List).join('\n');
         }
         return entry.toString();
@@ -231,7 +224,7 @@ class OfficialSpell {
   static String? _parseHigherLevels(dynamic higherLevelsData) {
     if (higherLevelsData is List && higherLevelsData.isNotEmpty) {
       final higherLevel = higherLevelsData.first;
-      if (higherLevel is Map && higherLevel['entries'] is List) {
+      if (higherLevel is Map<String, dynamic> && higherLevel['entries'] is List) {
         return (higherLevel['entries'] as List).join('\n');
       }
       return higherLevel.toString();
@@ -243,12 +236,12 @@ class OfficialSpell {
     final classes = <String>[];
     if (classesData is Map) {
       classesData.forEach((className, classInfo) {
-        classes.add(className);
+        classes.add(className.toString());
       });
     } else if (classesData is List) {
       for (final classInfo in classesData) {
-        if (classInfo is Map) {
-          classes.add(classInfo['name'] ?? classInfo['class']);
+        if (classInfo is Map<String, dynamic>) {
+          classes.add(ModelParsingHelper.safeString(classInfo, 'name', ModelParsingHelper.safeString(classInfo, 'class', 'Unknown')));
         } else if (classInfo is String) {
           classes.add(classInfo);
         }
@@ -284,9 +277,9 @@ class SpellComponents {
 
   factory SpellComponents.fromMap(Map<String, dynamic> map) {
     return SpellComponents(
-      verbal: map['verbal'] == 1,
-      somatic: map['somatic'] == 1,
-      material: map['material'],
+      verbal: ModelParsingHelper.safeBool(map, 'verbal', false),
+      somatic: ModelParsingHelper.safeBool(map, 'somatic', false),
+      material: ModelParsingHelper.safeStringOrNull(map, 'material', null),
     );
   }
 

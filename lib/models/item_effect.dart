@@ -1,7 +1,4 @@
-// lib/models/item_effect.dart
-import 'package:uuid/uuid.dart';
-
-var uuid = const Uuid();
+import '../utils/model_parsing_helper.dart';
 
 enum EffectType {
   // Attribut-Effekte
@@ -63,8 +60,8 @@ class ItemEffect {
   final DateTime? activatedAt; // Wann der Effekt aktiviert wurde
   final String? targetCharacterId; // Ziel des Effekts
 
-  ItemEffect({
-    String? id,
+  const ItemEffect({
+    required this.id,
     required this.itemId,
     required this.name,
     required this.description,
@@ -80,7 +77,7 @@ class ItemEffect {
     this.isActive = false,
     this.activatedAt,
     this.targetCharacterId,
-  }) : id = id ?? uuid.v4();
+  });
 
   Map<String, dynamic> toMap() {
     return {
@@ -105,22 +102,28 @@ class ItemEffect {
 
   factory ItemEffect.fromMap(Map<String, dynamic> map) {
     return ItemEffect(
-      id: map['id'],
-      itemId: map['item_id'],
-      name: map['name'],
-      description: map['description'],
-      effectType: EffectType.values.firstWhere((e) => e.toString() == map['effect_type']),
-      value: map['value'],
-      duration: EffectDuration.values.firstWhere((e) => e.toString() == map['duration']),
-      durationValue: map['duration_value'],
-      requiresConcentration: map['requires_concentration'] == 1,
-      requiresAttunement: map['requires_attunement'] == 1,
-      maxCharges: map['max_charges'],
-      currentCharges: map['current_charges'],
-      lastUsed: map['last_used'] != null ? DateTime.parse(map['last_used']) : null,
-      isActive: map['is_active'] == 1,
-      activatedAt: map['activated_at'] != null ? DateTime.parse(map['activated_at']) : null,
-      targetCharacterId: map['target_character_id'],
+      id: ModelParsingHelper.safeId(map, 'id'),
+      itemId: ModelParsingHelper.safeString(map, 'item_id', ''),
+      name: ModelParsingHelper.safeString(map, 'name', ''),
+      description: ModelParsingHelper.safeString(map, 'description', ''),
+      effectType: EffectType.values.firstWhere(
+        (e) => e.toString() == ModelParsingHelper.safeString(map, 'effect_type', ''),
+        orElse: () => EffectType.custom,
+      ),
+      value: ModelParsingHelper.safeInt(map, 'value', 0),
+      duration: EffectDuration.values.firstWhere(
+        (e) => e.toString() == ModelParsingHelper.safeString(map, 'duration', ''),
+        orElse: () => EffectDuration.custom,
+      ),
+      durationValue: ModelParsingHelper.safeIntOrNull(map, 'duration_value', null),
+      requiresConcentration: ModelParsingHelper.safeBool(map, 'requires_concentration', false),
+      requiresAttunement: ModelParsingHelper.safeBool(map, 'requires_attunement', false),
+      maxCharges: ModelParsingHelper.safeInt(map, 'max_charges', 1),
+      currentCharges: ModelParsingHelper.safeInt(map, 'current_charges', 1),
+      lastUsed: DateTime.tryParse(ModelParsingHelper.safeString(map, 'last_used', '')),
+      isActive: ModelParsingHelper.safeBool(map, 'is_active', false),
+      activatedAt: DateTime.tryParse(ModelParsingHelper.safeString(map, 'activated_at', '')),
+      targetCharacterId: ModelParsingHelper.safeStringOrNull(map, 'target_character_id', null),
     );
   }
 
@@ -162,171 +165,19 @@ class ItemEffect {
     );
   }
 
-  // Prüft, ob der Effekt verwendet werden kann
-  bool get canUse => currentCharges > 0 && !isActive;
-
-  // Prüft, ob der Effekt abgelaufen ist
-  bool get isExpired {
-    if (!isActive || activatedAt == null) return false;
-    
-    switch (duration) {
-      case EffectDuration.instant:
-        return true; // Sofortige Effekte sind sofort "abgelaufen"
-      case EffectDuration.shortRest:
-        // Nach kurzer Ausruhen abgelaufen
-        return DateTime.now().difference(activatedAt!).inMinutes > 60;
-      case EffectDuration.longRest:
-        // Nach langem Ausruhen abgelaufen
-        return DateTime.now().difference(activatedAt!).inHours > 8;
-      case EffectDuration.oneHour:
-        return DateTime.now().difference(activatedAt!).inHours > 1;
-      case EffectDuration.eightHours:
-        return DateTime.now().difference(activatedAt!).inHours > 8;
-      case EffectDuration.twentyFourHours:
-        return DateTime.now().difference(activatedAt!).inHours > 24;
-      case EffectDuration.concentration:
-        // Konzentration wird manuell beendet
-        return false;
-      case EffectDuration.permanent:
-        return false; // Permanent nie abgelaufen
-      case EffectDuration.custom:
-        if (durationValue != null) {
-          return DateTime.now().difference(activatedAt!).inMinutes > durationValue!;
-        }
-        return false;
-      default:
-        return false;
-    }
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is ItemEffect && other.id == id;
   }
 
-  // Gibt die verbleibende Dauer als lesbaren String zurück
-  String get remainingDuration {
-    if (!isActive || activatedAt == null) return 'Nicht aktiv';
-    
-    final now = DateTime.now();
-    final difference = now.difference(activatedAt!);
-    
-    switch (duration) {
-      case EffectDuration.instant:
-        return 'Sofort';
-      case EffectDuration.shortRest:
-        final remaining = 60 - difference.inMinutes;
-        return remaining > 0 ? '$remaining Min (Kurz)' : 'Abgelaufen';
-      case EffectDuration.longRest:
-        final remaining = 480 - difference.inMinutes; // 8 Stunden
-        return remaining > 0 ? '${(remaining / 60).floor()}h ${remaining % 60}min (Lang)' : 'Abgelaufen';
-      case EffectDuration.oneHour:
-        final remaining = 60 - difference.inMinutes;
-        return remaining > 0 ? '$remaining Min' : 'Abgelaufen';
-      case EffectDuration.eightHours:
-        final remaining = 480 - difference.inMinutes;
-        return remaining > 0 ? '${(remaining / 60).floor()}h ${remaining % 60}min' : 'Abgelaufen';
-      case EffectDuration.twentyFourHours:
-        final remaining = 1440 - difference.inMinutes; // 24 Stunden
-        return remaining > 0 ? '${(remaining / 60).floor()}h' : 'Abgelaufen';
-      case EffectDuration.concentration:
-        return 'Konzentration';
-      case EffectDuration.permanent:
-        return 'Permanent';
-      case EffectDuration.custom:
-        if (durationValue != null) {
-          final remaining = durationValue! - difference.inMinutes;
-          return remaining > 0 ? '$remaining Min' : 'Abgelaufen';
-        }
-        return 'Unbekannt';
-      default:
-        return 'Unbekannt';
-    }
-  }
+  @override
+  int get hashCode => id.hashCode;
 
-  // Gibt einen lesbaren Namen für den Effekttyp zurück
-  String get effectTypeName {
-    switch (effectType) {
-      case EffectType.strengthBonus:
-        return 'Stärke-Bonus';
-      case EffectType.dexterityBonus:
-        return 'Geschicklichkeits-Bonus';
-      case EffectType.constitutionBonus:
-        return 'Konstitutions-Bonus';
-      case EffectType.intelligenceBonus:
-        return 'Intelligenz-Bonus';
-      case EffectType.wisdomBonus:
-        return 'Weisheits-Bonus';
-      case EffectType.charismaBonus:
-        return 'Charisma-Bonus';
-      case EffectType.armorClassBonus:
-        return 'Rüstungsklassen-Bonus';
-      case EffectType.attackBonus:
-        return 'Angriffs-Bonus';
-      case EffectType.damageBonus:
-        return 'Schadens-Bonus';
-      case EffectType.savingThrowBonus:
-        return 'Rettungswurf-Bonus';
-      case EffectType.healHitPoints:
-        return 'Heilung';
-      case EffectType.temporaryHitPoints:
-        return 'Temporäre TP';
-      case EffectType.removeConditions:
-        return 'Zustände entfernen';
-      case EffectType.resistance:
-        return 'Resistenz';
-      case EffectType.immunity:
-        return 'Immunität';
-      case EffectType.advantage:
-        return 'Vorteil';
-      case EffectType.disadvantage:
-        return 'Nachteil';
-      case EffectType.custom:
-        return 'Benutzerdefiniert';
-    }
-  }
-
-  // Gibt einen lesbaren String für die Dauer zurück
-  String get durationName {
-    switch (duration) {
-      case EffectDuration.instant:
-        return 'Sofort';
-      case EffectDuration.shortRest:
-        return 'Bis zum Kurz-Ausruhen';
-      case EffectDuration.longRest:
-        return 'Bis zum Lang-Ausruhen';
-      case EffectDuration.oneHour:
-        return '1 Stunde';
-      case EffectDuration.eightHours:
-        return '8 Stunden';
-      case EffectDuration.twentyFourHours:
-        return '24 Stunden';
-      case EffectDuration.concentration:
-        return 'Konzentration';
-      case EffectDuration.permanent:
-        return 'Permanent';
-      case EffectDuration.custom:
-        return durationValue != null ? '$durationValue Minuten' : 'Benutzerdefiniert';
-    }
-  }
-
-  // Gibt einen formatierten Wert-String zurück
-  String get formattedValue {
-    switch (effectType) {
-      case EffectType.healHitPoints:
-      case EffectType.temporaryHitPoints:
-        return '$value TP';
-      case EffectType.removeConditions:
-        return '$value Zustände';
-      case EffectType.resistance:
-      case EffectType.immunity:
-        return value > 0 ? 'Schadenstyp $value' : 'Alle Schadenstypen';
-      case EffectType.advantage:
-      case EffectType.disadvantage:
-        return value > 0 ? 'Bei $value Würfen' : 'Bei 1 Wurf';
-      default:
-        // Bei Bonus-Effekten
-        return value >= 0 ? '+$value' : '$value';
-    }
-  }
+  @override
+  String toString() => 'ItemEffect(id: $id, name: $name, type: $effectType)';
 }
 
-// Hilfsklasse für aktive Effekte auf einem Charakter
 class ActiveEffect {
   final String id;
   final String characterId;
@@ -340,7 +191,7 @@ class ActiveEffect {
   final DateTime? expiresAt;
   final bool requiresConcentration;
 
-  ActiveEffect({
+  const ActiveEffect({
     required this.id,
     required this.characterId,
     required this.itemEffectId,
@@ -372,37 +223,60 @@ class ActiveEffect {
 
   factory ActiveEffect.fromMap(Map<String, dynamic> map) {
     return ActiveEffect(
-      id: map['id'],
-      characterId: map['character_id'],
-      itemEffectId: map['item_effect_id'],
-      sourceItemName: map['source_item_name'],
-      effectName: map['effect_name'],
-      description: map['description'],
-      effectType: EffectType.values.firstWhere((e) => e.toString() == map['effect_type']),
-      value: map['value'],
-      startedAt: DateTime.parse(map['started_at']),
-      expiresAt: map['expires_at'] != null ? DateTime.parse(map['expires_at']) : null,
-      requiresConcentration: map['requires_concentration'] == 1,
+      id: ModelParsingHelper.safeId(map, 'id'),
+      characterId: ModelParsingHelper.safeString(map, 'character_id', ''),
+      itemEffectId: ModelParsingHelper.safeString(map, 'item_effect_id', ''),
+      sourceItemName: ModelParsingHelper.safeString(map, 'source_item_name', ''),
+      effectName: ModelParsingHelper.safeString(map, 'effect_name', ''),
+      description: ModelParsingHelper.safeString(map, 'description', ''),
+      effectType: EffectType.values.firstWhere(
+        (e) => e.toString() == ModelParsingHelper.safeString(map, 'effect_type', ''),
+        orElse: () => EffectType.custom,
+      ),
+      value: ModelParsingHelper.safeInt(map, 'value', 0),
+      startedAt: DateTime.tryParse(ModelParsingHelper.safeString(map, 'started_at', '')) ?? DateTime.now(),
+      expiresAt: DateTime.tryParse(ModelParsingHelper.safeString(map, 'expires_at', '')),
+      requiresConcentration: ModelParsingHelper.safeBool(map, 'requires_concentration', false),
     );
   }
 
-  bool get isActive {
-    if (expiresAt == null) return true;
-    return DateTime.now().isBefore(expiresAt!);
+  ActiveEffect copyWith({
+    String? id,
+    String? characterId,
+    String? itemEffectId,
+    String? sourceItemName,
+    String? effectName,
+    String? description,
+    EffectType? effectType,
+    int? value,
+    DateTime? startedAt,
+    DateTime? expiresAt,
+    bool? requiresConcentration,
+  }) {
+    return ActiveEffect(
+      id: id ?? this.id,
+      characterId: characterId ?? this.characterId,
+      itemEffectId: itemEffectId ?? this.itemEffectId,
+      sourceItemName: sourceItemName ?? this.sourceItemName,
+      effectName: effectName ?? this.effectName,
+      description: description ?? this.description,
+      effectType: effectType ?? this.effectType,
+      value: value ?? this.value,
+      startedAt: startedAt ?? this.startedAt,
+      expiresAt: expiresAt ?? this.expiresAt,
+      requiresConcentration: requiresConcentration ?? this.requiresConcentration,
+    );
   }
 
-  String get timeRemaining {
-    if (expiresAt == null) return 'Permanent';
-    
-    final now = DateTime.now();
-    final difference = expiresAt!.difference(now);
-    
-    if (difference.isNegative) return 'Abgelaufen';
-    
-    if (difference.inHours > 0) {
-      return '${difference.inHours}h ${difference.inMinutes % 60}min';
-    } else {
-      return '${difference.inMinutes}min';
-    }
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is ActiveEffect && other.id == id;
   }
+
+  @override
+  int get hashCode => id.hashCode;
+
+  @override
+  String toString() => 'ActiveEffect(id: $id, effectName: $effectName, character: $characterId)';
 }

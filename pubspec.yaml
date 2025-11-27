@@ -1,4 +1,4 @@
-name: DoungenMenager
+name: dungen_manager
 description: A new Flutter project.
 publish_to: 'none'
 version: 1.0.0+1
@@ -18,13 +18,22 @@ dependencies:
   flutter_markdown:
   uuid:
   http: ^1.1.0       # Für den Datenimport von 5e.tools
+  provider: ^6.1.2     # Provider für State-Management
 
     # NEUE PAKETE FÜR DAS SOUND-SYSTEM
   file_picker:       # Zum Auswählen von Dateien (unseren MP3s)
   path_provider:   # Um einen sicheren Speicherort in der App zu finden
   audioplayers:      # Zum Abspielen der Audio-Dateien
 
+# Hier deine Pakete hinzufügen
+  font_awesome_flutter: ^10.7.0 # Oder was auch nicht die neueste Version ist
+  flutter_svg: ^2.0.10+1       # Oder was auch nicht die neueste Version ist
+
   cupertino_icons: ^1.0.2
+  ultimate_flutter_icons: ^1.4.0
+  
+  # MCP Server dependencies
+  json_rpc_2: ^3.0.2
 
 dev_dependencies:
   flutter_test:

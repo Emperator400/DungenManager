@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'widgets/character_editor/inventory_demo_widget.dart';
+import 'theme/dnd_theme.dart';
 
 void main() {
   runApp(const InventoryDemoApp());
@@ -11,23 +12,8 @@ class InventoryDemoApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Inventar Demo',
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: Colors.grey.shade900,
-        cardColor: Colors.grey.shade800,
-        primaryColor: Colors.blue.shade700,
-        appBarTheme: AppBarTheme(
-          backgroundColor: Colors.grey.shade800,
-          foregroundColor: Colors.white,
-          elevation: 2,
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue.shade700,
-            foregroundColor: Colors.white,
-          ),
-        ),
-      ),
+      title: 'Inventar Demo - D&D Theme',
+      theme: DnDTheme.darkTheme,
       debugShowCheckedModeBanner: false,
       home: const InventoryDemoWidget(),
     );

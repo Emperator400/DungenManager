@@ -293,17 +293,6 @@ class VerticalHeroStatsWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final defaultLabelStyle = TextStyle(
-      fontSize: 10,
-      color: Colors.grey[600],
-      fontWeight: FontWeight.w500,
-    );
-    
-    final defaultValueStyle = TextStyle(
-      fontSize: 12,
-      fontWeight: FontWeight.bold,
-    );
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,

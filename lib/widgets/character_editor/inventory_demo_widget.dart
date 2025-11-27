@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import '../../models/item.dart';
 import '../../models/inventory_item.dart';
 import '../../models/equip_slot.dart';
-import '../../screens/unified_character_editor_screen.dart';
-import 'character_editor_controller.dart' show CharacterType;
+import '../character_editor/character_editor_controller.dart';
 import 'enhanced_inventory_tab_widget.dart';
-import 'item_color_helper.dart';
 
 class InventoryDemoWidget extends StatefulWidget {
   const InventoryDemoWidget({super.key});
@@ -214,56 +212,9 @@ class _InventoryDemoWidgetState extends State<InventoryDemoWidget> {
       ),
       body: EnhancedInventoryTabWidget(
         characterType: CharacterType.npc, // NPCs können bearbeitet werden
-        inventory: _demoInventory,
-        isLoadingInventory: _isLoading,
-        gold: _gold,
-        onGoldChanged: (value) {
-          setState(() {
-            _gold = value;
-          });
-        },
-        onAddItem: () {
-          _showSnackBar('Item hinzufügen - Funktion demo');
-        },
-        onLoadInventory: () {
-          _showSnackBar('Inventar neu geladen');
-        },
-        onManageItem: (displayItem) {
-          _showSnackBar('Item verwalten: ${displayItem.item.name}');
-        },
-        onUpdateQuantity: (displayItem, newQuantity) {
-          setState(() {
-            final index = _demoInventory.indexWhere(
-              (item) => item.inventoryItem.id == displayItem.inventoryItem.id,
-            );
-            if (index != -1) {
-              final oldInvItem = _demoInventory[index].inventoryItem;
-              _demoInventory[index] = DisplayInventoryItem(
-                inventoryItem: InventoryItem(
-                  id: oldInvItem.id,
-                  ownerId: oldInvItem.ownerId,
-                  itemId: oldInvItem.itemId,
-                  quantity: newQuantity,
-                  isEquipped: oldInvItem.isEquipped,
-                  equipSlot: oldInvItem.equipSlot,
-                ),
-                item: _demoInventory[index].item,
-                currentDurability: _demoInventory[index].currentDurability,
-              );
-            }
-          });
-          _showSnackBar('Menge aktualisiert: $newQuantity');
-        },
-        onRemoveItem: (displayItem) {
-          setState(() {
-            _demoInventory.removeWhere(
-              (item) => item.inventoryItem.id == displayItem.inventoryItem.id,
-            );
-          });
-          _showSnackBar('Item entfernt: ${displayItem.item.name}');
-        },
         pcId: null,
         creatureId: 'demo_character',
+        viewModel: null, // Demo-Modus ohne ViewModel
       ),
     );
   }

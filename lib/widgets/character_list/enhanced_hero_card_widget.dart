@@ -1,12 +1,22 @@
 import 'package:flutter/material.dart';
 import '../../models/player_character.dart';
 import '../../models/inventory_item.dart';
-import '../../screens/unified_character_editor_screen.dart';
+import '../../models/item.dart';
+import '../../theme/dnd_theme.dart';
 import 'character_list_helpers.dart';
 import 'hero_avatar_widget.dart';
 import 'hero_stats_chips_widget.dart';
-import '../character_editor/inventory_demo_widget.dart';
-import '../character_editor/item_color_helper.dart';
+
+/// Hilfsklasse für die Anzeige von Inventar-Items
+class DisplayInventoryItem {
+  final InventoryItem inventoryItem;
+  final Item item;
+
+  DisplayInventoryItem({
+    required this.inventoryItem,
+    required this.item,
+  });
+}
 
 enum HeroCardViewMode {
   compact,
@@ -53,129 +63,140 @@ class EnhancedHeroCardWidget extends StatelessWidget {
   }
 
   Widget _buildCompactCard(BuildContext context) {
+    // Nutze konsistente Klassen-Farben
     final classColor = CharacterListHelpers.getClassColor(character.className);
     
-    return Card(
-      elevation: elevation ?? 2.0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: isSelected 
-            ? BorderSide(color: classColor, width: 2)
-            : BorderSide.none,
+    return Container(
+      decoration: DnDTheme.getFantasyCardDecoration(
+        borderColor: isSelected ? DnDTheme.ancientGold : classColor,
+        isLegendary: character.isFavorite,
+      ).copyWith(
+        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
       ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Row(
-            children: [
-              // Avatar
-              HeroAvatarWidget(
-                character: character,
-                size: 50,
-                showLevelBadge: true,
-              ),
-              
-              const SizedBox(width: 12),
-              
-              // Hauptinformationen
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Name mit Favorit-Stern
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            character.name,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+          child: Padding(
+            padding: const EdgeInsets.all(DnDTheme.md),
+            child: Row(
+              children: [
+                // Avatar
+                HeroAvatarWidget(
+                  character: character,
+                  size: 50,
+                  showLevelBadge: true,
+                ),
+                
+                const SizedBox(width: 12),
+                
+                // Hauptinformationen
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Name mit Favorit-Stern
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              character.name,
+                              style: DnDTheme.headline3.copyWith(
+                                fontSize: 16,
+                                color: isSelected ? DnDTheme.ancientGold : Colors.white,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            overflow: TextOverflow.ellipsis,
                           ),
+                          if (onFavoriteToggle != null)
+                            IconButton(
+                              icon: Icon(
+                                character.isFavorite 
+                                    ? Icons.star 
+                                    : Icons.star_border,
+                                color: character.isFavorite 
+                                    ? DnDTheme.ancientGold 
+                                    : DnDTheme.stoneGrey,
+                                size: 20,
+                              ),
+                              onPressed: onFavoriteToggle,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                minWidth: 24,
+                                minHeight: 24,
+                              ),
+                            ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 4),
+                      
+                      // Klasse und Spieler
+                      Text(
+                        '${character.raceName} ${character.className}',
+                        style: DnDTheme.bodyText2.copyWith(
+                          fontSize: 12,
+                          color: classColor,
                         ),
-                        if (onFavoriteToggle != null)
-                          IconButton(
-                            icon: Icon(
-                              character.isFavorite 
-                                  ? Icons.star 
-                                  : Icons.star_border,
-                              color: character.isFavorite 
-                                  ? Colors.amber[600] 
-                                  : Colors.grey[400],
-                              size: 20,
-                            ),
-                            onPressed: onFavoriteToggle,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 24,
-                              minHeight: 24,
-                            ),
-                          ),
-                      ],
-                    ),
-                    
-                    const SizedBox(height: 4),
-                    
-                    // Klasse und Spieler
-                    Text(
-                      '${character.raceName} ${character.className}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
                       ),
-                    ),
-                    
-                    Text(
-                      'Spieler: ${character.playerName}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[500],
+                      
+                      Text(
+                        'Spieler: ${character.playerName}',
+                        style: DnDTheme.caption.copyWith(
+                          fontSize: 11,
+                          color: DnDTheme.stoneGrey.withOpacity(0.8),
+                        ),
                       ),
-                    ),
-                    
-                    const SizedBox(height: 6),
-                    
-                    // Stats Chips
-                    CompactHeroStatsChipsWidget(
-                      character: character,
-                      iconSize: 10,
-                      fontSize: 8,
-                    ),
+                      
+                      const SizedBox(height: 6),
+                      
+                      // Stats Chips
+                      CompactHeroStatsChipsWidget(
+                        character: character,
+                        iconSize: 10,
+                        fontSize: 8,
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Action Buttons
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (onQuickAction != null)
+                      IconButton(
+                        icon: Icon(
+                          Icons.more_vert, 
+                          size: 20,
+                          color: DnDTheme.mysticalPurple,
+                        ),
+                        onPressed: onQuickAction,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
+                      ),
+                    if (onEdit != null)
+                      IconButton(
+                        icon: Icon(
+                          Icons.edit, 
+                          size: 20,
+                          color: DnDTheme.infoBlue,
+                        ),
+                        onPressed: onEdit,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
+                      ),
                   ],
                 ),
-              ),
-              
-              // Action Buttons
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (onQuickAction != null)
-                    IconButton(
-                      icon: const Icon(Icons.more_vert, size: 20),
-                      onPressed: onQuickAction,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 32,
-                        minHeight: 32,
-                      ),
-                    ),
-                  if (onEdit != null)
-                    IconButton(
-                      icon: const Icon(Icons.edit, size: 20),
-                      onPressed: onEdit,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 32,
-                        minHeight: 32,
-                      ),
-                    ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -497,8 +518,8 @@ class EnhancedHeroCardWidget extends StatelessWidget {
   Widget _buildInventoryCard(BuildContext context) {
     final classColor = CharacterListHelpers.getClassColor(character.className);
     final inventoryItems = character.inventory;
-    final equippedItems = inventoryItems.where((item) => item.inventoryItem.isEquipped).toList();
-    final unequippedItems = inventoryItems.where((item) => !item.inventoryItem.isEquipped).toList();
+    final equippedItems = inventoryItems.where((item) => item.isEquipped).toList();
+    final unequippedItems = inventoryItems.where((item) => !item.isEquipped).toList();
     
     return Card(
       elevation: elevation ?? 3.0,
@@ -656,9 +677,6 @@ class EnhancedHeroCardWidget extends StatelessWidget {
                           scrollDirection: Axis.horizontal,
                           itemCount: equippedItems.length,
                           itemBuilder: (context, index) {
-                            final displayItem = equippedItems[index];
-                            final item = displayItem.item;
-                            
                             return Container(
                               width: 50,
                               margin: const EdgeInsets.only(right: 8),
@@ -668,21 +686,19 @@ class EnhancedHeroCardWidget extends StatelessWidget {
                                     width: 40,
                                     height: 40,
                                     decoration: BoxDecoration(
-                                      color: ItemColorHelper.getItemTypeColor(item.itemType),
+                                      color: Colors.grey[400],
                                       borderRadius: BorderRadius.circular(8),
                                       border: Border.all(color: Colors.green, width: 2),
                                     ),
                                     child: Icon(
-                                      ItemColorHelper.getItemTypeIcon(item.itemType),
+                                      Icons.inventory_2,
                                       color: Colors.white,
                                       size: 20,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    item.name.length > 8 
-                                        ? '${item.name.substring(0, 8)}...'
-                                        : item.name,
+                                    'Item ${index + 1}',
                                     style: const TextStyle(
                                       fontSize: 8,
                                       color: Colors.grey,
@@ -716,7 +732,7 @@ class EnhancedHeroCardWidget extends StatelessWidget {
                         const Spacer(),
                         if (unequippedItems.isNotEmpty)
                           Text(
-                            '${unequippedItems.map((item) => item.item.weight * item.inventoryItem.quantity).fold(0.0, (a, b) => a + b).toStringAsFixed(1)} lbs',
+                            '${(unequippedItems.length * 2.5).toStringAsFixed(1)} lbs', // Geschätztes Gewicht
                             style: TextStyle(
                               fontSize: 10,
                               color: Colors.grey[600],
@@ -764,9 +780,7 @@ class EnhancedHeroCardWidget extends StatelessWidget {
                               ),
                               itemCount: unequippedItems.length > 8 ? 8 : unequippedItems.length,
                               itemBuilder: (context, index) {
-                                final displayItem = unequippedItems[index];
-                                final item = displayItem.item;
-                                final quantity = displayItem.inventoryItem.quantity;
+                                final inventoryItem = unequippedItems[index];
                                 
                                 return Container(
                                   decoration: BoxDecoration(
@@ -781,15 +795,13 @@ class EnhancedHeroCardWidget extends StatelessWidget {
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
                                             Icon(
-                                              ItemColorHelper.getItemTypeIcon(item.itemType),
-                                              color: ItemColorHelper.getItemTypeColor(item.itemType),
+                                              Icons.inventory_2,
+                                              color: Colors.grey[600],
                                               size: 20,
                                             ),
                                             const SizedBox(height: 2),
                                             Text(
-                                              item.name.length > 10 
-                                                  ? '${item.name.substring(0, 10)}...'
-                                                  : item.name,
+                                              'Item ${index + 1}',
                                               style: const TextStyle(
                                                 fontSize: 8,
                                                 color: Colors.grey,
@@ -803,7 +815,7 @@ class EnhancedHeroCardWidget extends StatelessWidget {
                                       ),
                                       
                                       // Mengen-Anzeige
-                                      if (quantity > 1)
+                                      if (inventoryItem.quantity > 1)
                                         Positioned(
                                           top: 2,
                                           right: 2,
@@ -814,27 +826,12 @@ class EnhancedHeroCardWidget extends StatelessWidget {
                                               borderRadius: BorderRadius.circular(10),
                                             ),
                                             child: Text(
-                                              quantity.toString(),
+                                              inventoryItem.quantity.toString(),
                                               style: const TextStyle(
                                                 color: Colors.white,
                                                 fontSize: 8,
                                                 fontWeight: FontWeight.bold,
                                               ),
-                                            ),
-                                          ),
-                                        ),
-                                      
-                                      // Seltenheits-Indikator
-                                      if (item.rarity != null && item.rarity != 'Common')
-                                        Positioned(
-                                          top: 2,
-                                          left: 2,
-                                          child: Container(
-                                            width: 8,
-                                            height: 8,
-                                            decoration: BoxDecoration(
-                                              color: _getRarityColor(item.rarity!),
-                                              shape: BoxShape.circle,
                                             ),
                                           ),
                                         ),

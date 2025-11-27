@@ -9,8 +9,8 @@ class EnhancedHotbarWidget extends StatefulWidget {
   final List<DisplayInventoryItem> equippedWeapons;
   final List<DisplayInventoryItem> equippedSpells;
   final SpellSlotManager? spellSlotManager;
-  final Function(DisplayInventoryItem)? onQuickEquip;
-  final Function(DisplayInventoryItem)? onQuickUse;
+  final void Function(DisplayInventoryItem)? onQuickEquip;
+  final void Function(DisplayInventoryItem)? onQuickUse;
   final bool canEditItems;
 
   const EnhancedHotbarWidget({
@@ -350,7 +350,8 @@ class _EnhancedHotbarWidgetState extends State<EnhancedHotbarWidget> {
 
     int? remainingCasts;
     if (!isCantrip && spellLevel != null && widget.spellSlotManager != null) {
-      remainingCasts = widget.spellSlotManager!.getRemainingSlots(spellLevel!);
+      final remainingSlots = widget.spellSlotManager!.getRemainingSlots();
+      remainingCasts = remainingSlots[spellLevel] ?? 0;
     }
 
     return GestureDetector(

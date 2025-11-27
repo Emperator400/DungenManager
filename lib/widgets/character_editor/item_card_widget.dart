@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../models/item.dart';
 import '../../models/inventory_item.dart';
-import '../../models/equip_slot.dart';
 import 'item_color_helper.dart';
+import '../../theme/dnd_theme.dart';
 
 class ItemCardWidget extends StatelessWidget {
   final DisplayInventoryItem displayItem;
@@ -24,26 +23,33 @@ class ItemCardWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final item = displayItem.item;
     final inventoryItem = displayItem.inventoryItem;
+    
+    // Nutze D&D Theme Rarity-Farben mit Fallback auf ItemColorHelper
     final rarityColor = item.rarity != null 
-        ? ItemColorHelper.getRarityBorderColor(item.rarity!)
-        : Colors.grey.shade400;
+        ? DnDTheme.getRarityColor(item.rarity!)
+        : DnDTheme.rarityColors['common']!;
 
     Widget cardWidget = Container(
       width: 120,
       height: 150,
-      decoration: BoxDecoration(
-        color: isSelected ? Colors.white.withOpacity(0.1) : rarityColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isSelected ? Colors.white : rarityColor,
-          width: isSelected ? 3 : 2,
-        ),
+      decoration: DnDTheme.getRarityBorder(item.rarity ?? 'common').copyWith(
+        color: isSelected ? DnDTheme.ancientGold : rarityColor,
+        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
+          // Mystischer Schatten für selected Items
+          if (isSelected)
+            BoxShadow(
+              color: DnDTheme.ancientGold.withOpacity(0.5),
+              blurRadius: 12,
+              spreadRadius: 2,
+            )
+          else
+            // Standard mystical shadow
+            BoxShadow(
+              color: rarityColor.withOpacity(0.3),
+              blurRadius: 8,
+              spreadRadius: 1,
+            ),
         ],
       ),
       child: Material(
@@ -113,10 +119,10 @@ class ItemCardWidget extends StatelessWidget {
                 Expanded(
                   child: Text(
                     item.name,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: DnDTheme.caption.copyWith(
+                      color: rarityColor,
                       fontSize: 11,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.bold,
                       height: 1.0,
                     ),
                     maxLines: 2,
@@ -134,8 +140,8 @@ class ItemCardWidget extends StatelessWidget {
                     // Item-Typ
                     Text(
                       ItemColorHelper.getItemTypeDisplayName(item.itemType),
-                      style: TextStyle(
-                        color: Colors.grey.shade400,
+                      style: DnDTheme.caption.copyWith(
+                        color: DnDTheme.mysticalPurple.withOpacity(0.7),
                         fontSize: 7,
                         fontWeight: FontWeight.w500,
                       ),
@@ -152,24 +158,28 @@ class ItemCardWidget extends StatelessWidget {
                         // Gewicht
                         Text(
                           '${item.weight} lbs',
-                          style: TextStyle(
-                            color: Colors.grey.shade500,
+                          style: DnDTheme.caption.copyWith(
+                            color: DnDTheme.stoneGrey.withOpacity(0.8),
                             fontSize: 6,
                           ),
                         ),
                         
-                        // Menge (wenn > 1)
+                        // Menge (wenn > 1) - mit mystischem Effekt
                         if (inventoryItem.quantity > 1) ...[
                           const SizedBox(width: 2),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 0.5),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade700,
-                              borderRadius: BorderRadius.circular(3),
-                            ),
+                              decoration: BoxDecoration(
+                                color: DnDTheme.emeraldGreen.withOpacity(0.8),
+                                borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                                border: Border.all(
+                                  color: DnDTheme.ancientGold,
+                                  width: 0.5,
+                                ),
+                              ),
                             child: Text(
                               '×${inventoryItem.quantity}',
-                              style: const TextStyle(
+                              style: DnDTheme.caption.copyWith(
                                 color: Colors.white,
                                 fontSize: 6,
                                 fontWeight: FontWeight.bold,

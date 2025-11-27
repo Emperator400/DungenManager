@@ -34,7 +34,7 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
     _monstersFuture = dbHelper.getAllCreatures();
   }
 
- void _startCombat() async {
+ Future<void> _startCombat() async {
     if (_selectedPcs.isEmpty && _selectedMonsters.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Bitte wähle Teilnehmer aus.")));
       return;
@@ -45,48 +45,38 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
     // Lade Inventare für die Helden und erstelle die Kampf-Objekte
     for (final pc in _selectedPcs) {
       // Warte auf das Inventar aus der Datenbank
-      final inventory = await dbHelper.getDisplayInventoryForOwner(pc.id);
+      final inventoryMaps = await dbHelper.getDisplayInventoryForOwner(pc.id);
+      
       combatants.add(Creature(
         id: pc.id, name: pc.name, maxHp: pc.maxHp, currentHp: pc.maxHp, isPlayer: true,
         armorClass: pc.armorClass, initiativeBonus: pc.initiativeBonus,
         strength: pc.strength, dexterity: pc.dexterity, constitution: pc.constitution,
         intelligence: pc.intelligence, wisdom: pc.wisdom, charisma: pc.charisma,
-        inventory: inventory, // Übergib das geladene Inventar
+        inventory: inventoryMaps, // Übergib das Inventar direkt als List<Map<String, dynamic>>
       )..initiative = _initiativeScores[pc.id]);
     }
 
     // Lade Inventare für die Monster und erstelle die Kampf-Objekte
-    // Lade Inventare für die Monster und erstelle die Kampf-Objekte
     for (final monster in _selectedMonsters) {
       // Warte auf das Inventar aus der Datenbank
-      final inventory = await dbHelper.getDisplayInventoryForOwner(monster.id);
+      final inventoryMaps = await dbHelper.getDisplayInventoryForOwner(monster.id);
+      
       combatants.add(Creature(
         id: monster.id, name: monster.name, maxHp: monster.maxHp, currentHp: monster.maxHp, isPlayer: false,
         armorClass: monster.armorClass, speed: monster.speed, attacks: monster.attacks, 
         initiativeBonus: monster.initiativeBonus,
-        inventory: inventory, // Übergib das geladene Inventar
+        inventory: inventoryMaps, // Übergib das Inventar direkt als List<Map<String, dynamic>>
       )..initiative = _initiativeScores[monster.id]);
     }
     
     // Wichtig: 'mounted' prüfen nach einem await-Aufruf
     if (!mounted) return;
 
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (ctx) => InitiativeTrackerScreen(creatures: combatants),
-    ));
-  
-
-
-    // Übergib alle Werte des Monsters an das Kampf-Objekt
-    combatants.addAll(_selectedMonsters.map((m) => Creature(
-      id: m.id, name: m.name, maxHp: m.maxHp, currentHp: m.maxHp, isPlayer: false,
-      armorClass: m.armorClass, speed: m.speed, attacks: m.attacks, 
-      initiativeBonus: m.initiativeBonus,
-    )));
-
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (ctx) => InitiativeTrackerScreen(creatures: combatants),
-    ));
+    Navigator.of(context).push<InitiativeTrackerScreen>(
+      MaterialPageRoute<InitiativeTrackerScreen>(
+        builder: (ctx) => InitiativeTrackerScreen(creatures: combatants),
+      ),
+    );
   }
   
   void _addCombatant(Object data) {
@@ -114,8 +104,8 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           
-          final List<PlayerCharacter> allPcs = snapshot.data![0];
-          final List<Creature> allMonsters = snapshot.data![1];
+          final List<PlayerCharacter> allPcs = (snapshot.data![0] as List).cast<PlayerCharacter>();
+          final List<Creature> allMonsters = (snapshot.data![1] as List).cast<Creature>();
           final availablePcs = allPcs.where((pc) => !_selectedPcs.contains(pc)).toList();
           final availableMonsters = allMonsters.where((m) => !_selectedMonsters.contains(m)).toList();
 
@@ -192,7 +182,7 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
   }
 
   Widget _buildSelectedList(List<Object> items) {
-  if (items.isEmpty) return const Center(child: Text("Hier Teilnehmer reinziehen", style: TextStyle(color: Colors.grey)));
+    if (items.isEmpty) return const Center(child: Text("Hier Teilnehmer reinziehen", style: TextStyle(color: Colors.grey)));
   
   return ListView.builder(
     itemCount: items.length,

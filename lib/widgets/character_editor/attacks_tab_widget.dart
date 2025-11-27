@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../models/attack.dart';
 import 'attack_list_widget.dart';
-import 'attack_editor_widget.dart';
 
 class AttacksTabWidget extends StatefulWidget {
   final List<Attack> attacks;
-  final Function(List<Attack>) onAttacksChanged;
+  final void Function(List<Attack>) onAttacksChanged;
   final bool isEditable;
   
   const AttacksTabWidget({
@@ -99,7 +98,7 @@ class _AttacksTabWidgetState extends State<AttacksTabWidget> {
   }
 
   void _showHelpDialog() {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Angriffe & Aktionen Hilfe'),

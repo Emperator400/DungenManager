@@ -5,7 +5,7 @@ import '../models/campaign.dart';
 import '../models/official_monster.dart';
 import '../models/official_spell.dart';
 import '../models/creature.dart';
-import '../screens/official_monsters_screen.dart';
+import '../screens/enhanced_official_monsters_screen.dart';
 
 class CampaignDndDataTab extends StatefulWidget {
   final Campaign campaign;
@@ -34,15 +34,15 @@ class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
     try {
       // Lade verfügbare offizielle Monster
       final monsters = await dbHelper.getAllOfficialMonsters();
-      _availableMonsters = monsters.map((m) => OfficialMonster.fromMap(m)).toList();
+      _availableMonsters = monsters.map((m) => OfficialMonster.fromMap(m as Map<String, dynamic>)).toList();
       
       // Lade verfügbare offizielle Zauber
       final spells = await dbHelper.getAllOfficialSpells();
-      _availableSpells = spells.map((s) => OfficialSpell.fromMap(s)).toList();
+      _availableSpells = spells.map((s) => OfficialSpell.fromMap(s as Map<String, dynamic>)).toList();
       
       // Lade Kreaturen der Kampagne (temporär alle Kreaturen)
       final creatures = await dbHelper.getAllCreatures();
-      _campaignCreatures = creatures;
+      _campaignCreatures = creatures.map((c) => Creature.fromMap(c as Map<String, dynamic>)).toList();
       
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -58,10 +58,11 @@ class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
   Future<void> _addOfficialMonsterToCampaign(OfficialMonster monster) async {
     try {
       // Erstelle eine Creature aus dem offiziellen Monster
-      final creature = Creature.fromOfficialMonster(
-        officialMonsterId: monster.id,
+      final creature = Creature(
+        id: '', // Wird von der Datenbank generiert
         name: monster.name,
         maxHp: monster.hitPoints,
+        currentHp: monster.hitPoints,
         armorClass: int.tryParse(monster.armorClass) ?? 10,
         speed: monster.speed,
         strength: monster.strength,
@@ -79,6 +80,9 @@ class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
         legendaryActions: monster.legendaryActions?.map((a) => '${a.name}: ${a.description}').join('\n'),
         description: monster.description,
         attacks: monster.actions.map((a) => '${a.name}: ${a.description}').join('\n'),
+        officialMonsterId: monster.id,
+        sourceType: 'official',
+        isCustom: false,
       );
 
       // Speichere die Kreatur
@@ -90,7 +94,10 @@ class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
         updatedMonsters.add(monster.id);
         
         final updatedCampaign = widget.campaign.copyWith(
-          availableMonsters: updatedMonsters,
+          settings: widget.campaign.settings.copyWith(
+            availableMonsters: updatedMonsters,
+          ),
+          updatedAt: DateTime.now(),
         );
         
         await dbHelper.updateCampaign(updatedCampaign);
@@ -149,9 +156,9 @@ class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
           padding: const EdgeInsets.all(8.0),
           child: ElevatedButton.icon(
             onPressed: () async {
-              final selectedMonster = await Navigator.of(context).push(
+              final selectedMonster = await Navigator.of(context).push<OfficialMonster?>(
                 MaterialPageRoute(
-                  builder: (ctx) => const OfficialMonstersScreen(),
+                  builder: (ctx) => const EnhancedOfficialMonstersScreen(),
                 ),
               );
               
@@ -205,7 +212,7 @@ class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
   }
 
   void _showMonsterDetails(OfficialMonster monster) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(monster.name),

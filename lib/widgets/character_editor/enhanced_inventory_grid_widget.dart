@@ -172,6 +172,7 @@ class _EnhancedInventoryGridWidgetState extends State<EnhancedInventoryGridWidge
           name: '',
           itemType: ItemType.AdventuringGear,
         ),
+        currentDurability: null,
       ),
     );
 

@@ -1,8 +1,8 @@
-// lib/models/official_monster.dart
-import 'package:uuid/uuid.dart';
+import '../utils/model_parsing_helper.dart';
+import '../services/monster_parser_service.dart';
+import '../services/official_monster_import_service.dart';
 
-var uuid = const Uuid();
-
+/// Repräsentiert ein offizielles D&D 5e Monster
 class OfficialMonster {
   final String id;
   final String name;
@@ -41,8 +41,8 @@ class OfficialMonster {
   final String? version;
   final Map<String, dynamic>? customData;
 
-  OfficialMonster({
-    String? id,
+  const OfficialMonster({
+    required this.id,
     required this.name,
     required this.size,
     required this.type,
@@ -78,9 +78,9 @@ class OfficialMonster {
     this.isCustom = false,
     this.version,
     this.customData,
-  }) : id = id ?? uuid.v4();
+  });
 
-  // Konvertierung für Datenbank
+  /// Konvertierung für Datenbank
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -122,381 +122,46 @@ class OfficialMonster {
     };
   }
 
-  // Erstellung aus Datenbank
-  factory OfficialMonster.fromMap(Map<String, dynamic> map) {
+  /// Erstellung aus Datenbank
+  factory OfficialMonster.fromMap(Map<String, dynamic> map, [Map<String, dynamic>? context]) {
     return OfficialMonster(
-      id: map['id'],
-      name: map['name'],
-      size: map['size'],
-      type: map['type'],
-      subtype: map['subtype'],
-      alignment: map['alignment'],
-      armorClass: map['armor_class'],
-      hitPoints: map['hit_points'],
-      hitDice: map['hit_dice'],
-      speed: map['speed'],
-      strength: map['strength'],
-      dexterity: map['dexterity'],
-      constitution: map['constitution'],
-      intelligence: map['intelligence'],
-      wisdom: map['wisdom'],
-      charisma: map['charisma'],
-      savingThrows: map['saving_throws']?.toString().split(',') ?? [],
-      skills: _parseSkills(map['skills']),
-      damageVulnerabilities: map['damage_vulnerabilities']?.toString().split(',') ?? [],
-      damageResistances: map['damage_resistances']?.toString().split(',') ?? [],
-      damageImmunities: map['damage_immunities']?.toString().split(',') ?? [],
-      conditionImmunities: map['condition_immunities']?.toString().split(',') ?? [],
-      senses: _parseSenses(map['senses']),
-      languages: map['languages'] ?? '',
-      challengeRating: map['challenge_rating'],
-      xp: map['xp'],
-      specialAbilities: _parseAbilities(map['special_abilities']),
-      actions: _parseActions(map['actions']),
-      legendaryActions: _parseLegendaryActions(map['legendary_actions']),
-      lairActions: _parseLairActions(map['lair_actions']),
-      description: map['description'],
-      source: map['source'],
-      page: map['page'] ?? 1,
-      isCustom: map['is_custom'] == 1,
-      version: map['version'],
-      customData: map['custom_data'],
+      id: ModelParsingHelper.safeId(map, 'id'),
+      name: ModelParsingHelper.safeString(map, 'name', ''),
+      size: ModelParsingHelper.safeString(map, 'size', ''),
+      type: ModelParsingHelper.safeString(map, 'type', ''),
+      subtype: ModelParsingHelper.safeStringOrNull(map, 'subtype', null),
+      alignment: ModelParsingHelper.safeString(map, 'alignment', ''),
+      armorClass: ModelParsingHelper.safeString(map, 'armor_class', ''),
+      hitPoints: ModelParsingHelper.safeInt(map, 'hit_points', 0),
+      hitDice: ModelParsingHelper.safeString(map, 'hit_dice', ''),
+      speed: ModelParsingHelper.safeString(map, 'speed', ''),
+      strength: ModelParsingHelper.safeInt(map, 'strength', 10),
+      dexterity: ModelParsingHelper.safeInt(map, 'dexterity', 10),
+      constitution: ModelParsingHelper.safeInt(map, 'constitution', 10),
+      intelligence: ModelParsingHelper.safeInt(map, 'intelligence', 10),
+      wisdom: ModelParsingHelper.safeInt(map, 'wisdom', 10),
+      charisma: ModelParsingHelper.safeInt(map, 'charisma', 10),
+      savingThrows: ModelParsingHelper.safeString(map, 'saving_throws', '').split(','),
+      skills: MonsterParserService.parseSkills(map['skills']),
+      damageVulnerabilities: ModelParsingHelper.safeString(map, 'damage_vulnerabilities', '').split(','),
+      damageResistances: ModelParsingHelper.safeString(map, 'damage_resistances', '').split(','),
+      damageImmunities: ModelParsingHelper.safeString(map, 'damage_immunities', '').split(','),
+      conditionImmunities: ModelParsingHelper.safeString(map, 'condition_immunities', '').split(','),
+      senses: MonsterParserService.parseSenses(map['senses']),
+      languages: ModelParsingHelper.safeString(map, 'languages', ''),
+      challengeRating: ModelParsingHelper.safeDouble(map, 'challenge_rating', 0.0),
+      xp: ModelParsingHelper.safeInt(map, 'xp', 0),
+      specialAbilities: MonsterParserService.parseAbilities(map['special_abilities']),
+      actions: MonsterParserService.parseActions(map['actions']),
+      legendaryActions: MonsterParserService.parseLegendaryActions(map['legendary_actions']),
+      lairActions: MonsterParserService.parseLairActions(map['lair_actions']),
+      description: ModelParsingHelper.safeStringOrNull(map, 'description', null),
+      source: ModelParsingHelper.safeString(map, 'source', ''),
+      page: ModelParsingHelper.safeInt(map, 'page', 1),
+      isCustom: ModelParsingHelper.safeBool(map, 'is_custom', false),
+      version: ModelParsingHelper.safeStringOrNull(map, 'version', null),
+      customData: ModelParsingHelper.safeGet(map, 'custom_data', null),
     );
-  }
-
-  // Parser für komplexe Felder
-  static Map<String, int> _parseSkills(dynamic skillsData) {
-    if (skillsData == null || skillsData.toString().isEmpty) return {};
-    final skills = <String, int>{};
-    final parts = skillsData.toString().split(',');
-    for (final part in parts) {
-      final keyValue = part.split(':');
-      if (keyValue.length == 2) {
-        skills[keyValue[0]] = int.tryParse(keyValue[1]) ?? 0;
-      }
-    }
-    return skills;
-  }
-
-  static Map<String, String> _parseSenses(dynamic sensesData) {
-    if (sensesData == null || sensesData.toString().isEmpty) return {};
-    final senses = <String, String>{};
-    final parts = sensesData.toString().split(',');
-    for (final part in parts) {
-      final keyValue = part.split(':');
-      if (keyValue.length == 2) {
-        senses[keyValue[0]] = keyValue[1];
-      }
-    }
-    return senses;
-  }
-
-  static List<MonsterAbility> _parseAbilities(dynamic abilitiesData) {
-    if (abilitiesData == null) return [];
-    
-    List<dynamic> abilitiesList;
-    if (abilitiesData is List) {
-      abilitiesList = abilitiesData;
-    } else if (abilitiesData is Map) {
-      abilitiesList = [abilitiesData];
-    } else {
-      return [];
-    }
-    
-    return abilitiesList.map((a) {
-      if (a is Map) {
-        return MonsterAbility.fromMap(Map<String, dynamic>.from(a));
-      } else {
-        return MonsterAbility(
-          name: 'Unknown Ability',
-          description: a.toString(),
-        );
-      }
-    }).toList();
-  }
-
-  static List<MonsterAction> _parseActions(dynamic actionsData) {
-    if (actionsData == null) return [];
-    
-    List<dynamic> actionsList;
-    if (actionsData is List) {
-      actionsList = actionsData;
-    } else if (actionsData is Map) {
-      actionsList = [actionsData];
-    } else {
-      return [];
-    }
-    
-    return actionsList.map((a) {
-      if (a is Map) {
-        return MonsterAction.fromMap(Map<String, dynamic>.from(a));
-      } else {
-        return MonsterAction(
-          name: 'Unknown Action',
-          description: a.toString(),
-        );
-      }
-    }).toList();
-  }
-
-  static List<LegendaryAction>? _parseLegendaryActions(dynamic actionsData) {
-    if (actionsData == null) return null;
-    
-    List<dynamic> actionsList;
-    if (actionsData is List) {
-      actionsList = actionsData;
-    } else if (actionsData is Map) {
-      actionsList = [actionsData];
-    } else {
-      return null;
-    }
-    
-    return actionsList.map((a) {
-      if (a is Map) {
-        return LegendaryAction.fromMap(Map<String, dynamic>.from(a));
-      } else {
-        return LegendaryAction(
-          name: 'Unknown Legendary Action',
-          description: a.toString(),
-        );
-      }
-    }).toList();
-  }
-
-  static List<LairAction>? _parseLairActions(dynamic actionsData) {
-    if (actionsData == null) return null;
-    
-    List<dynamic> actionsList;
-    if (actionsData is List) {
-      actionsList = actionsData;
-    } else if (actionsData is Map) {
-      actionsList = [actionsData];
-    } else {
-      return null;
-    }
-    
-    return actionsList.map((a) {
-      if (a is Map) {
-        return LairAction.fromMap(Map<String, dynamic>.from(a));
-      } else {
-        return LairAction(
-          name: 'Unknown Lair Action',
-          description: a.toString(),
-        );
-      }
-    }).toList();
-  }
-
-  // Import von 5e.tools JSON
-  factory OfficialMonster.from5eToolsJson(Map<String, dynamic> json) {
-    return OfficialMonster(
-      name: json['name'],
-      size: json['size'],
-      type: json['type'],
-      subtype: json['subtype'],
-      alignment: json['alignment'],
-      armorClass: _parseArmorClass(json['ac']),
-      hitPoints: json['hp'],
-      hitDice: json['hitDice'],
-      speed: _parseSpeed(json['speed']),
-      strength: json['str'],
-      dexterity: json['dex'],
-      constitution: json['con'],
-      intelligence: json['int'],
-      wisdom: json['wis'],
-      charisma: json['cha'],
-      savingThrows: _parseStringListFromJson(json['save']),
-      skills: _parseSkillsFromJson(json['skill']),
-      damageVulnerabilities: _parseStringListFromJson(json['vulnerable']),
-      damageResistances: _parseStringListFromJson(json['resist']),
-      damageImmunities: _parseStringListFromJson(json['immune']),
-      conditionImmunities: _parseStringListFromJson(json['conditionImmune']),
-      senses: _parseSensesFromJson(json['senses']),
-      languages: json['languages'] ?? '',
-      challengeRating: _parseChallengeRating(json['cr']),
-      xp: json['xp'] ?? 0,
-      specialAbilities: _parseAbilitiesFromJson(json['special']),
-      actions: _parseActionsFromJson(json['action']),
-      legendaryActions: _parseLegendaryActionsFromJson(json['legendary']),
-      lairActions: _parseLairActionsFromJson(json['lairActions']),
-      description: json['trait'],
-      source: json['source'],
-      page: json['page'] ?? 1,
-    );
-  }
-
-  static String _parseArmorClass(dynamic acData) {
-    if (acData is String) return acData;
-    if (acData is Map) {
-      final ac = acData['ac']?.toString() ?? '10';
-      final notes = acData['notes']?.toString() ?? '';
-      return notes.isNotEmpty ? '$ac ($notes)' : ac;
-    }
-    return '10';
-  }
-
-  static String _parseSpeed(dynamic speedData) {
-    if (speedData is String) return speedData;
-    if (speedData is Map) {
-      final parts = <String>[];
-      speedData.forEach((key, value) {
-        if (value != null) {
-          parts.add('$key $value');
-        }
-      });
-      return parts.join(', ');
-    }
-    return '30 ft.';
-  }
-
-  static Map<String, int> _parseSkillsFromJson(dynamic skillsData) {
-    final skills = <String, int>{};
-    if (skillsData is Map) {
-      skillsData.forEach((key, value) {
-        skills[key] = value;
-      });
-    }
-    return skills;
-  }
-
-  static Map<String, String> _parseSensesFromJson(dynamic sensesData) {
-    final senses = <String, String>{};
-    if (sensesData is String) {
-      senses['passive'] = sensesData;
-    } else if (sensesData is Map) {
-      sensesData.forEach((key, value) {
-        senses[key] = value.toString();
-      });
-    }
-    return senses;
-  }
-
-  static double _parseChallengeRating(dynamic crData) {
-    if (crData is String) {
-      if (crData.contains('/')) {
-        final parts = crData.split('/');
-        return double.parse(parts[0]) / double.parse(parts[1]);
-      }
-      return double.tryParse(crData) ?? 0.0;
-    }
-    return (crData as num)?.toDouble() ?? 0.0;
-  }
-
-  static List<String> _parseStringListFromJson(dynamic data) {
-    if (data == null) return [];
-    
-    if (data is List) {
-      return data.map((item) => item.toString()).toList();
-    }
-    
-    if (data is String) {
-      // Wenn es ein String ist, könnte es kommagetrennt sein
-      return data.split(',').map((s) => s.trim()).toList();
-    }
-    
-    if (data is Map) {
-      // Für komplexe Strukturen, die als Map vorliegen
-      return data.entries.map((entry) => '${entry.key}: ${entry.value}').toList();
-    }
-    
-    // Fallback: Konvertiere zu String und gib als Liste zurück
-    return [data.toString()];
-  }
-
-  static List<MonsterAbility> _parseAbilitiesFromJson(dynamic abilitiesData) {
-    if (abilitiesData == null) return [];
-    
-    List<dynamic> abilitiesList;
-    if (abilitiesData is List) {
-      abilitiesList = abilitiesData;
-    } else if (abilitiesData is Map) {
-      abilitiesList = [abilitiesData];
-    } else {
-      return [];
-    }
-    
-    return abilitiesList.map((a) {
-      if (a is Map) {
-        return MonsterAbility.from5eToolsJson(Map<String, dynamic>.from(a));
-      } else {
-        return MonsterAbility(
-          name: 'Unknown Ability',
-          description: a.toString(),
-        );
-      }
-    }).toList();
-  }
-
-  static List<MonsterAction> _parseActionsFromJson(dynamic actionsData) {
-    if (actionsData == null) return [];
-    
-    List<dynamic> actionsList;
-    if (actionsData is List) {
-      actionsList = actionsData;
-    } else if (actionsData is Map) {
-      actionsList = [actionsData];
-    } else {
-      return [];
-    }
-    
-    return actionsList.map((a) {
-      if (a is Map) {
-        return MonsterAction.from5eToolsJson(Map<String, dynamic>.from(a));
-      } else {
-        return MonsterAction(
-          name: 'Unknown Action',
-          description: a.toString(),
-        );
-      }
-    }).toList();
-  }
-
-  static List<LegendaryAction>? _parseLegendaryActionsFromJson(dynamic actionsData) {
-    if (actionsData == null) return null;
-    
-    List<dynamic> actionsList;
-    if (actionsData is List) {
-      actionsList = actionsData;
-    } else if (actionsData is Map) {
-      actionsList = [actionsData];
-    } else {
-      return null;
-    }
-    
-    return actionsList.map((a) {
-      if (a is Map) {
-        return LegendaryAction.from5eToolsJson(Map<String, dynamic>.from(a));
-      } else {
-        return LegendaryAction(
-          name: 'Unknown Legendary Action',
-          description: a.toString(),
-        );
-      }
-    }).toList();
-  }
-
-  static List<LairAction>? _parseLairActionsFromJson(dynamic actionsData) {
-    if (actionsData == null) return null;
-    
-    List<dynamic> actionsList;
-    if (actionsData is List) {
-      actionsList = actionsData;
-    } else if (actionsData is Map) {
-      actionsList = [actionsData];
-    } else {
-      return null;
-    }
-    
-    return actionsList.map((a) {
-      if (a is Map) {
-        return LairAction.from5eToolsJson(Map<String, dynamic>.from(a));
-      } else {
-        return LairAction(
-          name: 'Unknown Lair Action',
-          description: a.toString(),
-        );
-      }
-    }).toList();
   }
 
   @override
@@ -505,12 +170,13 @@ class OfficialMonster {
   }
 }
 
+/// Spezielle Fähigkeit eines Monsters
 class MonsterAbility {
   final String name;
   final String description;
   final int? usage;
 
-  MonsterAbility({
+  const MonsterAbility({
     required this.name,
     required this.description,
     this.usage,
@@ -524,36 +190,27 @@ class MonsterAbility {
     };
   }
 
-  factory MonsterAbility.fromMap(dynamic data) {
-    if (data is Map<String, dynamic>) {
-      return MonsterAbility(
-        name: data['name']?.toString() ?? 'Unknown Ability',
-        description: data['description']?.toString() ?? '',
-        usage: data['usage'],
-      );
-    } else if (data is Map) {
-      return MonsterAbility(
-        name: data['name']?.toString() ?? 'Unknown Ability',
-        description: data['description']?.toString() ?? '',
-        usage: data['usage'],
-      );
-    } else {
-      return MonsterAbility(
-        name: 'Unknown Ability',
-        description: data?.toString() ?? '',
-      );
-    }
+  factory MonsterAbility.fromMap(Map<String, dynamic> map) {
+    return MonsterAbility(
+      name: ModelParsingHelper.safeString(map, 'name', 'Unknown Ability'),
+      description: ModelParsingHelper.safeString(map, 'description', ''),
+      usage: ModelParsingHelper.safeIntOrNull(map, 'usage', null),
+    );
   }
 
   factory MonsterAbility.from5eToolsJson(Map<String, dynamic> json) {
     return MonsterAbility(
-      name: json['name'],
-      description: json['entries']?.join('\n') ?? json['text'] ?? '',
-      usage: json['usage'],
+      name: ModelParsingHelper.safeString(json, 'name', ''),
+      description: json['entries'] is List ? (json['entries'] as List).join('\n') : ModelParsingHelper.safeString(json, 'text', ''),
+      usage: ModelParsingHelper.safeIntOrNull(json, 'usage', null),
     );
   }
+
+  @override
+  String toString() => 'MonsterAbility(name: $name)';
 }
 
+/// Aktion eines Monsters
 class MonsterAction {
   final String name;
   final String description;
@@ -561,7 +218,7 @@ class MonsterAction {
   final String? damage;
   final String? damageType;
 
-  MonsterAction({
+  const MonsterAction({
     required this.name,
     required this.description,
     this.attackBonus,
@@ -579,65 +236,54 @@ class MonsterAction {
     };
   }
 
-  factory MonsterAction.fromMap(dynamic data) {
-    if (data is Map<String, dynamic>) {
-      return MonsterAction(
-        name: data['name']?.toString() ?? 'Unknown Action',
-        description: data['description']?.toString() ?? '',
-        attackBonus: data['attack_bonus']?.toString(),
-        damage: data['damage']?.toString(),
-        damageType: data['damage_type']?.toString(),
-      );
-    } else if (data is Map) {
-      return MonsterAction(
-        name: data['name']?.toString() ?? 'Unknown Action',
-        description: data['description']?.toString() ?? '',
-        attackBonus: data['attack_bonus']?.toString(),
-        damage: data['damage']?.toString(),
-        damageType: data['damage_type']?.toString(),
-      );
-    } else {
-      return MonsterAction(
-        name: 'Unknown Action',
-        description: data?.toString() ?? '',
-      );
-    }
+  factory MonsterAction.fromMap(Map<String, dynamic> map) {
+    return MonsterAction(
+      name: ModelParsingHelper.safeString(map, 'name', 'Unknown Action'),
+      description: ModelParsingHelper.safeString(map, 'description', ''),
+      attackBonus: ModelParsingHelper.safeStringOrNull(map, 'attack_bonus', null),
+      damage: ModelParsingHelper.safeStringOrNull(map, 'damage', null),
+      damageType: ModelParsingHelper.safeStringOrNull(map, 'damage_type', null),
+    );
   }
 
   factory MonsterAction.from5eToolsJson(Map<String, dynamic> json) {
     final entries = json['entries'] ?? [];
-    final description = entries is List ? entries.join('\n') : entries.toString();
+    final description = entries is List ? (entries as List).join('\n') : entries.toString();
     
     String? attackBonus;
     String? damage;
     String? damageType;
 
     if (json['entries'] is List) {
-      for (final entry in json['entries']) {
-        if (entry is Map && entry['type'] == 'attack') {
-          attackBonus = entry['attackBonus'];
-          damage = entry['damage'];
-          damageType = entry['damageType'];
+      for (final entry in json['entries'] as List) {
+        if (entry is Map<String, dynamic> && entry['type'] == 'attack') {
+          attackBonus = ModelParsingHelper.safeStringOrNull(entry, 'attackBonus', null);
+          damage = ModelParsingHelper.safeStringOrNull(entry, 'damage', null);
+          damageType = ModelParsingHelper.safeStringOrNull(entry, 'damage_type', null);
         }
       }
     }
 
     return MonsterAction(
-      name: json['name'],
+      name: ModelParsingHelper.safeString(json, 'name', ''),
       description: description,
       attackBonus: attackBonus,
       damage: damage,
       damageType: damageType,
     );
   }
+
+  @override
+  String toString() => 'MonsterAction(name: $name)';
 }
 
+/// Legendäre Aktion eines Monsters
 class LegendaryAction {
   final String name;
   final String description;
   final int? cost;
 
-  LegendaryAction({
+  const LegendaryAction({
     required this.name,
     required this.description,
     this.cost = 1,
@@ -651,41 +297,32 @@ class LegendaryAction {
     };
   }
 
-  factory LegendaryAction.fromMap(dynamic data) {
-    if (data is Map<String, dynamic>) {
-      return LegendaryAction(
-        name: data['name']?.toString() ?? 'Unknown Legendary Action',
-        description: data['description']?.toString() ?? '',
-        cost: data['cost'],
-      );
-    } else if (data is Map) {
-      return LegendaryAction(
-        name: data['name']?.toString() ?? 'Unknown Legendary Action',
-        description: data['description']?.toString() ?? '',
-        cost: data['cost'],
-      );
-    } else {
-      return LegendaryAction(
-        name: 'Unknown Legendary Action',
-        description: data?.toString() ?? '',
-      );
-    }
+  factory LegendaryAction.fromMap(Map<String, dynamic> map) {
+    return LegendaryAction(
+      name: ModelParsingHelper.safeString(map, 'name', 'Unknown Legendary Action'),
+      description: ModelParsingHelper.safeString(map, 'description', ''),
+      cost: ModelParsingHelper.safeIntOrNull(map, 'cost', 1),
+    );
   }
 
   factory LegendaryAction.from5eToolsJson(Map<String, dynamic> json) {
     return LegendaryAction(
-      name: json['name'],
-      description: json['entries']?.join('\n') ?? json['text'] ?? '',
-      cost: json['cost'],
+      name: ModelParsingHelper.safeString(json, 'name', ''),
+      description: json['entries'] is List ? (json['entries'] as List).join('\n') : ModelParsingHelper.safeString(json, 'text', ''),
+      cost: ModelParsingHelper.safeIntOrNull(json, 'cost', 1),
     );
   }
+
+  @override
+  String toString() => 'LegendaryAction(name: $name)';
 }
 
+/// Höhlen-Aktion eines Monsters
 class LairAction {
   final String name;
   final String description;
 
-  LairAction({
+  const LairAction({
     required this.name,
     required this.description,
   });
@@ -697,29 +334,31 @@ class LairAction {
     };
   }
 
-  factory LairAction.fromMap(dynamic data) {
-    if (data is Map<String, dynamic>) {
-      return LairAction(
-        name: data['name']?.toString() ?? 'Unknown Lair Action',
-        description: data['description']?.toString() ?? '',
-      );
-    } else if (data is Map) {
-      return LairAction(
-        name: data['name']?.toString() ?? 'Unknown Lair Action',
-        description: data['description']?.toString() ?? '',
-      );
-    } else {
-      return LairAction(
-        name: 'Unknown Lair Action',
-        description: data?.toString() ?? '',
-      );
-    }
+  factory LairAction.fromMap(Map<String, dynamic> map) {
+    return LairAction(
+      name: ModelParsingHelper.safeString(map, 'name', 'Unknown Lair Action'),
+      description: ModelParsingHelper.safeString(map, 'description', ''),
+    );
   }
 
   factory LairAction.from5eToolsJson(Map<String, dynamic> json) {
     return LairAction(
-      name: json['name'],
-      description: json['entries']?.join('\n') ?? json['text'] ?? '',
+      name: ModelParsingHelper.safeString(json, 'name', ''),
+      description: json['entries'] is List ? (json['entries'] as List).join('\n') : ModelParsingHelper.safeString(json, 'text', ''),
     );
+  }
+
+  @override
+  String toString() => 'LairAction(name: $name)';
+}
+
+// Legacy Extensions für Abwärtskompatibilität
+extension OfficialMonsterExtension on OfficialMonster {
+  /// Legacy-Methode für 5e.tools Import
+  /// @deprecated Verwende stattdessen OfficialMonsterImportService.from5eToolsJson()
+  static OfficialMonster from5eToolsJson(Map<String, dynamic> json) {
+    // Importiere: '../services/official_monster_import_service.dart'
+    // Verwende: OfficialMonsterImportService.from5eToolsJson(json)
+    return OfficialMonsterImportService.from5eToolsJson(json);
   }
 }

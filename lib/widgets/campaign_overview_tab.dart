@@ -1,11 +1,11 @@
 // lib/widgets/campaign_overview_tab.dart
 import 'package:flutter/material.dart';
 import '../models/campaign.dart';
-import '../screens/bestiary_screen.dart';
-import '../screens/lore_keeper_screen.dart';
-import '../screens/quest_library_screen.dart';
-import '../screens/item_library_screen.dart';
-import '../screens/sound_library_screen.dart';
+import '../screens/enhanced_bestiary_screen.dart';
+import '../screens/enhanced_lore_keeper_screen.dart';
+import '../screens/enhanced_quest_library_screen.dart';
+import '../screens/enhanced_item_library_screen.dart';
+import '../screens/enhanced_sound_library_screen.dart';
 
 
 class CampaignOverviewTab extends StatelessWidget {
@@ -34,11 +34,11 @@ class CampaignOverviewTab extends StatelessWidget {
         const Padding(padding: EdgeInsets.symmetric(vertical: 16.0), child: Divider()),
         Text("Globale Bibliotheken", style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey)),
         const SizedBox(height: 8),
-        _buildDashboardTile(context, Icons.book, "Bestiarium", "Alle Monster & NSCs", () => Navigator.of(context).push(MaterialPageRoute(builder: (ctx) => const BestiaryScreen()))),
-        _buildDashboardTile(context, Icons.landscape, "Lore Keeper", "Orte, Gegenstände & Weltenwissen", () => Navigator.of(context).push(MaterialPageRoute(builder: (ctx) => const LoreKeeperScreen()))),
-        _buildDashboardTile(context, Icons.flag, "Quest-Bibliothek", "Vorlagen für Quests", () => Navigator.of(context).push(MaterialPageRoute(builder: (ctx) => const QuestLibraryScreen()))),
-        _buildDashboardTile(context, Icons.shield, "Ausrüstungskammer", "Alle Gegenstände verwalten", () => Navigator.of(context).push(MaterialPageRoute(builder: (ctx) => const ItemLibraryScreen()))),
-        _buildDashboardTile(context, Icons.graphic_eq, "Sound-Bibliothek", "Musik & Effekte verwalten", () => Navigator.of(context).push(MaterialPageRoute(builder: (ctx) => const SoundLibraryScreen()))),
+        _buildDashboardTile(context, Icons.book, "Bestiarium", "Alle Monster & NSCs", () => Navigator.of(context).push(MaterialPageRoute(builder: (ctx) => const EnhancedBestiaryScreen()))),
+        _buildDashboardTile(context, Icons.landscape, "Lore Keeper", "Orte, Gegenstände & Weltenwissen", () => Navigator.of(context).push(MaterialPageRoute(builder: (ctx) => const EnhancedLoreKeeperScreen()))),
+        _buildDashboardTile(context, Icons.flag, "Quest-Bibliothek", "Vorlagen für Quests", () => Navigator.of(context).push(MaterialPageRoute(builder: (ctx) => const EnhancedQuestLibraryScreen()))),
+        _buildDashboardTile(context, Icons.shield, "Ausrüstungskammer", "Alle Gegenstände verwalten", () => Navigator.of(context).push(MaterialPageRoute(builder: (ctx) => const EnhancedItemLibraryScreen()))),
+        _buildDashboardTile(context, Icons.graphic_eq, "Sound-Bibliothek", "Musik & Effekte verwalten", () => Navigator.of(context).push(MaterialPageRoute(builder: (ctx) => const EnhancedSoundLibraryScreen()))),
  
       ],
     );

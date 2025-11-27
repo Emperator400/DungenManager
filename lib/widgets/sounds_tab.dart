@@ -68,10 +68,10 @@ class _SoundsTabState extends State<SoundsTab> {
     if (!mounted || soundDetails == null) return;
 
     final newSound = Sound(
-      name: soundDetails['name'],
+      name: soundDetails['name'] as String,
       filePath: destinationFile.path,
-      soundType: soundDetails['type'],
-      description: soundDetails['description'],
+      soundType: soundDetails['type'] as SoundType,
+      description: soundDetails['description'] as String,
     );
     await dbHelper.insertSound(newSound);
     
@@ -156,8 +156,8 @@ class _SoundsTabState extends State<SoundsTab> {
                    if (!mounted || soundDetails == null) return;
 
                    final updatedSound = Sound(
-                    id: sound.id, filePath: sound.filePath, name: soundDetails['name'],
-                    soundType: soundDetails['type'], description: soundDetails['description'],
+                    id: sound.id, filePath: sound.filePath, name: soundDetails['name'] as String,
+                    soundType: soundDetails['type'] as SoundType, description: soundDetails['description'] as String,
                   );
                   await dbHelper.updateSound(updatedSound);
                   // HIER WAR EIN FEHLER: Der Check hat gefehlt!

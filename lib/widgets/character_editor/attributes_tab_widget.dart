@@ -15,7 +15,7 @@ class AttributesTabWidget extends StatelessWidget {
   final TextEditingController chaController;
   final TextEditingController levelController;
   final Set<String> proficientSkills;
-  final Function(String) onSkillToggle;
+  final void Function(String) onSkillToggle;
   final VoidCallback onRebuild;
   final bool showSkills;
 

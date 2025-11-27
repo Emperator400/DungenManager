@@ -1,29 +1,28 @@
 // lib/database/database_helper.dart
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
-import '../models/campaign.dart';
-import '../models/creature.dart';
-import '../models/player_character.dart';
-import '../models/session.dart';
-import '../models/wiki_entry.dart';
-import '../models/quest.dart';
-import '../models/inventory_item.dart';
-import '../models/scene.dart';
-import '../models/item.dart';
-import '../models/equip_slot.dart';
-import '../models/sound.dart';
-import '../models/sound_scene.dart';
-import '../models/scene_sound_link.dart';
-import '../models/official_monster.dart';
-import '../models/item_effect.dart';
 import 'package:uuid/uuid.dart';
+
+import '../models/campaign.dart';
+import '../models/campaign_quest.dart';
+import '../models/creature.dart';
+import '../models/inventory_item.dart';
+import '../models/item.dart';
+import '../models/player_character.dart';
+import '../models/quest.dart';
+import '../models/scene.dart';
+import '../models/session.dart';
+import '../models/sound.dart';
+import '../models/wiki_entry.dart';
+import '../models/official_monster.dart';
+import '../models/official_spell.dart';
 
 final _uuid = const Uuid();
 
 
 class DatabaseHelper {
   static const _databaseName = "dnd_helper.db";
-  static const _databaseVersion = 20;
+  static const _databaseVersion = 31; // Erhöhte Version für finale Migration
 
   DatabaseHelper._privateConstructor();
   static final DatabaseHelper instance = DatabaseHelper._privateConstructor();
@@ -34,8 +33,7 @@ class DatabaseHelper {
     return _database!;
   }
 
-
-  _initDatabase() async {
+  Future<Database> _initDatabase() async {
     String path = join(await getDatabasesPath(), _databaseName);
     return await openDatabase(path,
         version: _databaseVersion,
@@ -44,9 +42,9 @@ class DatabaseHelper {
   }
 
   // --- Datenbank-Struktur (Erstellen & Upgraden) ---
-  Future _onCreate(Database db, int version) async => await _createTables(db, version);
+  Future<void> _onCreate(Database db, int version) async => await _createTables(db, version);
 
-  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     // Schrittweise Migration für bestehende Daten
     if (oldVersion < 18) {
       // Gold-Felder zur creatures-Tabelle hinzufügen
@@ -93,7 +91,7 @@ class DatabaseHelper {
         // Spalte existiert bereits
       }
       
-      // Performance-Indizes für die neue Felder
+      // Performance-Indizes für die neuen Felder
       try {
         await db.execute('CREATE INDEX idx_creatures_source_type ON creatures(source_type)');
       } catch (e) {
@@ -266,13 +264,497 @@ class DatabaseHelper {
       }
       
       try {
-        await db.execute('CREATE INDEX idx_players_campaign ON player_characters(campaignId)');
+        await db.execute('CREATE INDEX idx_players_campaign ON player_characters(campaign_id)');
       } catch (e) {
         // Index existiert bereits
       }
     }
     
-    // Für größere Versionsunterschiede könnten hier weitere Migrationen folgen
+    // NEU: Migration für Version 21: imageUrl und Spell-Felder für Items
+    if (oldVersion < 21) {
+      // imageUrl Spalte zur items Tabelle hinzufügen
+      try {
+        await db.execute('ALTER TABLE items ADD COLUMN imageUrl TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      // Spell-spezifische Spalten zur items Tabelle hinzufügen
+      try {
+        await db.execute('ALTER TABLE items ADD COLUMN spellId TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE items ADD COLUMN isSpell INTEGER DEFAULT 0');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE items ADD COLUMN spellLevel INTEGER');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE items ADD COLUMN spellSchool TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE items ADD COLUMN isCantrip INTEGER DEFAULT 0');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE items ADD COLUMN maxCastsPerDay INTEGER');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE items ADD COLUMN requiresConcentration INTEGER DEFAULT 0');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+    }
+    
+    // NEU: Migration für Version 22: attack_list und inventory Spalten für player_characters und creatures
+    if (oldVersion < 22) {
+      // attack_list Spalte zur player_characters Tabelle hinzufügen
+      try {
+        await db.execute('ALTER TABLE player_characters ADD COLUMN attack_list TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      // inventory Spalte zur player_characters Tabelle hinzufügen
+      try {
+        await db.execute('ALTER TABLE player_characters ADD COLUMN inventory TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      // attack_list Spalte zur creatures Tabelle hinzufügen
+      try {
+        await db.execute('ALTER TABLE creatures ADD COLUMN attack_list TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      // inventory Spalte zur creatures Tabelle hinzufügen
+      try {
+        await db.execute('ALTER TABLE creatures ADD COLUMN inventory TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+    }
+    
+    // NEU: Migration für Version 23: WikiEntry Erweiterung für Kartenintegration und Tags
+    if (oldVersion < 23) {
+      // Neue Felder zur wiki_entries Tabelle hinzufügen
+      try {
+        await db.execute('ALTER TABLE wiki_entries ADD COLUMN locationData TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE wiki_entries ADD COLUMN tags TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE wiki_entries ADD COLUMN createdAt INTEGER');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE wiki_entries ADD COLUMN updatedAt INTEGER');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE wiki_entries ADD COLUMN campaignId TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      // Performance-Indizes für neue Felder
+      try {
+        await db.execute('CREATE INDEX idx_wiki_entries_type ON wiki_entries(entryType)');
+      } catch (e) {
+        // Index existiert bereits
+      }
+      
+      try {
+        await db.execute('CREATE INDEX idx_wiki_entries_campaign ON wiki_entries(campaignId)');
+      } catch (e) {
+        // Index existiert bereits
+      }
+      
+      try {
+        await db.execute('CREATE INDEX idx_wiki_entries_updated ON wiki_entries(updatedAt DESC)');
+      } catch (e) {
+        // Index existiert bereits
+      }
+      
+      // Bestehende Einträge mit Default-Werten aktualisieren
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await db.update(
+        'wiki_entries',
+        {
+          'createdAt': now,
+          'updatedAt': now,
+          'tags': '', // Leerer String für keine Tags
+        },
+        where: 'createdAt IS NULL OR updatedAt IS NULL',
+      );
+    }
+    
+    // NEU: Migration für Version 24: WikiEntry Erweiterung für Metadaten und hierarchische Strukturen
+    if (oldVersion < 24) {
+      // Neue Metadaten-Felder zur wiki_entries Tabelle hinzufügen
+      try {
+        await db.execute('ALTER TABLE wiki_entries ADD COLUMN imageUrl TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE wiki_entries ADD COLUMN createdBy TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE wiki_entries ADD COLUMN parentId TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE wiki_entries ADD COLUMN childIds TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE wiki_entries ADD COLUMN isMarkdown INTEGER DEFAULT 0');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      // Performance-Indizes für neue Felder
+      try {
+        await db.execute('CREATE INDEX idx_wiki_entries_parent ON wiki_entries(parentId)');
+      } catch (e) {
+        // Index existiert bereits
+      }
+      
+      try {
+        await db.execute('CREATE INDEX idx_wiki_entries_created_by ON wiki_entries(createdBy)');
+      } catch (e) {
+        // Index existiert bereits
+      }
+      
+      try {
+        await db.execute('CREATE INDEX idx_wiki_entries_image ON wiki_entries(imageUrl)');
+      } catch (e) {
+        // Index existiert bereits
+      }
+    }
+    
+    // NEU: Migration für Version 25: Wiki Links und Cross-References
+    if (oldVersion < 25) {
+      // Wiki Links Tabelle erstellen
+      try {
+        await db.execute('''
+          CREATE TABLE wiki_links (
+            id TEXT PRIMARY KEY,
+            source_entry_id TEXT NOT NULL,
+            target_entry_id TEXT NOT NULL,
+            link_type TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            created_by TEXT
+          )
+        ''');
+      } catch (e) {
+        // Tabelle existiert bereits
+      }
+      
+      // Performance-Indizes für Wiki Links
+      try {
+        await db.execute('CREATE INDEX idx_wiki_links_source ON wiki_links(source_entry_id)');
+      } catch (e) {
+        // Index existiert bereits
+      }
+      
+      try {
+        await db.execute('CREATE INDEX idx_wiki_links_target ON wiki_links(target_entry_id)');
+      } catch (e) {
+        // Index existiert bereits
+      }
+      
+      try {
+        await db.execute('CREATE INDEX idx_wiki_links_type ON wiki_links(link_type)');
+      } catch (e) {
+        // Index existiert bereits
+      }
+    }
+    
+    // NEU: Migration für Version 26: Wiki Favoriten-Funktion
+    if (oldVersion < 26) {
+      // Favoriten-Feld zur wiki_entries Tabelle hinzufügen
+      try {
+        await db.execute('ALTER TABLE wiki_entries ADD COLUMN isFavorite INTEGER DEFAULT 0');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      // Performance-Index für Favoriten
+      try {
+        await db.execute('CREATE INDEX idx_wiki_entries_favorite ON wiki_entries(isFavorite)');
+      } catch (e) {
+        // Index existiert bereits
+      }
+    }
+    
+    // NEU: Migration für Version 27: Quest-Erweiterung für verbessertes Quest-Management
+    if (oldVersion < 27) {
+      // Neue Felder zur quests Tabelle hinzufügen
+      try {
+        await db.execute('ALTER TABLE quests ADD COLUMN quest_type TEXT DEFAULT \'side\'');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE quests ADD COLUMN difficulty TEXT DEFAULT \'medium\'');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE quests ADD COLUMN recommended_level INTEGER');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE quests ADD COLUMN estimated_duration_hours INTEGER');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE quests ADD COLUMN tags TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE quests ADD COLUMN rewards TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE quests ADD COLUMN location TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE quests ADD COLUMN involved_npcs TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE quests ADD COLUMN is_favorite INTEGER DEFAULT 0');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE quests ADD COLUMN created_at INTEGER');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE quests ADD COLUMN updated_at INTEGER');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE quests ADD COLUMN linked_wiki_entry_ids TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE quests ADD COLUMN campaign_id TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      // Performance-Indizes für neue Quest-Felder
+      try {
+        await db.execute('CREATE INDEX idx_quests_type ON quests(quest_type)');
+      } catch (e) {
+        // Index existiert bereits
+      }
+      
+      try {
+        await db.execute('CREATE INDEX idx_quests_difficulty ON quests(difficulty)');
+      } catch (e) {
+        // Index existiert bereits
+      }
+      
+      try {
+        await db.execute('CREATE INDEX idx_quests_favorite ON quests(is_favorite)');
+      } catch (e) {
+        // Index existiert bereits
+      }
+      
+      try {
+        await db.execute('CREATE INDEX idx_quests_level ON quests(recommended_level)');
+      } catch (e) {
+        // Index existiert bereits
+      }
+      
+      // Bestehende Quests mit Default-Werten aktualisieren
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await db.update(
+        'quests',
+        {
+          'created_at': now,
+          'updated_at': now,
+          'tags': '', // Leerer String für keine Tags
+          'rewards': '', // Leerer String für keine Belohnungen
+          'involved_npcs': '', // Leerer String für keine NPCs
+        },
+        where: 'created_at IS NULL OR updated_at IS NULL',
+      );
+    }
+    
+    // NEU: Migration für Version 28: Alte campaignId Spalte in player_characters umbenennen
+    if (oldVersion < 28) {
+      try {
+        await db.execute('ALTER TABLE player_characters RENAME COLUMN campaignId TO campaign_id');
+      } catch (e) {
+        // Spalte existiert bereits oder wurde bereits umbenannt
+      }
+    }
+    
+    // NEU: Migration für Version 29: Campaign Schema Update
+    if (oldVersion < 29) {
+      // Neue Spalten zur campaigns Tabelle hinzufügen
+      try {
+        await db.execute('ALTER TABLE campaigns ADD COLUMN status TEXT NOT NULL DEFAULT \'planning\'');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE campaigns ADD COLUMN type TEXT NOT NULL DEFAULT \'homebrew\'');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE campaigns ADD COLUMN created_at TEXT NOT NULL DEFAULT \'\'');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE campaigns ADD COLUMN updated_at TEXT NOT NULL DEFAULT \'\'');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE campaigns ADD COLUMN started_at TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE campaigns ADD COLUMN completed_at TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE campaigns ADD COLUMN dungeon_master_id TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE campaigns ADD COLUMN player_character_ids TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE campaigns ADD COLUMN quest_ids TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE campaigns ADD COLUMN wiki_entry_ids TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE campaigns ADD COLUMN session_ids TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE campaigns ADD COLUMN settings TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE campaigns ADD COLUMN stats TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      // Bestehende Kampagnen mit Default-Werten aktualisieren
+      final now = DateTime.now().toIso8601String();
+      await db.update(
+        'campaigns',
+        {
+          'status': 'planning',
+          'type': 'homebrew',
+          'created_at': now,
+          'updated_at': now,
+          'settings': '{"max_player_level":20,"starting_level":1,"party_size":"4-5","available_monsters":"","available_spells":"","available_items":"","available_npcs":"","allow_custom_content":1,"is_public":0,"image_url":null,"custom_rules":""}',
+          'stats': '{"total_sessions":0,"total_quests":0,"completed_quests":0,"total_characters":0,"total_experience_awarded":0,"total_gold_awarded":0.0,"total_play_time_ms":0}',
+        },
+        where: 'created_at = \'\' OR updated_at = \'\'',
+      );
+    }
+    
+    // Alte Migrationen für Version 17 und darunter
     if (oldVersion < 17) {
       // Alte Migrationen für Version 17 und darunter
       await _migrateToVersion17(db);
@@ -280,17 +762,17 @@ class DatabaseHelper {
   }
   
   // Alte Migration für Version 17
-  Future _migrateToVersion17(Database db) async {
+  Future<void> _migrateToVersion17(Database db) async {
     // Hier könnten alte Migrationen für Version 17 implementiert werden
     // Aktuell nicht benötigt, da wir direkt auf Version 18 migrieren
   }
 
   // Diese eine Methode erstellt den GESAMTEN, AKTUELLEN Zustand der Datenbank
-  Future _createTables(Database db, int version) async {
+  Future<void> _createTables(Database db, int version) async {
 
       await db.execute('''
       CREATE TABLE player_characters (
-        id TEXT PRIMARY KEY, campaignId TEXT NOT NULL, name TEXT NOT NULL, playerName TEXT NOT NULL, 
+        id TEXT PRIMARY KEY, campaign_id TEXT NOT NULL, name TEXT NOT NULL, playerName TEXT NOT NULL, 
         className TEXT NOT NULL, 
         raceName TEXT NOT NULL,
         level INTEGER NOT NULL, maxHp INTEGER NOT NULL, armorClass INTEGER NOT NULL, 
@@ -314,7 +796,10 @@ class DatabaseHelper {
         source_type TEXT DEFAULT 'custom',
         source_id TEXT,
         is_favorite INTEGER DEFAULT 0,
-        version TEXT DEFAULT '1.0'
+        version TEXT DEFAULT '1.0',
+        -- NEU: Strukturierte Listen für Version 22
+        attack_list TEXT,
+        inventory TEXT
       )
     ''');
 
@@ -326,6 +811,7 @@ class DatabaseHelper {
         itemType TEXT NOT NULL,
         weight REAL NOT NULL,
         cost REAL NOT NULL,
+        imageUrl TEXT,
         damage TEXT,
         properties TEXT,
         acFormula TEXT,
@@ -335,11 +821,18 @@ class DatabaseHelper {
         requiresAttunement INTEGER,
         hasDurability INTEGER DEFAULT 0,
         maxDurability INTEGER,
-        isRepairable INTEGER DEFAULT 0
+        isRepairable INTEGER DEFAULT 0,
+        spellId TEXT,
+        isSpell INTEGER DEFAULT 0,
+        spellLevel INTEGER,
+        spellSchool TEXT,
+        isCantrip INTEGER DEFAULT 0,
+        maxCastsPerDay INTEGER,
+        requiresConcentration INTEGER DEFAULT 0
       )
     ''');
 
-       await db.execute('''
+    await db.execute('''
       CREATE TABLE inventory_items (
         id TEXT PRIMARY KEY,
         ownerId TEXT NOT NULL,
@@ -355,6 +848,20 @@ class DatabaseHelper {
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,
         description TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'planning',
+        type TEXT NOT NULL DEFAULT 'homebrew',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        started_at TEXT,
+        completed_at TEXT,
+        dungeon_master_id TEXT,
+        player_character_ids TEXT,
+        quest_ids TEXT,
+        wiki_entry_ids TEXT,
+        session_ids TEXT,
+        settings TEXT,
+        stats TEXT,
+        -- Legacy fields for backward compatibility
         available_monsters TEXT,
         available_spells TEXT,
         available_items TEXT,
@@ -362,7 +869,7 @@ class DatabaseHelper {
       )
     ''');
 
-await db.execute('''
+    await db.execute('''
       CREATE TABLE sessions (
         id TEXT PRIMARY KEY, 
         campaignId TEXT NOT NULL, 
@@ -406,7 +913,10 @@ await db.execute('''
         source_type TEXT DEFAULT 'custom',
         source_id TEXT,
         is_favorite INTEGER DEFAULT 0,
-        version TEXT DEFAULT '1.0'
+        version TEXT DEFAULT '1.0',
+        -- NEU: Strukturierte Listen für Version 22
+        attack_list TEXT,
+        inventory TEXT
       )
     ''');
     await db.execute('''
@@ -414,7 +924,18 @@ await db.execute('''
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,
         content TEXT NOT NULL,
-        entryType TEXT NOT NULL
+        entryType TEXT NOT NULL,
+        locationData TEXT,
+        tags TEXT,
+        createdAt INTEGER NOT NULL,
+        updatedAt INTEGER NOT NULL,
+        campaignId TEXT,
+        imageUrl TEXT,
+        createdBy TEXT,
+        parentId TEXT,
+        childIds TEXT,
+        isMarkdown INTEGER DEFAULT 0,
+        isFavorite INTEGER DEFAULT 0
       )
     ''');
     await db.execute('''
@@ -424,12 +945,36 @@ await db.execute('''
         PRIMARY KEY (campaignId, wikiEntryId)
       )
     ''');
+    
+    await db.execute('''
+      CREATE TABLE wiki_links (
+        id TEXT PRIMARY KEY,
+        source_entry_id TEXT NOT NULL,
+        target_entry_id TEXT NOT NULL,
+        link_type TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        created_by TEXT
+      )
+    ''');
      await db.execute('''
       CREATE TABLE quests (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,
         description TEXT NOT NULL,
-        goal TEXT NOT NULL
+        goal TEXT NOT NULL,
+        quest_type TEXT NOT NULL DEFAULT 'side',
+        difficulty TEXT NOT NULL DEFAULT 'medium',
+        recommended_level INTEGER,
+        estimated_duration_hours INTEGER,
+        tags TEXT,
+        rewards TEXT,
+        location TEXT,
+        involved_npcs TEXT,
+        linked_wiki_entry_ids TEXT,
+        campaign_id TEXT,
+        is_favorite INTEGER DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
       )
     ''');
     await db.execute('''
@@ -454,7 +999,7 @@ await db.execute('''
       )
     ''');
 
-        await db.execute('''
+    await db.execute('''
       CREATE TABLE sounds (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
@@ -696,6 +1241,15 @@ await db.execute('''
     await db.execute('CREATE INDEX idx_items_type ON official_items(item_type)');
     await db.execute('CREATE INDEX idx_locations_name ON official_locations(name)');
     await db.execute('CREATE INDEX idx_locations_type ON official_locations(location_type)');
+    
+    // Performance-Indizes für WikiEntries
+    await db.execute('CREATE INDEX idx_wiki_entries_favorite ON wiki_entries(isFavorite)');
+    await db.execute('CREATE INDEX idx_wiki_entries_type ON wiki_entries(entryType)');
+    await db.execute('CREATE INDEX idx_wiki_entries_campaign ON wiki_entries(campaignId)');
+    await db.execute('CREATE INDEX idx_wiki_entries_updated ON wiki_entries(updatedAt DESC)');
+    await db.execute('CREATE INDEX idx_wiki_entries_parent ON wiki_entries(parentId)');
+    await db.execute('CREATE INDEX idx_wiki_entries_created_by ON wiki_entries(createdBy)');
+    await db.execute('CREATE INDEX idx_wiki_entries_image ON wiki_entries(imageUrl)');
   }
 
   // --- Campaign CRUD ---
@@ -705,27 +1259,28 @@ await db.execute('''
     return List.generate(maps.length, (i) => Campaign.fromMap(maps[i]));
   }
   Future<int> updateCampaign(Campaign campaign) async => await (await database).update('campaigns', campaign.toMap(), where: 'id = ?', whereArgs: [campaign.id]);
+  Future<void> deleteCampaign(String campaignId) async => await (await database).delete('campaigns', where: 'id = ?', whereArgs: [campaignId]);
   Future<void> deleteCampaignAndAssociatedData(String campaignId) async {
     final db = await instance.database;
-    // Beginne eine "Transaktion", um sicherzustellen, dass alles oder nichts gelöscht wird
+    // Beginnen eine "Transaktion", um sicherzustellen, dass alles oder nichts gelöscht wird
     await db.transaction((txn) async {
       // 1. Finde alle Sessions, die zur Kampagne gehören
-      final sessions = await txn.query('sessions', where: 'campaignId = ?', whereArgs: [campaignId]);
+      final sessions = await txn.query('sessions', where: 'campaignId = ? OR campaignId = ?', whereArgs: [campaignId, campaignId]);
       for (var session in sessions) {
         // 2. Lösche alle Szenen, die zu jeder Session gehören
         await txn.delete('scenes', where: 'sessionId = ?', whereArgs: [session['id']]);
       }
       // 3. Lösche alle Sessions der Kampagne
-      await txn.delete('sessions', where: 'campaignId = ?', whereArgs: [campaignId]);
+      await txn.delete('sessions', where: 'campaignId = ? OR campaignId = ?', whereArgs: [campaignId, campaignId]);
 
       // 4. Finde alle Helden der Kampagne
-      final playerCharacters = await txn.query('player_characters', where: 'campaignId = ?', whereArgs: [campaignId]);
+      final playerCharacters = await txn.query('player_characters', where: 'campaign_id = ?', whereArgs: [campaignId]);
       for (var pc in playerCharacters) {
         // 5. Lösche das gesamte Inventar für jeden Helden
         await txn.delete('inventory_items', where: 'ownerId = ?', whereArgs: [pc['id']]);
       }
       // 6. Lösche alle Helden der Kampagne
-      await txn.delete('player_characters', where: 'campaignId = ?', whereArgs: [campaignId]);
+      await txn.delete('player_characters', where: 'campaign_id = ?', whereArgs: [campaignId]);
 
       // 7. Lösche alle Quest-Verknüpfungen der Kampagne
       await txn.delete('campaign_quests', where: 'campaignId = ?', whereArgs: [campaignId]);
@@ -739,9 +1294,16 @@ await db.execute('''
   // --- PlayerCharacter CRUD ---
   Future<int> insertPlayerCharacter(PlayerCharacter pc) async => await (await database).insert('player_characters', pc.toMap());
   Future<List<PlayerCharacter>> getPlayerCharactersForCampaign(String campaignId) async {
-    final maps = await (await database).query('player_characters', where: 'campaignId = ?', whereArgs: [campaignId], orderBy: 'name ASC');
+    final maps = await (await database).query('player_characters', where: 'campaign_id = ? OR campaignId = ?', whereArgs: [campaignId, campaignId], orderBy: 'name ASC');
     return List.generate(maps.length, (i) => PlayerCharacter.fromMap(maps[i]));
   }
+  
+  /// NEU: Gibt alle Player Characters aus allen Kampagnen zurück
+  Future<List<PlayerCharacter>> getAllPlayerCharacters() async {
+    final maps = await (await database).query('player_characters', orderBy: 'name ASC');
+    return List.generate(maps.length, (i) => PlayerCharacter.fromMap(maps[i]));
+  }
+  
   Future<int> updatePlayerCharacter(PlayerCharacter pc) async => await (await database).update('player_characters', pc.toMap(), where: 'id = ?', whereArgs: [pc.id]);
   Future<int> deletePlayerCharacter(String id) async => await (await database).delete('player_characters', where: 'id = ?', whereArgs: [id]);
   
@@ -816,6 +1378,8 @@ await db.execute('''
       sourceId: null,
       isFavorite: false, // Kopien sind nicht favorisiert
       version: '1.0',
+      attackList: original.attackList,
+      inventory: original.inventory,
     );
     
     await insertPlayerCharacter(copy);
@@ -941,25 +1505,16 @@ await db.execute('''
     ).then((maps) => List.generate(maps.length, (i) => Creature.fromMap(maps[i])));
   }
   
-  Future<List<Creature>> getCreaturesBySourceType(String sourceType) async {
-    final maps = await (await database).query(
-      'creatures',
-      where: 'source_type = ?',
-      whereArgs: [sourceType],
-      orderBy: 'name ASC',
-    );
-    return List.generate(maps.length, (i) => Creature.fromMap(maps[i]));
+  Future<Creature?> getCreatureById(String id) async {
+    final maps = await (await database).query('creatures', where: 'id = ?', whereArgs: [id]);
+    if (maps.isNotEmpty) return Creature.fromMap(maps.first);
+    return null;
   }
   
-  Future<List<Creature>> getFavoriteCreatures() async {
-    final maps = await (await database).query(
-      'creatures',
-      where: 'is_favorite = 1',
-      orderBy: 'name ASC',
-    );
-    return List.generate(maps.length, (i) => Creature.fromMap(maps[i]));
-  }
+  Future<int> updateCreature(Creature creature) async => await (await database).update('creatures', creature.toMap(), where: 'id = ?', whereArgs: [creature.id]);
+  Future<int> deleteCreature(String id) async => await (await database).delete('creatures', where: 'id = ?', whereArgs: [id]);
   
+  // NEU: Creature Favoriten-Management
   Future<void> toggleCreatureFavorite(String id) async {
     final creature = await getCreatureById(id);
     if (creature != null) {
@@ -972,92 +1527,68 @@ await db.execute('''
     }
   }
   
-  Future<void> updateCreatureSource(String id, String sourceType, String? sourceId) async {
-    await (await database).update(
+  Future<List<Creature>> getFavoriteCreatures() async {
+    final maps = await (await database).query(
       'creatures',
-      {
-        'source_type': sourceType,
-        'source_id': sourceId,
-      },
-      where: 'id = ?',
-      whereArgs: [id],
+      where: 'is_favorite = 1',
+      orderBy: 'name ASC',
     );
+    return List.generate(maps.length, (i) => Creature.fromMap(maps[i]));
   }
   
-  Future<Creature?> getCreatureById(String id) async {
-    final maps = await (await database).query('creatures', where: 'id = ?', whereArgs: [id]);
-    return maps.isNotEmpty ? Creature.fromMap(maps.first) : null;
-  }
-  
-  Future<int> updateCreature(Creature creature) async => await (await database).update('creatures', creature.toMap(), where: 'id = ?', whereArgs: [creature.id]);
-  Future<int> deleteCreature(String id) async => await (await database).delete('creatures', where: 'id = ?', whereArgs: [id]);
-  Future<int> deleteAllCreatures() async => await (await database).delete('creatures');
-  
-  // Neue Methoden für Synchronisation mit offiziellen Monstern
-  Future<List<Creature>> syncOfficialMonstersToCreatures() async {
-    final officialMonsters = await getAllOfficialMonsters(limit: 1000);
-    final syncedCreatures = <Creature>[];
+  // NEU: Creature Duplizieren
+  Future<String> duplicateCreature(String id) async {
+    final original = await getCreatureById(id);
+    if (original == null) throw Exception('Creature nicht gefunden: $id');
     
-    for (final officialData in officialMonsters) {
-      final officialMonster = OfficialMonster.fromMap(officialData);
-      
-      // Prüfen, ob das Monster bereits als Creature existiert
-      final existing = await (await database).query(
-        'creatures',
-        where: 'source_id = ? AND source_type = ?',
-        whereArgs: [officialMonster.id, 'official'],
-      );
-      
-      if (existing.isEmpty) {
-        // Neues Creature aus offiziellem Monster erstellen
-        final creature = Creature.fromOfficialMonster(
-          officialMonsterId: officialMonster.id,
-          name: officialMonster.name,
-          maxHp: officialMonster.hitPoints,
-          armorClass: int.tryParse(officialMonster.armorClass) ?? 10,
-          speed: officialMonster.speed,
-          strength: officialMonster.strength,
-          dexterity: officialMonster.dexterity,
-          constitution: officialMonster.constitution,
-          intelligence: officialMonster.intelligence,
-          wisdom: officialMonster.wisdom,
-          charisma: officialMonster.charisma,
-          size: officialMonster.size,
-          type: officialMonster.type,
-          subtype: officialMonster.subtype,
-          alignment: officialMonster.alignment,
-          challengeRating: officialMonster.challengeRating.toInt(),
-          specialAbilities: officialMonster.specialAbilities.isNotEmpty 
-              ? officialMonster.specialAbilities.map((a) => '${a.name}: ${a.description}').join('\n\n')
-              : null,
-          legendaryActions: officialMonster.legendaryActions?.isNotEmpty == true
-              ? officialMonster.legendaryActions!.map((a) => '${a.name}: ${a.description}').join('\n\n')
-              : null,
-          description: officialMonster.description,
-        );
-        
-        await insertCreature(creature);
-        syncedCreatures.add(creature);
-      }
-    }
+    // Neue ID und Name generieren
+    final newId = _uuid.v4();
+    final newName = '${original.name} (Kopie)';
     
-    return syncedCreatures;
-  }
-  
-  Future<int> getCreaturesCount({String? sourceType}) async {
-    if (sourceType != null) {
-      final result = await (await database).rawQuery(
-        'SELECT COUNT(*) as count FROM creatures WHERE source_type = ?',
-        [sourceType],
-      );
-      return result.first['count'] as int;
-    } else {
-      final result = await (await database).rawQuery('SELECT COUNT(*) as count FROM creatures');
-      return result.first['count'] as int;
-    }
+    // Kopie erstellen
+    final copy = Creature(
+      id: newId,
+      name: newName,
+      maxHp: original.maxHp,
+      armorClass: original.armorClass,
+      speed: original.speed,
+      attacks: original.attacks,
+      initiativeBonus: original.initiativeBonus,
+      strength: original.strength,
+      dexterity: original.dexterity,
+      constitution: original.constitution,
+      intelligence: original.intelligence,
+      wisdom: original.wisdom,
+      charisma: original.charisma,
+      isPlayer: original.isPlayer,
+      gold: original.gold,
+      silver: original.silver,
+      copper: original.copper,
+      officialMonsterId: original.officialMonsterId,
+      officialSpellIds: original.officialSpellIds,
+      officialItemIds: original.officialItemIds,
+      size: original.size,
+      type: original.type,
+      subtype: original.subtype,
+      alignment: original.alignment,
+      challengeRating: original.challengeRating,
+      specialAbilities: original.specialAbilities,
+      legendaryActions: original.legendaryActions,
+      isCustom: true, // Kopien sind immer custom
+      description: original.description,
+      sourceType: 'custom',
+      sourceId: null,
+      isFavorite: false, // Kopien sind nicht favorisiert
+      version: '1.0',
+      attackList: original.attackList,
+      inventory: original.inventory,
+    );
+    
+    await insertCreature(copy);
+    return newId;
   }
 
-  // --- Item (Armory) CRUD ---
+  // --- Item CRUD ---
   Future<int> insertItem(Item item) async => await (await database).insert('items', item.toMap());
   Future<List<Item>> getAllItems() async {
     final maps = await (await database).query('items', orderBy: 'name ASC');
@@ -1071,141 +1602,24 @@ await db.execute('''
   Future<int> updateItem(Item item) async => await (await database).update('items', item.toMap(), where: 'id = ?', whereArgs: [item.id]);
   Future<int> deleteItem(String id) async => await (await database).delete('items', where: 'id = ?', whereArgs: [id]);
 
-  // --- InventoryItem (Link) CRUD ---
-  Future<int> insertInventoryItem(InventoryItem item) async => await (await database).insert('inventory_items', item.toMap());
+  // --- Inventory CRUD ---
+  Future<int> insertInventoryItem(InventoryItem inventoryItem) async => await (await database).insert('inventory_items', inventoryItem.toMap());
   Future<List<InventoryItem>> getInventoryForOwner(String ownerId) async {
-    final maps = await (await database).query('inventory_items', where: 'ownerId = ?', whereArgs: [ownerId]);
+    final maps = await (await database).query('inventory_items', where: 'ownerId = ? OR ownerId = ?', whereArgs: [ownerId, ownerId], orderBy: 'isEquipped DESC, itemId ASC');
     return List.generate(maps.length, (i) => InventoryItem.fromMap(maps[i]));
   }
-  Future<int> updateInventoryItem(InventoryItem item) async => await (await database).update('inventory_items', item.toMap(), where: 'id = ?', whereArgs: [item.id]);
+  Future<int> updateInventoryItem(InventoryItem inventoryItem) async => await (await database).update('inventory_items', inventoryItem.toMap(), where: 'id = ?', whereArgs: [inventoryItem.id]);
   Future<int> deleteInventoryItem(String id) async => await (await database).delete('inventory_items', where: 'id = ?', whereArgs: [id]);
-  Future<List<DisplayInventoryItem>> getDisplayInventoryForOwner(String ownerId) async {
-    final List<InventoryItem> inventoryItems = await getInventoryForOwner(ownerId);
-    final List<DisplayInventoryItem> displayItems = [];
-    for (final invItem in inventoryItems) {
-      final itemDetails = await getItemById(invItem.itemId);
-      if (itemDetails != null) {
-        displayItems.add(DisplayInventoryItem(inventoryItem: invItem, item: itemDetails));
-      }
-    }
-    return displayItems;
-  }
+  Future<void> deleteInventoryForOwner(String ownerId) async => await (await database).delete('inventory_items', where: 'ownerId = ?', whereArgs: [ownerId]);
 
-  // --- Ausrüstungs-spezifische Methoden ---
-  
-  // Item ausrüsten
-  Future<void> equipItem(String inventoryItemId, EquipSlot slot) async {
-    final db = await database;
-    
-    // Prüfen, ob bereits ein Item in diesem Slot ausgerüstet ist
-    final existingItems = await db.query(
-      'inventory_items',
-      where: 'ownerId = (SELECT ownerId FROM inventory_items WHERE id = ?) AND equipSlot = ? AND isEquipped = 1',
-      whereArgs: [inventoryItemId, slot.toString()],
-    );
-    
-    // Bestehendes Item im selben Slot unequirüsten
-    if (existingItems.isNotEmpty) {
-      for (final existing in existingItems) {
-        await db.update(
-          'inventory_items',
-          {'isEquipped': 0, 'equipSlot': null},
-          where: 'id = ?',
-          whereArgs: [existing['id']],
-        );
-      }
-    }
-    
-    // Neues Item ausrüsten
-    await db.update(
-      'inventory_items',
-      {'isEquipped': 1, 'equipSlot': slot.toString()},
-      where: 'id = ?',
-      whereArgs: [inventoryItemId],
-    );
-  }
-  
-  // Item unequirüsten
-  Future<void> unequipItem(String inventoryItemId) async {
-    final db = await database;
-    await db.update(
-      'inventory_items',
-      {'isEquipped': 0, 'equipSlot': null},
-      where: 'id = ?',
-      whereArgs: [inventoryItemId],
-    );
-  }
-  
-  // Alle ausgerüsteten Items eines Charakters holen
-  Future<List<DisplayInventoryItem>> getEquippedItems(String ownerId) async {
-    final maps = await (await database).query(
-      'inventory_items',
-      where: 'ownerId = ? AND isEquipped = 1',
-      whereArgs: [ownerId],
-    );
-    
-    final List<DisplayInventoryItem> equippedItems = [];
-    for (final map in maps) {
-      final inventoryItem = InventoryItem.fromMap(map);
-      final item = await getItemById(inventoryItem.itemId);
-      if (item != null) {
-        equippedItems.add(DisplayInventoryItem(inventoryItem: inventoryItem, item: item));
-      }
-    }
-    return equippedItems;
-  }
-  
-  // Nicht ausgerüstete Items eines Charakters holen
-  Future<List<DisplayInventoryItem>> getUnequippedItems(String ownerId) async {
-    final maps = await (await database).query(
-      'inventory_items',
-      where: 'ownerId = ? AND isEquipped = 0',
-      whereArgs: [ownerId],
-    );
-    
-    final List<DisplayInventoryItem> unequippedItems = [];
-    for (final map in maps) {
-      final inventoryItem = InventoryItem.fromMap(map);
-      final item = await getItemById(inventoryItem.itemId);
-      if (item != null) {
-        unequippedItems.add(DisplayInventoryItem(inventoryItem: inventoryItem, item: item));
-      }
-    }
-    return unequippedItems;
-  }
-  
-  // Prüfen, ob ein Item in einen bestimmten Slot kann
-  Future<bool> canEquipInSlot(String itemId, EquipSlot slot) async {
-    final item = await getItemById(itemId);
-    if (item == null) return false;
-    
-    return slot.allowedItemTypes.contains(item.itemType);
-  }
-
-  // --- WikiEntry (Lore Keeper) CRUD ---
-  Future<int> insertWikiEntry(WikiEntry entry) async => await (await database).insert('wiki_entries', entry.toMap());
-  Future<List<WikiEntry>> getAllWikiEntries() async {
-    final maps = await (await database).query('wiki_entries', orderBy: 'title ASC');
-    return List.generate(maps.length, (i) => WikiEntry.fromMap(maps[i]));
-  }
-  Future<WikiEntry?> getWikiEntryById(String id) async {
-    final maps = await (await database).query('wiki_entries', where: 'id = ?', whereArgs: [id]);
-    if (maps.isNotEmpty) return WikiEntry.fromMap(maps.first);
-    return null;
-  }
-  Future<int> updateWikiEntry(WikiEntry entry) async => await (await database).update('wiki_entries', entry.toMap(), where: 'id = ?', whereArgs: [entry.id]);
-  Future<int> deleteWikiEntry(String id) async => await (await database).delete('wiki_entries', where: 'id = ?', whereArgs: [id]);
-  Future<List<WikiEntry>> getWikiEntriesByIds(List<String> ids) async {
-    if (ids.isEmpty) return [];
-    final placeholders = List.filled(ids.length, '?').join(',');
-    final maps = await (await database).query('wiki_entries', where: 'id IN ($placeholders)', whereArgs: ids);
-    return List.generate(maps.length, (i) => WikiEntry.fromMap(maps[i]));
-  }
-
-  // --- Quest (Template) CRUD ---
+  // --- Quest CRUD ---
   Future<int> insertQuest(Quest quest) async => await (await database).insert('quests', quest.toMap());
   Future<List<Quest>> getAllQuests() async {
     final maps = await (await database).query('quests', orderBy: 'title ASC');
+    return List.generate(maps.length, (i) => Quest.fromMap(maps[i]));
+  }
+  Future<List<Quest>> getQuestsForCampaign(String campaignId) async {
+    final maps = await (await database).query('quests', where: 'campaign_id = ?', whereArgs: [campaignId], orderBy: 'title ASC');
     return List.generate(maps.length, (i) => Quest.fromMap(maps[i]));
   }
   Future<Quest?> getQuestById(String id) async {
@@ -1215,33 +1629,24 @@ await db.execute('''
   }
   Future<int> updateQuest(Quest quest) async => await (await database).update('quests', quest.toMap(), where: 'id = ?', whereArgs: [quest.id]);
   Future<int> deleteQuest(String id) async => await (await database).delete('quests', where: 'id = ?', whereArgs: [id]);
-  Future<List<Quest>> getQuestsByIds(List<String> ids) async {
-    if (ids.isEmpty) return [];
-    final placeholders = List.filled(ids.length, '?').join(',');
-    final maps = await (await database).query('quests', where: 'id IN ($placeholders)', whereArgs: ids);
-    return List.generate(maps.length, (i) => Quest.fromMap(maps[i]));
-  }
 
-  // --- Campaign-Quest Link CRUD ---
-  Future<void> addQuestToCampaign(String campaignId, String questId) async => await (await database).insert('campaign_quests', {'campaignId': campaignId, 'questId': questId, 'status': QuestStatus.verfuegbar.toString(), 'notes': ''});
-  Future<List<Map<String, dynamic>>> getQuestLinksForCampaign(String campaignId) async => await (await database).query('campaign_quests', where: 'campaignId = ?', whereArgs: [campaignId]);
-  Future<void> updateCampaignQuest(String campaignId, String questId, QuestStatus status, String notes) async => await (await database).update('campaign_quests', {'status': status.toString(), 'notes': notes}, where: 'campaignId = ? AND questId = ?', whereArgs: [campaignId, questId]);
-  Future<void> removeQuestFromCampaign(String campaignId, String questId) async => await (await database).delete('campaign_quests', where: 'campaignId = ? AND questId = ?', whereArgs: [campaignId, questId]);
-  Future<List<CampaignQuest>> getQuestsForCampaign(String campaignId) async {
-    final List<Map<String, dynamic>> links = await getQuestLinksForCampaign(campaignId);
-    final List<CampaignQuest> campaignQuests = [];
-    for (final link in links) {
-      final questTemplate = await getQuestById(link['questId']);
-      if (questTemplate != null) {
-        campaignQuests.add(CampaignQuest(
-          quest: questTemplate,
-          status: QuestStatus.values.firstWhere((e) => e.toString() == link['status']),
-          notes: link['notes'],
-        ));
-      }
-    }
-    return campaignQuests;
+  // --- Wiki Entry CRUD ---
+  Future<int> insertWikiEntry(WikiEntry wikiEntry) async => await (await database).insert('wiki_entries', wikiEntry.toMap());
+  Future<List<WikiEntry>> getAllWikiEntries() async {
+    final maps = await (await database).query('wiki_entries', orderBy: 'title ASC');
+    return List.generate(maps.length, (i) => WikiEntry.fromMap(maps[i]));
   }
+  Future<List<WikiEntry>> getWikiEntriesForCampaign(String campaignId) async {
+    final maps = await (await database).query('wiki_entries', where: 'campaignId = ?', whereArgs: [campaignId], orderBy: 'title ASC');
+    return List.generate(maps.length, (i) => WikiEntry.fromMap(maps[i]));
+  }
+  Future<WikiEntry?> getWikiEntryById(String id) async {
+    final maps = await (await database).query('wiki_entries', where: 'id = ?', whereArgs: [id]);
+    if (maps.isNotEmpty) return WikiEntry.fromMap(maps.first);
+    return null;
+  }
+  Future<int> updateWikiEntry(WikiEntry wikiEntry) async => await (await database).update('wiki_entries', wikiEntry.toMap(), where: 'id = ?', whereArgs: [wikiEntry.id]);
+  Future<int> deleteWikiEntry(String id) async => await (await database).delete('wiki_entries', where: 'id = ?', whereArgs: [id]);
 
   // --- Sound CRUD ---
   Future<int> insertSound(Sound sound) async => await (await database).insert('sounds', sound.toMap());
@@ -1249,537 +1654,182 @@ await db.execute('''
     final maps = await (await database).query('sounds', orderBy: 'name ASC');
     return List.generate(maps.length, (i) => Sound.fromMap(maps[i]));
   }
+  Future<Sound?> getSoundById(String id) async {
+    final maps = await (await database).query('sounds', where: 'id = ?', whereArgs: [id]);
+    if (maps.isNotEmpty) return Sound.fromMap(maps.first);
+    return null;
+  }
   Future<int> updateSound(Sound sound) async => await (await database).update('sounds', sound.toMap(), where: 'id = ?', whereArgs: [sound.id]);
   Future<int> deleteSound(String id) async => await (await database).delete('sounds', where: 'id = ?', whereArgs: [id]);
 
-  // --- SoundScene CRUD ---
-  Future<int> insertSoundScene(SoundScene scene) async => await (await database).insert('sound_scenes', scene.toMap());
-  Future<List<SoundScene>> getAllSoundScenes() async {
-    final maps = await (await database).query('sound_scenes', orderBy: 'name ASC');
-    return List.generate(maps.length, (i) => SoundScene.fromMap(maps[i]));
+  // --- Campaign Quest CRUD ---
+  Future<int> insertCampaignQuest(CampaignQuest campaignQuest) async => await (await database).insert('campaign_quests', campaignQuest.toMap());
+  Future<List<CampaignQuest>> getCampaignQuestsForCampaign(String campaignId) async {
+    final maps = await (await database).query('campaign_quests', where: 'campaignId = ?', whereArgs: [campaignId]);
+    return List.generate(maps.length, (i) => CampaignQuest.fromDbMap(maps[i]));
   }
-  Future<int> updateSoundScene(SoundScene scene) async => await (await database).update('sound_scenes', scene.toMap(), where: 'id = ?', whereArgs: [scene.id]);
-  Future<int> deleteSoundScene(String id) async => await (await database).delete('sound_scenes', where: 'id = ?', whereArgs: [id]);
-  
-  // Lösche eine Sound-Szene und alle zugehörigen Links
-    Future<void> deleteSoundSceneAndLinks(String sceneId) async {
-    final db = await instance.database;
-    // Lösche zuerst alle Verknüpfungen zu dieser Szene
-    await db.delete('scene_sound_links', where: 'sceneId = ?', whereArgs: [sceneId]);
-    // Dann lösche die Szene selbst
-    await db.delete('sound_scenes', where: 'id = ?', whereArgs: [sceneId]);
-  }
+  Future<int> updateCampaignQuest(CampaignQuest campaignQuest) async => await (await database).update('campaign_quests', campaignQuest.toMap());
+  Future<int> deleteCampaignQuest(String campaignId, String questId) async => await (await database).delete('campaign_quests', where: 'campaignId = ? AND questId = ?', whereArgs: [campaignId, questId]);
 
+  // --- Scene Sound Link CRUD ---
+  Future<int> insertSceneSoundLink(Map<String, dynamic> sceneSoundLink) async =>
+      await (await database).insert('scene_sound_links', sceneSoundLink);
 
-  // --- SceneSoundLink CRUD ---
-  Future<int> insertSceneSoundLink(SceneSoundLink link) async => await (await database).insert('scene_sound_links', link.toMap());
-  Future<List<SceneSoundLink>> getLinksForScene(String sceneId) async {
-    final maps = await (await database).query('scene_sound_links', where: 'sceneId = ?', whereArgs: [sceneId]);
-    return List.generate(maps.length, (i) => SceneSoundLink.fromMap(maps[i]));
-  }
-  Future<int> updateSceneSoundLink(SceneSoundLink link) async => await (await database).update('scene_sound_links', link.toMap(), where: 'id = ?', whereArgs: [link.id]);
-  Future<int> deleteSceneSoundLink(String id) async => await (await database).delete('scene_sound_links', where: 'id = ?', whereArgs: [id]);
-  // Helfer-Methode: Holt einen einzelnen Sound anhand seiner ID
-  Future<Sound?> getSoundById(String id) async {
-    final db = await instance.database;
-    final maps = await db.query('sounds', where: 'id = ?', whereArgs: [id]);
-    if (maps.isNotEmpty) {
-      return Sound.fromMap(maps.first);
-    }
-    return null;
+  // Scene Sound Links CRUD operations
+  Future<List<Map<String, dynamic>>> getAllSceneSoundLinks() async {
+    return await (await database).query('scene_sound_links');
   }
 
-  // Die neue, leistungsstarke Methode für den Szenen-Editor
-  Future<List<DisplaySceneSound>> getDisplaySoundsForScene(String sceneId) async {
-    final List<SceneSoundLink> links = await getLinksForScene(sceneId);
-    final List<DisplaySceneSound> displaySounds = [];
-
-    for (final link in links) {
-      final soundDetails = await getSoundById(link.soundId);
-      if (soundDetails != null) {
-        displaySounds.add(DisplaySceneSound(link: link, sound: soundDetails));
-      }
-    }
-    return displaySounds;
+  Future<int> deleteSceneSoundLink(String linkId) async {
+    return await (await database).delete(
+      'scene_sound_links',
+      where: 'id = ?',
+      whereArgs: [linkId],
+    );
   }
 
   // --- Offizielle D&D-Daten CRUD Methoden ---
-
-  // --- Official Monsters CRUD ---
-  Future<int> insertOfficialMonster(Map<String, dynamic> monster) async => 
-      await (await database).insert('official_monsters', monster);
   
-  Future<List<Map<String, dynamic>>> getAllOfficialMonsters({
-    int page = 0,
-    int limit = 50,
-    String? search,
-    String? type,
-    double? minCr,
-    double? maxCr,
-    String? orderBy = 'name',
-    bool ascending = true,
-  }) async {
-    final offset = page * limit;
-    String whereClause = '';
-    List<dynamic> whereArgs = [];
-    
-    if (search != null && search.isNotEmpty) {
-      whereClause += 'name LIKE ?';
-      whereArgs.add('%$search%');
-    }
-    
-    if (type != null && type.isNotEmpty) {
-      if (whereClause.isNotEmpty) whereClause += ' AND ';
-      whereClause += 'type = ?';
-      whereArgs.add(type);
-    }
-    
-    if (minCr != null) {
-      if (whereClause.isNotEmpty) whereClause += ' AND ';
-      whereClause += 'challenge_rating >= ?';
-      whereArgs.add(minCr);
-    }
-    
-    if (maxCr != null) {
-      if (whereClause.isNotEmpty) whereClause += ' AND ';
-      whereClause += 'challenge_rating <= ?';
-      whereArgs.add(maxCr);
-    }
-    
-    final direction = ascending ? 'ASC' : 'DESC';
-    
-    return await (await database).query(
-      'official_monsters',
-      where: whereClause.isNotEmpty ? whereClause : null,
-      whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
-      limit: limit,
-      offset: offset,
-      orderBy: '$orderBy $direction',
-    );
-  }
-  
-  Future<Map<String, dynamic>?> getOfficialMonsterById(String id) async {
+  /// Holt alle offiziellen Monster aus der Datenbank
+  Future<List<OfficialMonster>> getAllOfficialMonsters({int? limit}) async {
     final maps = await (await database).query(
       'official_monsters', 
-      where: 'id = ?', 
-      whereArgs: [id]
-    );
-    return maps.isNotEmpty ? maps.first : null;
-  }
-  
-  Future<int> updateOfficialMonster(Map<String, dynamic> monster) async => 
-      await (await database).update(
-        'official_monsters', 
-        monster, 
-        where: 'id = ?', 
-        whereArgs: [monster['id']]
-      );
-  
-  Future<int> deleteOfficialMonster(String id) async => 
-      await (await database).delete(
-        'official_monsters', 
-        where: 'id = ?', 
-        whereArgs: [id]
-      );
-
-  // --- Official Spells CRUD ---
-  Future<int> insertOfficialSpell(Map<String, dynamic> spell) async => 
-      await (await database).insert('official_spells', spell);
-  
-  Future<List<Map<String, dynamic>>> getAllOfficialSpells({
-    int page = 0,
-    int limit = 50,
-    String? search,
-    String? school,
-    int? minLevel,
-    int? maxLevel,
-    String? orderBy = 'name',
-    bool ascending = true,
-  }) async {
-    final offset = page * limit;
-    String whereClause = '';
-    List<dynamic> whereArgs = [];
-    
-    if (search != null && search.isNotEmpty) {
-      whereClause += 'name LIKE ?';
-      whereArgs.add('%$search%');
-    }
-    
-    if (school != null && school.isNotEmpty) {
-      if (whereClause.isNotEmpty) whereClause += ' AND ';
-      whereClause += 'school = ?';
-      whereArgs.add(school);
-    }
-    
-    if (minLevel != null) {
-      if (whereClause.isNotEmpty) whereClause += ' AND ';
-      whereClause += 'level >= ?';
-      whereArgs.add(minLevel);
-    }
-    
-    if (maxLevel != null) {
-      if (whereClause.isNotEmpty) whereClause += ' AND ';
-      whereClause += 'level <= ?';
-      whereArgs.add(maxLevel);
-    }
-    
-    final direction = ascending ? 'ASC' : 'DESC';
-    
-    return await (await database).query(
-      'official_spells',
-      where: whereClause.isNotEmpty ? whereClause : null,
-      whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
+      orderBy: 'name ASC',
       limit: limit,
-      offset: offset,
-      orderBy: '$orderBy $direction',
     );
+    return List.generate(maps.length, (i) => OfficialMonster.fromMap(maps[i]));
   }
   
-  Future<Map<String, dynamic>?> getOfficialSpellById(String id) async {
+  /// Holt alle offiziellen Zauber aus der Datenbank
+  Future<List<OfficialSpell>> getAllOfficialSpells({int? limit}) async {
     final maps = await (await database).query(
       'official_spells', 
-      where: 'id = ?', 
-      whereArgs: [id]
-    );
-    return maps.isNotEmpty ? maps.first : null;
-  }
-
-  // --- Official Classes CRUD ---
-  Future<int> insertOfficialClass(Map<String, dynamic> dndClass) async => 
-      await (await database).insert('official_classes', dndClass);
-  
-  Future<List<Map<String, dynamic>>> getAllOfficialClasses() async {
-    return await (await database).query(
-      'official_classes',
       orderBy: 'name ASC',
-    );
-  }
-  
-  Future<Map<String, dynamic>?> getOfficialClassById(String id) async {
-    final maps = await (await database).query(
-      'official_classes', 
-      where: 'id = ?', 
-      whereArgs: [id]
-    );
-    return maps.isNotEmpty ? maps.first : null;
-  }
-
-  // --- Official Races CRUD ---
-  Future<int> insertOfficialRace(Map<String, dynamic> race) async => 
-      await (await database).insert('official_races', race);
-  
-  Future<List<Map<String, dynamic>>> getAllOfficialRaces() async {
-    return await (await database).query(
-      'official_races',
-      orderBy: 'name ASC',
-    );
-  }
-  
-  Future<Map<String, dynamic>?> getOfficialRaceById(String id) async {
-    final maps = await (await database).query(
-      'official_races', 
-      where: 'id = ?', 
-      whereArgs: [id]
-    );
-    return maps.isNotEmpty ? maps.first : null;
-  }
-
-  // --- Official Items CRUD ---
-  Future<int> insertOfficialItem(Map<String, dynamic> item) async => 
-      await (await database).insert('official_items', item);
-  
-  Future<List<Map<String, dynamic>>> getAllOfficialItems({
-    int page = 0,
-    int limit = 50,
-    String? search,
-    String? itemType,
-    String? rarity,
-    String? orderBy = 'name',
-    bool ascending = true,
-  }) async {
-    final offset = page * limit;
-    String whereClause = '';
-    List<dynamic> whereArgs = [];
-    
-    if (search != null && search.isNotEmpty) {
-      whereClause += 'name LIKE ?';
-      whereArgs.add('%$search%');
-    }
-    
-    if (itemType != null && itemType.isNotEmpty) {
-      if (whereClause.isNotEmpty) whereClause += ' AND ';
-      whereClause += 'item_type = ?';
-      whereArgs.add(itemType);
-    }
-    
-    if (rarity != null && rarity.isNotEmpty) {
-      if (whereClause.isNotEmpty) whereClause += ' AND ';
-      whereClause += 'rarity = ?';
-      whereArgs.add(rarity);
-    }
-    
-    final direction = ascending ? 'ASC' : 'DESC';
-    
-    return await (await database).query(
-      'official_items',
-      where: whereClause.isNotEmpty ? whereClause : null,
-      whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
       limit: limit,
-      offset: offset,
-      orderBy: '$orderBy $direction',
     );
+    return List.generate(maps.length, (i) => OfficialSpell.fromMap(maps[i] as Map<String, dynamic>));
   }
   
-  Future<Map<String, dynamic>?> getOfficialItemById(String id) async {
-    final maps = await (await database).query(
-      'official_items', 
-      where: 'id = ?', 
-      whereArgs: [id]
-    );
-    return maps.isNotEmpty ? maps.first : null;
-  }
-
-  // --- Official Locations CRUD ---
-  Future<int> insertOfficialLocation(Map<String, dynamic> location) async => 
-      await (await database).insert('official_locations', location);
-  
-  Future<List<Map<String, dynamic>>> getAllOfficialLocations({
-    int page = 0,
-    int limit = 50,
-    String? search,
-    String? locationType,
-    String? region,
-    String? orderBy = 'name',
-    bool ascending = true,
-  }) async {
-    final offset = page * limit;
-    String whereClause = '';
-    List<dynamic> whereArgs = [];
-    
-    if (search != null && search.isNotEmpty) {
-      whereClause += 'name LIKE ?';
-      whereArgs.add('%$search%');
-    }
-    
-    if (locationType != null && locationType.isNotEmpty) {
-      if (whereClause.isNotEmpty) whereClause += ' AND ';
-      whereClause += 'location_type = ?';
-      whereArgs.add(locationType);
-    }
-    
-    if (region != null && region.isNotEmpty) {
-      if (whereClause.isNotEmpty) whereClause += ' AND ';
-      whereClause += 'region = ?';
-      whereArgs.add(region);
-    }
-    
-    final direction = ascending ? 'ASC' : 'DESC';
-    
-    return await (await database).query(
-      'official_locations',
-      where: whereClause.isNotEmpty ? whereClause : null,
-      whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
-      limit: limit,
-      offset: offset,
-      orderBy: '$orderBy $direction',
-    );
-  }
-  
-  Future<Map<String, dynamic>?> getOfficialLocationById(String id) async {
-    final maps = await (await database).query(
-      'official_locations', 
-      where: 'id = ?', 
-      whereArgs: [id]
-    );
-    return maps.isNotEmpty ? maps.first : null;
-  }
-
-  // --- Item Effects CRUD ---
-  Future<int> insertItemEffect(ItemEffect effect) async => 
-      await (await database).insert('item_effects', effect.toMap());
-  
-  Future<List<ItemEffect>> getEffectsForItem(String itemId) async {
-    final maps = await (await database).query(
-      'item_effects', 
-      where: 'item_id = ?', 
-      whereArgs: [itemId],
-      orderBy: 'name ASC',
-    );
-    return List.generate(maps.length, (i) => ItemEffect.fromMap(maps[i]));
-  }
-  
-  Future<int> updateItemEffect(ItemEffect effect) async => 
-      await (await database).update(
-        'item_effects', 
-        effect.toMap(), 
-        where: 'id = ?', 
-        whereArgs: [effect.id]
-      );
-  
-  Future<int> deleteItemEffect(String id) async => 
-      await (await database).delete(
-        'item_effects', 
-        where: 'id = ?', 
-        whereArgs: [id]
-      );
-
-  // --- Active Effects CRUD ---
-  Future<int> insertActiveEffect(ActiveEffect effect) async => 
-      await (await database).insert('active_effects', effect.toMap());
-  
-  Future<List<ActiveEffect>> getActiveEffectsForCharacter(String characterId) async {
-    final maps = await (await database).query(
-      'active_effects', 
-      where: 'character_id = ?', 
-      whereArgs: [characterId],
-      orderBy: 'started_at DESC',
-    );
-    return List.generate(maps.length, (i) => ActiveEffect.fromMap(maps[i]));
-  }
-  
-  Future<int> updateActiveEffect(ActiveEffect effect) async => 
-      await (await database).update(
-        'active_effects', 
-        effect.toMap(), 
-        where: 'id = ?', 
-        whereArgs: [effect.id]
-      );
-  
-  Future<int> deleteActiveEffect(String id) async => 
-      await (await database).delete(
-        'active_effects', 
-        where: 'id = ?', 
-        whereArgs: [id]
-      );
-  
-  Future<void> deleteExpiredActiveEffects() async {
+  /// Löscht alle offiziellen Daten aus einer bestimmten Tabelle
+  Future<void> clearOfficialData([String? tableName]) async {
     final db = await database;
-    await db.delete(
-      'active_effects',
-      where: 'expires_at IS NOT NULL AND expires_at < ?',
-      whereArgs: [DateTime.now().toIso8601String()],
-    );
+    if (tableName != null) {
+      await db.delete(tableName);
+      print('Offizielle Daten aus Tabelle $tableName wurden gelöscht.');
+    } else {
+      final tables = ['official_monsters', 'official_spells', 'official_classes', 'official_races', 'official_items', 'official_locations'];
+      
+      for (final table in tables) {
+        await db.delete(table);
+      }
+      print('Alle offiziellen Daten aus Tabellen $tables wurden gelöscht.');
+    }
   }
-
-  // --- Effect Application Methods ---
-  Future<void> useItemEffect(String itemId, String characterId) async {
-    final effects = await getEffectsForItem(itemId);
+  
+  /// Fügt ein offizielles Monster in die Datenbank ein
+  Future<int> insertOfficialMonster(OfficialMonster monster) async {
+    return await (await database).insert('official_monsters', monster.toMap());
+  }
+  
+  /// Fügt einen offiziellen Zauber in die Datenbank ein
+  Future<int> insertOfficialSpell(Map<String, dynamic> spellData) async {
+    return await (await database).insert('official_spells', spellData);
+  }
+  
+  /// Fügt eine offizielle Klasse in die Datenbank ein
+  Future<int> insertOfficialClass(Map<String, dynamic> classData) async {
+    return await (await database).insert('official_classes', classData);
+  }
+  
+  /// Fügt eine offizielle Rasse in die Datenbank ein
+  Future<int> insertOfficialRace(Map<String, dynamic> raceData) async {
+    return await (await database).insert('official_races', raceData);
+  }
+  
+  /// Fügt ein offizielles Item in die Datenbank ein
+  Future<int> insertOfficialItem(Map<String, dynamic> itemData) async {
+    return await (await database).insert('official_items', itemData);
+  }
+  
+  /// Fügt einen offiziellen Ort in die Datenbank ein
+  Future<int> insertOfficialLocation(Map<String, dynamic> locationData) async {
+    return await (await database).insert('official_locations', locationData);
+  }
+  
+  /// Holt die Anzahl der Datensätze in einer offiziellen Tabelle
+  Future<int> getOfficialDataCount(String tableName) async {
+    final result = await (await database).rawQuery('SELECT COUNT(*) FROM $tableName');
+    return result.first['COUNT(*)'] as int;
+  }
+  
+  /// Holt die neueste Version aus einer offiziellen Tabelle
+  Future<String?> getLatestVersion(String tableName) async {
+    final result = await (await database).rawQuery(
+      'SELECT version FROM $tableName ORDER BY created_at DESC LIMIT 1'
+    );
+    return result.isNotEmpty ? result.first['version'] as String : null;
+  }
+  
+  /// Holt Inventardaten für einen bestimmten Owner zur Anzeige im Encounter Setup
+  Future<List<Map<String, dynamic>>> getDisplayInventoryForOwner(String ownerId) async {
+    final db = await database;
     
-    for (final effect in effects) {
-      if (effect.canUse) {
-        // Aufladungen reduzieren
-        final updatedEffect = effect.copyWith(
-          currentCharges: effect.currentCharges - 1,
-          lastUsed: DateTime.now(),
-        );
-        await updateItemEffect(updatedEffect);
-        
-        // Wenn sofortiger Effekt, direkt anwenden
-        if (effect.effectType == EffectType.healHitPoints) {
-          final activeEffect = ActiveEffect(
-            id: _uuid.v4(),
-            characterId: characterId,
-            itemEffectId: effect.id,
-            sourceItemName: (await getItemById(itemId))?.name ?? 'Unbekanntes Item',
-            effectName: effect.name,
-            description: effect.description,
-            effectType: effect.effectType,
-            value: effect.value,
-            startedAt: DateTime.now(),
-            expiresAt: effect.duration == EffectDuration.instant 
-                ? DateTime.now().add(const Duration(seconds: 1))
-                : _calculateExpiryTime(effect.duration, effect.durationValue),
-            requiresConcentration: effect.requiresConcentration,
-          );
-          await insertActiveEffect(activeEffect);
-        } else if (effect.duration != EffectDuration.instant) {
-          // Temporären Effekt aktivieren
-          final updatedEffect = effect.copyWith(
-            isActive: true,
-            activatedAt: DateTime.now(),
-            targetCharacterId: characterId,
-          );
-          await updateItemEffect(updatedEffect);
-        }
+    // Hole alle Inventar-Items für den Owner
+    final inventoryItems = await db.query(
+      'inventory_items',
+      where: 'ownerId = ?',
+      whereArgs: [ownerId],
+    );
+    
+    final displayItems = <Map<String, dynamic>>[];
+    
+    for (final inventoryItem in inventoryItems) {
+      // Hole das entsprechende Item für jedes Inventar-Item
+      final itemResult = await db.query(
+        'items',
+        where: 'id = ?',
+        whereArgs: [inventoryItem['itemId']],
+      );
+      
+      if (itemResult.isNotEmpty) {
+        final item = itemResult.first;
+        displayItems.add({
+          'id': inventoryItem['id'],
+          'itemId': item['id'],
+          'name': item['name'],
+          'description': item['description'],
+          'itemType': item['itemType'],
+          'quantity': inventoryItem['quantity'],
+          'isEquipped': inventoryItem['isEquipped'] ?? 0,
+          'equipSlot': inventoryItem['equipSlot'],
+          'weight': item['weight'],
+          'cost': item['cost'],
+          'imageUrl': item['imageUrl'],
+          'damage': item['damage'],
+          'properties': item['properties'],
+          'rarity': item['rarity'],
+          'requiresAttunement': item['requiresAttunement'],
+        });
       }
     }
+    
+    return displayItems;
   }
 
-  DateTime? _calculateExpiryTime(EffectDuration duration, int? durationValue) {
-    final now = DateTime.now();
-    
-    switch (duration) {
-      case EffectDuration.shortRest:
-        return now.add(const Duration(hours: 1));
-      case EffectDuration.longRest:
-        return now.add(const Duration(hours: 8));
-      case EffectDuration.oneHour:
-        return now.add(const Duration(hours: 1));
-      case EffectDuration.eightHours:
-        return now.add(const Duration(hours: 8));
-      case EffectDuration.twentyFourHours:
-        return now.add(const Duration(hours: 24));
-      case EffectDuration.custom:
-        if (durationValue != null) {
-          return now.add(Duration(minutes: durationValue!));
-        }
-        return null;
-      case EffectDuration.permanent:
-      case EffectDuration.concentration:
-        return null; // Kein Ablauf
-      default:
-        return null;
+  // --- Hilfsmethoden ---
+  Future<void> closeDatabase() async {
+    final db = _database;
+    if (db != null) {
+      await db.close();
+      _database = null;
     }
   }
 
-  Future<void> endActiveEffect(String activeEffectId) async {
-    final effect = await (await database).query(
-      'active_effects',
-      where: 'id = ?',
-      whereArgs: [activeEffectId],
-    );
-    
-    if (effect.isNotEmpty) {
-      final itemEffectId = effect.first['item_effect_id'] as String;
-      
-      // Item-Effect deaktivieren
-      await (await database).update(
-        'item_effects',
-        {'is_active': 0, 'activated_at': null},
-        where: 'id = ?',
-        whereArgs: [itemEffectId],
-      );
-      
-      // Aktiven Effekt entfernen
-      await deleteActiveEffect(activeEffectId);
-    }
+  // --- Datenbank-Reset für Entwicklung ---
+  Future<void> resetDatabase() async {
+    await closeDatabase();
+    final dbPath = join(await getDatabasesPath(), _databaseName);
+    await deleteDatabase(dbPath);
+    print("Datenbank zurückgesetzt: $dbPath");
   }
-
-  Future<int> getActiveEffectsCount(String characterId) async {
-    final result = await (await database).rawQuery(
-      'SELECT COUNT(*) as count FROM active_effects WHERE character_id = ? AND expires_at > ?',
-      [characterId, DateTime.now().toIso8601String()],
-    );
-    return result.first['count'] as int;
-  }
-
-  // --- Daten-Update Methoden ---
-  Future<void> clearOfficialData(String tableName) async {
-    await (await database).execute('DELETE FROM $tableName');
-  }
-  
-  Future<int> getOfficialDataCount(String tableName) async {
-    final result = await (await database).rawQuery('SELECT COUNT(*) as count FROM $tableName');
-    return result.first['count'] as int;
-  }
-  
-  Future<String?> getLatestVersion(String tableName) async {
-    final result = await (await database).query(
-      tableName,
-      orderBy: 'updated_at DESC',
-      limit: 1,
-    );
-    return result.isNotEmpty ? result.first['version'] as String? : null;
-  }
-
 }

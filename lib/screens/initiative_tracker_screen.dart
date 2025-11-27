@@ -28,7 +28,7 @@ class _InitiativeTrackerScreenState extends State<InitiativeTrackerScreen> {
 
   void _rollInitiative() {
     final random = Random();
-    for (var creature in _combatants) {
+    for (final creature in _combatants) {
       if (creature.initiative == null) {
         creature.initiative = random.nextInt(20) + 1 + creature.initiativeBonus;
       }
@@ -50,8 +50,12 @@ class _InitiativeTrackerScreenState extends State<InitiativeTrackerScreen> {
   void _changeHp(Creature creature, int amount) {
     setState(() {
       creature.currentHp += amount;
-      if (creature.currentHp < 0) creature.currentHp = 0;
-      if (creature.currentHp > creature.maxHp) creature.currentHp = creature.maxHp;
+      if (creature.currentHp < 0) {
+        creature.currentHp = 0;
+      }
+      if (creature.currentHp > creature.maxHp) {
+        creature.currentHp = creature.maxHp;
+      }
     });
   }
 
@@ -260,16 +264,16 @@ class _InitiativeTrackerScreenState extends State<InitiativeTrackerScreen> {
         _buildAbilityRow("CON", creature.constitution), _buildAbilityRow("INT", creature.intelligence),
         _buildAbilityRow("WIS", creature.wisdom), _buildAbilityRow("CHA", creature.charisma),
         
-        // NEU: Die Inventar-Anzeige für den Spieler
-        if (creature.inventory.isNotEmpty) ...[
-          const Divider(height: 24, color: Colors.white30),
-          const Text("Ausrüstung", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          ...creature.inventory.map((invItem) => Text(
-            "• ${invItem.item.name} (x${invItem.inventoryItem.quantity}) ${invItem.item.damage != null ? '[${invItem.item.damage}]' : ''}",
-            style: const TextStyle(color: Colors.white70)
-          )).toList(),
-        ]
+          // NEU: Die Inventar-Anzeige für den Spieler
+          if (creature.inventory.isNotEmpty) ...[
+            const Divider(height: 24, color: Colors.white30),
+            const Text("Ausrüstung", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            ...creature.inventory.map((invItem) => Text(
+              "• ${invItem['name']} (x${invItem['quantity']}) ${invItem['damage'] != null ? '[${invItem['damage']}]' : ''}",
+              style: const TextStyle(color: Colors.white70)
+            )).toList(),
+          ]
       ],
     );
   }
@@ -290,7 +294,7 @@ class _InitiativeTrackerScreenState extends State<InitiativeTrackerScreen> {
           const Text("Loot / Inventar", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           ...creature.inventory.map((invItem) => Text(
-            "• ${invItem.item.name} (x${invItem.inventoryItem.quantity})",
+            "• ${invItem['name']} (x${invItem['quantity']})",
             style: const TextStyle(color: Colors.white70)
           )).toList(),
         ]
@@ -308,10 +312,4 @@ class _InitiativeTrackerScreenState extends State<InitiativeTrackerScreen> {
     );
   }
 
-  Widget _buildStatChip(String label, String value) {
-    return Column(children: [
-      Text(label, style: TextStyle(color: Colors.grey[400], fontSize: 12)),
-      Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-    ]);
-  }
 }

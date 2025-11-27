@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../game_data/dnd_models.dart';
-import '../../game_data/dnd_logic.dart';
 
 class SkillRowWidget extends StatelessWidget {
   final DndSkill skill;

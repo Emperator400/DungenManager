@@ -44,6 +44,7 @@ class _AddItemFromLibraryScreenState extends State<AddItemFromLibraryScreen> {
 
     if (quantity != null && quantity > 0) {
       final newItem = InventoryItem(
+        id: '', // Wird von der Datenbank generiert
         ownerId: widget.ownerId,
         itemId: item.id, // Verknüpfe mit der ID des ausgewählten Items
         quantity: quantity,

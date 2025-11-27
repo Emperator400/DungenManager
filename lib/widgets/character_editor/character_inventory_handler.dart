@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../database/database_helper.dart';
-import '../../../models/inventory_item.dart';
-import '../../../models/item.dart';
-import '../../../screens/item_library_screen.dart';
-import '../../../screens/add_item_from_library_screen.dart';
+import '../../database/database_helper.dart';
+import '../../models/inventory_item.dart';
+import '../../models/item.dart';
+import '../../screens/enhanced_item_library_screen.dart';
+import '../../screens/add_item_from_library_screen.dart';
+import '../../services/uuid_service.dart';
 import 'character_editor_controller.dart'
-    show CharacterType, CharacterEditorController;
+    show CharacterType;
+import 'enhanced_character_editor_controller.dart'
+    show EnhancedCharacterEditorController;
 
 class CharacterInventoryHandler {
-  final CharacterEditorController controller;
+  final EnhancedCharacterEditorController controller;
   final BuildContext context;
   final VoidCallback onInventoryChanged;
 
@@ -44,12 +47,14 @@ class CharacterInventoryHandler {
     } else {
       final selectedItem = await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (ctx) => const ItemLibraryScreen(selectMode: true),
+          builder: (ctx) => const EnhancedItemLibraryScreen(selectMode: true),
         ),
       );
 
       if (selectedItem != null && selectedItem is Item) {
+        final uuidService = UuidService();
         final inventoryItem = InventoryItem(
+          id: uuidService.generateId(),
           ownerId: ownerId!,
           itemId: selectedItem.id,
           quantity: 1,
@@ -78,7 +83,7 @@ class CharacterInventoryHandler {
     final quantityController = TextEditingController(text: displayItem.inventoryItem.quantity.toString());
     final dbHelper = DatabaseHelper.instance;
     
-    await showDialog(
+    await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(displayItem.item.name),

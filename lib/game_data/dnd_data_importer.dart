@@ -5,6 +5,8 @@ import '../database/database_helper.dart';
 import '../models/official_monster.dart';
 import '../models/official_spell.dart';
 import '../models/creature.dart';
+import '../models/creature_extension.dart' as creature_ext;
+import '../services/official_monster_import_service.dart';
 import 'dnd_demo_data.dart';
 
 class DndDataImporter {
@@ -53,7 +55,7 @@ class DndDataImporter {
       print('Starte Monster-Import...');
       
       // Bestehende Daten löschen
-      await _db.clearOfficialData('official_monsters');
+      await _db.clearOfficialData();
       
       // Daten von 5e.tools herunterladen
       final response = await http.get(Uri.parse('${baseUrl}bestiary.json'));
@@ -74,8 +76,9 @@ class DndDataImporter {
         
         for (final monsterData in batch) {
           try {
-            final monster = OfficialMonster.from5eToolsJson(monsterData);
-            await _db.insertOfficialMonster(monster.toMap());
+            // Korrekte Konvertierung: Zuerst Map, dann OfficialMonster
+            final monster = OfficialMonsterImportService.from5eToolsJson(monsterData as Map<String, dynamic>);
+            await _db.insertOfficialMonster(monster);
             importedCount++;
           } catch (e) {
             print('Fehler beim Import des Monsters "${monsterData['name']}": $e');
@@ -123,7 +126,7 @@ class DndDataImporter {
         
         for (final spellData in batch) {
           try {
-            final spell = OfficialSpell.from5eToolsJson(spellData);
+            final spell = OfficialSpell.from5eToolsJson(spellData as Map<String, dynamic>);
             await _db.insertOfficialSpell(spell.toMap());
             importedCount++;
           } catch (e) {
@@ -165,7 +168,7 @@ class DndDataImporter {
       
       for (final classData in classes) {
         try {
-          final classMap = _parseClassFrom5eTools(classData);
+          final classMap = _parseClassFrom5eTools(classData as Map<String, dynamic>);
           await _db.insertOfficialClass(classMap);
           importedCount++;
         } catch (e) {
@@ -203,7 +206,7 @@ class DndDataImporter {
       
       for (final raceData in races) {
         try {
-          final raceMap = _parseRaceFrom5eTools(raceData);
+          final raceMap = _parseRaceFrom5eTools(raceData as Map<String, dynamic>);
           await _db.insertOfficialRace(raceMap);
           importedCount++;
         } catch (e) {
@@ -246,7 +249,7 @@ class DndDataImporter {
         
         for (final itemData in batch) {
           try {
-            final itemMap = _parseItemFrom5eTools(itemData);
+            final itemMap = _parseItemFrom5eTools(itemData as Map<String, dynamic>);
             await _db.insertOfficialItem(itemMap);
             importedCount++;
           } catch (e) {
@@ -288,7 +291,7 @@ class DndDataImporter {
       
       for (final locationData in locations) {
         try {
-          final locationMap = _parseLocationFrom5eTools(locationData);
+          final locationMap = _parseLocationFrom5eTools(locationData as Map<String, dynamic>);
           await _db.insertOfficialLocation(locationMap);
           importedCount++;
         } catch (e) {
@@ -305,6 +308,85 @@ class DndDataImporter {
   }
 
   // --- Parser für komplexe Datenstrukturen ---
+  
+  Map<String, dynamic> _parseMonsterFrom5eTools(Map<String, dynamic> json) {
+    return {
+      'id': json['id'] ?? json['name']?.toLowerCase()?.replaceAll(' ', '_'),
+      'name': json['name'],
+      'size': json['size'],
+      'type': json['type'],
+      'subtype': json['subtype'],
+      'alignment': json['alignment'],
+      'armor_class': json['ac']?.toString() ?? '10',
+      'hit_points': json['hp']?.toString() ?? '1',
+      'hit_dice': json['hd']?.toString() ?? '1d8',
+      'speed': json['speed']?.toString() ?? '30 ft.',
+      'strength': json['str'] ?? 10,
+      'dexterity': json['dex'] ?? 10,
+      'constitution': json['con'] ?? 10,
+      'intelligence': json['int'] ?? 10,
+      'wisdom': json['wis'] ?? 10,
+      'charisma': json['cha'] ?? 10,
+      'strength_save': json['save']?['str'],
+      'dexterity_save': json['save']?['dex'],
+      'constitution_save': json['save']?['con'],
+      'intelligence_save': json['save']?['int'],
+      'wisdom_save': json['save']?['wis'],
+      'charisma_save': json['save']?['cha'],
+      'challenge_rating': json['cr']?.toString() ?? '1/8',
+      'experience_points': _calculateXpFromCr(json['cr']?.toString() ?? '1/8'),
+      'skills': json['skill'] != null ? jsonEncode(json['skill']) : null,
+      'damage_vulnerabilities': json['vulnerable'] != null ? jsonEncode(json['vulnerable']) : null,
+      'damage_resistances': json['resist'] != null ? jsonEncode(json['resist']) : null,
+      'damage_immunities': json['immune'] != null ? jsonEncode(json['immune']) : null,
+      'condition_immunities': json['conditionImmune'] != null ? jsonEncode(json['conditionImmune']) : null,
+      'senses': json['senses']?.toString() ?? 'passive Perception 10',
+      'languages': json['languages']?.toString() ?? '',
+      'special_abilities': json['trait'] != null ? jsonEncode(json['trait']) : null,
+      'actions': json['action'] != null ? jsonEncode(json['action']) : null,
+      'legendary_actions': json['legendary'] != null ? jsonEncode(json['legendary']) : null,
+      'description': json['entries'] is List ? (json['entries'] as List).join('\n') : json['entries']?.toString() ?? '',
+      'source': json['source'] ?? 'MM',
+      'page': json['page'] ?? 1,
+      'is_custom': 0,
+      'version': '1.0',
+    };
+  }
+
+  int _calculateXpFromCr(String cr) {
+    final crMap = {
+      '0': 10,
+      '1/8': 25,
+      '1/4': 50,
+      '1/2': 100,
+      '1': 200,
+      '2': 450,
+      '3': 700,
+      '4': 1100,
+      '5': 1800,
+      '6': 2300,
+      '7': 2900,
+      '8': 3900,
+      '9': 5000,
+      '10': 5900,
+      '11': 7200,
+      '12': 8400,
+      '13': 10000,
+      '14': 11500,
+      '15': 13000,
+      '16': 15000,
+      '17': 18000,
+      '18': 20000,
+      '19': 22000,
+      '20': 25000,
+      '21': 33000,
+      '22': 41000,
+      '23': 50000,
+      '24': 62000,
+      '30': 155000,
+    };
+    return crMap[cr] ?? 0;
+  }
   
   Map<String, dynamic> _parseClassFrom5eTools(Map<String, dynamic> json) {
     return {
@@ -396,17 +478,18 @@ class DndDataImporter {
       print('Starte Demo-Monster-Import...');
       
       // Bestehende Daten löschen
-      await _db.clearOfficialData('official_monsters');
+      await _db.clearOfficialData();
       
       int importedCount = 0;
       
       for (final monsterData in DndDemoData.demoMonsters) {
         try {
-          await _db.insertOfficialMonster(monsterData);
-          importedCount++;
-        } catch (e) {
-          print('Fehler beim Import des Demo-Monsters "${monsterData['name']}": $e');
-        }
+            final monster = OfficialMonster.fromMap(monsterData);
+            await _db.insertOfficialMonster(monster);
+            importedCount++;
+          } catch (e) {
+            print('Fehler beim Import des Demo-Monsters "${monsterData['name']}": $e');
+          }
       }
       
       print('Demo-Monster-Import abgeschlossen: $importedCount Monster importiert');
@@ -431,7 +514,7 @@ class DndDataImporter {
           await _db.insertOfficialSpell(spellData);
           importedCount++;
         } catch (e) {
-          print('Fehler beim Import des Demo-Spells "${spellData['name']}": $e');
+          print('Fehler beim Import der Demo-Spells "${spellData['name']}": $e');
         }
       }
       
@@ -483,7 +566,7 @@ class DndDataImporter {
           await _db.insertOfficialRace(raceData);
           importedCount++;
         } catch (e) {
-          print('Fehler beim Import des Demo-Volkes "${raceData['name']}": $e');
+          print('Fehler beim Import der Demo-Volkes "${raceData['name']}": $e');
         }
       }
       
@@ -509,7 +592,7 @@ class DndDataImporter {
           await _db.insertOfficialItem(itemData);
           importedCount++;
         } catch (e) {
-          print('Fehler beim Import des Demo-Items "${itemData['name']}": $e');
+          print('Fehler beim Import der Demo-Items "${itemData['name']}": $e');
         }
       }
       
@@ -535,7 +618,7 @@ class DndDataImporter {
           await _db.insertOfficialLocation(locationData);
           importedCount++;
         } catch (e) {
-          print('Fehler beim Import des Demo-Ortes "${locationData['name']}": $e');
+          print('Fehler beim Import der Demo-Ortes "${locationData['name']}": $e');
         }
       }
       
@@ -563,12 +646,7 @@ class DndDataImporter {
   }
 
   Future<void> clearAllOfficialData() async {
-    await _db.clearOfficialData('official_monsters');
-    await _db.clearOfficialData('official_spells');
-    await _db.clearOfficialData('official_classes');
-    await _db.clearOfficialData('official_races');
-    await _db.clearOfficialData('official_items');
-    await _db.clearOfficialData('official_locations');
+    await _db.clearOfficialData();
   }
 
   // --- NEU: Migrationsmethoden für Unified Bestiarum ---
@@ -651,7 +729,7 @@ class DndDataImporter {
       rethrow;
     }
   }
-  
+
   /// Synchronisiert offizielle Monster mit der creatures-Tabelle
   Future<Map<String, int>> syncOfficialMonstersToCreatures() async {
     try {
@@ -665,11 +743,10 @@ class DndDataImporter {
       };
       
       // Hole alle offiziellen Monster
-      final officialMonsters = await _db.getAllOfficialMonsters(limit: 1000);
+      final officialMonsters = await _db.getAllOfficialMonsters();
       results['total'] = officialMonsters.length;
       
-      for (final officialData in officialMonsters) {
-        final officialMonster = OfficialMonster.fromMap(officialData);
+      for (final officialMonster in officialMonsters) {
         
         // Prüfe, ob dieses Monster bereits als Creature existiert
         final existing = await (await _db.database).query(
@@ -680,7 +757,7 @@ class DndDataImporter {
         
         if (existing.isEmpty) {
           // Neues Creature aus offiziellem Monster erstellen
-          final creature = Creature.fromOfficialMonster(
+          final creature = creature_ext.CreatureExtension.fromOfficialMonster(
             officialMonsterId: officialMonster.id,
             name: officialMonster.name,
             maxHp: officialMonster.hitPoints,
@@ -757,12 +834,12 @@ class DndDataImporter {
           }
         }
         
-        if (results['synced']! + results['updated']! + results['skipped']! % 50 == 0) {
+        if ((results['synced']! + results['updated']! + results['skipped']!) % 50 == 0) {
           print('Synchronisations-Fortschritt: ${results['synced']} neu, ${results['updated']} aktualisiert, ${results['skipped']} übersprungen von ${results['total']}');
         }
       }
       
-      print('Synchronisation abgeschlossen: ${results['synced']} neu, ${results['updated']} aktualisiert, ${results['skipped']} übersprungen');
+      print('Synchronisation abgeschlossen: ${results['synced']} neu, ${results['updated']} aktualisiert, ${results['skipped']} übersprungen von ${results['total']}');
       return results;
       
     } catch (e) {

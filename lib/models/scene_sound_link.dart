@@ -1,8 +1,7 @@
 // lib/models/scene_sound_link.dart
-import 'package:uuid/uuid.dart';
+import '../services/uuid_service.dart';
 import 'sound.dart';
-
-var uuid = const Uuid();
+import '../utils/model_parsing_helper.dart';
 
 class SceneSoundLink {
   final String id;
@@ -15,23 +14,23 @@ class SceneSoundLink {
     required this.sceneId,
     required this.soundId,
     this.volume = 0.8, // Standard-Lautstärke 80%
-  }) : id = id ?? uuid.v4();
+  }) : id = id ?? UuidService().generateId();
     
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'sceneId': sceneId,
-      'soundId': soundId,
+      'scene_id': sceneId,
+      'sound_id': soundId,
       'volume': volume,
     };
   }
 
   factory SceneSoundLink.fromMap(Map<String, dynamic> map) {
     return SceneSoundLink(
-      id: map['id'],
-      sceneId: map['sceneId'],
-      soundId: map['soundId'],
-      volume: map['volume'],
+      id: ModelParsingHelper.safeId(map, 'id'),
+      sceneId: ModelParsingHelper.safeString(map, 'scene_id', ''),
+      soundId: ModelParsingHelper.safeString(map, 'sound_id', ''),
+      volume: ModelParsingHelper.safeDouble(map, 'volume', 0.8),
     );
   }
 }

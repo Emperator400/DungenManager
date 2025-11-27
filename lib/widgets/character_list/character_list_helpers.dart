@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../models/player_character.dart';
-import '../../game_data/dnd_logic.dart';
 
 /// Sortier-Optionen für die Liste
 enum SortOption {
@@ -36,7 +35,7 @@ class CharacterListHelpers {
   static Color getClassColor(String className) {
     final colors = getClassColors();
     // Fallback: erste oder graue Farbe verwenden
-    return colors[className] ?? colors.values.first ?? Colors.grey[600]!;
+    return colors[className] ?? colors.values.first;
   }
 
   /// Farbschema für Gesinnungen
@@ -92,6 +91,11 @@ class CharacterListHelpers {
     if (level >= 10) return 'EPIC';
     if (level >= 5) return 'ADV';
     return 'LVL';
+  }
+
+  /// Attribut-Modifier berechnen
+  static int getModifier(int attribute) {
+    return ((attribute - 10) ~/ 2);
   }
 
   /// Attribut-Modifier als formatierten String

@@ -2,11 +2,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:path/path.dart';
-import '../lib/database/database_helper.dart';
-import '../lib/models/campaign.dart';
-import '../lib/models/creature.dart';
-import '../lib/models/official_monster.dart';
-import '../lib/game_data/dnd_data_importer.dart';
+import 'package:dungen_manager/database/database_helper.dart';
+import 'package:dungen_manager/models/campaign.dart';
+import 'package:dungen_manager/models/creature.dart';
+import 'package:dungen_manager/models/official_monster.dart';
+import 'package:dungen_manager/game_data/dnd_data_importer.dart';
+import 'package:dungen_manager/services/creature_factory_service.dart';
+import 'package:dungen_manager/utils/string_list_parser.dart';
 
 void main() {
   group('D&D Integration Tests', () {
@@ -29,7 +31,7 @@ void main() {
     });
 
     test('Campaign model supports D&D data integration', () async {
-      final campaign = Campaign(
+      final campaign = Campaign.legacy(
         title: 'Test Campaign',
         description: 'A test campaign for D&D integration',
         availableMonsters: ['goblin', 'orc'],
@@ -45,10 +47,10 @@ void main() {
 
       // Teste die Map-Konvertierung
       final map = campaign.toMap();
-      expect(map['available_monsters'], 'goblin,orc');
-      expect(map['available_spells'], 'fireball,magic-missile');
-      expect(map['available_items'], 'longsword,shield');
-      expect(map['available_npcs'], 'villager,guard');
+      expect(map['settings']['available_monsters'], 'goblin,orc');
+      expect(map['settings']['available_spells'], 'fireball,magic-missile');
+      expect(map['settings']['available_items'], 'longsword,shield');
+      expect(map['settings']['available_npcs'], 'villager,guard');
 
       // Teste die Wiederherstellung aus der Map
       final restoredCampaign = Campaign.fromMap(map);
@@ -59,11 +61,11 @@ void main() {
     });
 
     test('Creature model supports D&D integration', () async {
-      final creature = Creature.fromOfficialMonster(
-        officialMonsterId: 'goblin',
+      final officialMonster = OfficialMonster(
+        id: 'goblin',
         name: 'Goblin',
-        maxHp: 7,
-        armorClass: 15,
+        hitPoints: 7,
+        armorClass: '15',
         speed: '30ft',
         strength: 8,
         dexterity: 14,
@@ -75,11 +77,45 @@ void main() {
         type: 'Humanoid (goblinoid)',
         subtype: 'goblinoid',
         alignment: 'Neutral Evil',
-        challengeRating: 1,
-        specialAbilities: 'Nimble Escape: The goblin can take the Disengage or Hide action as a bonus action on each of its turns.',
-        legendaryActions: null,
+        challengeRating: 1.0,
+        xp: 50,
+        hitDice: '2d6',
+        source: 'SRD',
+        specialAbilities: [
+          MonsterAbility(
+            name: 'Nimble Escape',
+            description: 'The goblin can take the Disengage or Hide action as a bonus action on each of its turns.',
+          ),
+        ],
+        actions: [
+          MonsterAction(
+            name: 'Scimitar',
+            description: '+4 to hit, 1d6 + 2 slashing damage',
+          ),
+        ],
         description: 'Small, green-skinned humanoids.',
-        attacks: 'Scimitar: +4 to hit, 1d6 + 2 slashing damage',
+      );
+      
+      final creature = CreatureFactoryService.fromOfficialMonster(
+        officialMonsterId: officialMonster.id,
+        name: officialMonster.name,
+        maxHp: officialMonster.hitPoints,
+        armorClass: int.tryParse(officialMonster.armorClass) ?? 10,
+        speed: officialMonster.speed,
+        strength: officialMonster.strength,
+        dexterity: officialMonster.dexterity,
+        constitution: officialMonster.constitution,
+        intelligence: officialMonster.intelligence,
+        wisdom: officialMonster.wisdom,
+        charisma: officialMonster.charisma,
+        size: officialMonster.size,
+        type: officialMonster.type,
+        subtype: officialMonster.subtype,
+        alignment: officialMonster.alignment,
+        challengeRating: officialMonster.challengeRating?.toInt(),
+        specialAbilities: officialMonster.specialAbilities.map((a) => '${a.name}: ${a.description}').join('\n'),
+        description: officialMonster.description,
+        attacks: officialMonster.actions.map((a) => '${a.name}: ${a.description}').join('\n'),
       );
 
       expect(creature.officialMonsterId, 'goblin');
@@ -111,13 +147,19 @@ void main() {
 
     test('Creature copyWith method works correctly', () async {
       final creature = Creature(
+        id: 'test-creature',
         name: 'Test Creature',
         maxHp: 10,
         currentHp: 10,
         armorClass: 12,
         speed: '30ft',
         attacks: 'Claw: +2 to hit, 1d4 + 1 slashing',
-        initiativeBonus: 0,
+        strength: 10,
+        dexterity: 10,
+        constitution: 10,
+        intelligence: 10,
+        wisdom: 10,
+        charisma: 10,
       );
 
       final updatedCreature = creature.copyWith(
@@ -136,7 +178,7 @@ void main() {
     });
 
     test('Campaign copyWith method works correctly', () async {
-      final campaign = Campaign(
+      final campaign = Campaign.legacy(
         title: 'Original Campaign',
         description: 'Original description',
         availableMonsters: ['goblin'],
@@ -144,8 +186,10 @@ void main() {
 
       final updatedCampaign = campaign.copyWith(
         title: 'Updated Campaign',
-        availableMonsters: ['goblin', 'orc', 'dragon'],
-        availableSpells: ['fireball'],
+        settings: campaign.settings.copyWith(
+          availableMonsters: ['goblin', 'orc', 'dragon'],
+          availableSpells: ['fireball'],
+        ),
       );
 
       expect(updatedCampaign.title, 'Updated Campaign');
@@ -156,7 +200,7 @@ void main() {
     });
 
     test('Database can store and retrieve D&D integrated campaigns', () async {
-      final campaign = Campaign(
+      final campaign = Campaign.legacy(
         title: 'D&D Test Campaign',
         description: 'Campaign with D&D data',
         availableMonsters: ['goblin', 'orc', 'dragon'],
@@ -181,11 +225,11 @@ void main() {
     });
 
     test('Database can store and retrieve D&D integrated creatures', () async {
-      final creature = Creature.fromOfficialMonster(
-        officialMonsterId: 'goblin',
+      final officialMonster = OfficialMonster(
+        id: 'goblin',
         name: 'Goblin Scout',
-        maxHp: 7,
-        armorClass: 15,
+        hitPoints: 7,
+        armorClass: '15',
         speed: '30ft',
         strength: 8,
         dexterity: 14,
@@ -196,11 +240,45 @@ void main() {
         size: 'Small',
         type: 'Humanoid (goblinoid)',
         alignment: 'Neutral Evil',
-        challengeRating: 1,
-        specialAbilities: 'Nimble Escape',
-        legendaryActions: null,
+        challengeRating: 1.0,
+        xp: 50,
+        hitDice: '2d6',
+        source: 'SRD',
+        specialAbilities: [
+          MonsterAbility(
+            name: 'Nimble Escape',
+            description: 'Can take the Disengage or Hide action as a bonus action',
+          ),
+        ],
+        actions: [
+          MonsterAction(
+            name: 'Shortbow',
+            description: '+4 to hit, 1d6 + 2 piercing',
+          ),
+        ],
         description: 'A stealthy goblin scout',
-        attacks: 'Shortbow: +4 to hit, 1d6 + 2 piercing',
+      );
+      
+      final creature = CreatureFactoryService.fromOfficialMonster(
+        officialMonsterId: officialMonster.id,
+        name: officialMonster.name,
+        maxHp: officialMonster.hitPoints,
+        armorClass: int.tryParse(officialMonster.armorClass) ?? 10,
+        speed: officialMonster.speed,
+        strength: officialMonster.strength,
+        dexterity: officialMonster.dexterity,
+        constitution: officialMonster.constitution,
+        intelligence: officialMonster.intelligence,
+        wisdom: officialMonster.wisdom,
+        charisma: officialMonster.charisma,
+        size: officialMonster.size,
+        type: officialMonster.type,
+        subtype: officialMonster.subtype,
+        alignment: officialMonster.alignment,
+        challengeRating: officialMonster.challengeRating?.toInt(),
+        specialAbilities: officialMonster.specialAbilities.map((a) => '${a.name}: ${a.description}').join('\n'),
+        description: officialMonster.description,
+        attacks: officialMonster.actions.map((a) => '${a.name}: ${a.description}').join('\n'),
       );
 
       // Speichere die Kreatur
@@ -217,28 +295,28 @@ void main() {
       expect(retrievedCreature.type, 'Humanoid (goblinoid)');
       expect(retrievedCreature.alignment, 'Neutral Evil');
       expect(retrievedCreature.challengeRating, 1);
-      expect(retrievedCreature.specialAbilities, 'Nimble Escape');
+      expect(retrievedCreature.specialAbilities, contains('Nimble Escape'));
       expect(retrievedCreature.attacks, contains('Shortbow'));
     });
 
     test('String list parsing handles edge cases', () async {
       // Teste leere Strings
-      final emptyList = Campaign.parseStringListForTest(null);
+      final emptyList = StringListParser.parseStringListForTest(null);
       expect(emptyList, isEmpty);
 
-      final emptyList2 = Campaign.parseStringListForTest('');
+      final emptyList2 = StringListParser.parseStringListForTest('');
       expect(emptyList2, isEmpty);
 
       // Teste Strings mit nur Kommas
-      final commaList = Campaign.parseStringListForTest(',,,');
+      final commaList = StringListParser.parseStringListForTest(',,,');
       expect(commaList, isEmpty);
 
       // Teste normale Strings
-      final normalList = Campaign.parseStringListForTest('goblin,orc,dragon');
+      final normalList = StringListParser.parseStringListForTest('goblin,orc,dragon');
       expect(normalList, containsAll(['goblin', 'orc', 'dragon']));
 
       // Teste Strings mit Leerzeichen
-      final spacedList = Campaign.parseStringListForTest('goblin, orc, dragon');
+      final spacedList = StringListParser.parseStringListForTest('goblin, orc, dragon');
       expect(spacedList, containsAll(['goblin', 'orc', 'dragon']));
     });
 

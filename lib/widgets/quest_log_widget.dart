@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
 import '../models/campaign.dart';
 import '../models/quest.dart';
+import '../models/campaign_quest.dart';
 import '../screens/edit_campaign_quest_screen.dart';
 
 class QuestLogWidget extends StatefulWidget {
@@ -26,13 +27,13 @@ class QuestLogWidgetState extends State<QuestLogWidget> {
   @override
   void initState() {
     super.initState();
-    _campaignQuestsFuture = dbHelper.getQuestsForCampaign(widget.campaign.id);
+    _campaignQuestsFuture = dbHelper.getCampaignQuestsForCampaign(widget.campaign.id);
   }
 
   // Diese Methode kann von aussen aufgerufen werden, um ein Neuladen zu erzwingen
   void reloadQuests() {
     setState(() {
-      _campaignQuestsFuture = dbHelper.getQuestsForCampaign(widget.campaign.id);
+      _campaignQuestsFuture = dbHelper.getCampaignQuestsForCampaign(widget.campaign.id);
     });
   }
 
@@ -57,19 +58,19 @@ class QuestLogWidgetState extends State<QuestLogWidget> {
 
         return Column(
           children: sortedStatuses.map((status) {
-            if(status == QuestStatus.abgeschlossen) return const SizedBox.shrink();
+            if(status == QuestStatus.completed) return const SizedBox.shrink();
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(top: 8.0, left: 4.0),
+                  padding: const EdgeInsets.only(top: 8, left: 4),
                   child: Text(_getGermanStatusName(status), style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
                 ...groupedQuests[status]!.map((cq) => ListTile(
                   title: Text(cq.quest.title, style: const TextStyle(fontSize: 14)),
                   dense: true,
                   onTap: () async {
-                    await Navigator.of(context).push(MaterialPageRoute(builder: (ctx) => EditCampaignQuestScreen(campaignId: widget.campaign.id, campaignQuest: cq)));
+                    await Navigator.of(context).push(MaterialPageRoute<CampaignQuest>(builder: (ctx) => EditCampaignQuestScreen(campaignId: widget.campaign.id, campaignQuest: cq)));
                     widget.onDataChanged();
                   },
                 )),
@@ -83,10 +84,11 @@ class QuestLogWidgetState extends State<QuestLogWidget> {
 
   String _getGermanStatusName(QuestStatus status) {
     switch (status) {
-      case QuestStatus.verfuegbar: return "Verfügbar";
-      case QuestStatus.aktiv: return "Aktiv";
-      case QuestStatus.gescheitert: return "Gescheitert";
-      case QuestStatus.abgeschlossen: return "Abgeschlossen";
+      case QuestStatus.active: return "Aktiv";
+      case QuestStatus.completed: return "Abgeschlossen";
+      case QuestStatus.failed: return "Gescheitert";
+      case QuestStatus.abandoned: return "Aufgegeben";
+      case QuestStatus.onHold: return "Pausiert";
     }
   }
 }

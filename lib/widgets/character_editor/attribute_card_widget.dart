@@ -6,8 +6,8 @@ class AttributeCardWidget extends StatelessWidget {
   final TextEditingController controller;
   final Color color;
   final String description;
-  final Function(String name, TextEditingController controller, Color color) onQuickEdit;
-  final Function(TextEditingController controller, int adjustment) onAdjustAttribute;
+  final void Function(String name, TextEditingController controller, Color color) onQuickEdit;
+  final void Function(TextEditingController controller, int adjustment) onAdjustAttribute;
 
   const AttributeCardWidget({
     super.key,

@@ -1,9 +1,5 @@
-// lib/models/item.dart
-import 'package:uuid/uuid.dart';
+import '../utils/model_parsing_helper.dart';
 
-var uuid = const Uuid();
-
-// Enum für die verschiedenen Item-Typen
 enum ItemType { 
   Weapon, 
   Armor, 
@@ -59,8 +55,8 @@ class Item {
   final int? maxCastsPerDay;          // Slot-basierte Verwendung
   final bool? requiresConcentration;  // Concentration required
 
-  Item({
-    String? id,
+  const Item({
+    required this.id,
     required this.name,
     this.description = '',
     required this.itemType,
@@ -84,63 +80,134 @@ class Item {
     this.isCantrip = false,
     this.maxCastsPerDay,
     this.requiresConcentration = false,
-  }) : id = id ?? uuid.v4();
+  });
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
       'name': name,
       'description': description,
-      'itemType': itemType.toString(),
+      'item_type': itemType.toString(),
       'weight': weight,
       'cost': cost,
-      'imageUrl': imageUrl,
+      'image_url': imageUrl,
       'damage': damage,
       'properties': properties,
-      'acFormula': acFormula,
-      'strengthRequirement': strengthRequirement,
-      'stealthDisadvantage': stealthDisadvantage == true ? 1 : 0,
+      'ac_formula': acFormula,
+      'strength_requirement': strengthRequirement,
+      'stealth_disadvantage': stealthDisadvantage,
       'rarity': rarity,
-      'requiresAttunement': requiresAttunement == true ? 1 : 0,
-      'hasDurability': hasDurability == true ? 1 : 0,
-      'maxDurability': maxDurability,
-      'isRepairable': isRepairable == true ? 1 : 0,
-      'spellId': spellId,
-      'isSpell': isSpell == true ? 1 : 0,
-      'spellLevel': spellLevel,
-      'spellSchool': spellSchool,
-      'isCantrip': isCantrip == true ? 1 : 0,
-      'maxCastsPerDay': maxCastsPerDay,
-      'requiresConcentration': requiresConcentration == true ? 1 : 0,
+      'requires_attunement': requiresAttunement,
+      'has_durability': hasDurability,
+      'max_durability': maxDurability,
+      'is_repairable': isRepairable,
+      'spell_id': spellId,
+      'is_spell': isSpell,
+      'spell_level': spellLevel,
+      'spell_school': spellSchool,
+      'is_cantrip': isCantrip,
+      'max_casts_per_day': maxCastsPerDay,
+      'requires_concentration': requiresConcentration,
     };
   }
 
   factory Item.fromMap(Map<String, dynamic> map) {
     return Item(
-      id: map['id'],
-      name: map['name'],
-      description: map['description'],
-      itemType: ItemType.values.firstWhere((e) => e.toString() == map['itemType']),
-      weight: map['weight'],
-      cost: map['cost'],
-      imageUrl: map['imageUrl'] ?? '',
-      damage: map['damage'],
-      properties: map['properties'],
-      acFormula: map['acFormula'],
-      strengthRequirement: map['strengthRequirement'],
-      stealthDisadvantage: map['stealthDisadvantage'] == 1,
-      rarity: map['rarity'],
-      requiresAttunement: map['requiresAttunement'] == 1,
-      hasDurability: map['hasDurability'] == 1,
-      maxDurability: map['maxDurability'],
-      isRepairable: map['isRepairable'] == 1,
-      spellId: map['spellId'],
-      isSpell: map['isSpell'] == 1,
-      spellLevel: map['spellLevel'],
-      spellSchool: map['spellSchool'],
-      isCantrip: map['isCantrip'] == 1,
-      maxCastsPerDay: map['maxCastsPerDay'],
-      requiresConcentration: map['requiresConcentration'] == 1,
+      id: ModelParsingHelper.safeId(map, 'id'),
+      name: ModelParsingHelper.safeString(map, 'name', ''),
+      description: ModelParsingHelper.safeString(map, 'description', ''),
+      itemType: ModelParsingHelper.safeEnum<ItemType>(
+        map, 
+        'item_type', 
+        ItemType.values, 
+        ItemType.Weapon,
+      ),
+      weight: ModelParsingHelper.safeDouble(map, 'weight', 0.0),
+      cost: ModelParsingHelper.safeDouble(map, 'cost', 0.0),
+      imageUrl: ModelParsingHelper.safeString(map, 'image_url', ''),
+      damage: ModelParsingHelper.safeStringOrNull(map, 'damage', null),
+      properties: ModelParsingHelper.safeStringOrNull(map, 'properties', null),
+      acFormula: ModelParsingHelper.safeStringOrNull(map, 'ac_formula', null),
+      strengthRequirement: ModelParsingHelper.safeIntOrNull(map, 'strength_requirement', null),
+      stealthDisadvantage: ModelParsingHelper.safeBool(map, 'stealth_disadvantage', false) ? true : null,
+      rarity: ModelParsingHelper.safeStringOrNull(map, 'rarity', null),
+      requiresAttunement: ModelParsingHelper.safeBool(map, 'requires_attunement', false) ? true : null,
+      hasDurability: ModelParsingHelper.safeBool(map, 'has_durability', false) ? true : null,
+      maxDurability: ModelParsingHelper.safeIntOrNull(map, 'max_durability', null),
+      isRepairable: ModelParsingHelper.safeBool(map, 'is_repairable', false) ? true : null,
+      spellId: ModelParsingHelper.safeStringOrNull(map, 'spell_id', null),
+      isSpell: ModelParsingHelper.safeBool(map, 'is_spell', false) ? true : null,
+      spellLevel: ModelParsingHelper.safeIntOrNull(map, 'spell_level', null),
+      spellSchool: ModelParsingHelper.safeStringOrNull(map, 'spell_school', null),
+      isCantrip: ModelParsingHelper.safeBool(map, 'is_cantrip', false) ? true : null,
+      maxCastsPerDay: ModelParsingHelper.safeIntOrNull(map, 'max_casts_per_day', null),
+      requiresConcentration: ModelParsingHelper.safeBool(map, 'requires_concentration', false) ? true : null,
     );
   }
+
+  Item copyWith({
+    String? id,
+    String? name,
+    String? description,
+    ItemType? itemType,
+    double? weight,
+    double? cost,
+    String? imageUrl,
+    String? damage,
+    String? properties,
+    String? acFormula,
+    int? strengthRequirement,
+    bool? stealthDisadvantage,
+    String? rarity,
+    bool? requiresAttunement,
+    bool? hasDurability,
+    int? maxDurability,
+    bool? isRepairable,
+    String? spellId,
+    bool? isSpell,
+    int? spellLevel,
+    String? spellSchool,
+    bool? isCantrip,
+    int? maxCastsPerDay,
+    bool? requiresConcentration,
+  }) {
+    return Item(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      itemType: itemType ?? this.itemType,
+      weight: weight ?? this.weight,
+      cost: cost ?? this.cost,
+      imageUrl: imageUrl ?? this.imageUrl,
+      damage: damage ?? this.damage,
+      properties: properties ?? this.properties,
+      acFormula: acFormula ?? this.acFormula,
+      strengthRequirement: strengthRequirement ?? this.strengthRequirement,
+      stealthDisadvantage: stealthDisadvantage ?? this.stealthDisadvantage,
+      rarity: rarity ?? this.rarity,
+      requiresAttunement: requiresAttunement ?? this.requiresAttunement,
+      hasDurability: hasDurability ?? this.hasDurability,
+      maxDurability: maxDurability ?? this.maxDurability,
+      isRepairable: isRepairable ?? this.isRepairable,
+      spellId: spellId ?? this.spellId,
+      isSpell: isSpell ?? this.isSpell,
+      spellLevel: spellLevel ?? this.spellLevel,
+      spellSchool: spellSchool ?? this.spellSchool,
+      isCantrip: isCantrip ?? this.isCantrip,
+      maxCastsPerDay: maxCastsPerDay ?? this.maxCastsPerDay,
+      requiresConcentration: requiresConcentration ?? this.requiresConcentration,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Item && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
+
+  @override
+  String toString() => 'Item(id: $id, name: $name, type: $itemType)';
 }

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../models/attack.dart';
+import '../../utils/attack_helper.dart';
 import 'attack_card_widget.dart';
 import 'attack_editor_widget.dart';
 
 class AttackListWidget extends StatefulWidget {
   final List<Attack> attacks;
-  final Function(List<Attack>) onAttacksChanged;
+  final void Function(List<Attack>) onAttacksChanged;
   final bool isEditable;
   final bool showCompactMode;
 
@@ -126,30 +127,6 @@ class _AttackListWidgetState extends State<AttackListWidget> {
     }
   }
 
-  Future<void> _duplicateAttack(Attack attack) async {
-    final duplicatedAttack = Attack(
-      name: '${attack.name} (Kopie)',
-      attackBonus: attack.attackBonus,
-      damageDice: attack.damageDice,
-      damageBonus: attack.damageBonus,
-      damageType: attack.damageType,
-      description: attack.description,
-      range: attack.range,
-      isProficient: attack.isProficient,
-      abilityUsed: attack.abilityUsed,
-    );
-
-    setState(() {
-      _attacks.add(duplicatedAttack);
-    });
-    widget.onAttacksChanged(_attacks);
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Angriff dupliziert')),
-      );
-    }
-  }
 
   Future<void> _importFromLegacy() async {
     final controller = TextEditingController();
@@ -223,7 +200,7 @@ class _AttackListWidgetState extends State<AttackListWidget> {
   }
 
   void _showAttackDetails(Attack attack) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => Dialog(
         child: ConstrainedBox(

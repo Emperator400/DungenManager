@@ -1,19 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:DoungenMenager/models/campaign.dart';
-import 'package:DoungenMenager/models/player_character.dart';
-import 'package:DoungenMenager/models/session.dart';
-import 'package:DoungenMenager/models/quest.dart';
-import 'package:DoungenMenager/models/sound.dart';
-import 'package:DoungenMenager/models/creature.dart';
-import 'package:DoungenMenager/models/item.dart';
-import 'package:DoungenMenager/models/scene.dart';
+import 'package:dungen_manager/models/campaign.dart';
+import 'package:dungen_manager/models/player_character.dart';
+import 'package:dungen_manager/models/session.dart';
+import 'package:dungen_manager/models/quest.dart';
+import 'package:dungen_manager/models/sound.dart';
 
 void main() {
   group('Model Unit Tests', () {
 
     group('Campaign Model', () {
       test('Campaign creation with valid data', () {
-        final campaign = Campaign(
+        final campaign = Campaign.create(
           title: 'Test Campaign',
           description: 'Test Description',
         );
@@ -29,16 +26,17 @@ void main() {
           id: 'custom-id',
           title: 'Test Campaign',
           description: 'Test Description',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
         );
 
         expect(campaign.id, 'custom-id');
       });
 
       test('Campaign toMap and fromMap', () {
-        final originalCampaign = Campaign(
+        final originalCampaign = Campaign.create(
           title: 'Test Campaign',
           description: 'Test Description',
-          id: 'test-id',
         );
 
         final map = originalCampaign.toMap();
@@ -65,7 +63,7 @@ void main() {
 
     group('Player Character Model', () {
       test('PlayerCharacter creation with valid data', () {
-        final character = PlayerCharacter(
+        final character = PlayerCharacter.create(
           campaignId: 'campaign-id',
           name: 'Test Character',
           playerName: 'Test Player',
@@ -109,7 +107,14 @@ void main() {
           intelligence: 12,
           wisdom: 13,
           charisma: 10,
-          proficientSkills: ['Athletics', 'Intimidation'],
+          proficientSkills: const ['Athletics', 'Intimidation'],
+          attackList: const [],
+          inventory: const [],
+          gold: 100,
+          silver: 50,
+          copper: 25,
+          sourceType: 'manual',
+          version: '1.0',
         );
 
         expect(character.id, 'custom-id');
@@ -118,18 +123,18 @@ void main() {
         expect(character.armorClass, 18);
         expect(character.initiativeBonus, 2);
         expect(character.strength, 16);
-        expect(character.proficientSkills, ['Athletics', 'Intimidation']);
+        expect(character.proficientSkills, const ['Athletics', 'Intimidation']);
       });
 
       test('PlayerCharacter toMap and fromMap', () {
-        final originalCharacter = PlayerCharacter(
+        final originalCharacter = PlayerCharacter.create(
           campaignId: 'campaign-id',
           name: 'Test Character',
           playerName: 'Test Player',
           className: 'Warrior',
           raceName: 'Human',
           level: 3,
-          proficientSkills: ['Athletics', 'Intimidation'],
+          proficientSkills: const ['Athletics', 'Intimidation'],
         );
 
         final map = originalCharacter.toMap();
@@ -145,11 +150,11 @@ void main() {
       test('PlayerCharacter fromMap with default values', () {
         final map = {
           'id': 'test-id',
-          'campaignId': 'campaign-id',
+          'campaign_id': 'campaign-id',
           'name': 'Test Character',
-          'playerName': 'Test Player',
-          'className': 'Warrior',
-          'raceName': 'Human',
+          'player_name': 'Test Player',
+          'class_name': 'Warrior',
+          'race_name': 'Human',
         };
 
         final character = PlayerCharacter.fromMap(map);
@@ -163,35 +168,34 @@ void main() {
 
     group('Quest Model', () {
       test('Quest creation with valid data', () {
-        final quest = Quest(
+        final quest = Quest.create(
           title: 'Test Quest',
           description: 'Test Description',
-          goal: 'Test Goal',
         );
 
         expect(quest.title, 'Test Quest');
         expect(quest.description, 'Test Description');
-        expect(quest.goal, 'Test Goal');
+        expect(quest.status, QuestStatus.active);
         expect(quest.id, isNotNull);
       });
 
       test('Quest creation with custom ID', () {
         final quest = Quest(
-          id: 'custom-id',
+          id: 123,
           title: 'Test Quest',
           description: 'Test Description',
-          goal: 'Test Goal',
+          status: QuestStatus.active,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
         );
 
-        expect(quest.id, 'custom-id');
+        expect(quest.id, 123);
       });
 
       test('Quest toMap and fromMap', () {
-        final originalQuest = Quest(
+        final originalQuest = Quest.create(
           title: 'Test Quest',
           description: 'Test Description',
-          goal: 'Test Goal',
-          id: 'test-id',
         );
 
         final map = originalQuest.toMap();
@@ -200,7 +204,7 @@ void main() {
         expect(restoredQuest.id, originalQuest.id);
         expect(restoredQuest.title, originalQuest.title);
         expect(restoredQuest.description, originalQuest.description);
-        expect(restoredQuest.goal, originalQuest.goal);
+        expect(restoredQuest.status, originalQuest.status);
       });
     });
 
@@ -255,8 +259,8 @@ void main() {
         final map = {
           'id': 'test-id',
           'name': 'Test Sound',
-          'filePath': '/path/to/sound.mp3',
-          'soundType': 'SoundType.Ambiente',
+          'file_path': '/path/to/sound.mp3',
+          'sound_type': 'SoundType.Ambiente',
         };
 
         final sound = Sound.fromMap(map);
@@ -313,7 +317,7 @@ void main() {
 
     group('Model Validation Tests', () {
       test('Campaign accepts empty values (current behavior)', () {
-        final campaign = Campaign(
+        final campaign = Campaign.create(
           title: '',
           description: '',
         );
@@ -323,7 +327,7 @@ void main() {
       });
 
       test('PlayerCharacter accepts empty values (current behavior)', () {
-        final character = PlayerCharacter(
+        final character = PlayerCharacter.create(
           campaignId: 'campaign-id',
           name: '',
           playerName: '',
@@ -338,15 +342,13 @@ void main() {
       });
 
       test('Quest accepts empty values (current behavior)', () {
-        final quest = Quest(
+        final quest = Quest.create(
           title: '',
           description: '',
-          goal: '',
         );
         
         expect(quest.title, '');
         expect(quest.description, '');
-        expect(quest.goal, '');
       });
 
       test('Sound accepts empty values (current behavior)', () {
@@ -367,12 +369,16 @@ void main() {
           id: 'same-id',
           title: 'Same Title',
           description: 'Same Description',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
         );
 
         final campaign2 = Campaign(
           id: 'same-id',
           title: 'Same Title',
           description: 'Same Description',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
         );
 
         expect(campaign1.id, campaign2.id);
@@ -388,6 +394,24 @@ void main() {
           playerName: 'Same Player',
           className: 'Same Class',
           raceName: 'Same Race',
+          level: 1,
+          maxHp: 10,
+          armorClass: 10,
+          initiativeBonus: 0,
+          strength: 10,
+          dexterity: 10,
+          constitution: 10,
+          intelligence: 10,
+          wisdom: 10,
+          charisma: 10,
+          proficientSkills: const [],
+          attackList: const [],
+          inventory: const [],
+          gold: 0,
+          silver: 0,
+          copper: 0,
+          sourceType: 'manual',
+          version: '1.0',
         );
 
         final character2 = PlayerCharacter(
@@ -397,6 +421,24 @@ void main() {
           playerName: 'Same Player',
           className: 'Same Class',
           raceName: 'Same Race',
+          level: 1,
+          maxHp: 10,
+          armorClass: 10,
+          initiativeBonus: 0,
+          strength: 10,
+          dexterity: 10,
+          constitution: 10,
+          intelligence: 10,
+          wisdom: 10,
+          charisma: 10,
+          proficientSkills: const [],
+          attackList: const [],
+          inventory: const [],
+          gold: 0,
+          silver: 0,
+          copper: 0,
+          sourceType: 'manual',
+          version: '1.0',
         );
 
         expect(character1.id, character2.id);
@@ -406,22 +448,26 @@ void main() {
 
       test('Quests with same data are equal', () {
         final quest1 = Quest(
-          id: 'same-id',
+          id: 123,
           title: 'Same Title',
           description: 'Same Description',
-          goal: 'Same Goal',
+          status: QuestStatus.active,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
         );
 
         final quest2 = Quest(
-          id: 'same-id',
+          id: 123,
           title: 'Same Title',
           description: 'Same Description',
-          goal: 'Same Goal',
+          status: QuestStatus.active,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
         );
 
         expect(quest1.id, quest2.id);
         expect(quest1.title, quest2.title);
-        expect(quest1.goal, quest2.goal);
+        expect(quest1.status, quest2.status);
       });
     });
   });

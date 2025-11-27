@@ -1,20 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:DoungenMenager/models/campaign.dart';
-import 'package:DoungenMenager/models/player_character.dart';
-import 'package:DoungenMenager/models/session.dart';
-import 'package:DoungenMenager/models/quest.dart';
-import 'package:DoungenMenager/models/sound.dart';
+import 'package:dungen_manager/models/campaign.dart';
+import 'package:dungen_manager/models/player_character.dart';
+import 'package:dungen_manager/models/session.dart';
+import 'package:dungen_manager/models/quest.dart';
+import 'package:dungen_manager/models/sound.dart';
 
 void main() {
   group('DungenManager Widget Tests', () {
 
     testWidgets('Campaign Model Widget Test', (WidgetTester tester) async {
-      final campaign = Campaign(
+      final campaign = Campaign.create(
         title: 'Test Campaign',
         description: 'Test Description',
-        id: 'test-id',
-      );
+      ).copyWith(id: 'test-id');
 
       await tester.pumpWidget(
         MaterialApp(
@@ -39,8 +38,26 @@ void main() {
         playerName: 'Test Player',
         className: 'Warrior',
         raceName: 'Human',
-        id: 'char-id',
+        id: '123',
         campaignId: 'campaign-id',
+        level: 1,
+        maxHp: 10,
+        armorClass: 10,
+        initiativeBonus: 0,
+        strength: 10,
+        dexterity: 10,
+        constitution: 10,
+        intelligence: 10,
+        wisdom: 10,
+        charisma: 10,
+        proficientSkills: const [],
+        attackList: const [],
+        inventory: const [],
+        gold: 0,
+        silver: 0,
+        copper: 0,
+        sourceType: 'manual',
+        version: '1.0',
       );
 
       await tester.pumpWidget(
@@ -66,6 +83,7 @@ void main() {
         campaignId: 'campaign-id',
         id: 'session-id',
         liveNotes: 'Test live notes',
+        inGameTimeInMinutes: 480,
       );
 
       await tester.pumpWidget(
@@ -93,8 +111,9 @@ void main() {
       final quest = Quest(
         title: 'Test Quest',
         description: 'Test Quest Description',
-        goal: 'Test Goal',
-        id: 'quest-id',
+        id: 123,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       );
 
       await tester.pumpWidget(
@@ -105,7 +124,6 @@ void main() {
                 children: [
                   Text(quest.title),
                   Text(quest.description),
-                  Text(quest.goal),
                 ],
               ),
             ),
@@ -115,7 +133,6 @@ void main() {
 
       expect(find.text('Test Quest'), findsOneWidget);
       expect(find.text('Test Quest Description'), findsOneWidget);
-      expect(find.text('Test Goal'), findsOneWidget);
     });
 
     testWidgets('Sound Widget Test', (WidgetTester tester) async {

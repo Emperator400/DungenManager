@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
 import '../models/quest.dart';
+import '../models/campaign_quest.dart';
 
 class EditCampaignQuestScreen extends StatefulWidget {
   final CampaignQuest campaignQuest;
@@ -26,12 +27,12 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
   }
 
   void _saveChanges() async {
-    await dbHelper.updateCampaignQuest(
-      widget.campaignId,
-      widget.campaignQuest.quest.id,
-      _selectedStatus,
-      _notesController.text,
+    final updatedCampaignQuest = widget.campaignQuest.copyWith(
+      status: _selectedStatus,
+      notes: _notesController.text,
     );
+    
+    await dbHelper.updateCampaignQuest(updatedCampaignQuest);
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -48,10 +49,10 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          Text("Beschreibung", style: Theme.of(context).textTheme.titleMedium),
+          Text('Beschreibung', style: Theme.of(context).textTheme.titleMedium),
           Text(quest.description),
           const Divider(height: 24),
-          Text("Ziel", style: Theme.of(context).textTheme.titleMedium),
+          Text('Ziel', style: Theme.of(context).textTheme.titleMedium),
           Text(quest.goal),
           const Divider(height: 24),
           // Dropdown zum Ändern des Status

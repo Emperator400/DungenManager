@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import '../character_editor/enhanced_character_editor_controller.dart';
 import '../character_editor/character_editor_controller.dart';
 import '../character_editor/basic_info_tab_builder.dart';
 import '../character_editor/attributes_tab_widget.dart';
 import '../character_editor/attacks_tab_widget.dart';
 import '../character_editor/enhanced_inventory_tab_widget.dart';
 import '../character_editor/character_inventory_handler.dart';
+import '../../models/inventory_item.dart';
 
 class CharacterTabManager {
-  final CharacterEditorController controller;
+  final EnhancedCharacterEditorController controller;
   final TickerProvider vsync;
   final VoidCallback onStateChanged;
   final GlobalKey<FormState> formKey;
@@ -122,20 +124,9 @@ class CharacterTabManager {
   Widget _buildInventoryTab() {
     return EnhancedInventoryTabWidget(
       characterType: controller.characterType,
-      inventory: controller.inventory,
-      isLoadingInventory: controller.isLoadingInventory,
-      gold: controller.gold,
-      onGoldChanged: (value) {
-        controller.gold = value;
-        onStateChanged();
-      },
-      onAddItem: _handleAddItem,
-      onLoadInventory: _handleLoadInventory,
-      onManageItem: _handleManageItem,
-      onUpdateQuantity: _handleUpdateQuantity,
-      onRemoveItem: _handleRemoveItem,
       pcId: controller.pcToEdit?.id,
       creatureId: controller.creatureToEdit?.id,
+      viewModel: controller.viewModel,
     );
   }
 
@@ -154,19 +145,19 @@ class CharacterTabManager {
     }
   }
 
-  Future<void> _handleManageItem(dynamic displayItem) async {
+  Future<void> _handleManageItem(DisplayInventoryItem displayItem) async {
     if (inventoryHandler != null) {
       await inventoryHandler!.showManageItemDialog(displayItem);
     }
   }
 
-  Future<void> _handleUpdateQuantity(dynamic displayItem, int newQuantity) async {
+  Future<void> _handleUpdateQuantity(DisplayInventoryItem displayItem, int newQuantity) async {
     if (inventoryHandler != null) {
       await inventoryHandler!.updateItemQuantity(displayItem, newQuantity);
     }
   }
 
-  Future<void> _handleRemoveItem(dynamic displayItem) async {
+  Future<void> _handleRemoveItem(DisplayInventoryItem displayItem) async {
     if (inventoryHandler != null) {
       await inventoryHandler!.removeItem(displayItem);
     }

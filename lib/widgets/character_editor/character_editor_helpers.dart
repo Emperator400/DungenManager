@@ -11,7 +11,7 @@ class CharacterEditorHelpers {
   ) {
     final currentValue = int.tryParse(controller.text) ?? 10;
     
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('$name bearbeiten'),
@@ -78,7 +78,7 @@ class CharacterEditorHelpers {
   }
 
   static void showTooltipDialog(BuildContext context, String title, String content) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(title),
@@ -94,7 +94,7 @@ class CharacterEditorHelpers {
   }
 
   static void showAttributesHelpDialog(BuildContext context) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Attribute & Fertigkeiten Hilfe'),
@@ -153,7 +153,7 @@ class CharacterEditorHelpers {
   }
 
   static void showAbilitiesHelpDialog(BuildContext context) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Fähigkeiten & Aktionen Hilfe'),

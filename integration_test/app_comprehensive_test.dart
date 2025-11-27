@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:DoungenMenager/main.dart' as app;
+import 'package:dungen_manager/main.dart' as app;
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -150,7 +150,6 @@ void main() {
 
     testWidgets('4. Quest Management', (WidgetTester tester) async {
       const campaignName = 'Quest Test Campaign';
-      const questName = 'Test Quest';
       
       app.main();
       await tester.pumpAndSettle(const Duration(seconds: 1));

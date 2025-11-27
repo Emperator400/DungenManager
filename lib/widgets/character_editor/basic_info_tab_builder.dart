@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../game_data/game_data.dart';
 import '../../game_data/dnd_models.dart';
-import 'character_editor_controller.dart';
+import 'enhanced_character_editor_controller.dart';
 
 class BasicInfoTabBuilder {
-  final CharacterEditorController controller;
+  final EnhancedCharacterEditorController controller;
   final GlobalKey<FormState> formKey;
 
   BasicInfoTabBuilder({
@@ -198,10 +198,10 @@ class BasicInfoTabBuilder {
           children: [
             Expanded(
               child: TextFormField(
-                controller: TextEditingController(text: controller.selectedSubtype ?? ''),
+                controller: TextEditingController(text: controller.selectedSubtype),
                 decoration: const InputDecoration(labelText: 'Subtyp (optional)'),
                 onChanged: (value) {
-                  controller.selectedSubtype = value.isEmpty ? null : value;
+                  controller.selectedSubtype = value.isEmpty ? '' : value;
                   onStateChanged();
                 },
               ),

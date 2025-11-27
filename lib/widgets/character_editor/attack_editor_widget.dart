@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/attack.dart';
+import '../../utils/attack_helper.dart';
 
 class AttackEditorWidget extends StatefulWidget {
   final Attack? attack;
-  final Function(Attack) onSave;
+  final void Function(Attack) onSave;
   final VoidCallback? onCancel;
 
   const AttackEditorWidget({
@@ -71,7 +72,7 @@ class _AttackEditorWidgetState extends State<AttackEditorWidget> {
   void _saveAttack() {
     if (_formKey.currentState?.validate() == true) {
       final attack = Attack(
-        id: widget.attack?.id,
+        id: widget.attack?.id ?? '',
         name: _nameController.text.trim(),
         attackBonus: int.tryParse(_attackBonusController.text) ?? 0,
         damageDice: _damageDiceController.text.trim(),
@@ -225,7 +226,7 @@ class _AttackEditorWidgetState extends State<AttackEditorWidget> {
                     }).toList(),
                     onChanged: (value) {
                       setState(() {
-                        _selectedDamageType = value!;
+                        _selectedDamageType = value ?? '';
                       });
                     },
                   ),
@@ -409,7 +410,7 @@ class _AttackEditorWidgetState extends State<AttackEditorWidget> {
 // Dialog-Wrapper für einfachere Verwendung
 class AttackEditorDialog extends StatelessWidget {
   final Attack? attack;
-  final Function(Attack) onSave;
+  final void Function(Attack) onSave;
 
   const AttackEditorDialog({
     super.key,
@@ -441,7 +442,7 @@ class AttackEditorDialog extends StatelessWidget {
 // Bottom Sheet Version für mobile
 class AttackEditorBottomSheet extends StatelessWidget {
   final Attack? attack;
-  final Function(Attack) onSave;
+  final void Function(Attack) onSave;
 
   const AttackEditorBottomSheet({
     super.key,

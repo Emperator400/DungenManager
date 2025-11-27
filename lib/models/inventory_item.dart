@@ -1,70 +1,115 @@
-// lib/models/inventory_item.dart
-import 'package:uuid/uuid.dart';
-import 'item.dart'; // NEU: Importiert unser neues Item-Modell
-import 'equip_slot.dart'; // NEU: Import für Ausrüstungs-Slots
-
-var uuid = const Uuid();
+import 'item.dart';
+import 'equip_slot.dart';
+import '../utils/model_parsing_helper.dart';
 
 class InventoryItem {
   final String id;
   final String ownerId;
-  // GEÄNDERT: von wikiEntryId zu itemId
-  final String itemId;
+  final String itemId; // Referenz zum Item
   final int quantity;
-  
-  // NEU: Ausrüstungs-Felder
   final bool isEquipped;
   final EquipSlot? equipSlot;
 
-  InventoryItem({
-    String? id,
+  const InventoryItem({
+    required this.id,
     required this.ownerId,
     required this.itemId,
     this.quantity = 1,
     this.isEquipped = false,
     this.equipSlot,
-  }) : id = id ?? uuid.v4();
+  });
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'ownerId': ownerId,
-      'itemId': itemId,
+      'owner_id': ownerId,
+      'item_id': itemId,
       'quantity': quantity,
-      'isEquipped': isEquipped ? 1 : 0,
-      'equipSlot': equipSlot?.toString(),
+      'is_equipped': isEquipped,
+      'equip_slot': equipSlot?.toJson(),
     };
   }
 
   factory InventoryItem.fromMap(Map<String, dynamic> map) {
-    EquipSlot? equipSlot;
-    if (map['equipSlot'] != null) {
-      equipSlot = EquipSlot.values.firstWhere(
-        (slot) => slot.toString() == map['equipSlot'],
-        orElse: () => throw ArgumentError('Invalid EquipSlot: ${map['equipSlot']}'),
-      );
-    }
+    final equipSlot = EquipSlotSerialization.fromJson(map['equip_slot']?.toString());
 
     return InventoryItem(
-      id: map['id'],
-      ownerId: map['ownerId'],
-      itemId: map['itemId'],
-      quantity: map['quantity'] ?? 1,
-      isEquipped: map['isEquipped'] == 1,
+      id: ModelParsingHelper.safeId(map, 'id'),
+      ownerId: ModelParsingHelper.safeString(map, 'owner_id', ''),
+      itemId: ModelParsingHelper.safeString(map, 'item_id', ''),
+      quantity: ModelParsingHelper.safeInt(map, 'quantity', 1),
+      isEquipped: ModelParsingHelper.safeBool(map, 'is_equipped', false),
       equipSlot: equipSlot,
     );
   }
+
+  InventoryItem copyWith({
+    String? id,
+    String? ownerId,
+    String? itemId,
+    int? quantity,
+    bool? isEquipped,
+    EquipSlot? equipSlot,
+  }) {
+    return InventoryItem(
+      id: id ?? this.id,
+      ownerId: ownerId ?? this.ownerId,
+      itemId: itemId ?? this.itemId,
+      quantity: quantity ?? this.quantity,
+      isEquipped: isEquipped ?? this.isEquipped,
+      equipSlot: equipSlot ?? this.equipSlot,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is InventoryItem && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
+
+  @override
+  String toString() => 'InventoryItem(id: $id, itemId: $itemId, quantity: $quantity)';
 }
 
-// NEU: Die Helfer-Klasse für die Anzeige wird auch angepasst
 class DisplayInventoryItem {
-  final InventoryItem inventoryItem; // Enthält die Menge und Ausrüstungs-Status
-  final Item item; // Enthält Name, Beschreibung, alle Details
-  final int? currentDurability; // Aktuelle Haltbarkeit (nur wenn hasDurability = true)
+  final InventoryItem inventoryItem;
+  final Item item;
+  final int? currentDurability;
 
-  DisplayInventoryItem({
+  const DisplayInventoryItem({
     required this.inventoryItem, 
     required this.item, 
     this.currentDurability,
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'inventoryItem': inventoryItem.toMap(),
+      'item': item.toMap(),
+      'currentDurability': currentDurability,
+    };
+  }
+
+  factory DisplayInventoryItem.fromMap(Map<String, dynamic> map) {
+    return DisplayInventoryItem(
+      inventoryItem: InventoryItem.fromMap(map['inventoryItem'] as Map<String, dynamic>),
+      item: Item.fromMap(map['item'] as Map<String, dynamic>),
+      currentDurability: map['currentDurability'] as int?,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is DisplayInventoryItem && other.inventoryItem.id == inventoryItem.id;
+  }
+
+  @override
+  int get hashCode => inventoryItem.id.hashCode;
+
+  @override
+  String toString() => 'DisplayInventoryItem(itemId: ${item.id}, quantity: ${inventoryItem.quantity})';
 }

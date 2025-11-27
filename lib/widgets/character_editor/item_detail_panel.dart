@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../models/item.dart';
 import '../../models/inventory_item.dart';
-import '../../models/equip_slot.dart';
 import 'item_color_helper.dart';
+import '../../theme/dnd_theme.dart';
 
 class ItemDetailPanel extends StatelessWidget {
   final DisplayInventoryItem displayItem;
@@ -36,7 +36,7 @@ class ItemDetailPanel extends StatelessWidget {
     return GestureDetector(
       onTap: onClose,
       child: Container(
-        color: Colors.black.withOpacity(0.5),
+      color: DnDTheme.dungeonBlack.withOpacity(0.8),
         child: Row(
           children: [
             const Expanded(child: SizedBox.shrink()),
@@ -54,10 +54,13 @@ class ItemDetailPanel extends StatelessWidget {
         width: 400,
         height: double.infinity,
         decoration: BoxDecoration(
-          color: Colors.grey.shade900,
+          gradient: DnDTheme.getMysticalGradient(
+            startColor: DnDTheme.dungeonBlack,
+            endColor: DnDTheme.stoneGrey,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: DnDTheme.dungeonBlack.withOpacity(0.5),
               blurRadius: 10,
               offset: const Offset(-5, 0),
             ),
@@ -92,7 +95,7 @@ class ItemDetailPanel extends StatelessWidget {
                       Text(
                         item.description,
                         style: TextStyle(
-                          color: Colors.grey.shade300,
+                          color: DnDTheme.mysticalPurple.withValues(alpha: 0.9),
                           fontSize: 14,
                           height: 1.4,
                         ),
@@ -118,15 +121,15 @@ class ItemDetailPanel extends StatelessWidget {
   Widget _buildHeader(Item item) {
     final rarityColor = item.rarity != null 
         ? ItemColorHelper.getRarityColor(item.rarity!)
-        : Colors.grey.shade600;
+        : DnDTheme.mysticalPurple;
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.grey.shade800,
+        color: DnDTheme.stoneGrey,
         border: Border(
           bottom: BorderSide(
-            color: Colors.grey.shade700,
+            color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
             width: 1,
           ),
         ),
@@ -169,7 +172,7 @@ class ItemDetailPanel extends StatelessWidget {
                     Text(
                       ItemColorHelper.getItemTypeDisplayName(item.itemType),
                       style: TextStyle(
-                        color: Colors.grey.shade400,
+                        color: DnDTheme.mysticalPurple.withValues(alpha: 0.8),
                         fontSize: 14,
                       ),
                     ),
@@ -215,54 +218,61 @@ class ItemDetailPanel extends StatelessWidget {
   }
 
   Widget _buildItemOverview(Item item, InventoryItem inventoryItem) {
-    return Card(
-      color: Colors.grey.shade800,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Basis-Informationen',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: DnDTheme.getMysticalGradient(
+          startColor: DnDTheme.stoneGrey.withValues(alpha: 0.8),
+          endColor: DnDTheme.stoneGrey.withValues(alpha: 0.4),
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Basis-Informationen',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
             ),
-            const SizedBox(height: 12),
-            
-            Row(
-              children: [
-                Expanded(
-                  child: _buildInfoCard('Gewicht', '${item.weight} lbs'),
-                ),
+          ),
+          const SizedBox(height: 12),
+          
+          Row(
+            children: [
+              Expanded(
+                child: _buildInfoCard('Gewicht', '${item.weight} lbs'),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildInfoCard('Wert', '${item.cost.toStringAsFixed(0)} Gold'),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 12),
+          
+          Row(
+            children: [
+              Expanded(
+                child: _buildInfoCard('Menge', '${inventoryItem.quantity} Stück'),
+              ),
+              if (item.hasDurability == true && item.maxDurability != null) ...[
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _buildInfoCard('Wert', '${item.cost.toStringAsFixed(0)} Gold'),
+                  child: _buildDurabilityCard(displayItem),
                 ),
+              ] else ...[
+                const Expanded(child: SizedBox()),
               ],
-            ),
-            
-            const SizedBox(height: 12),
-            
-            Row(
-              children: [
-                Expanded(
-                  child: _buildInfoCard('Menge', '${inventoryItem.quantity} Stück'),
-                ),
-                if (item.hasDurability == true && item.maxDurability != null) ...[
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildDurabilityCard(displayItem),
-                  ),
-                ] else ...[
-                  const Expanded(child: SizedBox()),
-                ],
-              ],
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -376,7 +386,7 @@ class ItemDetailPanel extends StatelessWidget {
             child: Text(
               label,
               style: TextStyle(
-                color: Colors.grey.shade400,
+                color: DnDTheme.mysticalPurple.withValues(alpha: 0.7),
                 fontSize: 14,
               ),
             ),
@@ -407,7 +417,7 @@ class ItemDetailPanel extends StatelessWidget {
         Text(
           'Haltbarkeit',
           style: TextStyle(
-            color: Colors.grey.shade400,
+            color: DnDTheme.mysticalPurple.withValues(alpha: 0.7),
             fontSize: 14,
           ),
         ),
@@ -416,7 +426,7 @@ class ItemDetailPanel extends StatelessWidget {
           child: Container(
             height: 8,
             decoration: BoxDecoration(
-              color: Colors.grey.shade700,
+              color: DnDTheme.stoneGrey.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(4),
             ),
             child: FractionallySizedBox(
@@ -448,8 +458,14 @@ class ItemDetailPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey.shade700,
+        gradient: DnDTheme.getMysticalGradient(
+          startColor: DnDTheme.stoneGrey.withValues(alpha: 0.6),
+          endColor: DnDTheme.stoneGrey.withValues(alpha: 0.2),
+        ),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: DnDTheme.mysticalPurple.withValues(alpha: 0.2),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -457,7 +473,7 @@ class ItemDetailPanel extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              color: Colors.grey.shade400,
+              color: DnDTheme.mysticalPurple.withValues(alpha: 0.7),
               fontSize: 12,
             ),
           ),
@@ -485,8 +501,14 @@ class ItemDetailPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey.shade700,
+        gradient: DnDTheme.getMysticalGradient(
+          startColor: DnDTheme.stoneGrey.withValues(alpha: 0.6),
+          endColor: DnDTheme.stoneGrey.withValues(alpha: 0.2),
+        ),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: DnDTheme.mysticalPurple.withValues(alpha: 0.2),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -494,7 +516,7 @@ class ItemDetailPanel extends StatelessWidget {
           Text(
             'Haltbarkeit',
             style: TextStyle(
-              color: Colors.grey.shade400,
+              color: DnDTheme.mysticalPurple.withValues(alpha: 0.7),
               fontSize: 12,
             ),
           ),
@@ -505,7 +527,7 @@ class ItemDetailPanel extends StatelessWidget {
                 child: Container(
                   height: 6,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade600,
+                    color: DnDTheme.stoneGrey.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(3),
                   ),
                   child: FractionallySizedBox(
@@ -540,10 +562,13 @@ class ItemDetailPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.grey.shade800,
+        gradient: DnDTheme.getMysticalGradient(
+          startColor: DnDTheme.stoneGrey.withValues(alpha: 0.8),
+          endColor: DnDTheme.stoneGrey.withValues(alpha: 0.4),
+        ),
         border: Border(
           top: BorderSide(
-            color: Colors.grey.shade700,
+            color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
             width: 1,
           ),
         ),
@@ -558,7 +583,7 @@ class ItemDetailPanel extends StatelessWidget {
                 icon: const Icon(Icons.remove_circle_outline),
                 label: const Text('Ablegen'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange.shade700,
+                  backgroundColor: DnDTheme.deepRed.withValues(alpha: 0.8),
                   foregroundColor: Colors.white,
                 ),
               ),
@@ -570,7 +595,7 @@ class ItemDetailPanel extends StatelessWidget {
                 icon: const Icon(Icons.check_circle_outline),
                 label: const Text('Ausrüsten'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green.shade700,
+                  backgroundColor: DnDTheme.emeraldGreen.withValues(alpha: 0.8),
                   foregroundColor: Colors.white,
                 ),
               ),
@@ -587,7 +612,10 @@ class ItemDetailPanel extends StatelessWidget {
               label: const Text('Bearbeiten'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white,
-                side: const BorderSide(color: Colors.white),
+                side: BorderSide(
+                  color: DnDTheme.mysticalPurple.withValues(alpha: 0.8),
+                  width: 2,
+                ),
               ),
             ),
           ),
@@ -597,7 +625,7 @@ class ItemDetailPanel extends StatelessWidget {
           // Löschen
           IconButton(
             onPressed: onDelete,
-            icon: const Icon(Icons.delete, color: Colors.red),
+            icon: Icon(Icons.delete, color: DnDTheme.deepRed.withValues(alpha: 0.9)),
           ),
         ],
       ),

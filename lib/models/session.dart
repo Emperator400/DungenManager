@@ -1,7 +1,6 @@
 // lib/models/session.dart
-import 'package:uuid/uuid.dart';
-
-var uuid = const Uuid();
+import '../services/uuid_service.dart';
+import '../utils/model_parsing_helper.dart';
 
 class Session {
   final String id;
@@ -19,7 +18,7 @@ class Session {
     this.inGameTimeInMinutes = 480,
     // HIER WIRD ES IM KONSTRUKTOR HINZUGEFÜGT
     this.liveNotes = "", 
-  }) : id = id ?? uuid.v4();
+  }) : id = id ?? UuidService().generateId();
 
   Map<String, dynamic> toMap() {
     return {
@@ -34,12 +33,12 @@ class Session {
 
   factory Session.fromMap(Map<String, dynamic> map) {
     return Session(
-      id: map['id'],
-      campaignId: map['campaignId'],
-      title: map['title'],
-      inGameTimeInMinutes: map['inGameTimeInMinutes'] ?? 480,
+      id: ModelParsingHelper.safeId(map, 'id'),
+      campaignId: ModelParsingHelper.safeString(map, 'campaignId', ''),
+      title: ModelParsingHelper.safeString(map, 'title', 'Unbenannte Session'),
+      inGameTimeInMinutes: ModelParsingHelper.safeInt(map, 'inGameTimeInMinutes', 480),
       // HIER WIRD ES AUS DER MAP GELESEN
-      liveNotes: map['liveNotes'] ?? "",
+      liveNotes: ModelParsingHelper.safeString(map, 'liveNotes', ''),
     );
   }
 }

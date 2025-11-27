@@ -1,22 +1,34 @@
 // lib/main.dart
-import 'package:flutter/material.dart';
-import 'dart:io';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'screens/campaign_list_screen.dart';
-import 'inventory_demo_app.dart';
 
-// NEU: Import für das Audio-Player-Paket
+// 1. Dart Core
+import 'dart:io';
+
+// 2. Externe Packages
+import 'package:flutter/material.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:provider/provider.dart';
+
+// 3. Eigene Projekte (absolute Pfade von lib/)
+import 'screens/campaign_selection_screen.dart';
+import 'screens/all_screens_screen.dart';
+import 'inventory_demo_app.dart';
+import 'theme/dnd_theme.dart';
+import 'services/wiki_service_locator.dart';
+import 'viewmodels/campaign_viewmodel.dart';
 
 
 void main() async {
-
   WidgetsFlutterBinding.ensureInitialized();
-
+  
+  // KORREKTUR: Database Factory MUSS vor Service Initialisierung stehen
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   }
+  
+  // Initialisiere alle Service Locator NACH der Database Factory Initialisierung
+  await _initializeServices();
   
   await AudioPlayer.global.setAudioContext( AudioContext(
     iOS: AudioContextIOS(
@@ -35,27 +47,32 @@ void main() async {
   runApp(const DmApp());
 }
 
+/// Initialisiert alle Service Locator
+Future<void> _initializeServices() async {
+  try {
+    // Initialisiere nur Wiki Service (hat async initialize)
+    final wikiLocator = WikiServiceLocator();
+    await wikiLocator.initialize();
+    
+    print('Wiki Service Locator erfolgreich initialisiert');
+  } catch (e) {
+    print('Fehler bei der Service-Initialisierung: $e');
+    // App trotzdem starten, aber mit Fehlermeldung
+  }
+}
+
 class DmApp extends StatelessWidget {
   const DmApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'DM Helper',
-      theme: ThemeData.dark().copyWith(
-        primaryColor: Colors.deepOrange,
-        scaffoldBackgroundColor: const Color.fromARGB(255, 20, 30, 40),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color.fromARGB(255, 15, 25, 35),
-        ),
-        cardColor: const Color.fromARGB(255, 30, 40, 50),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.deepOrange,
-          ),
-        ),
+    return ChangeNotifierProvider<CampaignViewModel>(
+      create: (_) => CampaignViewModel(),
+      child: MaterialApp(
+        title: 'Dungeon Manager',
+        theme: DnDTheme.darkTheme,
+        home: const AppSelectionScreen(), // Auswahl zwischen Haupt-App und Demo
       ),
-      home: const AppSelectionScreen(), // Auswahl zwischen Haupt-App und Demo
     );
   }
 }
@@ -66,48 +83,53 @@ class AppSelectionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 20, 30, 40),
+      backgroundColor: DnDTheme.dungeonBlack,
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(32.0),
+          padding: const EdgeInsets.all(DnDTheme.xl),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Titel
-              const Text(
-                'Dungen Manager',
-                style: TextStyle(
-                  fontSize: 48,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.deepOrange,
-                  shadows: [
-                    Shadow(
-                      blurRadius: 10,
-                      color: Colors.deepOrange,
-                      offset: Offset(2, 2),
-                    ),
-                  ],
+              // Titel mit mystischem Effekt
+              Container(
+                decoration: DnDTheme.getMysticalBorder(borderColor: DnDTheme.ancientGold),
+                padding: const EdgeInsets.all(DnDTheme.md),
+                child: Text(
+                  'Dungeon Manager',
+                  style: DnDTheme.headline1.copyWith(
+                    color: DnDTheme.ancientGold,
+                    shadows: [
+                      Shadow(
+                        blurRadius: 15,
+                        color: DnDTheme.ancientGold.withValues(alpha: 0.5),
+                        offset: const Offset(2, 2),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 20),
-              const Text(
+              const SizedBox(height: DnDTheme.lg),
+              Text(
                 'Wählen Sie eine Anwendung',
-                style: TextStyle(
-                  fontSize: 24,
-                  color: Colors.white70,
+                style: DnDTheme.headline3.copyWith(
+                  color: DnDTheme.mysticalPurple,
                 ),
               ),
-              const SizedBox(height: 60),
+              const SizedBox(height: DnDTheme.xxl),
               
-              // Haupt-App Button
-              SizedBox(
+              // Haupt-App Button mit Fantasy-Style
+              Container(
                 width: double.infinity,
                 height: 80,
+                decoration: DnDTheme.getFantasyCardDecoration(
+                  borderColor: DnDTheme.ancientGold,
+                  isLegendary: true,
+                ),
                 child: ElevatedButton.icon(
                   onPressed: () {
                     Navigator.of(context).pushReplacement(
                       MaterialPageRoute(
-                        builder: (context) => const CampaignListScreen(),
+                        builder: (context) => const CampaignSelectionScreen(),
                       ),
                     );
                   },
@@ -117,21 +139,25 @@ class AppSelectionScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 20),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepOrange,
-                    foregroundColor: Colors.white,
-                    elevation: 8,
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: DnDTheme.ancientGold,
+                    elevation: 0,
+                    shadowColor: Colors.transparent,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
+                      borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: DnDTheme.lg),
               
-              // Demo Button
-              SizedBox(
+              // Demo Button mit Fantasy-Style
+              Container(
                 width: double.infinity,
                 height: 80,
+                decoration: DnDTheme.getFantasyCardDecoration(
+                  borderColor: DnDTheme.arcaneBlue,
+                ),
                 child: ElevatedButton.icon(
                   onPressed: () {
                     Navigator.of(context).pushReplacement(
@@ -146,40 +172,70 @@ class AppSelectionScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 20),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade700,
-                    foregroundColor: Colors.white,
-                    elevation: 8,
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: DnDTheme.arcaneBlue,
+                    elevation: 0,
+                    shadowColor: Colors.transparent,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
+                      borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: DnDTheme.lg),
               
-              // Hinweis
+              // Alle Screens Button mit Fantasy-Style
               Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white.withOpacity(0.2)),
+                width: double.infinity,
+                height: 80,
+                decoration: DnDTheme.getFantasyCardDecoration(
+                  borderColor: DnDTheme.warningOrange,
                 ),
-                child: const Column(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const AllScreensScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.grid_view, size: 32),
+                  label: const Text(
+                    'Alle Screens',
+                    style: TextStyle(fontSize: 20),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: DnDTheme.warningOrange,
+                    elevation: 0,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: DnDTheme.xl),
+              
+              // Hinweis mit mystischem Design
+              Container(
+                padding: const EdgeInsets.all(DnDTheme.md),
+                decoration: DnDTheme.getDungeonWallDecoration(),
+                child: Column(
                   children: [
                     Icon(
                       Icons.info_outline,
-                      color: Colors.blue,
+                      color: DnDTheme.infoBlue,
                       size: 24,
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: DnDTheme.sm),
                     Text(
                       'Hauptanwendung: Volles DM Helper mit allen Features\n'
-                      'Inventar-Demo: Zeigt das neue erweiterte Inventar-System',
+                      'Inventar-Demo: Zeigt das neue erweiterte Inventar-System\n'
+                      'Alle Screens: Testing-Übersicht aller 29 verfügbaren Screens',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
+                      style: DnDTheme.bodyText2.copyWith(
+                        color: DnDTheme.infoBlue,
                       ),
                     ),
                   ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 import '../database/database_helper.dart';
 import '../models/campaign.dart';
 import '../models/player_character.dart';
@@ -411,14 +412,15 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
 
   void _duplicateCharacter(PlayerCharacter pc) async {
     try {
+      final newId = const Uuid().v4();
       final duplicatedPc = PlayerCharacter(
-        id: null, // Neue ID wird von der Datenbank vergeben
+        id: newId,
         campaignId: widget.campaign.id,
         name: '${pc.name} (Kopie)',
         playerName: pc.playerName,
         className: pc.className,
-        level: pc.level,
         raceName: pc.raceName,
+        level: pc.level,
         maxHp: pc.maxHp,
         armorClass: pc.armorClass,
         initiativeBonus: pc.initiativeBonus,
@@ -428,8 +430,23 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
         intelligence: pc.intelligence,
         wisdom: pc.wisdom,
         charisma: pc.charisma,
+        proficientSkills: pc.proficientSkills,
+        size: pc.size,
+        type: pc.type,
+        subtype: pc.subtype,
+        alignment: pc.alignment,
         description: pc.description,
+        specialAbilities: pc.specialAbilities,
+        attacks: pc.attacks,
+        gold: pc.gold,
+        silver: pc.silver,
+        copper: pc.copper,
+        sourceType: 'custom',
+        sourceId: null,
         isFavorite: false, // Nicht als Favorit beim Duplizieren
+        version: '1.0',
+        attackList: pc.attackList,
+        inventory: pc.inventory,
       );
 
       await dbHelper.insertPlayerCharacter(duplicatedPc);

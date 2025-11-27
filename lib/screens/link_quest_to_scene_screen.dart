@@ -42,15 +42,16 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
             itemCount: quests.length,
             itemBuilder: (context, index) {
               final quest = quests[index];
+              final questIdString = quest.id.toString(); // KORREKTUR: In String konvertieren
               return CheckboxListTile(
                 title: Text(quest.title),
-                value: _selectedIds.contains(quest.id),
+                value: _selectedIds.contains(questIdString), // KORREKTUR: String vergleichen
                 onChanged: (value) {
                   setState(() {
                     if (value == true) {
-                      _selectedIds.add(quest.id);
+                      _selectedIds.add(questIdString); // KORREKTUR: String hinzufügen
                     } else {
-                      _selectedIds.remove(quest.id);
+                      _selectedIds.remove(questIdString); // KORREKTUR: String entfernen
                     }
                   });
                 },

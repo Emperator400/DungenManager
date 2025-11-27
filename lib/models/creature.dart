@@ -1,11 +1,11 @@
-// lib/models/creature.dart
-import 'package:uuid/uuid.dart';
 import 'condition.dart';
-import 'inventory_item.dart';
 import 'attack.dart';
+import '../services/creature_data_service.dart';
+import '../services/creature_factory_service.dart';
+import '../services/creature_helper_service.dart';
+import '../utils/model_parsing_helper.dart';
 
-var uuid = const Uuid();
-
+/// Repräsentiert ein Wesen (Monster, NPC, Spieler)
 class Creature {
   final String id;
   final String name;
@@ -18,7 +18,7 @@ class Creature {
   // Temporäre Kampf-Werte
   int currentHp;
   int? initiative;
-  List<Condition> conditions = [];
+  List<Condition> conditions;
   final bool isPlayer;
 
   // Felder für die 6 Hauptattribute
@@ -30,14 +30,14 @@ class Creature {
   final int charisma;
 
   // Inventar für Spieler-Charaktere
-  final List<DisplayInventoryItem> inventory;
+  final List<Map<String, dynamic>> inventory;
   
   // Gold und Währung für NPCs/Monster
   final double gold;
   final double silver;
   final double copper;
 
-  // NEU: Integration mit offiziellen D&D-Daten
+  // Integration mit offiziellen D&D-Daten
   final String? officialMonsterId; // Verknüpfung zu offiziellem Monster
   final String? officialSpellIds;   // IDs der bekannten Zauber (kommagetrennt)
   final String? officialItemIds;    // IDs der bekannten Gegenstände (kommagetrennt)
@@ -51,39 +51,35 @@ class Creature {
   final bool isCustom;            // Ob es ein benutzerdefiniertes Monster ist
   final String? description;       // Beschreibung des Monsters/NPCs
 
-  // NEU: Strukturierte Angriffsliste
+  // Strukturierte Angriffsliste
   final List<Attack> attackList;   // Neue strukturierte Angriffe
 
-  // NEU: Felder für Unified Bestiarum
+  // Felder für Unified Bestiarum
   final String sourceType;        // 'custom', 'official', 'hybrid'
   final String? sourceId;         // Verweis auf Original-Quelle
   final bool isFavorite;          // Ob das Monster favorisiert ist
   final String version;           // Version des Monsters
 
   Creature({
-    String? id,
+    required this.id,
     required this.name,
     required this.maxHp,
-    required this.currentHp,
+    int? currentHp, // Optional parameter
     this.armorClass = 10,
     this.speed = "30ft",
     this.attacks = "",
     this.initiativeBonus = 0,
     this.isPlayer = false,
-    // Standardwerte für Monster
     this.strength = 10,
     this.dexterity = 10,
     this.constitution = 10,
     this.intelligence = 10,
     this.wisdom = 10,
     this.charisma = 10,
-    // Standardmäßig ein leeres Inventar
     this.inventory = const [],
-    // Gold und Währung
     this.gold = 0.0,
     this.silver = 0.0,
     this.copper = 0.0,
-    // NEU: D&D-Integration
     this.officialMonsterId,
     this.officialSpellIds,
     this.officialItemIds,
@@ -96,16 +92,20 @@ class Creature {
     this.legendaryActions,
     this.isCustom = true,
     this.description,
-    // NEU: Strukturierte Angriffe
     this.attackList = const [],
-    // NEU: Felder für Unified Bestiarum
     this.sourceType = 'custom',
     this.sourceId,
     this.isFavorite = false,
     this.version = '1.0',
-  }) : id = id ?? uuid.v4();
+    this.conditions = const [],
+    this.initiative,
+  }) : currentHp = currentHp ?? maxHp; // Auto-set auf maxHp wenn nicht gesetzt
 
+  /// Konvertierung für Datenbank
   Map<String, dynamic> toMap() {
+    final attackListResult = CreatureDataService.serializeAttackList(attackList);
+    final inventoryResult = CreatureDataService.serializeInventory(inventory);
+    
     return {
       'id': id,
       'name': name,
@@ -120,7 +120,7 @@ class Creature {
       'intelligence': intelligence,
       'wisdom': wisdom,
       'charisma': charisma,
-      'isPlayer': isPlayer ? 1 : 0,
+      'isPlayer': isPlayer,
       'gold': gold,
       'silver': silver,
       'copper': copper,
@@ -134,65 +134,108 @@ class Creature {
       'challenge_rating': challengeRating,
       'special_abilities': specialAbilities,
       'legendary_actions': legendaryActions,
-      'is_custom': isCustom ? 1 : 0,
+      'is_custom': isCustom,
       'description': description,
-      // NEU: Strukturierte Angriffe
-      'attack_list': attackList.map((attack) => attack.toMap()).toList(),
-      // NEU: Felder für Unified Bestiarum
+      'attack_list': attackListResult.isSuccess ? attackListResult.data : '[]',
+      'inventory': inventoryResult.isSuccess ? inventoryResult.data : '[]',
       'source_type': sourceType,
       'source_id': sourceId,
-      'is_favorite': isFavorite ? 1 : 0,
+      'is_favorite': isFavorite,
       'version': version,
+      'currentHp': currentHp,
+      'initiative': initiative,
+      'conditions': conditions.map((c) => c.toString()).join(','),
     };
   }
 
+  /// Erstellung aus Datenbank
   factory Creature.fromMap(Map<String, dynamic> map) {
-    final attackListData = map['attack_list'] as List<dynamic>?;
-    final attackList = attackListData?.map((attackMap) => Attack.fromMap(attackMap)).toList() ?? <Attack>[];
+    final attackListResult = CreatureDataService.parseAttackList(map['attack_list']);
+    final inventoryResult = CreatureDataService.parseInventory(map['inventory']);
     
     return Creature(
-      id: map['id'],
-      name: map['name'],
-      maxHp: map['maxHp'],
-      currentHp: map['currentHp'] ?? map['maxHp'],
-      armorClass: map['armorClass'] ?? 10,
-      speed: map['speed'] ?? "30ft",
-      attacks: map['attacks'] ?? "",
-      initiativeBonus: map['initiativeBonus'] ?? 0,
-      strength: map['strength'] ?? 10,
-      dexterity: map['dexterity'] ?? 10,
-      constitution: map['constitution'] ?? 10,
-      intelligence: map['intelligence'] ?? 10,
-      wisdom: map['wisdom'] ?? 10,
-      charisma: map['charisma'] ?? 10,
-      isPlayer: (map['isPlayer'] ?? 0) == 1,
-      gold: (map['gold'] ?? 0.0).toDouble(),
-      silver: (map['silver'] ?? 0.0).toDouble(),
-      copper: (map['copper'] ?? 0.0).toDouble(),
-      officialMonsterId: map['official_monster_id'],
-      officialSpellIds: map['official_spell_ids'],
-      officialItemIds: map['official_item_ids'],
-      size: map['size'],
-      type: map['type'],
-      subtype: map['subtype'],
-      alignment: map['alignment'],
-      challengeRating: map['challenge_rating'],
-      specialAbilities: map['special_abilities'],
-      legendaryActions: map['legendary_actions'],
-      isCustom: (map['is_custom'] ?? 1) == 1,
-      description: map['description'],
-      // NEU: Strukturierte Angriffe
-      attackList: attackList,
-      // NEU: Felder für Unified Bestiarum
-      sourceType: map['source_type'] ?? 'custom',
-      sourceId: map['source_id'],
-      isFavorite: (map['is_favorite'] ?? 0) == 1,
-      version: map['version'] ?? '1.0',
+      id: ModelParsingHelper.safeId(map, 'id'),
+      name: ModelParsingHelper.safeString(map, 'name', ''),
+      maxHp: ModelParsingHelper.safeInt(map, 'maxHp', 0),
+      currentHp: ModelParsingHelper.safeInt(map, 'currentHp', 0),
+      armorClass: ModelParsingHelper.safeInt(map, 'armorClass', 10),
+      speed: ModelParsingHelper.safeString(map, 'speed', "30ft"),
+      attacks: ModelParsingHelper.safeString(map, 'attacks', ""),
+      initiativeBonus: ModelParsingHelper.safeInt(map, 'initiativeBonus', 0),
+      strength: ModelParsingHelper.safeInt(map, 'strength', 10),
+      dexterity: ModelParsingHelper.safeInt(map, 'dexterity', 10),
+      constitution: ModelParsingHelper.safeInt(map, 'constitution', 10),
+      intelligence: ModelParsingHelper.safeInt(map, 'intelligence', 10),
+      wisdom: ModelParsingHelper.safeInt(map, 'wisdom', 10),
+      charisma: ModelParsingHelper.safeInt(map, 'charisma', 10),
+      isPlayer: ModelParsingHelper.safeBool(map, 'isPlayer', false),
+      inventory: inventoryResult.isSuccess ? inventoryResult.data! : (map['inventory'] as List<Object>?)?.cast<Map<String, dynamic>>() ?? const [],
+      gold: ModelParsingHelper.safeDouble(map, 'gold', 0.0),
+      silver: ModelParsingHelper.safeDouble(map, 'silver', 0.0),
+      copper: ModelParsingHelper.safeDouble(map, 'copper', 0.0),
+      officialMonsterId: ModelParsingHelper.safeStringOrNull(map, 'official_monster_id', null),
+      officialSpellIds: ModelParsingHelper.safeStringOrNull(map, 'official_spell_ids', null),
+      officialItemIds: ModelParsingHelper.safeStringOrNull(map, 'official_item_ids', null),
+      size: ModelParsingHelper.safeStringOrNull(map, 'size', null),
+      type: ModelParsingHelper.safeStringOrNull(map, 'type', null),
+      subtype: ModelParsingHelper.safeStringOrNull(map, 'subtype', null),
+      alignment: ModelParsingHelper.safeStringOrNull(map, 'alignment', null),
+      challengeRating: ModelParsingHelper.safeIntOrNull(map, 'challenge_rating', null),
+      specialAbilities: ModelParsingHelper.safeStringOrNull(map, 'special_abilities', null),
+      legendaryActions: ModelParsingHelper.safeStringOrNull(map, 'legendary_actions', null),
+      isCustom: ModelParsingHelper.safeBool(map, 'is_custom', true),
+      description: ModelParsingHelper.safeStringOrNull(map, 'description', null),
+      attackList: attackListResult.isSuccess ? attackListResult.data! : const [],
+      sourceType: ModelParsingHelper.safeString(map, 'source_type', 'custom'),
+      sourceId: ModelParsingHelper.safeStringOrNull(map, 'source_id', null),
+      isFavorite: ModelParsingHelper.safeBool(map, 'is_favorite', false),
+      version: ModelParsingHelper.safeString(map, 'version', '1.0'),
+      initiative: ModelParsingHelper.safeIntOrNull(map, 'initiative', null),
+      conditions: _parseConditions(map['conditions']),
     );
   }
 
-  // NEU: Factory-Methode zur einfachen Erstellung aus offiziellem Monster
-  factory Creature.fromOfficialMonster({
+  /// Hilfsmethode zum Parsen von Conditions aus String
+  static List<Condition> _parseConditions(dynamic conditionsData) {
+    if (conditionsData == null || conditionsData.toString().isEmpty) {
+      return [];
+    }
+    
+    final conditionsString = conditionsData.toString();
+    if (conditionsString.isEmpty) return [];
+    
+    return conditionsString
+        .split(',')
+        .where((s) => s.trim().isNotEmpty)
+        .map((s) => _parseCondition(s.trim()))
+        .where((condition) => condition != null)
+        .cast<Condition>()
+        .toList();
+  }
+
+  /// Hilfsmethode zum Parsen einzelner Condition
+  static Condition? _parseCondition(String conditionString) {
+    try {
+      return Condition.values.firstWhere(
+        (condition) => condition.toString() == 'Condition.$conditionString',
+        orElse: () => Condition.Blinded, // Fallback
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
+  @override
+  String toString() {
+    return 'Creature(name: $name, HP: $currentHp/$maxHp, AC: $armorClass)';
+  }
+}
+
+// Legacy Extensions für Abwärtskompatibilität
+extension CreatureExtension on Creature {
+  /// Legacy-Factory-Methode für offizielle Monster
+  /// @deprecated Verwende stattdessen CreatureFactoryService.fromOfficialMonster()
+  static Creature fromOfficialMonster({
     required String officialMonsterId,
     required String name,
     required int maxHp,
@@ -215,11 +258,12 @@ class Creature {
     String? attacks,
     List<Attack>? attackList,
   }) {
-    return Creature(
+    // Importiere: '../services/creature_factory_service.dart'
+    // Verwende: CreatureFactoryService.fromOfficialMonster()
+    return CreatureFactoryService.fromOfficialMonster(
       officialMonsterId: officialMonsterId,
       name: name,
       maxHp: maxHp,
-      currentHp: maxHp,
       armorClass: armorClass,
       speed: speed,
       strength: strength,
@@ -236,19 +280,13 @@ class Creature {
       specialAbilities: specialAbilities,
       legendaryActions: legendaryActions,
       description: description,
-      attacks: attacks ?? "",
-      // NEU: Strukturierte Angriffe
-      attackList: attackList ?? const [],
-      isCustom: false,
-      // NEU: Felder für Unified Bestiarum
-      sourceType: 'official',
-      sourceId: officialMonsterId,
-      isFavorite: false,
-      version: '1.0',
+      attacks: attacks,
+      attackList: attackList,
     );
   }
 
-  // NEU: CopyWith-Methode für einfache Anpassungen
+  /// Legacy-CopyWith-Methode
+  /// @deprecated Verwende stattdessen CreatureHelperService.copyWith()
   Creature copyWith({
     String? name,
     int? maxHp,
@@ -275,69 +313,62 @@ class Creature {
     String? legendaryActions,
     bool? isCustom,
     String? description,
-    // NEU: Strukturierte Angriffe
     List<Attack>? attackList,
-    // NEU: Felder für Unified Bestiarum
     String? sourceType,
     String? sourceId,
     bool? isFavorite,
     String? version,
   }) {
-    return Creature(
-      id: id,
-      name: name ?? this.name,
-      maxHp: maxHp ?? this.maxHp,
-      currentHp: currentHp ?? this.currentHp,
-      armorClass: armorClass ?? this.armorClass,
-      speed: speed ?? this.speed,
-      attacks: attacks ?? this.attacks,
-      initiativeBonus: initiativeBonus ?? this.initiativeBonus,
-      strength: strength ?? this.strength,
-      dexterity: dexterity ?? this.dexterity,
-      constitution: constitution ?? this.constitution,
-      intelligence: intelligence ?? this.intelligence,
-      wisdom: wisdom ?? this.wisdom,
-      charisma: charisma ?? this.charisma,
-      isPlayer: isPlayer,
-      inventory: inventory,
-      officialMonsterId: officialMonsterId ?? this.officialMonsterId,
-      officialSpellIds: officialSpellIds ?? this.officialSpellIds,
-      officialItemIds: officialItemIds ?? this.officialItemIds,
-      size: size ?? this.size,
-      type: type ?? this.type,
-      subtype: subtype ?? this.subtype,
-      alignment: alignment ?? this.alignment,
-      challengeRating: challengeRating ?? this.challengeRating,
-      specialAbilities: specialAbilities ?? this.specialAbilities,
-      legendaryActions: legendaryActions ?? this.legendaryActions,
-      isCustom: isCustom ?? this.isCustom,
-      description: description ?? this.description,
-      // NEU: Strukturierte Angriffe
-      attackList: attackList ?? this.attackList,
-      // NEU: Felder für Unified Bestiarum
-      sourceType: sourceType ?? this.sourceType,
-      sourceId: sourceId ?? this.sourceId,
-      isFavorite: isFavorite ?? this.isFavorite,
-      version: version ?? this.version,
+    // Importiere: '../services/creature_helper_service.dart'
+    // Verwende: CreatureHelperService.copyWith()
+    return CreatureHelperService.copyWith(
+      this,
+      name: name,
+      maxHp: maxHp,
+      currentHp: currentHp,
+      armorClass: armorClass,
+      speed: speed,
+      attacks: attacks,
+      initiativeBonus: initiativeBonus,
+      strength: strength,
+      dexterity: dexterity,
+      constitution: constitution,
+      intelligence: intelligence,
+      wisdom: wisdom,
+      charisma: charisma,
+      officialMonsterId: officialMonsterId,
+      officialSpellIds: officialSpellIds,
+      officialItemIds: officialItemIds,
+      size: size,
+      type: type,
+      subtype: subtype,
+      alignment: alignment,
+      challengeRating: challengeRating,
+      specialAbilities: specialAbilities,
+      legendaryActions: legendaryActions,
+      isCustom: isCustom,
+      description: description,
+      attackList: attackList,
+      sourceType: sourceType,
+      sourceId: sourceId,
+      isFavorite: isFavorite,
+      version: version,
     );
   }
-  
-  // NEU: Helper-Methoden für Angriffs-Konvertierung
+
+  /// Legacy-Helper für formatierte Angriffe
+  /// @deprecated Verwende stattdessen CreatureHelperService.getFormattedAttacks()
   String get formattedAttacks {
-    if (attackList.isNotEmpty) {
-      return AttackHelper.attacksToString(attackList);
-    }
-    return attacks;
+    // Importiere: '../services/creature_helper_service.dart'
+    // Verwende: CreatureHelperService.getFormattedAttacks()
+    return CreatureHelperService.getFormattedAttacks(this);
   }
   
+  /// Legacy-Helper für effektive Angriffe
+  /// @deprecated Verwende stattdessen CreatureHelperService.getEffectiveAttacks()
   List<Attack> get effectiveAttacks {
-    if (attackList.isNotEmpty) {
-      return attackList;
-    }
-    // Fallback zu Legacy-String
-    if (attacks.isNotEmpty) {
-      return AttackHelper.parseAttacksFromString(attacks);
-    }
-    return [];
+    // Importiere: '../services/creature_helper_service.dart'
+    // Verwende: CreatureHelperService.getEffectiveAttacks()
+    return CreatureHelperService.getEffectiveAttacks(this);
   }
 }

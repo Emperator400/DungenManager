@@ -1,74 +1,89 @@
 // lib/models/spell_slot_manager.dart
+
+/// Reines Datenmodell für Spell Slots
 class SpellSlotManager {
   final Map<int, int> totalSlots;     // Level -> Anzahl
   final Map<int, int> usedSlots;     // Level -> Verwendet
   
-  SpellSlotManager({
-    Map<int, int>? totalSlots,
-    Map<int, int>? usedSlots,
-  }) : totalSlots = totalSlots ?? const {1: 4, 2: 3, 3: 2, 4: 1},
-       usedSlots = usedSlots ?? const {1: 0, 2: 0, 3: 0, 4: 0};
+  const SpellSlotManager({
+    required this.totalSlots,
+    required this.usedSlots,
+  });
   
-  SpellSlotManager.fromMap(Map<String, dynamic> map)
-      : totalSlots = Map<int, int>.from(
-          (map['totalSlots'] as Map?)?.map((k, v) => MapEntry(int.parse(k), v)) ?? {},
-        ),
-        usedSlots = Map<int, int>.from(
-          (map['usedSlots'] as Map?)?.map((k, v) => MapEntry(int.parse(k), v)) ?? {},
-        );
+  /// Factory für Standard-Spell Slots (Level 1-4)
+  factory SpellSlotManager.defaultSlots() {
+    return const SpellSlotManager(
+      totalSlots: {1: 4, 2: 3, 3: 2, 4: 1},
+      usedSlots: {1: 0, 2: 0, 3: 0, 4: 0},
+    );
+  }
+  
+  /// Factory für leere Spell Slots
+  factory SpellSlotManager.empty() {
+    return const SpellSlotManager(
+      totalSlots: {},
+      usedSlots: {},
+    );
+  }
 
-  bool canCastSpell(int spellLevel) {
-    return totalSlots[spellLevel] != null && 
-           totalSlots[spellLevel]! > (usedSlots[spellLevel] ?? 0);
-  }
-  
-  int getRemainingSlots(int spellLevel) {
-    return (totalSlots[spellLevel] ?? 0) - (usedSlots[spellLevel] ?? 0);
-  }
-  
-  void useSpellSlot(int spellLevel) {
-    if (canCastSpell(spellLevel)) {
-      usedSlots[spellLevel] = (usedSlots[spellLevel] ?? 0) + 1;
-    }
-  }
-  
-  void restoreSpellSlot(int spellLevel) {
-    if (usedSlots[spellLevel] != null && usedSlots[spellLevel]! > 0) {
-      usedSlots[spellLevel] = usedSlots[spellLevel]! - 1;
-    }
-  }
-  
-  void resetSlots() {
-    usedSlots.forEach((key, value) {
-      usedSlots[key] = 0;
-    });
-  }
-  
-  void setTotalSlots(int spellLevel, int count) {
-    totalSlots[spellLevel] = count;
-  }
-  
   Map<String, dynamic> toMap() {
     return {
-      'totalSlots': totalSlots.map((k, v) => MapEntry(k.toString(), v)),
-      'usedSlots': usedSlots.map((k, v) => MapEntry(k.toString(), v)),
+      'total_slots': totalSlots.map((k, v) => MapEntry(k.toString(), v)),
+      'used_slots': usedSlots.map((k, v) => MapEntry(k.toString(), v)),
     };
   }
-  
-  @override
-  String toString() {
-    final buffer = StringBuffer();
-    buffer.writeln('Spell Slots:');
-    for (int level = 1; level <= 9; level++) {
+
+  factory SpellSlotManager.fromMap(Map<String, dynamic> map) {
+    final totalSlotsMap = <String, dynamic>{};
+    final usedSlotsMap = <String, dynamic>{};
+    
+    // Sicheres Extrahieren der Maps mit Fallback
+    if (map['total_slots'] is Map) {
+      totalSlotsMap.addAll(Map<String, dynamic>.from(map['total_slots'] as Map));
+    }
+    if (map['used_slots'] is Map) {
+      usedSlotsMap.addAll(Map<String, dynamic>.from(map['used_slots'] as Map));
+    }
+    
+    return SpellSlotManager(
+      totalSlots: Map<int, int>.from(
+        totalSlotsMap.map((k, v) => MapEntry(
+          int.tryParse(k.toString()) ?? 0,
+          int.tryParse(v.toString()) ?? 0,
+        )),
+      ),
+      usedSlots: Map<int, int>.from(
+        usedSlotsMap.map((k, v) => MapEntry(
+          int.tryParse(k.toString()) ?? 0,
+          int.tryParse(v.toString()) ?? 0,
+        )),
+      ),
+    );
+  }
+
+  /// Berechnet die verbleibenden Slots für jedes Level
+  Map<int, int> getRemainingSlots() {
+    final remaining = <int, int>{};
+    
+    // Alle Level aus totalSlots durchgehen
+    for (final level in totalSlots.keys) {
       final total = totalSlots[level] ?? 0;
       final used = usedSlots[level] ?? 0;
-      final remaining = total - used;
-      
-      if (total > 0) {
-        final remaining = getRemainingSlots(level);
-        buffer.writeln('  Level $level: $remaining/$total available');
+      remaining[level] = (total - used).clamp(0, total);
+    }
+    
+    // Level aus usedSlots, die nicht in totalSlots sind (sollte nicht vorkommen)
+    for (final level in usedSlots.keys) {
+      if (!totalSlots.containsKey(level)) {
+        remaining[level] = 0; // Keine Slots verfügbar
       }
     }
-    return buffer.toString();
+    
+    return remaining;
+  }
+
+  @override
+  String toString() {
+    return 'SpellSlotManager(totalSlots: $totalSlots, usedSlots: $usedSlots)';
   }
 }

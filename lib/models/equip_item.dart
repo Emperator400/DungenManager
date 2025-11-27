@@ -1,6 +1,5 @@
-// lib/models/equip_item.dart
 import 'equip_slot.dart';
-import 'item.dart';
+import '../utils/model_parsing_helper.dart';
 
 class EquippedItem {
   final String id;
@@ -10,7 +9,7 @@ class EquippedItem {
   final DateTime equippedAt;
   final int? currentDurability; // Aktuelle Haltbarkeit wenn das Item Haltbarkeit hat
 
-  EquippedItem({
+  const EquippedItem({
     required this.id,
     required this.ownerId,
     required this.itemId,
@@ -32,12 +31,15 @@ class EquippedItem {
 
   factory EquippedItem.fromMap(Map<String, dynamic> map) {
     return EquippedItem(
-      id: map['id'],
-      ownerId: map['owner_id'],
-      itemId: map['item_id'],
-      equipSlot: EquipSlot.values.firstWhere((e) => e.toString() == map['equip_slot']),
-      equippedAt: DateTime.parse(map['equipped_at']),
-      currentDurability: map['current_durability'],
+      id: ModelParsingHelper.safeId(map, 'id'),
+      ownerId: ModelParsingHelper.safeString(map, 'owner_id', ''),
+      itemId: ModelParsingHelper.safeString(map, 'item_id', ''),
+      equipSlot: EquipSlot.values.firstWhere(
+        (e) => e.toString() == ModelParsingHelper.safeString(map, 'equip_slot', ''),
+        orElse: () => EquipSlot.head, // Fallback
+      ),
+      equippedAt: DateTime.tryParse(ModelParsingHelper.safeString(map, 'equipped_at', '')) ?? DateTime.now(),
+      currentDurability: ModelParsingHelper.safeIntOrNull(map, 'current_durability', null),
     );
   }
 
@@ -58,6 +60,18 @@ class EquippedItem {
       currentDurability: currentDurability ?? this.currentDurability,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is EquippedItem && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
+
+  @override
+  String toString() => 'EquippedItem(id: $id, itemId: $itemId, slot: $equipSlot)';
 }
 
 class EquipBonus {
@@ -73,7 +87,7 @@ class EquipBonus {
   final int? damageBonus;
   final int? savingThrowBonus;
 
-  EquipBonus({
+  const EquipBonus({
     required this.description,
     this.strengthBonus,
     this.dexterityBonus,
@@ -87,8 +101,9 @@ class EquipBonus {
     this.savingThrowBonus,
   });
 
-  Map<String, int?> toMap() {
+  Map<String, dynamic> toMap() {
     return {
+      'description': description,
       'strength_bonus': strengthBonus,
       'dexterity_bonus': dexterityBonus,
       'constitution_bonus': constitutionBonus,
@@ -102,20 +117,59 @@ class EquipBonus {
     };
   }
 
-  String getBonusSummary() {
-    final bonuses = <String>[];
-    
-    if (strengthBonus != null && strengthBonus! != 0) bonuses.add('ST ${strengthBonus! > 0 ? "+$strengthBonus" : strengthBonus}');
-    if (dexterityBonus != null && dexterityBonus! != 0) bonuses.add('GE ${dexterityBonus! > 0 ? "+$dexterityBonus" : dexterityBonus}');
-    if (constitutionBonus != null && constitutionBonus! != 0) bonuses.add('KO ${constitutionBonus! > 0 ? "+$constitutionBonus" : constitutionBonus}');
-    if (intelligenceBonus != null && intelligenceBonus! != 0) bonuses.add('IN ${intelligenceBonus! > 0 ? "+$intelligenceBonus" : intelligenceBonus}');
-    if (wisdomBonus != null && wisdomBonus! != 0) bonuses.add('WE ${wisdomBonus! > 0 ? "+$wisdomBonus" : wisdomBonus}');
-    if (charismaBonus != null && charismaBonus! != 0) bonuses.add('CH ${charismaBonus! > 0 ? "+$charismaBonus" : charismaBonus}');
-    if (armorClassBonus != null && armorClassBonus! != 0) bonuses.add('RK ${armorClassBonus! > 0 ? "+$armorClassBonus" : armorClassBonus}');
-    if (attackBonus != null && attackBonus! != 0) bonuses.add('Angriff ${attackBonus! > 0 ? "+$attackBonus" : attackBonus}');
-    if (damageBonus != null && damageBonus! != 0) bonuses.add('Schaden ${damageBonus! > 0 ? "+$damageBonus" : damageBonus}');
-    if (savingThrowBonus != null && savingThrowBonus! != 0) bonuses.add('Rettungswürfe ${savingThrowBonus! > 0 ? "+$savingThrowBonus" : savingThrowBonus}');
-    
-    return bonuses.isNotEmpty ? bonuses.join(', ') : 'Keine Boni';
+  factory EquipBonus.fromMap(Map<String, dynamic> map) {
+    return EquipBonus(
+      description: ModelParsingHelper.safeString(map, 'description', ''),
+      strengthBonus: ModelParsingHelper.safeIntOrNull(map, 'strength_bonus', null),
+      dexterityBonus: ModelParsingHelper.safeIntOrNull(map, 'dexterity_bonus', null),
+      constitutionBonus: ModelParsingHelper.safeIntOrNull(map, 'constitution_bonus', null),
+      intelligenceBonus: ModelParsingHelper.safeIntOrNull(map, 'intelligence_bonus', null),
+      wisdomBonus: ModelParsingHelper.safeIntOrNull(map, 'wisdom_bonus', null),
+      charismaBonus: ModelParsingHelper.safeIntOrNull(map, 'charisma_bonus', null),
+      armorClassBonus: ModelParsingHelper.safeIntOrNull(map, 'armor_class_bonus', null),
+      attackBonus: ModelParsingHelper.safeIntOrNull(map, 'attack_bonus', null),
+      damageBonus: ModelParsingHelper.safeIntOrNull(map, 'damage_bonus', null),
+      savingThrowBonus: ModelParsingHelper.safeIntOrNull(map, 'saving_throw_bonus', null),
+    );
   }
+
+  EquipBonus copyWith({
+    String? description,
+    int? strengthBonus,
+    int? dexterityBonus,
+    int? constitutionBonus,
+    int? intelligenceBonus,
+    int? wisdomBonus,
+    int? charismaBonus,
+    int? armorClassBonus,
+    int? attackBonus,
+    int? damageBonus,
+    int? savingThrowBonus,
+  }) {
+    return EquipBonus(
+      description: description ?? this.description,
+      strengthBonus: strengthBonus ?? this.strengthBonus,
+      dexterityBonus: dexterityBonus ?? this.dexterityBonus,
+      constitutionBonus: constitutionBonus ?? this.constitutionBonus,
+      intelligenceBonus: intelligenceBonus ?? this.intelligenceBonus,
+      wisdomBonus: wisdomBonus ?? this.wisdomBonus,
+      charismaBonus: charismaBonus ?? this.charismaBonus,
+      armorClassBonus: armorClassBonus ?? this.armorClassBonus,
+      attackBonus: attackBonus ?? this.attackBonus,
+      damageBonus: damageBonus ?? this.damageBonus,
+      savingThrowBonus: savingThrowBonus ?? this.savingThrowBonus,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is EquipBonus && other.description == description;
+  }
+
+  @override
+  int get hashCode => description.hashCode;
+
+  @override
+  String toString() => 'EquipBonus(description: $description)';
 }
