@@ -5,7 +5,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:audioplayers/audioplayers.dart';
-import '../database/database_helper.dart';
+import '../database/core/database_connection.dart';
+import '../database/repositories/sound_model_repository.dart';
 import '../models/sound.dart';
 
 class SoundsTab extends StatefulWidget {
@@ -16,13 +17,14 @@ class SoundsTab extends StatefulWidget {
 }
 
 class _SoundsTabState extends State<SoundsTab> {
-  final dbHelper = DatabaseHelper.instance;
+  late final SoundModelRepository _soundRepository;
   late Future<List<Sound>> _soundsFuture;
   final AudioPlayer _previewPlayer = AudioPlayer();
 
   @override
   void initState() {
     super.initState();
+    _soundRepository = SoundModelRepository(DatabaseConnection.instance);
     _loadSounds();
   }
 
@@ -35,7 +37,7 @@ class _SoundsTabState extends State<SoundsTab> {
   void _loadSounds() {
     // setState ist sicher, weil es am Anfang der Methode steht
     setState(() {
-      _soundsFuture = dbHelper.getAllSounds();
+      _soundsFuture = _soundRepository.findAll();
     });
   }
 
@@ -73,7 +75,7 @@ class _SoundsTabState extends State<SoundsTab> {
       soundType: soundDetails['type'] as SoundType,
       description: soundDetails['description'] as String,
     );
-    await dbHelper.insertSound(newSound);
+    await _soundRepository.create(newSound);
     
     // HIER WAR EIN FEHLER: Der Check hat gefehlt!
     if (!mounted) return; 
@@ -145,7 +147,7 @@ class _SoundsTabState extends State<SoundsTab> {
                   onPressed: () async {
                     final file = File(sound.filePath);
                     if (await file.exists()) await file.delete();
-                    await dbHelper.deleteSound(sound.id);
+                    await _soundRepository.delete(sound.id);
                     // HIER WAR EIN FEHLER: Der Check hat gefehlt!
                     if (!mounted) return;
                     _loadSounds();
@@ -159,7 +161,7 @@ class _SoundsTabState extends State<SoundsTab> {
                     id: sound.id, filePath: sound.filePath, name: soundDetails['name'] as String,
                     soundType: soundDetails['type'] as SoundType, description: soundDetails['description'] as String,
                   );
-                  await dbHelper.updateSound(updatedSound);
+                  await _soundRepository.update(updatedSound);
                   // HIER WAR EIN FEHLER: Der Check hat gefehlt!
                   if (!mounted) return;
                   _loadSounds();

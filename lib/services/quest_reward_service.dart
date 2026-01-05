@@ -6,35 +6,46 @@ import '../models/quest.dart';
 import '../models/quest_reward.dart';
 import '../models/player_character.dart';
 import '../models/inventory_item.dart';
-import '../models/wiki_entry.dart';
-import '../database/database_helper.dart';
+import '../database/repositories/quest_model_repository.dart';
+import '../database/repositories/player_character_model_repository.dart';
+import '../database/repositories/item_model_repository.dart';
+import '../database/repositories/wiki_entry_model_repository.dart';
+import '../database/repositories/inventory_item_model_repository.dart';
+import '../database/core/database_connection.dart';
 import 'exceptions/service_exceptions.dart';
 
 /// Service für die Verwaltung und Verteilung von Quest-Belohnungen
 /// Unterstützt verschiedene Belohnungsarten und die automatische Verteilung an Spieler
 class QuestRewardService {
   // Constructor-Abschnitt - Muss zuerst stehen (sort_constructors_first)
-  final DatabaseHelper _dbHelper;
+  final QuestModelRepository _questRepository;
+  final PlayerCharacterModelRepository _playerRepository;
+  final ItemModelRepository _itemRepository;
+  final WikiEntryModelRepository _wikiRepository;
+  final InventoryItemModelRepository _inventoryRepository;
 
   QuestRewardService({
-    DatabaseHelper? dbHelper,
-  }) : _dbHelper = dbHelper ?? DatabaseHelper.instance;
+    QuestModelRepository? questRepository,
+    PlayerCharacterModelRepository? playerRepository,
+    ItemModelRepository? itemRepository,
+    WikiEntryModelRepository? wikiRepository,
+    InventoryItemModelRepository? inventoryRepository,
+  }) : _questRepository = questRepository ?? QuestModelRepository(DatabaseConnection.instance),
+       _playerRepository = playerRepository ?? PlayerCharacterModelRepository(DatabaseConnection.instance),
+       _itemRepository = itemRepository ?? ItemModelRepository(DatabaseConnection.instance),
+       _wikiRepository = wikiRepository ?? WikiEntryModelRepository(DatabaseConnection.instance),
+       _inventoryRepository = inventoryRepository ?? InventoryItemModelRepository(DatabaseConnection.instance);
 
   /// Verteilt alle Belohnungen einer Quest an einen bestimmten Spieler
   Future<Map<String, dynamic>> distributeRewardsToPlayer(String questId, String playerId) async {
     try {
       // Hole Quest und Spieler
-      final allQuests = await _dbHelper.getAllQuests();
-      final quest = allQuests.cast<Quest?>().firstWhere(
-        (q) => q?.id == questId,
-        orElse: () => null,
-      );
+      final allQuests = await _questRepository.findAll();
+      final quest = allQuests
+          .where((q) => q.id.toString() == questId)
+          .firstOrNull;
       
-      final allPlayers = await _dbHelper.getPlayerCharactersForCampaign(playerId);
-      final player = allPlayers.cast<PlayerCharacter?>().firstWhere(
-        (p) => p?.id == playerId,
-        orElse: () => null,
-      );
+      final player = await _playerRepository.findById(playerId);
       
       if (quest == null) {
         throw ResourceNotFoundException.forId(
@@ -147,7 +158,7 @@ class QuestRewardService {
       throw Exception('Item-Belohnung hat keine gültige Item-ID');
     }
 
-    final item = await _dbHelper.getItemById(reward.itemId!);
+    final item = await _itemRepository.findById(reward.itemId!);
     if (item == null) {
       throw Exception('Item nicht gefunden: ${reward.itemId}');
     }
@@ -155,13 +166,15 @@ class QuestRewardService {
     // InventoryItem erstellen und zum Spieler-Inventar hinzufügen
     final inventoryItem = InventoryItem(
       id: '', // Wird von Datenbank generiert
-      ownerId: player.id,
+      characterId: player.id,
       itemId: item.id,
+      name: item.name, // Name aus Item übernehmen
+      description: item.description, // Beschreibung aus Item übernehmen
       quantity: reward.quantity ?? 1,
       isEquipped: false,
     );
 
-    await _dbHelper.insertInventoryItem(inventoryItem);
+    await _inventoryRepository.create(inventoryItem);
 
     return {
       'type': 'item',
@@ -180,11 +193,7 @@ class QuestRewardService {
       throw Exception('Wiki-Eintrag-Belohnung hat keine gültige Wiki-Eintrag-ID');
     }
 
-    final allWikiEntries = await _dbHelper.getAllWikiEntries();
-    final wikiEntry = allWikiEntries.cast<WikiEntry?>().firstWhere(
-      (entry) => entry?.id == reward.wikiEntryId,
-      orElse: () => null,
-    );
+    final wikiEntry = await _wikiRepository.findById(reward.wikiEntryId!);
     if (wikiEntry == null) {
       throw Exception('Wiki-Eintrag nicht gefunden: ${reward.wikiEntryId}');
     }
@@ -267,11 +276,10 @@ class QuestRewardService {
 
   /// Prüft ob alle Belohnungen einer Quest verteilt werden können
   Future<Map<String, dynamic>> validateRewards(String questId) async {
-    final allQuests = await _dbHelper.getAllQuests();
-    final quest = allQuests.cast<Quest?>().firstWhere(
-      (q) => q?.id == questId,
-      orElse: () => null,
-    );
+    final allQuests = await _questRepository.findAll();
+    final quest = allQuests
+        .where((q) => q.id.toString() == questId)
+        .firstOrNull;
     if (quest == null) {
       return {
         'valid': false,
@@ -288,7 +296,7 @@ class QuestRewardService {
           if (reward.itemId == null) {
             issues.add('Item-Belohnung "${reward.name}" hat keine Item-ID');
           } else {
-            final item = await _dbHelper.getItemById(reward.itemId!);
+            final item = await _itemRepository.findById(reward.itemId!);
             if (item == null) {
               issues.add('Item für Belohnung "${reward.name}" nicht gefunden: ${reward.itemId}');
             }
@@ -298,11 +306,7 @@ class QuestRewardService {
           if (reward.wikiEntryId == null) {
             issues.add('Wiki-Eintrag-Belohnung "${reward.name}" hat keine Wiki-Eintrag-ID');
           } else {
-            final allWikiEntries = await _dbHelper.getAllWikiEntries();
-            final wikiEntry = allWikiEntries.cast<WikiEntry?>().firstWhere(
-              (entry) => entry?.id == reward.wikiEntryId,
-              orElse: () => null,
-            );
+            final wikiEntry = await _wikiRepository.findById(reward.wikiEntryId!);
             if (wikiEntry == null) {
               issues.add('Wiki-Eintrag für Belohnung "${reward.name}" nicht gefunden: ${reward.wikiEntryId}');
             }
@@ -335,11 +339,10 @@ class QuestRewardService {
 
   /// Gibt eine Vorschau aller Belohnungen zurück
   Future<List<Map<String, dynamic>>> getRewardPreview(String questId) async {
-    final allQuests = await _dbHelper.getAllQuests();
-    final quest = allQuests.cast<Quest?>().firstWhere(
-      (q) => q?.id == questId,
-      orElse: () => null,
-    );
+    final allQuests = await _questRepository.findAll();
+    final quest = allQuests
+        .where((q) => q.id.toString() == questId)
+        .firstOrNull;
     if (quest == null) return [];
 
     final preview = <Map<String, dynamic>>[];
@@ -356,17 +359,13 @@ class QuestRewardService {
       switch (reward.type) {
         case QuestRewardType.item:
           if (reward.itemId != null) {
-            final item = await _dbHelper.getItemById(reward.itemId!);
+            final item = await _itemRepository.findById(reward.itemId!);
             rewardPreview['item'] = item?.toMap();
           }
           break;
         case QuestRewardType.wikiEntry:
           if (reward.wikiEntryId != null) {
-            final allWikiEntries = await _dbHelper.getAllWikiEntries();
-            final wikiEntry = allWikiEntries.cast<WikiEntry?>().firstWhere(
-              (entry) => entry?.id == reward.wikiEntryId,
-              orElse: () => null,
-            );
+            final wikiEntry = await _wikiRepository.findById(reward.wikiEntryId!);
             rewardPreview['wikiEntry'] = wikiEntry?.toMap();
           }
           break;

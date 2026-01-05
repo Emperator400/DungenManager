@@ -1,44 +1,35 @@
-// Dart Core
+// lib/services/wiki_entry_service.dart
 import 'dart:async';
 
-// Eigene Projekte
-import '../database/database_helper.dart';
+// Dart Core
+import '../database/core/database_connection.dart';
+import '../database/repositories/wiki_entry_model_repository.dart';
 import '../models/wiki_entry.dart';
-import '../utils/string_list_parser.dart';
 import 'exceptions/service_exceptions.dart';
 
 /// Service für die Verwaltung von Wiki Entries
 /// 
 /// Bietet CRUD-Operationen und Business-Logic für Wiki-Einträge.
-/// Verwendet spezifische Exceptions und ServiceResult Pattern.
+/// Verwendet ModelRepository-Architektur und spezifische Exceptions.
 class WikiEntryService {
-  final DatabaseHelper _databaseHelper;
+  final WikiEntryModelRepository _wikiRepository;
 
   WikiEntryService({
-    DatabaseHelper? databaseHelper,
-  }) : _databaseHelper = databaseHelper ?? DatabaseHelper.instance;
+    WikiEntryModelRepository? wikiRepository,
+  }) : _wikiRepository = wikiRepository ?? WikiEntryModelRepository(DatabaseConnection.instance);
 
   // ========== CRUD OPERATIONS ==========
 
   /// Holt alle Wiki-Einträge aus der Datenbank
   Future<ServiceResult<List<WikiEntry>>> getAllWikiEntries() async =>
       performServiceOperation('getAllWikiEntries', () async {
-        final maps = await (await _databaseHelper.database).query('wiki_entries');
-        return maps.map((map) => _WikiEntryWithSerializedData.fromMap(map).toWikiEntry()).toList();
+        return await _wikiRepository.findAll();
       });
 
   /// Holt einen Wiki-Eintrag per ID
   Future<ServiceResult<WikiEntry?>> getWikiEntryById(String id) async =>
       performServiceOperation('getWikiEntryById', () async {
-        final maps = await (await _databaseHelper.database).query(
-          'wiki_entries',
-          where: 'id = ?',
-          whereArgs: [id],
-          limit: 1,
-        );
-        
-        if (maps.isEmpty) return null;
-        return _WikiEntryWithSerializedData.fromMap(maps.first).toWikiEntry();
+        return await _wikiRepository.findById(id);
       });
 
   /// Erstellt einen neuen Wiki-Eintrag
@@ -59,8 +50,7 @@ class WikiEntryService {
         );
       }
 
-      await _databaseHelper.insertWikiEntry(entry);
-      return entry;
+      return await _wikiRepository.create(entry);
     });
   }
 
@@ -92,8 +82,8 @@ class WikiEntryService {
         );
       }
 
-      await _databaseHelper.updateWikiEntry(entry);
-      return entry;
+      final updatedEntry = entry.copyWith(updatedAt: DateTime.now());
+      return await _wikiRepository.update(updatedEntry);
     });
   }
 
@@ -109,7 +99,7 @@ class WikiEntryService {
         );
       }
       
-      await _databaseHelper.deleteWikiEntry(id);
+      return await _wikiRepository.delete(id);
     });
   }
 
@@ -225,14 +215,7 @@ class WikiEntryService {
       }
 
       final updatedEntry = toggleFavoriteStatic(entryResult.data!);
-      final result = await updateWikiEntry(updatedEntry);
-      if (!result.isSuccess) {
-        throw DatabaseException(
-          'Fehler beim Aktualisieren des Favoriten-Status',
-          operation: 'toggleFavorite',
-        );
-      }
-      return result.data!;
+      return await _wikiRepository.update(updatedEntry);
     });
   }
 
@@ -257,14 +240,7 @@ class WikiEntryService {
       }
 
       final updatedEntry = addTagStatic(entryResult.data!, trimmedTag);
-      final result = await updateWikiEntry(updatedEntry);
-      if (!result.isSuccess) {
-        throw DatabaseException(
-          'Fehler beim Hinzufügen des Tags',
-          operation: 'addTagToEntry',
-        );
-      }
-      return result.data!;
+      return await _wikiRepository.update(updatedEntry);
     });
   }
 
@@ -281,14 +257,7 @@ class WikiEntryService {
       }
 
       final updatedEntry = removeTagStatic(entryResult.data!, tag);
-      final result = await updateWikiEntry(updatedEntry);
-      if (!result.isSuccess) {
-        throw DatabaseException(
-          'Fehler beim Entfernen des Tags',
-          operation: 'removeTagFromEntry',
-        );
-      }
-      return result.data!;
+      return await _wikiRepository.update(updatedEntry);
     });
   }
 
@@ -313,14 +282,7 @@ class WikiEntryService {
       }
 
       final updatedEntry = setParentStatic(entryResult.data!, parentId);
-      final result = await updateWikiEntry(updatedEntry);
-      if (!result.isSuccess) {
-        throw DatabaseException(
-          'Fehler beim Setzen des Parent',
-          operation: 'setParentEntry',
-        );
-      }
-      return result.data!;
+      return await _wikiRepository.update(updatedEntry);
     });
   }
 
@@ -351,14 +313,7 @@ class WikiEntryService {
         createdBy: originalEntry.createdBy,
       );
 
-      final result = await createWikiEntry(duplicatedEntry);
-      if (!result.isSuccess) {
-        throw DatabaseException(
-          'Fehler beim Duplizieren des Wiki-Eintrags',
-          operation: 'duplicateWikiEntry',
-        );
-      }
-      return result.data!;
+      return await _wikiRepository.create(duplicatedEntry);
     });
   }
 
@@ -372,7 +327,6 @@ class WikiEntryService {
           operation: 'getWikiEntryCountForCampaign',
         );
       }
-
       return entriesResult.data!.length;
     });
   }
@@ -510,21 +464,25 @@ class WikiEntryService {
 
   /// Serialisiert Tags für Datenbank
   static String serializeTags(List<String> tags) =>
-      StringListParser.stringListToString(tags);
+      tags.join(',');
 
   /// Deserialisiert Tags aus Datenbank
-  static List<String> deserializeTags(String? tagsString) =>
-      StringListParser.parseStringList(tagsString);
+  static List<String> deserializeTags(String? tagsString) {
+    if (tagsString == null || tagsString.isEmpty) return [];
+    return tagsString.split(',').where((tag) => tag.trim().isNotEmpty).toList();
+  }
 
   /// Serialisiert Child IDs für Datenbank
   static String serializeChildIds(List<String> childIds) =>
-      StringListParser.stringListToString(childIds);
+      childIds.join(',');
 
   /// Deserialisiert Child IDs aus Datenbank
-  static List<String> deserializeChildIds(String? childIdsString) =>
-      StringListParser.parseStringList(childIdsString);
+  static List<String> deserializeChildIds(String? childIdsString) {
+    if (childIdsString == null || childIdsString.isEmpty) return [];
+    return childIdsString.split(',').where((id) => id.trim().isNotEmpty).toList();
+  }
 
-  /// Formatiert Wiki Entry für Anzeige
+  /// Formatiiert Wiki Entry für Anzeige
   static String formatWikiEntry(WikiEntry entry) {
     final buffer = StringBuffer();
     buffer.writeln('WikiEntry: ${entry.title}');
@@ -562,12 +520,14 @@ class WikiEntryService {
     var currentId = parentId;
     var maxIterations = 100; // Schutz vor Endlosschleifen
     
+    final service = WikiEntryService();
+    
     while (currentId != null && currentId.isNotEmpty && maxIterations > 0) {
       if (currentId == entryId) {
         return true; // Zyklus detected
       }
       
-      final parentResult = await WikiEntryService().getWikiEntryById(currentId);
+      final parentResult = await service.getWikiEntryById(currentId);
       if (!parentResult.isSuccess || parentResult.data == null) {
         break; // Parent nicht gefunden
       }
@@ -577,119 +537,5 @@ class WikiEntryService {
     }
     
     return false;
-  }
-}
-
-/// Helper-Klasse für die Serialisierung/Deserialisierung von WikiEntry Daten
-class _WikiEntryWithSerializedData {
-  final String id;
-  final String title;
-  final String content;
-  final WikiEntryType entryType;
-  final String? campaignId;
-  final String? parentId;
-  final String serializedTags;
-  final String serializedChildIds;
-  final String? imageUrl;
-  final bool isMarkdown;
-  final bool isFavorite;
-  final String? createdBy;
-  final DateTime createdAt;
-  final DateTime updatedAt;
-
-  const _WikiEntryWithSerializedData({
-    required this.id,
-    required this.title,
-    required this.content,
-    required this.entryType,
-    this.campaignId,
-    this.parentId,
-    required this.serializedTags,
-    required this.serializedChildIds,
-    this.imageUrl,
-    required this.isMarkdown,
-    required this.isFavorite,
-    this.createdBy,
-    required this.createdAt,
-    required this.updatedAt,
-  });
-
-  factory _WikiEntryWithSerializedData.fromMap(Map<String, dynamic> map) {
-    return _WikiEntryWithSerializedData(
-      id: map['id'] as String,
-      title: map['title'] as String,
-      content: map['content'] as String,
-      entryType: WikiEntryType.values.firstWhere(
-        (e) => e.name == map['entry_type'],
-        orElse: () => WikiEntryType.Place,
-      ),
-      campaignId: map['campaign_id'] as String?,
-      parentId: map['parent_id'] as String?,
-      serializedTags: map['tags'] as String? ?? '',
-      serializedChildIds: map['child_ids'] as String? ?? '',
-      imageUrl: map['image_url'] as String?,
-      isMarkdown: (map['is_markdown'] as int?) == 1,
-      isFavorite: (map['is_favorite'] as int?) == 1,
-      createdBy: map['created_by'] as String?,
-      createdAt: DateTime.parse(map['created_at'] as String),
-      updatedAt: DateTime.parse(map['updated_at'] as String),
-    );
-  }
-
-  factory _WikiEntryWithSerializedData.fromWikiEntry(WikiEntry entry) {
-    return _WikiEntryWithSerializedData(
-      id: entry.id,
-      title: entry.title,
-      content: entry.content,
-      entryType: entry.entryType,
-      campaignId: entry.campaignId,
-      parentId: entry.parentId,
-      serializedTags: WikiEntryService.serializeTags(entry.tags),
-      serializedChildIds: WikiEntryService.serializeChildIds(entry.childIds),
-      imageUrl: entry.imageUrl,
-      isMarkdown: entry.isMarkdown,
-      isFavorite: entry.isFavorite,
-      createdBy: entry.createdBy,
-      createdAt: entry.createdAt,
-      updatedAt: entry.updatedAt,
-    );
-  }
-
-  WikiEntry toWikiEntry() {
-    return WikiEntry(
-      id: id,
-      title: title,
-      content: content,
-      entryType: entryType,
-      campaignId: campaignId,
-      parentId: parentId,
-      tags: WikiEntryService.deserializeTags(serializedTags),
-      childIds: WikiEntryService.deserializeChildIds(serializedChildIds),
-      imageUrl: imageUrl,
-      isMarkdown: isMarkdown,
-      isFavorite: isFavorite,
-      createdBy: createdBy,
-      createdAt: createdAt,
-      updatedAt: updatedAt,
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'title': title,
-      'content': content,
-      'entry_type': entryType.name,
-      'campaign_id': campaignId,
-      'parent_id': parentId,
-      'tags': serializedTags,
-      'child_ids': serializedChildIds,
-      'image_url': imageUrl,
-      'is_markdown': isMarkdown ? 1 : 0,
-      'is_favorite': isFavorite ? 1 : 0,
-      'created_by': createdBy,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
-    };
   }
 }

@@ -1,6 +1,7 @@
 // lib/widgets/campaign_sessions_tab.dart
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart';
+import '../database/core/database_connection.dart';
+import '../database/repositories/session_model_repository.dart';
 import '../models/campaign.dart';
 import '../models/session.dart';
 import '../screens/enhanced_edit_session_screen.dart';
@@ -15,12 +16,13 @@ class CampaignSessionsTab extends StatefulWidget {
 }
 
 class CampaignSessionsTabState extends State<CampaignSessionsTab> {
-  final dbHelper = DatabaseHelper.instance;
+  late final SessionModelRepository _sessionRepository;
   late Future<List<Session>> _sessionsFuture;
 
   @override
   void initState() {
     super.initState();
+    _sessionRepository = SessionModelRepository(DatabaseConnection.instance);
     loadSessions();
   }
 
@@ -60,10 +62,10 @@ class CampaignSessionsTabState extends State<CampaignSessionsTab> {
 
     if (confirm == true) {
       try {
-        // Da es keine deleteSession Methode gibt, zeigen wir nur eine Nachricht
+        await _sessionRepository.delete(session.id);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Session "${session.title}" gelöscht (Demo)')),
+            SnackBar(content: Text('Session "${session.title}" gelöscht')),
           );
         }
         loadSessions();

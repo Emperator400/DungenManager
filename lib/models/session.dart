@@ -20,7 +20,13 @@ class Session {
     this.liveNotes = "", 
   }) : id = id ?? UuidService().generateId();
 
+  /// Konvertiert das Session zu einer Datenbank-Map (Legacy)
   Map<String, dynamic> toMap() {
+    return toDatabaseMap();
+  }
+
+  /// Konvertiert das Session zu einer Datenbank-Map (Neu)
+  Map<String, dynamic> toDatabaseMap() {
     return {
       'id': id,
       'campaignId': campaignId,
@@ -31,7 +37,13 @@ class Session {
     };
   }
 
+  /// Factory für Datenbank-Map mit sicherem Parsing (Legacy)
   factory Session.fromMap(Map<String, dynamic> map) {
+    return Session.fromDatabaseMap(map);
+  }
+
+  /// Factory für Datenbank-Map mit sicherem Parsing (Neu)
+  factory Session.fromDatabaseMap(Map<String, dynamic> map) {
     return Session(
       id: ModelParsingHelper.safeId(map, 'id'),
       campaignId: ModelParsingHelper.safeString(map, 'campaignId', ''),

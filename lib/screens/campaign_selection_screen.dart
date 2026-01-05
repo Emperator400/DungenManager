@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../models/campaign.dart';
-import '../viewmodels/campaign_viewmodel.dart';
-import '../widgets/campaign/enhanced_campaign_card_widget.dart';
-import '../widgets/campaign/enhanced_campaign_filter_chips_widget.dart';
 import '../theme/dnd_theme.dart';
-import 'enhanced_main_navigation_screen.dart';
+import '../viewmodels/campaign_viewmodel.dart';
+import '../widgets/campaign/campaign_create_dialog_widget.dart';
+import '../widgets/campaign/enhanced_campaign_filter_chips_widget.dart';
+import '../widgets/ui_components/cards/unified_campaign_card.dart';
+import '../widgets/ui_components/feedback/snackbar_helper.dart';
+import '../widgets/ui_components/states/empty_state_widget.dart';
+import '../widgets/ui_components/states/error_state_widget.dart';
+import '../widgets/ui_components/states/loading_state_widget.dart';
+
 import 'enhanced_edit_campaign_screen.dart';
+import 'enhanced_main_navigation_screen.dart';
 
 /// Campaign Selection Screen - Startseite der Anwendung
 /// 
@@ -24,17 +31,13 @@ class _CampaignSelectionScreenState extends State<CampaignSelectionScreen> {
   @override
   void initState() {
     super.initState();
-    
-    // Kampagnen werden automatisch im ViewModel geladen
-    // Kein manueller refresh() Aufruf mehr nötig
   }
 
   @override
   Widget build(BuildContext context) {
     return Builder(
       builder: (context) {
-        // Navigation zur kampagnenspezifischen Hauptseite mit demselben ViewModel
-        return _CampaignSelectionLayout();
+        return const _CampaignSelectionLayout();
       },
     );
   }
@@ -55,10 +58,7 @@ class _CampaignSelectionLayout extends StatelessWidget {
             color: DnDTheme.ancientGold,
             child: Column(
               children: [
-                // Filter und Suche Bereich
                 _buildFilterSection(context, viewModel),
-                
-                // Kampagnen Liste oder Status
                 Expanded(
                   child: _buildContent(context, viewModel),
                 ),
@@ -71,7 +71,6 @@ class _CampaignSelectionLayout extends StatelessWidget {
     );
   }
 
-  /// App Bar mit Titel und Quick Actions
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
       title: Row(
@@ -119,13 +118,11 @@ class _CampaignSelectionLayout extends StatelessWidget {
       backgroundColor: DnDTheme.dungeonBlack,
       elevation: 0,
       actions: [
-        // Import Button
         IconButton(
           onPressed: () => _showImportDialog(context),
           icon: const Icon(Icons.upload_file, color: Colors.white),
           tooltip: 'Kampagne importieren',
         ),
-        // Search Button
         IconButton(
           onPressed: () => _showSearchDialog(context),
           icon: const Icon(Icons.search, color: Colors.white),
@@ -135,7 +132,6 @@ class _CampaignSelectionLayout extends StatelessWidget {
     );
   }
 
-  /// Filter und Suche Bereich
   Widget _buildFilterSection(BuildContext context, CampaignViewModel viewModel) {
     return Card(
       margin: const EdgeInsets.all(16),
@@ -144,7 +140,6 @@ class _CampaignSelectionLayout extends StatelessWidget {
     );
   }
 
-  /// Hauptinhalt - entweder Kampagnenliste oder Status-Meldungen
   Widget _buildContent(BuildContext context, CampaignViewModel viewModel) {
     if (viewModel.isLoading) {
       return _buildLoadingState();
@@ -167,174 +162,45 @@ class _CampaignSelectionLayout extends StatelessWidget {
     return _buildCampaignList(context, filteredCampaigns, viewModel);
   }
 
-  /// Ladezustand anzeigen
   Widget _buildLoadingState() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(DnDTheme.ancientGold),
-          ),
-          SizedBox(height: 16),
-          Text(
-            'Kampagnen werden geladen...',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-            ),
-          ),
-        ],
-      ),
+    return LoadingStateWidget.withMessage(
+      message: 'Kampagnen werden geladen...',
+      color: DnDTheme.ancientGold,
     );
   }
 
-  /// Fehlerzustand anzeigen
   Widget _buildErrorState(BuildContext context, CampaignViewModel viewModel) {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        margin: const EdgeInsets.all(16),
-        decoration: DnDTheme.getDungeonWallDecoration(),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: DnDTheme.errorRed,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Fehler beim Laden',
-              style: DnDTheme.headline3.copyWith(
-                color: DnDTheme.errorRed,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              viewModel.error!,
-              textAlign: TextAlign.center,
-              style: DnDTheme.bodyText1.copyWith(
-                color: Colors.white70,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: viewModel.refresh,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Erneut versuchen'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: DnDTheme.errorRed,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return ErrorStateWidget.withRetry(
+      title: 'Fehler beim Laden',
+      message: viewModel.error,
+      onRetry: viewModel.refresh,
     );
   }
 
-  /// Leerer Zustand - keine Kampagnen vorhanden
   Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.all(32),
-        margin: const EdgeInsets.all(16),
-        decoration: DnDTheme.getDungeonWallDecoration(),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.campaign_outlined,
-              size: 80,
-              color: DnDTheme.ancientGold.withValues(alpha: 0.6),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Noch keine Kampagnen',
-              style: DnDTheme.headline2.copyWith(
-                color: DnDTheme.ancientGold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Erstelle deine erste Kampagne, um dein D&D Abenteuer zu beginnen!',
-              textAlign: TextAlign.center,
-              style: DnDTheme.bodyText1.copyWith(
-                color: Colors.white70,
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () => _showCreateCampaignDialog(context),
-              icon: const Icon(Icons.add),
-              label: const Text('Erste Kampagne erstellen'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: DnDTheme.ancientGold,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return EmptyStateWidget.withCreate(
+      title: 'Noch keine Kampagnen',
+      message: 'Erstelle deine erste Kampagne, um dein D&D Abenteuer zu beginnen!',
+      icon: Icons.campaign_outlined,
+      iconColor: DnDTheme.ancientGold,
+      onCreate: () => _showCreateCampaignDialog(context),
+      buttonText: 'Erste Kampagne erstellen',
     );
   }
 
-  /// Keine Suchergebnisse
   Widget _buildNoResultsState(BuildContext context) {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        margin: const EdgeInsets.all(16),
-        decoration: DnDTheme.getDungeonWallDecoration(),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.search_off,
-              size: 64,
-              color: DnDTheme.infoBlue.withValues(alpha: 0.6),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Keine Kampagnen gefunden',
-              style: DnDTheme.headline3.copyWith(
-                color: DnDTheme.infoBlue,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Versuche andere Suchbegriffe oder passe die Filter an.',
-              textAlign: TextAlign.center,
-              style: DnDTheme.bodyText1.copyWith(
-                color: Colors.white70,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextButton.icon(
-              onPressed: () {
-                // Filter zurücksetzen über ViewModel
-                final viewModel = context.read<CampaignViewModel>();
-                viewModel.clearSearch();
-              },
-              icon: const Icon(Icons.clear_all),
-              label: const Text('Filter zurücksetzen'),
-              style: TextButton.styleFrom(
-                foregroundColor: DnDTheme.infoBlue,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return EmptyStateWidget.withClearFilters(
+      title: 'Keine Kampagnen gefunden',
+      message: 'Versuche andere Suchbegriffe oder passe die Filter an.',
+      icon: Icons.search_off,
+      iconColor: DnDTheme.infoBlue,
+      onClearFilters: () {
+        final viewModel = context.read<CampaignViewModel>();
+        viewModel.clearSearch();
+      },
     );
   }
 
-  /// Kampagnen-Liste mit Cards
   Widget _buildCampaignList(
     BuildContext context,
     List<Campaign> campaigns,
@@ -343,49 +209,23 @@ class _CampaignSelectionLayout extends StatelessWidget {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: campaigns.length,
-      itemBuilder: (context, index) {
+      itemBuilder: (ctx, index) {
         final campaign = campaigns[index];
-        return EnhancedCampaignCardWidget(
-          campaign: campaign,
-          onTap: () => _navigateToCampaign(context, campaign),
-          onEdit: () => _editCampaign(context, campaign),
-          onDelete: () => _deleteCampaign(context, campaign, viewModel),
-          onDuplicate: () => _duplicateCampaign(context, campaign, viewModel),
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: UnifiedCampaignCard(
+            campaign: campaign,
+            viewModel: viewModel,
+            onNavigate: () => _navigateToCampaign(context, campaign),
+            onEdit: () => _editCampaign(context, campaign),
+            onDuplicate: () => _duplicateCampaign(context, campaign, viewModel),
+            onToggleFavorite: () => _toggleFavorite(context, campaign, viewModel),
+          ),
         );
       },
     );
   }
 
-  /// Floating Action Button für neue Kampagne
-  Widget _buildFloatingActionButton(BuildContext context) {
-    return FloatingActionButton.extended(
-      onPressed: () => _showCreateCampaignDialog(context),
-      backgroundColor: DnDTheme.ancientGold,
-      foregroundColor: Colors.white,
-      icon: const Icon(Icons.add),
-      label: const Text('Neue Kampagne'),
-    );
-  }
-
-  /// Navigation zur kampagnenspezifischen Hauptseite
-  void _navigateToCampaign(BuildContext context, Campaign campaign) async {
-    // Kampagne im ViewModel auswählen
-    final viewModel = context.read<CampaignViewModel>();
-    await viewModel.selectCampaign(campaign);
-
-    // Navigation zur kampagnenspezifischen Hauptnavigation mit demselben Provider
-    if (!context.mounted) return;
-
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => EnhancedMainNavigationScreen(
-          campaign: campaign,
-        ),
-      ),
-    );
-  }
-
-  /// Kampagne bearbeiten
   void _editCampaign(BuildContext context, Campaign campaign) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -397,135 +237,120 @@ class _CampaignSelectionLayout extends StatelessWidget {
     );
   }
 
-  /// Kampagne löschen mit Bestätigung
-  void _deleteCampaign(
-    BuildContext context,
-    Campaign campaign,
-    CampaignViewModel viewModel,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(
-          'Kampagne löschen',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: Text(
-          'Möchtest du die Kampagne "${campaign.title}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
-          style: const TextStyle(color: Colors.white70),
-        ),
-        backgroundColor: DnDTheme.stoneGrey,
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Abbrechen'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              await viewModel.deleteCampaign(campaign);
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: DnDTheme.errorRed,
-            ),
-            child: const Text('Löschen'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Kampagne duplizieren
-  void _duplicateCampaign(
+  Future<void> _duplicateCampaign(
     BuildContext context,
     Campaign campaign,
     CampaignViewModel viewModel,
   ) async {
-    await viewModel.duplicateCampaign(campaign);
+    try {
+      await viewModel.duplicateCampaign(campaign);
+      if (context.mounted) {
+        SnackBarHelper.showSuccess(context, 'Kampagne dupliziert');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        SnackBarHelper.showError(context, 'Fehler beim Duplizieren: $e');
+      }
+    }
   }
 
-  /// Dialog für neue Kampagne erstellen
-  void _showCreateCampaignDialog(BuildContext context) {
-    final titleController = TextEditingController();
-    final descriptionController = TextEditingController();
+  Future<void> _toggleFavorite(
+    BuildContext context,
+    Campaign campaign,
+    CampaignViewModel viewModel,
+  ) async {
+    try {
+      await viewModel.updateCampaign(
+        campaign.copyWith(isFavorite: !campaign.isFavorite),
+      );
+      
+      if (context.mounted) {
+        SnackBarHelper.showInfo(
+          context,
+          campaign.isFavorite 
+            ? 'Kampagne von Favoriten entfernt' 
+            : 'Kampagne als Favorit markiert',
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        SnackBarHelper.showError(context, 'Fehler beim Aktualisieren: $e');
+      }
+    }
+  }
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(
-          'Neue Kampagne erstellen',
-          style: TextStyle(color: Colors.white),
+  Widget _buildFloatingActionButton(BuildContext context) {
+    return Consumer<CampaignViewModel>(
+      builder: (context, viewModel, child) {
+        if (viewModel.campaigns.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        
+        return FloatingActionButton.extended(
+          onPressed: () => _showCreateCampaignDialog(context),
+          backgroundColor: DnDTheme.ancientGold,
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.add),
+          label: const Text('Neue Kampagne'),
+        );
+      },
+    );
+  }
+
+  void _navigateToCampaign(BuildContext context, Campaign campaign) async {
+    final viewModel = context.read<CampaignViewModel>();
+    await viewModel.selectCampaign(campaign);
+
+    if (!context.mounted) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EnhancedMainNavigationScreen(
+          campaign: campaign,
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(
-                labelText: 'Titel',
-                hintText: 'Name der Kampagne...',
-                border: OutlineInputBorder(),
-              ),
-              autofocus: true,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Beschreibung',
-                hintText: 'Kurze Beschreibung der Kampagne...',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 3,
-            ),
-          ],
-        ),
-        backgroundColor: DnDTheme.stoneGrey,
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Abbrechen'),
-          ),
-            ElevatedButton(
-              onPressed: () async {
-                if (titleController.text.trim().isNotEmpty && descriptionController.text.trim().isNotEmpty) {
-                  Navigator.of(context).pop();
-                  
-                  // Erstelle Kampagne direkt über ViewModel
-                  await context.read<CampaignViewModel>().createCampaign(
-                    title: titleController.text.trim(),
-                    description: descriptionController.text.trim(),
-                  );
-                }
-              },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.ancientGold,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Erstellen'),
-          ),
-        ],
       ),
     );
   }
 
-  /// Import-Dialog (placeholder)
+  void _showCreateCampaignDialog(BuildContext context) {
+    final viewModel = context.read<CampaignViewModel>();
+    CampaignCreateDialogWidget.show(
+      context,
+      viewModel: viewModel,
+      onSuccess: () => viewModel.refresh(),
+    );
+  }
+
   void _showImportDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text(
+        title: Text(
           'Kampagne importieren',
-          style: TextStyle(color: Colors.white),
+          style: DnDTheme.headline3.copyWith(
+            color: DnDTheme.infoBlue,
+          ),
         ),
-        content: const Text(
+        content: Text(
           'Import-Funktion wird in zukünftigen Versionen verfügbar.',
-          style: TextStyle(color: Colors.white70),
+          style: DnDTheme.bodyText1.copyWith(
+            color: Colors.white70,
+          ),
         ),
         backgroundColor: DnDTheme.stoneGrey,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: DnDTheme.infoBlue.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
+            style: TextButton.styleFrom(
+              foregroundColor: DnDTheme.infoBlue,
+            ),
             child: const Text('OK'),
           ),
         ],
@@ -533,52 +358,35 @@ class _CampaignSelectionLayout extends StatelessWidget {
     );
   }
 
-  /// Such-Dialog (alternativ zur Filter-Chip-Suche)
-  void _showSearchDialog(BuildContext context) {
-    final searchController = TextEditingController();
-
-    showDialog(
+  void _showSearchDialog(BuildContext context) async {
+    final viewModel = context.read<CampaignViewModel>();
+    
+    final selectedCampaign = await showDialog<Campaign>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(
-          'Kampagnen suchen',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: TextField(
-          controller: searchController,
-          decoration: const InputDecoration(
-            labelText: 'Suchbegriff',
-            hintText: 'Kampagnen durchsuchen...',
-            border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.search),
-          ),
-          autofocus: true,
-          onSubmitted: (value) {
-            Navigator.of(context).pop();
-            final viewModel = context.read<CampaignViewModel>();
-            viewModel.setSearchQuery(value);
-          },
-        ),
+      builder: (context) => SimpleDialog(
+        title: const Text('Kampagnen suchen'),
         backgroundColor: DnDTheme.stoneGrey,
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Abbrechen'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              final viewModel = context.read<CampaignViewModel>();
-              viewModel.setSearchQuery(searchController.text);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.ancientGold,
-              foregroundColor: Colors.white,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: viewModel.campaigns.map((campaign) {
+                return ListTile(
+                  title: Text(campaign.title),
+                  subtitle: Text(campaign.description),
+                  onTap: () {
+                    Navigator.of(context).pop(campaign);
+                  },
+                );
+              }).toList(),
             ),
-            child: const Text('Suchen'),
           ),
         ],
       ),
     );
+    
+    if (selectedCampaign != null) {
+      _navigateToCampaign(context, selectedCampaign);
+    }
   }
 }

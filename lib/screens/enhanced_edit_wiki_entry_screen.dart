@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart';
+import '../services/wiki_entry_service.dart';
 import '../models/wiki_entry.dart';
 import '../models/map_location.dart';
 
 /// Enhanced Edit Wiki Entry Screen mit Tag-Management und Location-Unterstützung
+/// 
+/// Verwendet WikiEntryService für CRUD-Operationen mit ServiceResult Pattern.
 class EnhancedEditWikiEntryScreen extends StatefulWidget {
   final WikiEntry? entry;
   final String? campaignId;
@@ -25,7 +27,7 @@ class _EnhancedEditWikiEntryScreenState extends State<EnhancedEditWikiEntryScree
   final _tagController = TextEditingController();
   final _scrollController = ScrollController();
 
-  final dbHelper = DatabaseHelper.instance;
+  final wikiService = WikiEntryService();
   
   WikiEntryType _selectedType = WikiEntryType.Lore;
   List<String> _tags = [];
@@ -50,7 +52,7 @@ class _EnhancedEditWikiEntryScreenState extends State<EnhancedEditWikiEntryScree
       _location = entry.location;
       _isGlobal = entry.isGlobal;
     } else if (widget.campaignId != null) {
-      _isGlobal = false; // Neue Einträge für Campaigns sind nicht global
+      _isGlobal = false;
     }
   }
 
@@ -71,57 +73,51 @@ class _EnhancedEditWikiEntryScreenState extends State<EnhancedEditWikiEntryScree
     });
 
     try {
-      final entry = widget.entry != null
-          ? widget.entry!.copyWith(
-              title: _titleController.text.trim(),
-              content: _contentController.text.trim(),
-              entryType: _selectedType,
-              tags: _tags,
-              location: _location,
-              campaignId: _isGlobal ? null : widget.campaignId,
+      final result = widget.entry != null
+          ? await wikiService.updateWikiEntry(
+              widget.entry!.copyWith(
+                title: _titleController.text.trim(),
+                content: _contentController.text.trim(),
+                entryType: _selectedType,
+                tags: _tags,
+                location: _location,
+                campaignId: _isGlobal ? null : widget.campaignId,
+              ),
             )
-          : WikiEntry.create(
-              title: _titleController.text.trim(),
-              content: _contentController.text.trim(),
-              entryType: _selectedType,
-              tags: _tags,
-              location: _location,
-              campaignId: _isGlobal ? null : widget.campaignId,
+          : await wikiService.createWikiEntry(
+              WikiEntry.create(
+                title: _titleController.text.trim(),
+                content: _contentController.text.trim(),
+                entryType: _selectedType,
+                tags: _tags,
+                location: _location,
+                campaignId: _isGlobal ? null : widget.campaignId,
+              ),
             );
 
-      if (widget.entry != null) {
-        await dbHelper.updateWikiEntry(entry);
-      } else {
-        await dbHelper.insertWikiEntry(entry);
+      if (!result.isSuccess) {
+        throw Exception(result.userMessage);
       }
 
+      final savedEntry = result.data!;
+
       if (mounted) {
-        // Verwende eine sichere Methode für Context-Zugriff nach async Operationen
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            Navigator.of(context).pop(entry);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
+        Navigator.of(context).pop(savedEntry);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
                 content: Text(widget.entry != null ? 'Eintrag aktualisiert' : 'Eintrag erstellt'),
                 duration: const Duration(seconds: 2),
               ),
-            );
-          }
-        });
+        );
       }
     } catch (e) {
       if (mounted) {
-        // Verwende addPostFrameCallback für sicheren Context-Zugriff
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
                 content: Text('Fehler: $e'),
                 backgroundColor: Colors.red,
               ),
-            );
-          }
-        });
+        );
       }
     } finally {
       if (mounted) {
@@ -622,7 +618,7 @@ class _LocationDialogState extends State<LocationDialog> {
             ),
           ],
         ),
-      ),
+      ), // KORREKTUR: Schließende Klammer für SizedBox
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),

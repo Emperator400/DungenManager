@@ -105,11 +105,11 @@ class Quest {
         completedAt: ModelParsingHelper.safeStringOrNull(map, 'completed_at', null) != null 
             ? DateTime.tryParse(ModelParsingHelper.safeString(map, 'completed_at', '')) 
             : null,
-        campaignId: QuestDataService.safeStringOrNull(map['campaign_id'], ''),
-        location: QuestDataService.safeStringOrNull(map['location'], ''),
-        recommendedLevel: QuestDataService.safeIntOrNull(map['recommended_level'], null),
+        campaignId: QuestDataService.safeStringOrNull(map, 'campaign_id'),
+        location: QuestDataService.safeStringOrNull(map, 'location'),
+        recommendedLevel: int.tryParse(map['recommended_level']?.toString() ?? '') ?? 1,
         estimatedDurationHours: ModelParsingHelper.safeDouble(map, 'estimated_duration_hours', 0.0),
-        isFavorite: QuestDataService.safeBool(map['is_favorite'], false),
+        isFavorite: ModelParsingHelper.safeBool(map, 'is_favorite', false),
         tags: QuestDataService.parseStringList(map['tags']),
         rewards: QuestDataService.parseRewards(map['rewards']),
         involvedNpcs: QuestDataService.parseStringList(map['involved_npcs']),
@@ -119,21 +119,190 @@ class Quest {
       print('Fehler beim Parsen der Quest: $e');
       // Fallback zu minimal gültiger Quest
       return Quest.create(
-        title: QuestDataService.safeString(map['title'], 'Fehlerhafte Quest'),
-        description: QuestDataService.safeString(map['description'], 'Parse-Fehler'),
+        title: map['title'] as String? ?? 'Fehlerhafte Quest',
+        description: map['description'] as String? ?? 'Parse-Fehler',
       );
     }
   }
 
-  /// Konvertiert das Quest zu einer Datenbank-Map
+  /// Factory für Datenbank-Map mit sicherem Parsing (Neu)
+  factory Quest.fromDatabaseMap(Map<String, dynamic> map) {
+    try {
+      return Quest(
+        id: map['id'] as int? ?? 0,
+        title: map['title'] as String? ?? '',
+        description: map['description'] as String? ?? '',
+        status: QuestStatus.values.firstWhere(
+          (e) => e.toString() == 'QuestStatus.${map['status'] as String? ?? 'active'}',
+          orElse: () => QuestStatus.active,
+        ),
+        questType: QuestType.values.firstWhere(
+          (e) => e.toString() == 'QuestType.${map['quest_type'] as String? ?? 'side'}',
+          orElse: () => QuestType.side,
+        ),
+        difficulty: QuestDifficulty.values.firstWhere(
+          (e) => e.toString() == 'QuestDifficulty.${map['difficulty'] as String? ?? 'medium'}',
+          orElse: () => QuestDifficulty.medium,
+        ),
+        createdAt: (map['created_at'] as String?) != null ? DateTime.parse(map['created_at'] as String) : DateTime.now(),
+        updatedAt: (map['updated_at'] as String?) != null ? DateTime.parse(map['updated_at'] as String) : DateTime.now(),
+        completedAt: (map['completed_at'] as String?) != null ? DateTime.tryParse(map['completed_at'] as String) : null,
+        campaignId: map['campaign_id'] as String?,
+        location: map['location'] as String?,
+        recommendedLevel: map['recommended_level'] as int?,
+        estimatedDurationHours: map['estimated_duration_hours'] as double?,
+        isFavorite: ModelParsingHelper.safeBool(map, 'is_favorite', false),
+        tags: _deserializeStringList(map['tags'] as String?),
+        rewards: _deserializeRewards(map['rewards'] as String?),
+        involvedNpcs: _deserializeStringList(map['involved_npcs'] as String?),
+        linkedWikiEntryIds: _deserializeStringList(map['linked_wiki_entry_ids'] as String?),
+      );
+    } catch (e) {
+      print('Fehler beim Parsen der Quest: $e');
+      // Fallback zu minimal gültiger Quest
+      return Quest.create(
+        title: map['title'] as String? ?? 'Fehlerhafte Quest',
+        description: map['description'] as String? ?? 'Parse-Fehler',
+      );
+    }
+  }
+
+  /// Hilfsmethode zum Deserialisieren einer String-Liste
+  static List<String> _deserializeStringList(String? value) {
+    if (value == null || value.isEmpty) return [];
+    return value.split(',').where((s) => s.isNotEmpty).toList();
+  }
+
+  /// Hilfsmethode zum Serialisieren einer String-Liste
+  static String? _serializeStringList(List<String> list) {
+    if (list.isEmpty) return null;
+    return list.join(',');
+  }
+
+  /// Hilfsmethode zum Bestimmen des Reward-Typs
+  static QuestRewardType _determineRewardType(int? goldAmount, int? experiencePoints, String? itemId, String? wikiEntryId) {
+    if (goldAmount != null && goldAmount > 0) return QuestRewardType.gold;
+    if (experiencePoints != null && experiencePoints > 0) return QuestRewardType.experience;
+    if (itemId != null && itemId.isNotEmpty) return QuestRewardType.item;
+    if (wikiEntryId != null && wikiEntryId.isNotEmpty) return QuestRewardType.wikiEntry;
+    return QuestRewardType.custom;
+  }
+
+  /// Hilfsmethode zum Deserialisieren von Rewards
+  static List<QuestReward> _deserializeRewards(String? rewardsString) {
+    if (rewardsString == null || rewardsString.isEmpty) return [];
+    
+    try {
+      // Einfacher JSON-Parser für Rewards
+      final result = <QuestReward>[];
+      String content = rewardsString.trim();
+      
+      if (content.startsWith('[') && content.endsWith(']')) {
+        content = content.substring(1, content.length - 1).trim();
+      }
+      
+      final items = content.split('},{').map((s) => s.replaceFirst('{', '').replaceFirst('}', '').trim());
+      
+      for (final item in items) {
+        if (item.isEmpty) continue;
+        
+        final pairs = item.split(',');
+        String? name;
+        String? description;
+        int? goldAmount;
+        int? experiencePoints;
+        String? itemId;
+        String? wikiEntryId;
+        
+        for (final pair in pairs) {
+          final keyValue = pair.split(':');
+          if (keyValue.length >= 2) {
+            final key = keyValue[0].trim().replaceAll("'", "").replaceAll('"', "");
+            final value = keyValue[1].trim().replaceAll("'", "").replaceAll('"', "");
+            
+            switch (key) {
+              case 'name':
+                name = value;
+                break;
+              case 'description':
+                description = value;
+                break;
+              case 'goldAmount':
+                goldAmount = int.tryParse(value);
+                break;
+              case 'experiencePoints':
+                experiencePoints = int.tryParse(value);
+                break;
+              case 'itemId':
+                itemId = value;
+                break;
+              case 'wikiEntryId':
+                wikiEntryId = value;
+                break;
+            }
+          }
+        }
+        
+        if (name != null) {
+          final rewardType = _determineRewardType(goldAmount, experiencePoints, itemId, wikiEntryId);
+          result.add(QuestReward(
+            id: UuidService().generateId(),
+            type: rewardType,
+            name: name,
+            description: description,
+            goldAmount: goldAmount,
+            experiencePoints: experiencePoints,
+            itemId: itemId,
+            wikiEntryId: wikiEntryId,
+          ));
+        }
+      }
+      
+      return result;
+    } catch (e) {
+      print('Fehler beim Deserialisieren der Rewards: $e');
+      return [];
+    }
+  }
+
+  /// Hilfsmethode zum Serialisieren von Rewards
+  static String? _serializeRewards(List<QuestReward> rewards) {
+    if (rewards.isEmpty) return null;
+    
+    try {
+      final json = rewards.map((reward) {
+        final parts = <String>[];
+        parts.add("'id':'${reward.id}'");
+        parts.add("'type':'${reward.type.toString().split('.').last}'");
+        parts.add("'name':'${reward.name}'");
+        if (reward.description != null) parts.add("'description':'${reward.description}'");
+        if (reward.goldAmount != null) parts.add("'goldAmount':${reward.goldAmount}");
+        if (reward.experiencePoints != null) parts.add("'experiencePoints':${reward.experiencePoints}");
+        if (reward.itemId != null) parts.add("'itemId':'${reward.itemId}'");
+        if (reward.wikiEntryId != null) parts.add("'wikiEntryId':'${reward.wikiEntryId}'");
+        return '{${parts.join(',')}}';
+      }).join(',');
+      return '[$json]';
+    } catch (e) {
+      print('Fehler beim Serialisieren der Rewards: $e');
+      return null;
+    }
+  }
+
+  /// Konvertiert das Quest zu einer Datenbank-Map (Legacy)
   Map<String, dynamic> toMap() {
+    return toDatabaseMap();
+  }
+  
+  /// Konvertiert das Quest zu einer Datenbank-Map (Neu)
+  Map<String, dynamic> toDatabaseMap() {
     return {
       'id': id,
       'title': title,
       'description': description,
-      'status': status.toString(),
-      'quest_type': questType.toString(),
-      'difficulty': difficulty.toString(),
+      'status': status.toString().split('.').last,
+      'quest_type': questType.toString().split('.').last,
+      'difficulty': difficulty.toString().split('.').last,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'completed_at': completedAt?.toIso8601String(),
@@ -141,11 +310,11 @@ class Quest {
       'location': location,
       'recommended_level': recommendedLevel,
       'estimated_duration_hours': estimatedDurationHours,
-      'is_favorite': isFavorite,
-      'tags': QuestDataService.serializeStringList(tags),
-      'rewards': QuestDataService.serializeRewards(rewards),
-      'involved_npcs': QuestDataService.serializeStringList(involvedNpcs),
-      'linked_wiki_entry_ids': QuestDataService.serializeStringList(linkedWikiEntryIds),
+      'is_favorite': isFavorite ? 1 : 0,
+      'tags': _serializeStringList(tags),
+      'rewards': _serializeRewards(rewards),
+      'involved_npcs': _serializeStringList(involvedNpcs),
+      'linked_wiki_entry_ids': _serializeStringList(linkedWikiEntryIds),
     };
   }
 

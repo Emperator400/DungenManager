@@ -1,13 +1,19 @@
-// Dart Core
+// lib/services/player_character_service.dart
 import 'dart:convert';
-
-// Eigene Projekte
+import 'package:flutter/foundation.dart';
 import '../models/player_character.dart';
 import '../models/attack.dart';
 import '../models/inventory_item.dart';
 
-/// Service für die Verwaltung von Player Characters
+/// Service für die Verwaltung von Player Characters mit Repository-Architektur
+/// 
+/// Bietet erweiterte Funktionalität für Charakterverwaltung.
+/// Dieser Service ist ein Utility-Service mit statischen Methoden.
+/// Direkte Repository-Operationen sollten in den ViewModels erfolgen.
 class PlayerCharacterService {
+  // Verhindere Instanziierung - nur statische Methoden
+  PlayerCharacterService._();
+
   /// Serialisiert Skills für Datenbank
   static String serializeSkills(List<String> skills) {
     return jsonEncode(skills);
@@ -22,7 +28,9 @@ class PlayerCharacterService {
         return List<String>.from(decoded);
       }
     } catch (e) {
-      // Ignoriere Fehler bei der Deserialisierung
+      if (kDebugMode) {
+        print('Fehler bei Skills-Deserialisierung: $e');
+      }
     }
     return [];
   }
@@ -49,11 +57,23 @@ class PlayerCharacterService {
       
       return decodedList
           .where((attackMap) => attackMap != null && attackMap is Map<String, dynamic>)
-          .map((attackMap) => Attack.fromMap(attackMap as Map<String, dynamic>))
+          .map((attackMap) {
+            try {
+              return Attack.fromMap(attackMap as Map<String, dynamic>);
+            } catch (e) {
+              if (kDebugMode) {
+                print('Fehler bei Attack-Konvertierung: $e');
+              }
+              return null;
+            }
+          })
           .where((attack) => attack != null)
           .cast<Attack>()
           .toList();
     } catch (e) {
+      if (kDebugMode) {
+        print('Fehler bei Attacken-Deserialisierung: $e');
+      }
       return [];
     }
   }
@@ -80,41 +100,39 @@ class PlayerCharacterService {
       
       return decodedList
           .where((itemMap) => itemMap != null && itemMap is Map<String, dynamic>)
-          .map((itemMap) => InventoryItem.fromMap(itemMap as Map<String, dynamic>))
+          .map((itemMap) {
+            try {
+              return InventoryItem.fromMap(itemMap as Map<String, dynamic>);
+            } catch (e) {
+              if (kDebugMode) {
+                print('Fehler bei InventoryItem-Konvertierung: $e');
+              }
+              return null;
+            }
+          })
           .where((item) => item != null)
           .cast<InventoryItem>()
           .toList();
     } catch (e) {
+      if (kDebugMode) {
+        print('Fehler bei Inventory-Deserialisierung: $e');
+      }
       return [];
     }
   }
 
-  /// Formatiert Angriffe als String
+  /// Formatiert Attacken als String
   static String formatAttacks(PlayerCharacter character) {
     if (character.attackList.isNotEmpty) {
-      // TODO: Implementiere AttackFormatter wenn verfügbar
-      return character.attackList.map((a) => a.name).join(', ');
+      return character.attackList.map((attack) => attack.toString()).join('\n');
     }
-    return character.attacks ?? '';
-  }
-
-  /// Gibt effektive Angriffsliste zurück
-  static List<Attack> getEffectiveAttacks(PlayerCharacter character) {
-    if (character.attackList.isNotEmpty) {
-      return character.attackList;
+    
+    // Fallback auf Legacy-String
+    if (character.attacks?.isNotEmpty == true) {
+      return character.attacks!;
     }
-    // TODO: Implementiere AttackParser wenn Legacy-String genutzt wird
-    return [];
-  }
-
-  /// Validiert PlayerCharacter Daten
-  static bool isValidPlayerCharacter(PlayerCharacter character) {
-    return character.name.isNotEmpty && 
-           character.playerName.isNotEmpty &&
-           character.className.isNotEmpty &&
-           character.raceName.isNotEmpty &&
-           character.level > 0 &&
-           character.maxHp > 0;
+    
+    return '';
   }
 
   /// Berechnet Modifier für Attribut
@@ -163,5 +181,112 @@ class PlayerCharacterService {
     buffer.writeln('  Copper: ${character.copper}');
     
     return buffer.toString();
+  }
+
+  // ========== STATISCHE HELPER METHODEN ==========
+
+  /// Formatiert Charakter-Statistiken
+  static String formatCharacterStats(Map<String, dynamic> stats) {
+    final buffer = StringBuffer();
+    buffer.writeln('Charakter-Statistiken:');
+    buffer.writeln('Gesamtzahl: ${stats['totalCharacters']}');
+    buffer.writeln('Durchschnittliches Level: ${stats['averageLevel']}');
+    
+    if (stats['levelDistribution'] != null) {
+      buffer.writeln('\nLevel-Verteilung:');
+      final levelDist = stats['levelDistribution'] as Map<int, int>;
+      final sortedLevels = levelDist.keys.toList()..sort();
+      for (final level in sortedLevels) {
+        buffer.writeln('  Level $level: ${levelDist[level]} Charaktere');
+      }
+    }
+    
+    if (stats['classDistribution'] != null) {
+      buffer.writeln('\nKlassen-Verteilung:');
+      final classDist = stats['classDistribution'] as Map<String, int>;
+      for (final entry in classDist.entries) {
+        buffer.writeln('  ${entry.key}: ${entry.value} Charaktere');
+      }
+    }
+    
+    if (stats['raceDistribution'] != null) {
+      buffer.writeln('\nRassen-Verteilung:');
+      final raceDist = stats['raceDistribution'] as Map<String, int>;
+      for (final entry in raceDist.entries) {
+        buffer.writeln('  ${entry.key}: ${entry.value} Charaktere');
+      }
+    }
+    
+    return buffer.toString();
+  }
+
+  /// Validiert Charakter-Name
+  static bool isValidCharacterName(String name) {
+    if (name.isEmpty) return false;
+    if (name.length > 50) return false;
+    // Erlaube Buchstaben, Zahlen, Leerzeichen und einige Sonderzeichen
+    final validPattern = RegExp(r'^[a-zA-ZäöüßÄÖÜ0-9\s\-\_\.]+$');
+    return validPattern.hasMatch(name);
+  }
+
+  /// Gibt empfohlene Attribute für Klasse zurück
+  static Map<String, int> getRecommendedAttributes(String className) {
+    return switch (className.toLowerCase()) {
+      'fighter' || 'krieger' => {
+        'strength': 15,
+        'dexterity': 13,
+        'constitution': 14,
+        'intelligence': 10,
+        'wisdom': 12,
+        'charisma': 10,
+      },
+      'wizard' || 'magier' => {
+        'strength': 8,
+        'dexterity': 14,
+        'constitution': 12,
+        'intelligence': 15,
+        'wisdom': 13,
+        'charisma': 10,
+      },
+      'rogue' || 'schurke' => {
+        'strength': 10,
+        'dexterity': 15,
+        'constitution': 12,
+        'intelligence': 12,
+        'wisdom': 10,
+        'charisma': 14,
+      },
+      'cleric' || 'kleriker' => {
+        'strength': 12,
+        'dexterity': 10,
+        'constitution': 14,
+        'intelligence': 10,
+        'wisdom': 15,
+        'charisma': 13,
+      },
+      _ => {
+        'strength': 12,
+        'dexterity': 12,
+        'constitution': 12,
+        'intelligence': 12,
+        'wisdom': 12,
+        'charisma': 12,
+      },
+    };
+  }
+
+  /// Berechnet HP für Level-Up
+  static int calculateHpIncrease(int constitution, int hitDie) {
+    final modifier = ((constitution - 10) ~/ 2);
+    return ((hitDie ~/ 2) + 1) + modifier;
+  }
+
+  /// Formatiert Modifikatoren als String
+  static String formatModifier(int modifier) {
+    if (modifier >= 0) {
+      return '+$modifier';
+    } else {
+      return modifier.toString();
+    }
   }
 }

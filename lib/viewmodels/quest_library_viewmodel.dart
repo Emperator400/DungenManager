@@ -1,10 +1,14 @@
 import 'package:flutter/foundation.dart';
 import '../models/quest.dart';
 import '../services/quest_service_locator.dart';
+import '../database/repositories/quest_model_repository.dart';
+import '../database/core/database_connection.dart';
 
 /// ViewModel für die Quest-Bibliothek mit reactive State Management
+/// MIGRIERT zur neuen Repository-Architektur
 class QuestLibraryViewModel extends ChangeNotifier {
   final _questService = QuestServiceLocator.instance.questLibraryService;
+  final QuestModelRepository? _questRepository;
   
   // State
   List<Quest> _allQuests = [];
@@ -26,7 +30,10 @@ class QuestLibraryViewModel extends ChangeNotifier {
   // Tab-Management
   int _currentTabIndex = 0;
 
-  QuestLibraryViewModel();
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue QuestModelRepository
+  /// 
+  QuestLibraryViewModel() : _questRepository = QuestModelRepository(DatabaseConnection.instance);
 
   // Getters
   List<Quest> get allQuests => List.unmodifiable(_allQuests);
@@ -62,12 +69,43 @@ class QuestLibraryViewModel extends ChangeNotifier {
     return allTags;
   }
 
-  /// Lädt alle Quests aus der Datenbank
+  /// Lädt alle Quests aus der Datenbank über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue QuestModelRepository
   Future<void> loadQuests() async {
     await _performAsyncOperation(() async {
-      final result = await _questService.getAllQuests();
-      if (result.isSuccess && result.data != null) {
-        _allQuests = result.data!;
+      if (_questRepository != null) {
+        _allQuests = await _questRepository!.findAll();
+      } else {
+        _allQuests = [];
+      }
+      _applyFiltersAndSort();
+    });
+  }
+
+  /// Lädt Quests nach Kampagne über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue QuestModelRepository
+  Future<void> loadQuestsByCampaign(String campaignId) async {
+    await _performAsyncOperation(() async {
+      if (_questRepository != null) {
+        _allQuests = await _questRepository!.findByCampaign(campaignId);
+      } else {
+        _allQuests = [];
+      }
+      _applyFiltersAndSort();
+    });
+  }
+
+  /// Lädt Quests nach Status über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue QuestModelRepository
+  Future<void> loadQuestsByStatus(QuestStatus status) async {
+    await _performAsyncOperation(() async {
+      if (_questRepository != null) {
+        _allQuests = await _questRepository!.findByStatus(status);
+      } else {
+        _allQuests = [];
       }
       _applyFiltersAndSort();
     });
@@ -281,16 +319,18 @@ class QuestLibraryViewModel extends ChangeNotifier {
     }
   }
 
-  /// Toggle Favoriten-Status einer Quest
+  /// Toggle Favoriten-Status einer Quest über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue QuestModelRepository
   Future<void> toggleFavorite(Quest quest) async {
     await _performAsyncOperation(() async {
-      final result = await _questService.updateQuest(quest.copyWith(
-        isFavorite: !quest.isFavorite,
-        updatedAt: DateTime.now(),
-      ));
-      
-      if (result.isSuccess && result.data != null) {
-        final updatedQuest = result.data!;
+      if (_questRepository != null) {
+        final updatedQuest = quest.copyWith(
+          isFavorite: !quest.isFavorite,
+          updatedAt: DateTime.now(),
+        );
+        
+        await _questRepository!.update(updatedQuest);
         
         // Lokalen State aktualisieren
         final index = _allQuests.indexWhere((q) => q.id == quest.id);
@@ -299,24 +339,85 @@ class QuestLibraryViewModel extends ChangeNotifier {
         }
         
         _applyFiltersAndSort();
-      } else {
-        throw Exception(result.userMessage ?? 'Fehler beim Aktualisieren des Favoritenstatus');
       }
     });
   }
 
-  /// Löscht eine Quest
+  /// Aktualisiert den Status einer Quest über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue QuestModelRepository
+  Future<void> updateQuestStatus(Quest quest, QuestStatus newStatus) async {
+    await _performAsyncOperation(() async {
+      if (_questRepository != null) {
+        final updatedQuest = quest.copyWith(
+          status: newStatus,
+          updatedAt: DateTime.now(),
+        );
+        
+        await _questRepository!.update(updatedQuest);
+        
+        // Lokalen State aktualisieren
+        final index = _allQuests.indexWhere((q) => q.id == quest.id);
+        if (index != -1) {
+          _allQuests[index] = updatedQuest;
+        }
+        
+        _applyFiltersAndSort();
+      }
+    });
+  }
+
+  /// Löscht eine Quest über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue QuestModelRepository
+  /// HINWEIS: Konvertiert int ID zu String für Repository-Kompatibilität
   Future<void> deleteQuest(Quest quest) async {
     await _performAsyncOperation(() async {
-      final result = await _questService.deleteQuest(quest.id.toString());
-      
-      if (result.isSuccess) {
-        // Lokalen State aktualisieren
-        _allQuests.removeWhere((q) => q.id == quest.id);
-        _applyFiltersAndSort();
-      } else {
-        throw Exception(result.userMessage ?? 'Fehler beim Löschen der Quest');
+      if (_questRepository != null && quest.id != null) {
+        // Konvertiere int zu String für Repository
+        final idString = quest.id!.toString();
+        await _questRepository!.delete(idString);
       }
+      
+      // Lokalen State aktualisieren
+      _allQuests.removeWhere((q) => q.id == quest.id);
+      _applyFiltersAndSort();
+    });
+  }
+
+  /// Erstellt eine neue Quest über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue QuestModelRepository
+  Future<void> createQuest(Quest quest) async {
+    await _performAsyncOperation(() async {
+      if (_questRepository != null) {
+        final createdQuest = await _questRepository!.create(quest);
+        // Lokalen State aktualisieren
+        _allQuests.add(createdQuest);
+      } else {
+        _allQuests.add(quest);
+      }
+      
+      _applyFiltersAndSort();
+    });
+  }
+
+  /// Aktualisiert eine Quest über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue QuestModelRepository
+  Future<void> updateQuest(Quest quest) async {
+    await _performAsyncOperation(() async {
+      if (_questRepository != null) {
+        await _questRepository!.update(quest);
+      }
+      
+      // Lokalen State aktualisieren
+      final index = _allQuests.indexWhere((q) => q.id == quest.id);
+      if (index != -1) {
+        _allQuests[index] = quest;
+      }
+      
+      _applyFiltersAndSort();
     });
   }
 

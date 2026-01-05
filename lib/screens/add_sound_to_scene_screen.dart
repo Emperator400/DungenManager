@@ -2,7 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:provider/provider.dart';
-import '../database/database_helper.dart';
+import '../database/core/database_connection.dart';
+import '../database/repositories/sound_model_repository.dart';
 import '../models/sound.dart';
 import '../models/scene_sound_link.dart';
 import '../viewmodels/sound_library_viewmodel.dart';
@@ -16,13 +17,43 @@ class AddSoundToSceneScreen extends StatefulWidget {
 }
 
 class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
-  final dbHelper = DatabaseHelper.instance;
+  late SoundModelRepository _soundRepository;
   final AudioPlayer _previewPlayer = AudioPlayer();
+
+  @override
+  void initState() {
+    super.initState();
+    _soundRepository = SoundModelRepository(DatabaseConnection.instance);
+  }
 
   @override
   void dispose() {
     _previewPlayer.dispose();
     super.dispose();
+  }
+
+  Future<List<SceneSoundLink>> _getAllSceneSoundLinks() async {
+    final db = await DatabaseConnection.instance.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'scene_sound_links',
+      where: 'scene_id = ?',
+      whereArgs: [widget.sceneId],
+    );
+    return maps.map((map) => SceneSoundLink.fromMap(map)).toList();
+  }
+
+  Future<void> _insertSceneSoundLink(SceneSoundLink link) async {
+    final db = await DatabaseConnection.instance.database;
+    await db.insert('scene_sound_links', link.toMap());
+  }
+
+  Future<void> _deleteSceneSoundLink(String linkId) async {
+    final db = await DatabaseConnection.instance.database;
+    await db.delete(
+      'scene_sound_links',
+      where: 'id = ?',
+      whereArgs: [linkId],
+    );
   }
 
   Future<void> _previewSound(Sound sound) async {
@@ -36,28 +67,25 @@ class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
       create: (context) => SoundLibraryViewModel(),
       builder: (context, viewModel) {
         return FutureBuilder(
-          future: dbHelper.getAllSounds(),
+          future: _soundRepository.findAll(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.done) {
               if (snapshot.hasError) {
                 return Center(child: Text('Fehler: ${snapshot.error}'));
               }
               
-              final sounds = snapshot.data as List<Sound>? ?? [];
+              final sounds = snapshot.data ?? [];
               
               // Lade den aktuellen Zustand der scene_sound_links Tabelle
               return FutureBuilder(
-                future: dbHelper.getAllSceneSoundLinks(),
+                future: _getAllSceneSoundLinks(),
                 builder: (context, linksSnapshot) {
                   if (linksSnapshot.connectionState == ConnectionState.done) {
                     if (linksSnapshot.hasError) {
                       return Center(child: Text('Fehler: ${linksSnapshot.error}'));
                     }
                     
-                    final links = linksSnapshot.data as List<Map<String, dynamic>>? ?? [];
-                    
-                    // Finde alle Links für diese Szene
-                    final sceneLinks = links.where((link) => link['sceneId'] == widget.sceneId).toList();
+                    final sceneLinks = linksSnapshot.data ?? [];
                     
                     return Scaffold(
                       appBar: AppBar(
@@ -86,7 +114,10 @@ class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
                                   ),
                                   const SizedBox(height: 8),
                                   ...sceneLinks.map((link) {
-                                    final sound = sounds.firstWhere((s) => s.id == link['soundId']);
+                                    final sound = sounds.firstWhere(
+                                      (s) => s.id == link.soundId,
+                                      orElse: () => sounds.first, // Fallback
+                                    );
                                     return Container(
                                       margin: const EdgeInsets.only(bottom: 8),
                                       child: Row(
@@ -98,7 +129,7 @@ class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
                                             ),
                                           ),
                                           Text(
-                                              ' (Lautstärke: ${link['volume']})',
+                                              ' (Lautstärke: ${link.volume})',
                                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                                 color: Colors.grey[600],
                                               ),
@@ -107,10 +138,8 @@ class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
                                             icon: const Icon(Icons.delete),
                                             onPressed: () async {
                                               // Entferne den Sound-Link
-                                              final linkId = link['id'] as String;
-                                              await dbHelper.deleteSceneSoundLink(linkId);
-                                              
-                                              
+                                              await _deleteSceneSoundLink(link.id);
+                                              setState(() {}); // UI aktualisieren
                                             },
                                           ),
                                         ],
@@ -168,7 +197,8 @@ class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
                       soundId: sound.id,
                       volume: 0.5, // Standard-Lautstärke
                     );
-                    await dbHelper.insertSceneSoundLink(newLink.toMap());
+                    await _insertSceneSoundLink(newLink);
+                    setState(() {}); // UI aktualisieren
                     
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(

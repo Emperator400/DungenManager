@@ -1,9 +1,20 @@
 import 'package:flutter/foundation.dart';
 import '../models/wiki_entry.dart';
 import '../services/exceptions/service_exceptions.dart';
+import '../database/repositories/wiki_entry_model_repository.dart';
+import '../database/core/database_connection.dart';
 
-/// ViewModel für die WikiEntry-Bearbeitung mit Provider-Pattern
+/// ViewModel für die WikiEntry-Bearbeitung mit neuer Repository-Architektur
+/// 
+/// HINWEIS: Verwendet jetzt das neue WikiEntryModelRepository
 class EditWikiEntryViewModel extends ChangeNotifier {
+  final WikiEntryModelRepository _wikiRepository;
+
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue WikiEntryModelRepository
+  /// 
+  EditWikiEntryViewModel({WikiEntryModelRepository? wikiRepository})
+      : _wikiRepository = wikiRepository ?? WikiEntryModelRepository(DatabaseConnection.instance);
   // State Management
   WikiEntry? _wikiEntry;
   bool _isLoading = false;
@@ -44,7 +55,9 @@ class EditWikiEntryViewModel extends ChangeNotifier {
     }
   }
 
-  /// Speichert den aktuellen WikiEntry
+  /// Speichert den aktuellen WikiEntry über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue WikiEntryModelRepository
   Future<bool> saveWikiEntry() async {
     if (_wikiEntry == null || !_hasValidWikiEntry()) {
       _setError('Ungültige WikiEntry-Daten');
@@ -55,8 +68,19 @@ class EditWikiEntryViewModel extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       
-      // Simuliere Datenbankoperation
-      await _simulateDatabaseOperation();
+      if (_wikiEntry!.id.isEmpty) {
+        // Create new wiki entry
+        final savedWikiEntry = await _wikiRepository.create(_wikiEntry!);
+        if (savedWikiEntry != null) {
+          _wikiEntry = savedWikiEntry;
+        }
+      } else {
+        // Update existing wiki entry
+        final updatedWikiEntry = await _wikiRepository.update(_wikiEntry!);
+        if (updatedWikiEntry != null) {
+          _wikiEntry = updatedWikiEntry;
+        }
+      }
       
       _resetUnsavedChanges();
       return true;
@@ -72,9 +96,9 @@ class EditWikiEntryViewModel extends ChangeNotifier {
     }
   }
 
-  /// Löscht den aktuellen WikiEntry
+  /// Löscht den aktuellen WikiEntry über neues Repository
   Future<bool> deleteWikiEntry() async {
-    if (_wikiEntry == null) {
+    if (_wikiEntry == null || _wikiEntry!.id.isEmpty) {
       _setError('Kein WikiEntry zum Löschen vorhanden');
       return false;
     }
@@ -83,8 +107,7 @@ class EditWikiEntryViewModel extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       
-      // Simuliere Datenbankoperation
-      await _simulateDatabaseOperation();
+      await _wikiRepository.delete(_wikiEntry!.id);
       return true;
     } catch (e) {
       if (e is ServiceException) {

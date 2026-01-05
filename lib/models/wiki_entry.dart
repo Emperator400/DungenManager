@@ -87,7 +87,13 @@ class WikiEntry {
     );
   }
 
+  /// Konvertiert das WikiEntry zu einer Datenbank-Map (Legacy)
   Map<String, dynamic> toMap() {
+    return toDatabaseMap();
+  }
+
+  /// Konvertiert das WikiEntry zu einer Datenbank-Map (Neu)
+  Map<String, dynamic> toDatabaseMap() {
     return {
       'id': id,
       'title': title,
@@ -107,7 +113,13 @@ class WikiEntry {
     };
   }
 
+  /// Factory für Datenbank-Map mit sicherem Parsing (Legacy)
   factory WikiEntry.fromMap(Map<String, dynamic> map) {
+    return WikiEntry.fromDatabaseMap(map);
+  }
+
+  /// Factory für Datenbank-Map mit sicherem Parsing (Neu)
+  factory WikiEntry.fromDatabaseMap(Map<String, dynamic> map) {
     return WikiEntry(
       id: ModelParsingHelper.safeId(map, 'id'),
       title: ModelParsingHelper.safeString(map, 'title', ''),

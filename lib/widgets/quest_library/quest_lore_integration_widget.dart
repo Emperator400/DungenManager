@@ -24,7 +24,7 @@ class QuestLoreIntegrationWidget extends StatefulWidget {
 }
 
 class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget> {
-  final QuestLoreIntegrationService _loreService = QuestLoreIntegrationService();
+  late final QuestLoreIntegrationService _loreService;
   List<WikiEntry> _linkedWikiEntries = [];
   List<WikiEntry> _suggestedEntries = [];
   bool _isLoading = false;
@@ -32,6 +32,11 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
   @override
   void initState() {
     super.initState();
+    // TODO: Service mit Dependency Injection initialisieren
+    // _loreService = QuestLoreIntegrationService(
+    //   questService: QuestServiceLocator.questLibraryService,
+    //   wikiLinkService: WikiServiceLocator.wikiLinkService,
+    // );
     _loadWikiEntries();
   }
 
@@ -47,13 +52,18 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
     setState(() => _isLoading = true);
     
     try {
-      final linkedEntries = await _loreService.getWikiEntriesForQuest(widget.quest.id.toString());
+      // TODO: Implementieren, wenn Service fertig ist
+      // final result = await _loreService.getWikiEntriesForQuest(widget.quest.id.toString());
+      // final linkedEntries = result.data ?? <WikiEntry>[];
+      final linkedEntries = <WikiEntry>[];
+      
       List<WikiEntry> suggestedEntries = [];
       
       // Nur vorgeschlagene Einträge laden, wenn Auto-Features aktiviert sind
-      if (widget.enableAutoFeatures) {
-        suggestedEntries = await _loreService.findRelevantWikiEntries(widget.quest);
-      }
+      // if (widget.enableAutoFeatures) {
+      //   final suggestedResult = await _loreService.findRelevantWikiEntries(widget.quest);
+      //   suggestedEntries = suggestedResult.data ?? <WikiEntry>[];
+      // }
       
       setState(() {
         _linkedWikiEntries = linkedEntries;
@@ -76,17 +86,21 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
 
   Future<void> _linkWikiEntry(WikiEntry entry) async {
     try {
-      final updatedQuest = await _loreService.linkWikiEntryToQuest(
-        widget.quest.id.toString(), 
-        entry.id
-      );
+      // TODO: Implementieren, wenn Service fertig ist
+      // final result = await _loreService.linkWikiEntryToQuest(
+      //   widget.quest.id.toString(), 
+      //   entry.id
+      // );
+      // final updatedQuest = result.data;
       
       setState(() {
         _linkedWikiEntries.add(entry);
         _suggestedEntries.removeWhere((e) => e.id == entry.id);
       });
       
-      widget.onQuestUpdated?.call(updatedQuest);
+      // if (updatedQuest != null) {
+      //   widget.onQuestUpdated?.call(updatedQuest);
+      // }
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -110,17 +124,21 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
 
   Future<void> _unlinkWikiEntry(WikiEntry entry) async {
     try {
-      final updatedQuest = await _loreService.unlinkWikiEntryFromQuest(
-        widget.quest.id.toString(), 
-        entry.id
-      );
+      // TODO: Implementieren, wenn Service fertig ist
+      // final result = await _loreService.unlinkWikiEntryFromQuest(
+      //   widget.quest.id.toString(), 
+      //   entry.id
+      // );
+      // final updatedQuest = result.data;
       
       setState(() {
         _linkedWikiEntries.removeWhere((e) => e.id == entry.id);
         _suggestedEntries.insert(0, entry);
       });
       
-      widget.onQuestUpdated?.call(updatedQuest);
+      // if (updatedQuest != null) {
+      //   widget.onQuestUpdated?.call(updatedQuest);
+      // }
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -144,7 +162,9 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
 
   Future<void> _suggestWikiLinks() async {
     try {
-      final updatedQuest = await _loreService.suggestWikiLinks(widget.quest);
+      // TODO: Implementieren, wenn Service fertig ist
+      // final result = await _loreService.suggestWikiLinks(widget.quest);
+      // final updatedQuest = result.data;
       await _loadWikiEntries(); // Neu laden
       
       if (mounted) {
@@ -156,7 +176,9 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
         );
       }
       
-      widget.onQuestUpdated?.call(updatedQuest);
+      // if (updatedQuest != null) {
+      //   widget.onQuestUpdated?.call(updatedQuest);
+      // }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -171,7 +193,10 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
 
   Future<void> _createWikiEntries() async {
     try {
-      final createdEntries = await _loreService.createWikiEntriesFromQuest(widget.quest);
+      // TODO: Implementieren, wenn Service fertig ist
+      // final result = await _loreService.createWikiEntriesFromQuest(widget.quest);
+      // final createdEntries = result.data ?? <WikiEntry>[];
+      final createdEntries = <WikiEntry>[];
       await _loadWikiEntries(); // Neu laden
       
       if (mounted) {

@@ -2,7 +2,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/session.dart';
-import '../database/database_helper.dart';
+import '../database/core/database_connection.dart';
+import '../database/repositories/session_model_repository.dart';
 
 enum SaveStatus { saved, unsaved, saving }
 
@@ -15,7 +16,7 @@ class LiveNotesWidget extends StatefulWidget {
 }
 
 class _LiveNotesWidgetState extends State<LiveNotesWidget> {
-  final dbHelper = DatabaseHelper.instance;
+  late final SessionModelRepository _sessionRepository;
   late final TextEditingController _liveNotesController;
   Timer? _debounce;
   SaveStatus _notesSaveStatus = SaveStatus.saved;
@@ -24,6 +25,7 @@ class _LiveNotesWidgetState extends State<LiveNotesWidget> {
   @override
   void initState() {
     super.initState();
+    _sessionRepository = SessionModelRepository(DatabaseConnection.instance);
     _currentSession = widget.session;
     _liveNotesController = TextEditingController(text: _currentSession.liveNotes);
     _liveNotesController.addListener(_onNotesChanged);
@@ -63,7 +65,7 @@ class _LiveNotesWidgetState extends State<LiveNotesWidget> {
       liveNotes: _liveNotesController.text,
     );
     
-    await dbHelper.updateSession(updatedSession);
+    await _sessionRepository.update(updatedSession);
     
     if (!mounted) return;
 

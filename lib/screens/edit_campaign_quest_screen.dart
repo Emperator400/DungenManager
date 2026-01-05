@@ -1,6 +1,6 @@
 // lib/screens/edit_campaign_quest_screen.dart
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart';
+import '../database/core/database_connection.dart';
 import '../models/quest.dart';
 import '../models/campaign_quest.dart';
 
@@ -15,7 +15,6 @@ class EditCampaignQuestScreen extends StatefulWidget {
 }
 
 class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
-  final dbHelper = DatabaseHelper.instance;
   late QuestStatus _selectedStatus;
   late TextEditingController _notesController;
 
@@ -26,14 +25,24 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
     _notesController = TextEditingController(text: widget.campaignQuest.notes ?? '');
   }
 
-  void _saveChanges() async {
+  Future<void> _saveChanges() async {
     final updatedCampaignQuest = widget.campaignQuest.copyWith(
       status: _selectedStatus,
       notes: _notesController.text,
     );
     
-    await dbHelper.updateCampaignQuest(updatedCampaignQuest);
+    await _updateCampaignQuest(updatedCampaignQuest);
     if (mounted) Navigator.of(context).pop();
+  }
+
+  Future<void> _updateCampaignQuest(CampaignQuest campaignQuest) async {
+    final db = await DatabaseConnection.instance.database;
+    await db.update(
+      'campaign_quests',
+      campaignQuest.toMap(),
+      where: 'campaignId = ? AND questId = ?',
+      whereArgs: [campaignQuest.campaignId, campaignQuest.questId],
+    );
   }
 
   @override

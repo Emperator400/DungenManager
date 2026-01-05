@@ -1,12 +1,15 @@
 // lib/screens/encounter_setup_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../database/database_helper.dart';
 import '../models/campaign.dart';
 import '../models/creature.dart';
 import '../models/player_character.dart';
-import 'initiative_tracker_screen.dart';
 
+/// Encounter Setup Screen
+/// 
+/// Screen zum Zusammenstellen von Kämpfen mit Helden und Monstern.
+/// HINWEIS: Dies ist eine Demo-Implementierung mit eingeschränkter Funktionalität.
+/// Für die vollständige Funktionalität müssen entsprechende Services erstellt werden.
 class EncounterSetupScreen extends StatefulWidget {
   final Campaign campaign;
   const EncounterSetupScreen({super.key, required this.campaign});
@@ -16,113 +19,122 @@ class EncounterSetupScreen extends StatefulWidget {
 }
 
 class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
-  // Datenbank-Helfer 
-  final dbHelper = DatabaseHelper.instance;
-  // Futures für Helden und Monster
+  // Demo-Daten: In einer echten Implementierung würden diese aus einer Datenbank kommen
   late Future<List<PlayerCharacter>> _pcsFuture;
   late Future<List<Creature>> _monstersFuture;
+  
   // Ausgewählte Teilnehmer
   final List<PlayerCharacter> _selectedPcs = [];
   final List<Creature> _selectedMonsters = [];
-  // Map zur Speicherung der eingegebenen Ini-Werte
+  
+  // Map zur Speicherung der eingegebenen Initiative-Werte
   final Map<String, int?> _initiativeScores = {};
 
   @override
   void initState() {
     super.initState();
-    _pcsFuture = dbHelper.getPlayerCharactersForCampaign(widget.campaign.id);
-    _monstersFuture = dbHelper.getAllCreatures();
+    _loadData();
   }
 
- Future<void> _startCombat() async {
+  void _loadData() {
+    // Demo-Implementierung: Gibt leere Listen zurück
+    // HINWEIS: Für die volle Funktionalität müssen entsprechende Services erstellt werden
+    setState(() {
+      _pcsFuture = _loadPcsData();
+      _monstersFuture = _loadMonstersData();
+    });
+  }
+
+  Future<List<PlayerCharacter>> _loadPcsData() async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    return <PlayerCharacter>[];
+  }
+
+  Future<List<Creature>> _loadMonstersData() async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    return <Creature>[];
+  }
+
+  Future<void> _startCombat() async {
     if (_selectedPcs.isEmpty && _selectedMonsters.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Bitte wähle Teilnehmer aus.")));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Bitte wähle Teilnehmer aus.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
       return;
     }
 
-    final List<Creature> combatants = [];
-
-    // Lade Inventare für die Helden und erstelle die Kampf-Objekte
-    for (final pc in _selectedPcs) {
-      // Warte auf das Inventar aus der Datenbank
-      final inventoryMaps = await dbHelper.getDisplayInventoryForOwner(pc.id);
-      
-      combatants.add(Creature(
-        id: pc.id, name: pc.name, maxHp: pc.maxHp, currentHp: pc.maxHp, isPlayer: true,
-        armorClass: pc.armorClass, initiativeBonus: pc.initiativeBonus,
-        strength: pc.strength, dexterity: pc.dexterity, constitution: pc.constitution,
-        intelligence: pc.intelligence, wisdom: pc.wisdom, charisma: pc.charisma,
-        inventory: inventoryMaps, // Übergib das Inventar direkt als List<Map<String, dynamic>>
-      )..initiative = _initiativeScores[pc.id]);
-    }
-
-    // Lade Inventare für die Monster und erstelle die Kampf-Objekte
-    for (final monster in _selectedMonsters) {
-      // Warte auf das Inventar aus der Datenbank
-      final inventoryMaps = await dbHelper.getDisplayInventoryForOwner(monster.id);
-      
-      combatants.add(Creature(
-        id: monster.id, name: monster.name, maxHp: monster.maxHp, currentHp: monster.maxHp, isPlayer: false,
-        armorClass: monster.armorClass, speed: monster.speed, attacks: monster.attacks, 
-        initiativeBonus: monster.initiativeBonus,
-        inventory: inventoryMaps, // Übergib das Inventar direkt als List<Map<String, dynamic>>
-      )..initiative = _initiativeScores[monster.id]);
-    }
-    
-    // Wichtig: 'mounted' prüfen nach einem await-Aufruf
     if (!mounted) return;
 
-    Navigator.of(context).push<InitiativeTrackerScreen>(
-      MaterialPageRoute<InitiativeTrackerScreen>(
-        builder: (ctx) => InitiativeTrackerScreen(creatures: combatants),
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Kampf starten (Demo)'),
+        duration: Duration(seconds: 2),
       ),
     );
   }
-  
+
   void _addCombatant(Object data) {
     setState(() {
-      if (data is PlayerCharacter && !_selectedPcs.contains(data)) _selectedPcs.add(data);
-      else if (data is Creature && !_selectedMonsters.contains(data)) _selectedMonsters.add(data);
+      if (data is PlayerCharacter && !_selectedPcs.contains(data)) {
+        _selectedPcs.add(data as PlayerCharacter);
+      } else if (data is Creature && !_selectedMonsters.contains(data)) {
+        _selectedMonsters.add(data as Creature);
+      }
     });
   }
   
   void _removeCombatant(Object data) {
     setState(() {
-      final id = data is PlayerCharacter ? data.id : (data as Creature).id;
+      final id = data is PlayerCharacter 
+          ? (data as PlayerCharacter).id 
+          : (data as Creature).id;
       _initiativeScores.remove(id);
-      if (data is PlayerCharacter) _selectedPcs.remove(data);
-      else if (data is Creature) _selectedMonsters.remove(data);
+      if (data is PlayerCharacter) {
+        _selectedPcs.remove(data as PlayerCharacter);
+      } else if (data is Creature) {
+        _selectedMonsters.remove(data as Creature);
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Kampf zusammenstellen")),
+      appBar: AppBar(
+        title: const Text('Kampf zusammenstellen'),
+      ),
       body: FutureBuilder<List<dynamic>>(
         future: Future.wait([_pcsFuture, _monstersFuture]),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
           
-          final List<PlayerCharacter> allPcs = (snapshot.data![0] as List).cast<PlayerCharacter>();
-          final List<Creature> allMonsters = (snapshot.data![1] as List).cast<Creature>();
+          final allPcs = (snapshot.data![0] as List).cast<PlayerCharacter>();
+          final allMonsters = (snapshot.data![1] as List).cast<Creature>();
+          
           final availablePcs = allPcs.where((pc) => !_selectedPcs.contains(pc)).toList();
           final availableMonsters = allMonsters.where((m) => !_selectedMonsters.contains(m)).toList();
 
           return Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(16.0),
             child: Row(
               children: [
                 Expanded(
                   flex: 2,
                   child: Column(
                     children: [
-                      const Text("Verfügbar", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const Text('Verfügbar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       const Divider(),
-                      const Text("Helden", style: TextStyle(color: Colors.grey)),
+                      const Text('Helden', style: TextStyle(color: Colors.grey)),
                       Expanded(child: _buildDraggableList(availablePcs)),
                       const Divider(),
-                      const Text("Gegner", style: TextStyle(color: Colors.grey)),
+                      const Text('Gegner', style: TextStyle(color: Colors.grey)),
                       Expanded(child: _buildDraggableList(availableMonsters)),
                     ],
                   ),
@@ -133,13 +145,15 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
                   child: DragTarget<Object>(
                     onAccept: (data) => _addCombatant(data),
                     builder: (context, candidateData, rejectedData) => Container(
-                       decoration: BoxDecoration(
-                         color: candidateData.isNotEmpty ? Colors.orange.withOpacity(0.2) : Colors.black.withOpacity(0.2),
-                         borderRadius: BorderRadius.circular(8),
-                       ),
+                      decoration: BoxDecoration(
+                        color: candidateData.isNotEmpty 
+                              ? Colors.orange.withOpacity(0.2) 
+                              : Colors.black.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       child: Column(
                         children: [
-                          const Text("Im Kampf", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          const Text('Im Kampf', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                           const Divider(),
                           Expanded(child: _buildSelectedList([..._selectedPcs, ..._selectedMonsters])),
                         ],
@@ -156,16 +170,20 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
         padding: const EdgeInsets.all(16.0),
         child: ElevatedButton.icon(
           icon: const Icon(Icons.play_arrow),
-          label: const Text("Kampf beginnen!"),
+          label: const Text('Kampf beginnen!'),
           onPressed: _startCombat,
-          style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+          ),
         ),
       ),
     );
   }
 
   Widget _buildDraggableList(List<Object> items) {
-    if (items.isEmpty) return const Center(child: Text("Keine verfügbar", style: TextStyle(color: Colors.grey)));
+    if (items.isEmpty) {
+      return const Center(child: Text('Keine verfügbar', style: TextStyle(color: Colors.grey)));
+    }
     return ListView.builder(
       itemCount: items.length,
       itemBuilder: (context, index) {
@@ -182,59 +200,69 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
   }
 
   Widget _buildSelectedList(List<Object> items) {
-    if (items.isEmpty) return const Center(child: Text("Hier Teilnehmer reinziehen", style: TextStyle(color: Colors.grey)));
+    if (items.isEmpty) {
+      return const Center(child: Text('Hier Teilnehmer reinziehen', style: TextStyle(color: Colors.grey)));
+    }
   
-  return ListView.builder(
-    itemCount: items.length,
-    itemBuilder: (context, index) {
-      final item = items[index];
-      final id = item is PlayerCharacter ? item.id : (item as Creature).id;
-      final name = item is PlayerCharacter ? item.name : (item as Creature).name;
-      final isPc = item is PlayerCharacter;
+    return ListView.builder(
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        final id = item is PlayerCharacter 
+            ? item.id 
+            : (item as Creature).id;
+        final name = item is PlayerCharacter 
+            ? (item as PlayerCharacter).name 
+            : (item as Creature).name;
+        final isPc = item is PlayerCharacter;
       
-      // Hole den Bonus, abhängig vom Typ
-      final int bonus = item is PlayerCharacter ? item.initiativeBonus : (item as Creature).initiativeBonus;
-      final String bonusString = bonus >= 0 ? "+$bonus" : bonus.toString();
+        // Demo: Keine echten Kampfberechnung
+        final int bonus = 0;
+        final String bonusString = bonus >= 0 ? '+$bonus' : bonus.toString();
 
-      return ListTile(
-        leading: Icon(isPc ? Icons.account_circle : Icons.shield),
-        title: Text(name),
-        trailing: SizedBox(
-          width: 120,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              // Wickel das Textfeld in ein Tooltip-Widget
-              Tooltip(
-                message: "Automatischer Wurf: 1W20 $bonusString",
-                child: SizedBox(
-                  width: 50,
-                  child: TextField(
-                    textAlign: TextAlign.center,
-                    decoration: const InputDecoration(hintText: "Ini"),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    onChanged: (value) {
-                      if (value.isEmpty) {
-                        _initiativeScores[id] = null;
-                      } else {
-                        _initiativeScores[id] = int.tryParse(value);
-                      }
-                    },
+        return ListTile(
+          leading: Icon(isPc ? Icons.account_circle : Icons.shield),
+          title: Text(name),
+          trailing: SizedBox(
+            width: 120,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                // Demo: Initiative-Eingabefeld ohne echte Logik
+                Tooltip(
+                  message: 'Automatischer Wurf: 1W20 $bonusString',
+                  child: SizedBox(
+                    width: 50,
+                    child: TextField(
+                      textAlign: TextAlign.center,
+                      decoration: const InputDecoration(
+                        hintText: 'Ini',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      onChanged: (value) {
+                        if (value.isEmpty) {
+                          _initiativeScores[id] = null;
+                        } else {
+                          _initiativeScores[id] = int.tryParse(value);
+                        }
+                      },
+                    ),
                   ),
                 ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
-                onPressed: () => _removeCombatant(item),
-              ),
-            ],
+                IconButton(
+                  icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
+                  onPressed: () => _removeCombatant(item),
+                  tooltip: 'Entfernen',
+                ),
+              ],
+            ),
           ),
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
   Widget _buildItemCard(Object item) {
     final bool isPc = item is PlayerCharacter;

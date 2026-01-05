@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../database/database_helper.dart';
+import '../../database/core/database_connection.dart';
+import '../../database/repositories/inventory_item_model_repository.dart';
 import '../../models/inventory_item.dart';
 import '../../models/item.dart';
 import '../../screens/enhanced_item_library_screen.dart';
@@ -15,23 +16,24 @@ class CharacterInventoryHandler {
   final EnhancedCharacterEditorController controller;
   final BuildContext context;
   final VoidCallback onInventoryChanged;
+  final InventoryItemModelRepository _inventoryRepository;
 
   CharacterInventoryHandler({
     required this.controller,
     required this.context,
     required this.onInventoryChanged,
-  });
+  }) : _inventoryRepository = InventoryItemModelRepository(DatabaseConnection.instance);
 
   Future<void> addItemFromLibrary() async {
-    String? ownerId;
+    String? characterId;
     
     if (controller.characterType == CharacterType.player) {
-      ownerId = controller.pcToEdit?.id;
+      characterId = controller.pcToEdit?.id;
     } else {
-      ownerId = controller.creatureToEdit?.id;
+      characterId = controller.creatureToEdit?.id;
     }
     
-    if (ownerId == null) {
+    if (characterId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Bitte speichern Sie zuerst den Charakter')),
       );
@@ -41,7 +43,7 @@ class CharacterInventoryHandler {
     if (controller.characterType == CharacterType.player) {
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (ctx) => AddItemFromLibraryScreen(ownerId: ownerId!),
+          builder: (ctx) => AddItemFromLibraryScreen(characterId: characterId!),
         ),
       );
     } else {
@@ -53,13 +55,16 @@ class CharacterInventoryHandler {
 
       if (selectedItem != null && selectedItem is Item) {
         final uuidService = UuidService();
+        final item = selectedItem as Item;
         final inventoryItem = InventoryItem(
           id: uuidService.generateId(),
-          ownerId: ownerId!,
-          itemId: selectedItem.id,
-          quantity: 1,
+          characterId: characterId!,
+          itemId: item.id,
+          name: item.name,
+          description: item.description,
+          quantity:1,
         );
-        await DatabaseHelper.instance.insertInventoryItem(inventoryItem);
+        await _inventoryRepository.create(inventoryItem);
       }
     }
     
@@ -81,7 +86,6 @@ class CharacterInventoryHandler {
 
   Future<void> showManageItemDialog(DisplayInventoryItem displayItem) async {
     final quantityController = TextEditingController(text: displayItem.inventoryItem.quantity.toString());
-    final dbHelper = DatabaseHelper.instance;
     
     await showDialog<void>(
       context: context,
@@ -97,7 +101,7 @@ class CharacterInventoryHandler {
           TextButton(
             onPressed: () async {
               try {
-                await dbHelper.deleteInventoryItem(displayItem.inventoryItem.id);
+                await _inventoryRepository.delete(displayItem.inventoryItem.id);
                 if (context.mounted) Navigator.of(ctx).pop();
                 await loadInventory();
                 
@@ -124,13 +128,8 @@ class CharacterInventoryHandler {
             onPressed: () async {
               try {
                 final newQuantity = int.tryParse(quantityController.text) ?? 1;
-                final updatedItem = InventoryItem(
-                  id: displayItem.inventoryItem.id,
-                  ownerId: displayItem.inventoryItem.ownerId,
-                  itemId: displayItem.inventoryItem.itemId,
-                  quantity: newQuantity,
-                );
-                await dbHelper.updateInventoryItem(updatedItem);
+                final updatedItem = displayItem.inventoryItem.copyWith(quantity: newQuantity);
+                await _inventoryRepository.update(updatedItem);
                 if (context.mounted) Navigator.of(ctx).pop();
                 await loadInventory();
               } catch (e) {
@@ -155,9 +154,8 @@ class CharacterInventoryHandler {
     }
 
     try {
-      final dbHelper = DatabaseHelper.instance;
       final updatedItem = displayItem.inventoryItem.copyWith(quantity: newQuantity);
-      await dbHelper.updateInventoryItem(updatedItem);
+      await _inventoryRepository.update(updatedItem);
       await loadInventory();
     } catch (e) {
       if (context.mounted) {
@@ -170,8 +168,7 @@ class CharacterInventoryHandler {
 
   Future<void> removeItem(DisplayInventoryItem displayItem) async {
     try {
-      final dbHelper = DatabaseHelper.instance;
-      await dbHelper.deleteInventoryItem(displayItem.inventoryItem.id);
+      await _inventoryRepository.delete(displayItem.inventoryItem.id);
       await loadInventory();
 
       if (context.mounted) {
@@ -198,14 +195,18 @@ class CharacterInventoryHandler {
 extension InventoryItemCopy on InventoryItem {
   InventoryItem copyWith({
     String? id,
-    String? ownerId,
+    String? characterId,
     String? itemId,
+    String? name,
+    String? description,
     int? quantity,
   }) {
     return InventoryItem(
       id: id ?? this.id,
-      ownerId: ownerId ?? this.ownerId,
+      characterId: characterId ?? this.characterId,
       itemId: itemId ?? this.itemId,
+      name: name ?? this.name,
+      description: description ?? this.description,
       quantity: quantity ?? this.quantity,
     );
   }

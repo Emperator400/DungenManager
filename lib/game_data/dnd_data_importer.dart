@@ -1,16 +1,14 @@
 // lib/game_data/dnd_data_importer.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../database/database_helper.dart';
+import '../database/core/database_connection.dart';
 import '../models/official_monster.dart';
 import '../models/official_spell.dart';
-import '../models/creature.dart';
-import '../models/creature_extension.dart' as creature_ext;
 import '../services/official_monster_import_service.dart';
 import 'dnd_demo_data.dart';
 
 class DndDataImporter {
-  final DatabaseHelper _db = DatabaseHelper.instance;
+  final DatabaseConnection _db = DatabaseConnection.instance;
   final String baseUrl = 'https://raw.githubusercontent.com/5etools-mirror-1/5etools-mirror-1.github.io/master/data/';
 
   // Hauptmethode zum Importieren aller Daten
@@ -55,7 +53,8 @@ class DndDataImporter {
       print('Starte Monster-Import...');
       
       // Bestehende Daten löschen
-      await _db.clearOfficialData();
+      final db = await _db.database;
+      await db.execute('DELETE FROM official_monsters');
       
       // Daten von 5e.tools herunterladen
       final response = await http.get(Uri.parse('${baseUrl}bestiary.json'));
@@ -76,9 +75,11 @@ class DndDataImporter {
         
         for (final monsterData in batch) {
           try {
-            // Korrekte Konvertierung: Zuerst Map, dann OfficialMonster
+            // Konvertiere zu OfficialMonster
             final monster = OfficialMonsterImportService.from5eToolsJson(monsterData as Map<String, dynamic>);
-            await _db.insertOfficialMonster(monster);
+            
+            // Füge in Datenbank ein
+            await db.insert('official_monsters', monster.toMap());
             importedCount++;
           } catch (e) {
             print('Fehler beim Import des Monsters "${monsterData['name']}": $e');
@@ -105,7 +106,8 @@ class DndDataImporter {
       print('Starte Spells-Import...');
       
       // Bestehende Daten löschen
-      await _db.clearOfficialData('official_spells');
+      final db = await _db.database;
+      await db.execute('DELETE FROM official_spells');
       
       // Daten von 5e.tools herunterladen
       final response = await http.get(Uri.parse('${baseUrl}spells.json'));
@@ -127,7 +129,7 @@ class DndDataImporter {
         for (final spellData in batch) {
           try {
             final spell = OfficialSpell.from5eToolsJson(spellData as Map<String, dynamic>);
-            await _db.insertOfficialSpell(spell.toMap());
+            await db.insert('official_spells', spell.toMap());
             importedCount++;
           } catch (e) {
             print('Fehler beim Import des Spells "${spellData['name']}": $e');
@@ -152,7 +154,8 @@ class DndDataImporter {
       print('Starte Klassen-Import...');
       
       // Bestehende Daten löschen
-      await _db.clearOfficialData('official_classes');
+      final db = await _db.database;
+      await db.execute('DELETE FROM official_classes');
       
       // Daten von 5e.tools herunterladen
       final response = await http.get(Uri.parse('${baseUrl}classes.json'));
@@ -169,7 +172,7 @@ class DndDataImporter {
       for (final classData in classes) {
         try {
           final classMap = _parseClassFrom5eTools(classData as Map<String, dynamic>);
-          await _db.insertOfficialClass(classMap);
+          await db.insert('official_classes', classMap);
           importedCount++;
         } catch (e) {
           print('Fehler beim Import der Klasse "${classData['name']}": $e');
@@ -190,7 +193,8 @@ class DndDataImporter {
       print('Starte Völker-Import...');
       
       // Bestehende Daten löschen
-      await _db.clearOfficialData('official_races');
+      final db = await _db.database;
+      await db.execute('DELETE FROM official_races');
       
       // Daten von 5e.tools herunterladen
       final response = await http.get(Uri.parse('${baseUrl}races.json'));
@@ -207,7 +211,7 @@ class DndDataImporter {
       for (final raceData in races) {
         try {
           final raceMap = _parseRaceFrom5eTools(raceData as Map<String, dynamic>);
-          await _db.insertOfficialRace(raceMap);
+          await db.insert('official_races', raceMap);
           importedCount++;
         } catch (e) {
           print('Fehler beim Import des Volkes "${raceData['name']}": $e');
@@ -228,7 +232,8 @@ class DndDataImporter {
       print('Starte Items-Import...');
       
       // Bestehende Daten löschen
-      await _db.clearOfficialData('official_items');
+      final db = await _db.database;
+      await db.execute('DELETE FROM official_items');
       
       // Daten von 5e.tools herunterladen
       final response = await http.get(Uri.parse('${baseUrl}items.json'));
@@ -250,7 +255,7 @@ class DndDataImporter {
         for (final itemData in batch) {
           try {
             final itemMap = _parseItemFrom5eTools(itemData as Map<String, dynamic>);
-            await _db.insertOfficialItem(itemMap);
+            await db.insert('official_items', itemMap);
             importedCount++;
           } catch (e) {
             print('Fehler beim Import des Items "${itemData['name']}": $e');
@@ -275,7 +280,8 @@ class DndDataImporter {
       print('Starte Orte-Import...');
       
       // Bestehende Daten löschen
-      await _db.clearOfficialData('official_locations');
+      final db = await _db.database;
+      await db.execute('DELETE FROM official_locations');
       
       // Daten von 5e.tools herunterladen
       final response = await http.get(Uri.parse('${baseUrl}locations.json'));
@@ -292,7 +298,7 @@ class DndDataImporter {
       for (final locationData in locations) {
         try {
           final locationMap = _parseLocationFrom5eTools(locationData as Map<String, dynamic>);
-          await _db.insertOfficialLocation(locationMap);
+          await db.insert('official_locations', locationMap);
           importedCount++;
         } catch (e) {
           print('Fehler beim Import des Ortes "${locationData['name']}": $e');
@@ -478,18 +484,19 @@ class DndDataImporter {
       print('Starte Demo-Monster-Import...');
       
       // Bestehende Daten löschen
-      await _db.clearOfficialData();
+      final db = await _db.database;
+      await db.execute('DELETE FROM official_monsters');
       
       int importedCount = 0;
       
       for (final monsterData in DndDemoData.demoMonsters) {
         try {
-            final monster = OfficialMonster.fromMap(monsterData);
-            await _db.insertOfficialMonster(monster);
-            importedCount++;
-          } catch (e) {
-            print('Fehler beim Import des Demo-Monsters "${monsterData['name']}": $e');
-          }
+          final monster = OfficialMonster.fromMap(monsterData);
+          await db.insert('official_monsters', monster.toMap());
+          importedCount++;
+        } catch (e) {
+          print('Fehler beim Import des Demo-Monsters "${monsterData['name']}": $e');
+        }
       }
       
       print('Demo-Monster-Import abgeschlossen: $importedCount Monster importiert');
@@ -505,13 +512,14 @@ class DndDataImporter {
       print('Starte Demo-Spells-Import...');
       
       // Bestehende Daten löschen
-      await _db.clearOfficialData('official_spells');
+      final db = await _db.database;
+      await db.execute('DELETE FROM official_spells');
       
       int importedCount = 0;
       
       for (final spellData in DndDemoData.demoSpells) {
         try {
-          await _db.insertOfficialSpell(spellData);
+          await db.insert('official_spells', spellData);
           importedCount++;
         } catch (e) {
           print('Fehler beim Import der Demo-Spells "${spellData['name']}": $e');
@@ -531,13 +539,14 @@ class DndDataImporter {
       print('Starte Demo-Klassen-Import...');
       
       // Bestehende Daten löschen
-      await _db.clearOfficialData('official_classes');
+      final db = await _db.database;
+      await db.execute('DELETE FROM official_classes');
       
       int importedCount = 0;
       
       for (final classData in DndDemoData.demoClasses) {
         try {
-          await _db.insertOfficialClass(classData);
+          await db.insert('official_classes', classData);
           importedCount++;
         } catch (e) {
           print('Fehler beim Import der Demo-Klasse "${classData['name']}": $e');
@@ -557,13 +566,14 @@ class DndDataImporter {
       print('Starte Demo-Völker-Import...');
       
       // Bestehende Daten löschen
-      await _db.clearOfficialData('official_races');
+      final db = await _db.database;
+      await db.execute('DELETE FROM official_races');
       
       int importedCount = 0;
       
       for (final raceData in DndDemoData.demoRaces) {
         try {
-          await _db.insertOfficialRace(raceData);
+          await db.insert('official_races', raceData);
           importedCount++;
         } catch (e) {
           print('Fehler beim Import der Demo-Volkes "${raceData['name']}": $e');
@@ -583,13 +593,14 @@ class DndDataImporter {
       print('Starte Demo-Items-Import...');
       
       // Bestehende Daten löschen
-      await _db.clearOfficialData('official_items');
+      final db = await _db.database;
+      await db.execute('DELETE FROM official_items');
       
       int importedCount = 0;
       
       for (final itemData in DndDemoData.demoItems) {
         try {
-          await _db.insertOfficialItem(itemData);
+          await db.insert('official_items', itemData);
           importedCount++;
         } catch (e) {
           print('Fehler beim Import der Demo-Items "${itemData['name']}": $e');
@@ -609,13 +620,14 @@ class DndDataImporter {
       print('Starte Demo-Orte-Import...');
       
       // Bestehende Daten löschen
-      await _db.clearOfficialData('official_locations');
+      final db = await _db.database;
+      await db.execute('DELETE FROM official_locations');
       
       int importedCount = 0;
       
       for (final locationData in DndDemoData.demoLocations) {
         try {
-          await _db.insertOfficialLocation(locationData);
+          await db.insert('official_locations', locationData);
           importedCount++;
         } catch (e) {
           print('Fehler beim Import der Demo-Ortes "${locationData['name']}": $e');
@@ -633,11 +645,17 @@ class DndDataImporter {
   // --- Hilfsmethoden ---
   
   Future<int> getTotalCount(String tableName) async {
-    return await _db.getOfficialDataCount(tableName);
+    final db = await _db.database;
+    final result = await db.rawQuery('SELECT COUNT(*) as count FROM $tableName');
+    return result.first['count'] as int? ?? 0;
   }
 
   Future<String?> getLatestVersion(String tableName) async {
-    return await _db.getLatestVersion(tableName);
+    final db = await _db.database;
+    final result = await db.rawQuery(
+      'SELECT version FROM $tableName ORDER BY id DESC LIMIT 1'
+    );
+    return result.first['version'] as String?;
   }
 
   Future<bool> hasData() async {
@@ -646,205 +664,12 @@ class DndDataImporter {
   }
 
   Future<void> clearAllOfficialData() async {
-    await _db.clearOfficialData();
-  }
-
-  // --- NEU: Migrationsmethoden für Unified Bestiarum ---
-  
-  /// Migriert bestehende creatures auf das neue Schema
-  Future<void> migrateCreaturesToUnifiedSchema() async {
-    try {
-      print('Starte Migration der creatures auf Unified Bestiarum...');
-      
-      // Prüfen, ob Migration bereits durchgeführt wurde
-      final db = await _db.database;
-      final tables = await db.query('sqlite_master', where: 'name = ?', whereArgs: ['creatures']);
-      if (tables.isEmpty) {
-        print('Tabelle creatures existiert nicht, Migration nicht notwendig');
-        return;
-      }
-      
-      // Prüfen, ob die neuen Felder bereits existieren
-      final pragmaResult = await db.rawQuery('PRAGMA table_info(creatures)');
-      final columns = pragmaResult.map((row) => row['name'] as String).toList();
-      
-      if (!columns.contains('source_type') || !columns.contains('source_id') || 
-          !columns.contains('is_favorite') || !columns.contains('version')) {
-        
-        print('Führe Migration für creatures durch...');
-        
-        // Hole alle bestehenden creatures
-        final existingCreatures = await db.query('creatures');
-        int migratedCount = 0;
-        
-        for (final creatureData in existingCreatures) {
-          final isCustom = (creatureData['is_custom'] ?? 1) == 1;
-          final hasOfficialMonsterId = creatureData['official_monster_id'] != null;
-          
-          // Bestimme den source_type basierend auf vorhandenen Daten
-          String sourceType = 'custom';
-          String? sourceId;
-          
-          if (hasOfficialMonsterId && !isCustom) {
-            sourceType = 'official';
-            sourceId = creatureData['official_monster_id']?.toString();
-          } else if (hasOfficialMonsterId && isCustom) {
-            sourceType = 'hybrid';
-            sourceId = creatureData['official_monster_id']?.toString();
-          }
-          
-          // Aktualisiere den Datensatz mit den neuen Feldern
-          await db.update(
-            'creatures',
-            {
-              'source_type': sourceType,
-              'source_id': sourceId,
-              'is_favorite': 0, // Standardmäßig nicht favorisiert
-              'version': '1.0', // Startversion
-            },
-            where: 'id = ?',
-            whereArgs: [creatureData['id'].toString()],
-          );
-          
-          migratedCount++;
-        }
-        
-        print('Migration abgeschlossen: $migratedCount creatures migriert');
-        
-        // Erstelle Performance-Indizes, falls sie noch nicht existieren
-        try {
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_creatures_source_type ON creatures(source_type)');
-          await db.execute('CREATE INDEX IF NOT EXISTS idx_creatures_is_favorite ON creatures(is_favorite)');
-          print('Performance-Indizes erstellt');
-        } catch (e) {
-          print('Fehler beim Erstellen der Indizes: $e');
-        }
-        
-      } else {
-        print('Migration bereits durchgeführt oder nicht notwendig');
-      }
-      
-    } catch (e) {
-      print('Fehler bei der Migration der creatures: $e');
-      rethrow;
-    }
-  }
-
-  /// Synchronisiert offizielle Monster mit der creatures-Tabelle
-  Future<Map<String, int>> syncOfficialMonstersToCreatures() async {
-    try {
-      print('Starte Synchronisation offizieller Monster mit creatures...');
-      
-      final results = <String, int>{
-        'total': 0,
-        'synced': 0,
-        'updated': 0,
-        'skipped': 0,
-      };
-      
-      // Hole alle offiziellen Monster
-      final officialMonsters = await _db.getAllOfficialMonsters();
-      results['total'] = officialMonsters.length;
-      
-      for (final officialMonster in officialMonsters) {
-        
-        // Prüfe, ob dieses Monster bereits als Creature existiert
-        final existing = await (await _db.database).query(
-          'creatures',
-          where: 'source_id = ? AND source_type = ?',
-          whereArgs: [officialMonster.id, 'official'],
-        );
-        
-        if (existing.isEmpty) {
-          // Neues Creature aus offiziellem Monster erstellen
-          final creature = creature_ext.CreatureExtension.fromOfficialMonster(
-            officialMonsterId: officialMonster.id,
-            name: officialMonster.name,
-            maxHp: officialMonster.hitPoints,
-            armorClass: int.tryParse(officialMonster.armorClass) ?? 10,
-            speed: officialMonster.speed,
-            strength: officialMonster.strength,
-            dexterity: officialMonster.dexterity,
-            constitution: officialMonster.constitution,
-            intelligence: officialMonster.intelligence,
-            wisdom: officialMonster.wisdom,
-            charisma: officialMonster.charisma,
-            size: officialMonster.size,
-            type: officialMonster.type,
-            subtype: officialMonster.subtype,
-            alignment: officialMonster.alignment,
-            challengeRating: officialMonster.challengeRating.toInt(),
-            specialAbilities: officialMonster.specialAbilities.isNotEmpty 
-                ? officialMonster.specialAbilities.map((a) => '${a.name}: ${a.description}').join('\n\n')
-                : null,
-            legendaryActions: officialMonster.legendaryActions?.isNotEmpty == true
-                ? officialMonster.legendaryActions!.map((a) => '${a.name}: ${a.description}').join('\n\n')
-                : null,
-            description: officialMonster.description,
-          );
-          
-          await _db.insertCreature(creature);
-          results['synced'] = (results['synced'] ?? 0) + 1;
-        } else {
-          // Prüfe, ob ein Update notwendig ist
-          final existingCreature = Creature.fromMap(existing.first);
-          final needsUpdate = existingCreature.name != officialMonster.name ||
-              existingCreature.maxHp != officialMonster.hitPoints ||
-              existingCreature.armorClass != int.tryParse(officialMonster.armorClass) ||
-              existingCreature.speed != officialMonster.speed ||
-              existingCreature.strength != officialMonster.strength ||
-              existingCreature.dexterity != officialMonster.dexterity ||
-              existingCreature.constitution != officialMonster.constitution ||
-              existingCreature.intelligence != officialMonster.intelligence ||
-              existingCreature.wisdom != officialMonster.wisdom ||
-              existingCreature.charisma != officialMonster.charisma;
-          
-          if (needsUpdate) {
-            // Aktualisiere das bestehende Creature
-            final updatedCreature = existingCreature.copyWith(
-              name: officialMonster.name,
-              maxHp: officialMonster.hitPoints,
-              armorClass: int.tryParse(officialMonster.armorClass),
-              speed: officialMonster.speed,
-              strength: officialMonster.strength,
-              dexterity: officialMonster.dexterity,
-              constitution: officialMonster.constitution,
-              intelligence: officialMonster.intelligence,
-              wisdom: officialMonster.wisdom,
-              charisma: officialMonster.charisma,
-              size: officialMonster.size,
-              type: officialMonster.type,
-              subtype: officialMonster.subtype,
-              alignment: officialMonster.alignment,
-              challengeRating: officialMonster.challengeRating.toInt(),
-              specialAbilities: officialMonster.specialAbilities.isNotEmpty 
-                  ? officialMonster.specialAbilities.map((a) => '${a.name}: ${a.description}').join('\n\n')
-                  : null,
-              legendaryActions: officialMonster.legendaryActions?.isNotEmpty == true
-                  ? officialMonster.legendaryActions!.map((a) => '${a.name}: ${a.description}').join('\n\n')
-                  : null,
-              description: officialMonster.description,
-              version: officialMonster.version ?? '1.0',
-            );
-            
-            await _db.updateCreature(updatedCreature);
-            results['updated'] = (results['updated'] ?? 0) + 1;
-          } else {
-            results['skipped'] = (results['skipped'] ?? 0) + 1;
-          }
-        }
-        
-        if ((results['synced']! + results['updated']! + results['skipped']!) % 50 == 0) {
-          print('Synchronisations-Fortschritt: ${results['synced']} neu, ${results['updated']} aktualisiert, ${results['skipped']} übersprungen von ${results['total']}');
-        }
-      }
-      
-      print('Synchronisation abgeschlossen: ${results['synced']} neu, ${results['updated']} aktualisiert, ${results['skipped']} übersprungen von ${results['total']}');
-      return results;
-      
-    } catch (e) {
-      print('Fehler bei der Synchronisation offizieller Monster: $e');
-      rethrow;
-    }
+    final db = await _db.database;
+    await db.execute('DELETE FROM official_monsters');
+    await db.execute('DELETE FROM official_spells');
+    await db.execute('DELETE FROM official_classes');
+    await db.execute('DELETE FROM official_races');
+    await db.execute('DELETE FROM official_items');
+    await db.execute('DELETE FROM official_locations');
   }
 }

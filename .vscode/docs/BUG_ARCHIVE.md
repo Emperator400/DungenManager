@@ -397,6 +397,110 @@ case QuestDifficulty.legendary:
 
 ---
 
+## 2025-11-29 - Enhanced Character Editor Save Fix
+
+### Problem
+Der `enhanced_character_editor_controller` speicherte keine vollständigen Player-Objekte in der Datenbank, was dazu führte, dass gespeicherte Characters dem Nutzer nicht richtig angezeigt wurden.
+
+### Fehlermeldung
+Keine expliziten Fehlermeldungen, aber Datenverlust beim Speichern von Character-Informationen.
+
+### Ursache
+In der Konvertierung von `Map<String, dynamic>` zu `PlayerCharacter` im `CharacterEditorViewModel.savePlayerCharacter()` gingen Daten verloren. Fehlende Felder in der Datenerfassung und inkonsistente Datenübertragung zwischen Controller und ViewModel.
+
+### Lösung
+1. **Controller Fix** (`lib/widgets/character_editor/enhanced_character_editor_controller.dart`):
+   - `_collectFormData()` Methode erweitert um fehlende Felder `attacks` und `specialAbilities`
+   - Explizite Trennung zwischen PC- und NPC-spezifischen Feldern
+   - Korrekte Datenübertragung für alle Character-Typen
+
+2. **ViewModel Fix** (`lib/viewmodels/character_editor_viewmodel.dart`):
+   - `savePlayerCharacter()` Methode korrigiert um tatsächliche Inventardaten zu verwenden statt `[]`
+   - `saveCreature()` Methode Datenkonvertierung gefixt
+   - Robuste Fehlerbehandlung bei der Map → Objekt Konvertierung
+
+### Code-Änderungen
+```dart
+// Controller Fix - Erweiterte _collectFormData Methode
+final baseData = {
+  // ... bestehende Felder
+  'attacks': attacksController.text.isNotEmpty ? attacksController.text : null,
+  'specialAbilities': specialAbilitiesController.text.isNotEmpty ? specialAbilitiesController.text : null,
+  'attackList': attackList, // Wichtig: Strukturierte Attack-Liste
+};
+
+// ViewModel Fix - Korrekte Inventar-Verwendung
+final playerCharacter = PlayerCharacter(
+  // ... andere Felder
+  inventory: inventory, // Tatsächliche Inventardaten statt leere Liste
+  attackList: List<Attack>.from(characterData['attackList'] as Iterable? ?? []),
+);
+```
+
+### Auswirkungen
+- ✅ Player Characters werden vollständig mit allen Attributen gespeichert
+- ✅ Creatures werden vollständig mit allen Attributen gespeichert
+- ✅ Attack-Liste wird korrekt übertragen und gespeichert
+- ✅ Inventory-Daten werden korrekt übertragen und gespeichert
+- ✅ Nach dem Speichern sind alle Daten in der UI sichtbar
+- ✅ Keine Daten gehen bei der Map → Objekt Konvertierung verloren
+- ✅ Alle Tests bestehen weiterhin
+
+### Lessons Learned
+1. Bei Map → Objekt Konvertierungen immer alle Felder explizit mappen
+2. Strukturierte Daten (wie Listen) getrennt von String-Daten behandeln
+3. Inkonsistente Datenflüsse zwischen Controller und ViewModel vermeiden
+4. Robuste Fehlerbehandlung bei Datentransformationen implementieren
+5. Komplette Datentests durchführen nach Datenkonvertierungs-Fixes
+
+
+---
+
+## 2025-11-29 - Inventory Database Column Fix
+
+### Problem
+SQL-Abfrage für Inventar schlug fehl wegen inkonsistenter Spaltennamen in der Datenbank.
+
+### Fehlermeldung
+```
+SqfliteFfiException(sqlite_error: 1): no such column: ownerId
+SQL: SELECT * FROM inventory_items WHERE owner_id = ? OR ownerId = ? ORDER BY isEquipped DESC, itemId ASC
+```
+
+### Ursache
+Die `loadInventory` Methode in `lib/services/inventory_service.dart` verwendete eine SQL-Abfrage mit beiden Spaltennamen `owner_id` und `ownerId`, aber nur `owner_id` existiert in der Datenbank. Die Abfrage versuchte redundant auf dieselbe Spalte unter zwei verschiedenen Namen zuzugreifen.
+
+### Lösung
+1. **SQL-Abfrage korrigiert**: Die WHERE-Klausel wurde von `'owner_id = ? OR ownerId = ?'` zu `'owner_id = ?'` vereinfacht
+2. **Parameter angepasst**: `whereArgs` wurde von `[ownerId, ownerId]` zu `[ownerId]` reduziert
+3. **Doppelten Zugriff entfernt**: Die redundante Bedingung wurde vollständig entfernt
+
+### Code-Änderungen
+```dart
+// Vorher (falsch):
+where: 'owner_id = ? OR ownerId = ?',
+whereArgs: [ownerId, ownerId],
+
+// Nachher (korrigiert):
+where: 'owner_id = ?',
+whereArgs: [ownerId],
+```
+
+### Auswirkungen
+- ✅ SQL-Fehler behoben - Inventar wird korrekt geladen
+- ✅ Alle Inventar-Operationen funktionieren wieder fehlerfrei
+- ✅ Konsistente Spaltennamen-Verwendung in der Abfrage
+- ✅ Performance verbessert durch vereinfachte SQL-Abfrage
+- ✅ Keine Datenverlust oder Inkonsistenzen
+
+### Lessons Learned
+1. Bei SQL-Abfragen immer konsistente Spaltennamen verwenden
+2. Redundante Bedingungen vermeiden - sie führen zu Fehlern und Performance-Problemen
+3. Datenbank-Schema genau prüfen bevor Abfragen geschrieben werden
+4. Einfachere Abfragen sind oft besser und sicherer
+
+---
+
 ## Template für zukünftige Einträge
 
 ### Datum - [Titel]

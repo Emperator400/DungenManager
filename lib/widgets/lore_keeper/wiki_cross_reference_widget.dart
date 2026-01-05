@@ -46,8 +46,11 @@ class _WikiCrossReferenceWidgetState extends State<WikiCrossReferenceWidget>
     setState(() => _isLoading = true);
     
     try {
-      final outgoing = await WikiLinkService.getLinkedEntriesWithDetails(widget.entry.id);
-      final backlinks = await WikiLinkService.getBacklinksWithDetails(widget.entry.id);
+      final outgoingResult = await _wikiLinkService.getLinkedEntriesWithDetails(widget.entry.id);
+      final backlinksResult = await _wikiLinkService.getBacklinksWithDetails(widget.entry.id);
+      
+      final outgoing = outgoingResult.data ?? <Map<String, dynamic>>[];
+      final backlinks = backlinksResult.data ?? <Map<String, dynamic>>[];
       
       setState(() {
         _outgoingLinks = outgoing.map((item) => LinkedWikiEntry.fromMap(item)).toList();

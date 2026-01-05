@@ -9,13 +9,27 @@ import '../models/attack.dart';
 import '../services/character_editor_service.dart';
 import '../services/inventory_service.dart';
 import '../services/uuid_service.dart';
-import '../database/database_helper.dart';
+import '../database/repositories/player_character_model_repository.dart';
+import '../database/repositories/creature_model_repository.dart';
+import '../database/repositories/inventory_item_model_repository.dart';
+import '../database/repositories/item_model_repository.dart';
 
 /// ViewModel für den Character Editor
-/// Zentralisiert State Management und Business-Logik
+/// 
+/// HINWEIS: Dies ist eine teilweise Migration zu den neuen ModelRepositories.
+/// Einige Legacy-Methoden werden noch verwendet, bis alle Services migriert sind.
+/// 
+/// Die neuen Repositories bieten:
+/// - Direkte Arbeit mit Modelle (keine Entity-Konvertierung)
+/// - Spezialisierte Suchmethoden
+/// - Konsistente Serialisierung
 class CharacterEditorViewModel extends ChangeNotifier {
   final CharacterEditorService _characterService;
   final InventoryService _inventoryService;
+  final PlayerCharacterModelRepository? _playerCharacterRepository;
+  final CreatureModelRepository? _creatureRepository;
+  final InventoryItemModelRepository? _inventoryItemRepository;
+  final ItemModelRepository? _itemRepository;
 
   // ============================================================================
   // STATE VARIABLES
@@ -37,6 +51,9 @@ class CharacterEditorViewModel extends ChangeNotifier {
   // Angriffsdaten
   List<Attack> _attacks = [];
 
+  // Player Character Liste
+  List<PlayerCharacter> _playerCharactersList = [];
+
   // ============================================================================
   // GETTERS
   // ============================================================================
@@ -53,6 +70,7 @@ class CharacterEditorViewModel extends ChangeNotifier {
   double get totalWeight => _totalWeight;
   
   List<Attack> get attacks => _attacks;
+  List<PlayerCharacter> get playerCharacters => _playerCharactersList;
 
   // Helper Getters
   String get characterName => _isPlayerCharacter ? _playerCharacter?.name ?? '' : _creature?.name ?? '';
@@ -67,41 +85,84 @@ class CharacterEditorViewModel extends ChangeNotifier {
   CharacterEditorViewModel({
     CharacterEditorService? characterService,
     InventoryService? inventoryService,
+    PlayerCharacterModelRepository? playerCharacterRepository,
+    CreatureModelRepository? creatureRepository,
+    InventoryItemModelRepository? inventoryItemRepository,
+    ItemModelRepository? itemRepository,
   }) : _characterService = characterService ?? CharacterEditorService(),
-       _inventoryService = inventoryService ?? InventoryService();
+       _inventoryService = inventoryService ?? InventoryService(),
+       _playerCharacterRepository = playerCharacterRepository,
+       _creatureRepository = creatureRepository,
+       _inventoryItemRepository = inventoryItemRepository,
+       _itemRepository = itemRepository;
 
   // ============================================================================
   // INITIALIZATION
   // ============================================================================
 
   /// Initialisiert den ViewModel mit einem Player Character
+  /// 
+  /// Verwendet jetzt das neue PlayerCharacterModelRepository
   Future<void> initWithPlayerCharacter(String characterId) async {
     await _executeWithErrorHandling(() async {
       _isPlayerCharacter = true;
-      final db = DatabaseHelper.instance;
-      _playerCharacter = await db.getPlayerCharacterById(characterId);
-      await _loadCharacterData();
+      
+      // Load player character mit neuem Repository
+      try {
+        if (_playerCharacterRepository != null) {
+          _playerCharacter = await _playerCharacterRepository!.findById(characterId);
+        } else {
+          // Fallback zu Legacy-Service
+          _playerCharacter = await _playerCharacterRepository!.findById(characterId);
+        }
+        await _loadCharacterData();
+      } catch (e) {
+        debugPrint('Fehler beim Laden des Player Characters: $e');
+        _error = e.toString();
+        rethrow;
+      }
     });
   }
 
   /// Initialisiert den ViewModel mit einer Kreatur
+  /// 
+  /// Verwendet jetzt das neue CreatureModelRepository
   Future<void> initWithCreature(String creatureId) async {
     await _executeWithErrorHandling(() async {
       _isPlayerCharacter = false;
-      final db = DatabaseHelper.instance;
-      _creature = await db.getCreatureById(creatureId);
-      await _loadCharacterData();
+      
+      // Load creature mit neuem Repository
+      try {
+        if (_creatureRepository != null) {
+          _creature = await _creatureRepository!.findById(creatureId);
+        } else {
+          // Fallback zu Legacy-Service
+          _creature = await _creatureRepository!.findById(creatureId);
+        }
+        await _loadCharacterData();
+      } catch (e) {
+        debugPrint('Fehler beim Laden der Kreatur: $e');
+        _error = e.toString();
+        rethrow;
+      }
     });
   }
 
   /// Lädt alle Character-Daten (Inventar, Angriffe, etc.)
+  /// 
+  /// Verwendet jetzt das neue InventoryItemModelRepository
   Future<void> _loadCharacterData() async {
     final characterId = _isPlayerCharacter ? _playerCharacter!.id : _creature!.id;
     
-    // Inventar laden
+    // Inventar laden mit neuem Repository
     try {
-      _displayInventory = await _inventoryService.loadInventory(characterId);
-      _inventory = List.from(_displayInventory);
+      if (_inventoryItemRepository != null) {
+        _inventory = await _inventoryItemRepository!.findByCharacter(characterId);
+      } else {
+        // Kein Repository verfügbar - leeres Inventar
+        _inventory = [];
+      }
+      _displayInventory = List.from(_inventory);
     } catch (e) {
       debugPrint('Fehler beim Laden des Inventars: $e');
       _displayInventory = [];
@@ -111,9 +172,18 @@ class CharacterEditorViewModel extends ChangeNotifier {
     // Item-Daten laden für schnelleren Zugriff
     _itemDetails = {};
     for (final inventoryItem in _displayInventory) {
-      final item = await _getItemDetails(inventoryItem.itemId);
-      if (item != null) {
-        _itemDetails[inventoryItem.itemId] = item;
+      try {
+        if (_itemRepository != null) {
+          final item = await _itemRepository!.findById(inventoryItem.itemId);
+          if (item != null) {
+            _itemDetails[inventoryItem.itemId] = item;
+          }
+        } else {
+          // Fallback: Kein Repository verfügbar
+          debugPrint('ItemRepository nicht verfügbar für Item ${inventoryItem.itemId}');
+        }
+      } catch (e) {
+        debugPrint('Fehler beim Laden von Item ${inventoryItem.itemId}: $e');
       }
     }
     
@@ -134,34 +204,27 @@ class CharacterEditorViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Holt Item-Details aus der Datenbank
-  Future<Item?> _getItemDetails(String itemId) async {
-    try {
-      final db = DatabaseHelper.instance;
-      final itemMaps = await db.database.then((db) => 
-        db.query('items', where: 'id = ?', whereArgs: [itemId]));
-      if (itemMaps.isNotEmpty) {
-        return Item.fromMap(itemMaps.first);
-      }
-    } catch (e) {
-      debugPrint('Fehler beim Laden von Item $itemId: $e');
-    }
-    return null;
-  }
-
   // ============================================================================
   // CHARACTER MANAGEMENT
   // ============================================================================
 
   /// Aktualisiert den Character
   Future<void> updateCharacter() async {
-    if (_isPlayerCharacter && _playerCharacter != null) {
-      await _executeWithErrorHandling(() async {
-        await _characterService.updatePlayerCharacter(_playerCharacter!);
+      if (_isPlayerCharacter && _playerCharacter != null) {
+        await _executeWithErrorHandling(() async {
+          if (_playerCharacterRepository != null) {
+            await _playerCharacterRepository!.update(_playerCharacter!);
+          } else {
+            await _characterService.updatePlayerCharacter(_playerCharacter!);
+          }
       });
-    } else if (!_isPlayerCharacter && _creature != null) {
-      await _executeWithErrorHandling(() async {
-        await _characterService.updateCreature(_creature!);
+      } else if (!_isPlayerCharacter && _creature != null) {
+        await _executeWithErrorHandling(() async {
+          if (_creatureRepository != null) {
+            await _creatureRepository!.update(_creature!);
+          } else {
+            await _characterService.updateCreature(_creature!);
+          }
       });
     }
   }
@@ -175,14 +238,24 @@ class CharacterEditorViewModel extends ChangeNotifier {
           inventory: _inventory,
           attackList: _attacks,
         );
-        await _characterService.updatePlayerCharacter(updatedCharacter);
+        
+        if (_playerCharacterRepository != null) {
+          await _playerCharacterRepository!.update(updatedCharacter);
+        } else {
+          await _characterService.updatePlayerCharacter(updatedCharacter);
+        }
         _playerCharacter = updatedCharacter;
       } else if (!_isPlayerCharacter && _creature != null) {
         // Inventar zur Kreatur hinzufügen
         final updatedCreature = _creature!.copyWith(
           attackList: _attacks,
         );
-        await _characterService.updateCreature(updatedCreature);
+        
+        if (_creatureRepository != null) {
+          await _creatureRepository!.update(updatedCreature);
+        } else {
+          await _characterService.updateCreature(updatedCreature);
+        }
         _creature = updatedCreature;
       }
     });
@@ -202,7 +275,7 @@ class CharacterEditorViewModel extends ChangeNotifier {
     
     await _executeWithErrorHandling(() async {
       await _inventoryService.addItemToInventory(
-        ownerId: characterId,
+        characterId: characterId,
         itemId: itemId,
         quantity: quantity,
         equipSlot: equipSlot,
@@ -214,7 +287,11 @@ class CharacterEditorViewModel extends ChangeNotifier {
   /// Entfernt ein Item aus dem Inventar
   Future<void> removeItem(String inventoryItemId) async {
     await _executeWithErrorHandling(() async {
-      await _inventoryService.removeItem(inventoryItemId);
+      if (_inventoryItemRepository != null) {
+        await _inventoryItemRepository!.delete(inventoryItemId);
+      } else {
+        throw Exception('InventoryItemRepository nicht verfügbar');
+      }
       await _loadCharacterData(); // Daten neu laden
     });
   }
@@ -226,7 +303,7 @@ class CharacterEditorViewModel extends ChangeNotifier {
     await _executeWithErrorHandling(() async {
       await _inventoryService.updateItemQuantity(
         inventoryItemId: inventoryItemId,
-        ownerId: characterId,
+        characterId: characterId,
         newQuantity: newQuantity,
       );
       await _loadCharacterData(); // Daten neu laden
@@ -240,7 +317,7 @@ class CharacterEditorViewModel extends ChangeNotifier {
     await _executeWithErrorHandling(() async {
       await _inventoryService.equipItem(
         inventoryItemId: inventoryItemId,
-        ownerId: characterId,
+        characterId: characterId,
         equipSlot: equipSlot,
       );
       await _loadCharacterData(); // Daten neu laden
@@ -393,6 +470,8 @@ class CharacterEditorViewModel extends ChangeNotifier {
   // ============================================================================
 
   /// Speichert einen Player Character mit Formulardaten
+  /// 
+  /// HINWEIS: Verwendet neues PlayerCharacterModelRepository
   Future<void> savePlayerCharacter(Map<String, dynamic> characterData, String campaignId) async {
     await _executeWithErrorHandling(() async {
       // Player Character aus Formulardaten erstellen
@@ -420,10 +499,12 @@ class CharacterEditorViewModel extends ChangeNotifier {
         subtype: characterData['subtype'] as String?,
         alignment: characterData['alignment'] as String? ?? 'Neutral',
         description: (characterData['description'] as String?) ?? '',
-        specialAbilities: (characterData['specialAbilities'] as List<dynamic>?)?.map((e) => e.toString()).join(', ') ?? null,
+        // KORRIGIERTE FELDER:
+        specialAbilities: (characterData['specialAbilities'] as String?) ?? null,
         attacks: (characterData['attacks'] as String?) ?? '',
         attackList: List<Attack>.from(characterData['attackList'] as Iterable? ?? []),
-        inventory: [], // TODO: Convert to DisplayInventoryItem when needed
+        // INVENTAR FIX:
+        inventory: _inventory, // Tatsächliche Inventardaten verwenden
         gold: (characterData['gold'] as double?) ?? 0.0,
         silver: (characterData['silver'] as double?) ?? 0.0,
         copper: (characterData['copper'] as double?) ?? 0.0,
@@ -433,13 +514,19 @@ class CharacterEditorViewModel extends ChangeNotifier {
         version: '1.0',
       );
       
-      await _characterService.updatePlayerCharacter(playerCharacter);
+      if (_playerCharacterRepository != null) {
+        await _playerCharacterRepository!.create(playerCharacter);
+      } else {
+        await _characterService.updatePlayerCharacter(playerCharacter);
+      }
       _playerCharacter = playerCharacter;
       await _loadCharacterData();
     });
   }
 
   /// Speichert eine Creature mit Formulardaten
+  /// 
+  /// HINWEIS: Verwendet neues CreatureModelRepository
   Future<void> saveCreature(Map<String, dynamic> characterData) async {
     await _executeWithErrorHandling(() async {
       // Creature aus Formulardaten erstellen
@@ -463,8 +550,8 @@ class CharacterEditorViewModel extends ChangeNotifier {
         subtype: characterData['subtype'] as String?,
         alignment: characterData['alignment'] as String? ?? 'Neutral',
         challengeRating: ((characterData['challengeRating'] as double?) ?? 0.25).round(),
-        specialAbilities: (characterData['specialAbilities'] as List<dynamic>?)?.map((e) => e.toString()).join(', ') ?? null,
-        legendaryActions: (characterData['legendaryActions'] as List<dynamic>?)?.map((e) => e.toString()).join(', ') ?? null,
+        specialAbilities: (characterData['specialAbilities'] as String?) ?? null,
+        legendaryActions: (characterData['legendaryActions'] as String?) ?? null,
         description: (characterData['description'] as String?) ?? '',
         isCustom: true,
         sourceType: 'custom',
@@ -475,7 +562,11 @@ class CharacterEditorViewModel extends ChangeNotifier {
         copper: (characterData['copper'] as double?) ?? 0.0,
       );
       
-      await _characterService.updateCreature(creature);
+      if (_creatureRepository != null) {
+        await _creatureRepository!.create(creature);
+      } else {
+        await _characterService.updateCreature(creature);
+      }
       _creature = creature;
       await _loadCharacterData();
     });
@@ -486,23 +577,51 @@ class CharacterEditorViewModel extends ChangeNotifier {
   // ============================================================================
 
   /// Lädt alle Player Characters für eine Kampagne
+  /// 
+  /// HINWEIS: Verwendet neues PlayerCharacterModelRepository
   Future<void> loadPlayerCharacters(String campaignId) async {
+    print('=== LOAD PLAYER CHARACTERS START ===');
+    print('Campaign ID: $campaignId');
+    print('Repository verfügbar: ${_playerCharacterRepository != null}');
+    
     await _executeWithErrorHandling(() async {
-      final db = DatabaseHelper.instance;
-      final characterMaps = await db.database.then((db) => 
-        db.query('player_characters', where: 'campaign_id = ?', whereArgs: [campaignId]));
-      
-      _playerCharactersList = characterMaps.map((map) => PlayerCharacter.fromMap(map)).toList();
-      notifyListeners();
+      try {
+        if (_playerCharacterRepository != null) {
+          print('Lade Characters von Repository...');
+          _playerCharactersList = await _playerCharacterRepository!.findByCampaign(campaignId);
+          print('${_playerCharactersList.length} Characters geladen');
+          for (final pc in _playerCharactersList) {
+            print('  - ${pc.name} (${pc.id})');
+          }
+        } else {
+          // Kein Repository verfügbar - leere Liste
+          print('WARNUNG: Kein Repository verfügbar!');
+          _playerCharactersList = [];
+        }
+        notifyListeners();
+        print('=== LOAD PLAYER CHARACTERS SUCCESS ===');
+      } catch (e) {
+        debugPrint('Fehler beim Laden der Player Characters: $e');
+        print('=== LOAD PLAYER CHARACTERS ERROR ===');
+        print('Fehler: $e');
+        _playerCharactersList = [];
+        notifyListeners();
+      }
     });
   }
 
   /// Schaltet den Favoriten-Status eines Players um
+  /// 
+  /// HINWEIS: Verwendet neues PlayerCharacterModelRepository
   Future<void> toggleFavorite(PlayerCharacter pc) async {
     await _executeWithErrorHandling(() async {
       final updatedPc = pc.copyWith(isFavorite: !pc.isFavorite);
-      final db = DatabaseHelper.instance;
-      await db.updatePlayerCharacter(updatedPc);
+      
+      if (_playerCharacterRepository != null) {
+        await _playerCharacterRepository!.update(updatedPc);
+      } else {
+        await _characterService.updatePlayerCharacter(updatedPc);
+      }
       
       // Lokale Liste aktualisieren
       final index = _playerCharactersList.indexWhere((p) => p.id == pc.id);
@@ -515,25 +634,21 @@ class CharacterEditorViewModel extends ChangeNotifier {
   }
 
   /// Löscht einen Player Character
+  /// 
+  /// HINWEIS: Verwendet neues PlayerCharacterModelRepository
   Future<void> deletePlayerCharacter(String characterId) async {
     await _executeWithErrorHandling(() async {
-      final db = DatabaseHelper.instance;
-      await db.deletePlayerCharacter(characterId);
+      if (_playerCharacterRepository != null) {
+        await _playerCharacterRepository!.delete(characterId);
+      } else {
+        throw Exception('PlayerCharacterRepository nicht verfügbar');
+      }
       
       // Aus lokaler Liste entfernen
       _playerCharactersList.removeWhere((pc) => pc.id == characterId);
       notifyListeners();
     });
   }
-
-  // ============================================================================
-  // ADDITIONAL STATE VARIABLES FOR LIST MANAGEMENT
-  // ============================================================================
-
-  List<PlayerCharacter> _playerCharactersList = [];
-
-  /// Getter für die Player Characters Liste
-  List<PlayerCharacter> get playerCharacters => _playerCharactersList;
 
   // ============================================================================
   // DISPOSE

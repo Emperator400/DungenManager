@@ -177,7 +177,7 @@ class _InventoryDemoWidgetState extends State<InventoryDemoWidget> {
       return DisplayInventoryItem(
         inventoryItem: InventoryItem(
           id: 'inv_${item.id}',
-          ownerId: 'demo_character',
+          characterId: 'demo_character',
           itemId: item.id,
           quantity: quantity,
           isEquipped: isEquipped,

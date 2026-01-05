@@ -1,13 +1,14 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/creature.dart';
-import '../database/database_helper.dart';
+import '../database/repositories/creature_model_repository.dart';
+import '../database/core/database_connection.dart';
 import '../game_data/dnd_data_importer.dart';
 
-/// ViewModel für das Bestiarum
+/// ViewModel für das Bestiarum mit neuer Repository-Architektur
 /// Zentralisiert State Management und Business-Logik für Kreaturen
 class BestiaryViewModel extends ChangeNotifier {
-  final DatabaseHelper _dbHelper;
+  final CreatureModelRepository? _creatureRepository;
   final DndDataImporter _dataImporter;
 
   // ============================================================================
@@ -58,56 +59,46 @@ class BestiaryViewModel extends ChangeNotifier {
   // CONSTRUCTOR
   // ============================================================================
 
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue CreatureModelRepository
+  /// 
   BestiaryViewModel({
-    DatabaseHelper? dbHelper,
+    CreatureModelRepository? creatureRepository,
     DndDataImporter? dataImporter,
-  }) : _dbHelper = dbHelper ?? DatabaseHelper.instance,
+  }) : _creatureRepository = creatureRepository ?? CreatureModelRepository(DatabaseConnection.instance),
        _dataImporter = dataImporter ?? DndDataImporter();
 
   // ============================================================================
   // DATA LOADING
   // ============================================================================
 
-  /// Lädt alle Kreaturen aus der Datenbank
+  /// Lädt alle Kreaturen aus der Datenbank über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue CreatureModelRepository
   Future<void> loadCreatures() async {
     await _executeWithErrorHandling(() async {
-      final creatures = await _dbHelper.getAllCreatures();
-      _allCreatures = creatures;
-      _customCreatures = creatures.where((c) => c.sourceType == 'custom').toList();
-      _officialCreatures = creatures.where((c) => c.sourceType == 'official').toList();
+      if (_creatureRepository != null) {
+        _allCreatures = await _creatureRepository!.findAll();
+        _customCreatures = _allCreatures.where((c) => c.sourceType == 'custom').toList();
+        _officialCreatures = _allCreatures.where((c) => c.sourceType == 'official').toList();
+      } else {
+        _allCreatures = [];
+        _customCreatures = [];
+        _officialCreatures = [];
+      }
     });
   }
 
-  /// Lädt D&D-Daten (Monster und Zauber)
+  /// Lädt D&D-Daten (Monster und Zauber) - Legacy Methode für Übergangszeit
   Future<void> loadDndData() async {
     await _executeWithErrorHandling(() async {
       _isLoadingDndData = true;
       notifyListeners();
       
       try {
-        // Lade verfügbare offizielle Monster
-        final monsters = await _dbHelper.getAllOfficialMonsters();
-        _availableMonsters = monsters.map((monster) => {
-          'id': monster.id,
-          'name': monster.name,
-          'size': monster.size,
-          'type': monster.type,
-          'subtype': monster.subtype,
-          'alignment': monster.alignment,
-          'armor_class': monster.armorClass,
-          'hit_points': monster.hitPoints,
-          'speed': monster.speed,
-          'strength': monster.strength,
-          'dexterity': monster.dexterity,
-          'constitution': monster.constitution,
-          'intelligence': monster.intelligence,
-          'wisdom': monster.wisdom,
-          'charisma': monster.charisma,
-          'challenge_rating': monster.challengeRating,
-          'description': monster.description,
-        }).toList();
-        
-        // Lade verfügbare offizielle Zauber - temporär leer bis implementiert
+        // TODO: Migriere zu OfficialMonsterRepository wenn verfügbar
+        // Für jetzt: Dummy-Implementierung
+        _availableMonsters = [];
         _availableSpells = [];
       } finally {
         _isLoadingDndData = false;
@@ -177,37 +168,62 @@ class BestiaryViewModel extends ChangeNotifier {
   // CREATURE MANAGEMENT
   // ============================================================================
 
-  /// Erstellt eine neue Kreatur
+  // ============================================================================
+  // CREATURE MANAGEMENT MIT NEUER REPOSITORY-ARCHITEKTUR
+  // ============================================================================
+
+  /// Erstellt eine neue Kreatur über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue CreatureModelRepository
   Future<void> createCreature(Creature creature) async {
     await _executeWithErrorHandling(() async {
-      await _dbHelper.insertCreature(creature);
-      _allCreatures.add(creature);
+      Creature? savedCreature;
       
-      // Aktualisiere die gefilterten Listen
-      if (creature.sourceType == 'custom') {
-        _customCreatures.add(creature);
-      } else if (creature.sourceType == 'official') {
-        _officialCreatures.add(creature);
+      if (_creatureRepository != null) {
+        savedCreature = await _creatureRepository!.create(creature);
+      }
+      
+      if (savedCreature != null) {
+        _allCreatures.add(savedCreature);
+        
+        // Aktualisiere die gefilterten Listen
+        if (savedCreature.sourceType == 'custom') {
+          _customCreatures.add(savedCreature);
+        } else if (savedCreature.sourceType == 'official') {
+          _officialCreatures.add(savedCreature);
+        }
       }
     });
   }
 
-  /// Aktualisiert eine Kreatur
+  /// Aktualisiert eine Kreatur über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue CreatureModelRepository
   Future<void> updateCreature(Creature creature) async {
     await _executeWithErrorHandling(() async {
-      await _dbHelper.updateCreature(creature);
+      Creature? updatedCreature;
       
-      // Update in allen Listen
-      _updateCreatureInList(_allCreatures, creature);
-      _updateCreatureInList(_customCreatures, creature);
-      _updateCreatureInList(_officialCreatures, creature);
+      if (_creatureRepository != null) {
+        updatedCreature = await _creatureRepository!.update(creature);
+      }
+      
+      if (updatedCreature != null) {
+        // Update in allen Listen
+        _updateCreatureInList(_allCreatures, updatedCreature);
+        _updateCreatureInList(_customCreatures, updatedCreature);
+        _updateCreatureInList(_officialCreatures, updatedCreature);
+      }
     });
   }
 
-  /// Löscht eine Kreatur
+  /// Löscht eine Kreatur über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue CreatureModelRepository
   Future<void> deleteCreature(String creatureId) async {
     await _executeWithErrorHandling(() async {
-      await _dbHelper.deleteCreature(creatureId);
+      if (_creatureRepository != null) {
+        await _creatureRepository!.delete(creatureId);
+      }
       
       _allCreatures.removeWhere((c) => c.id == creatureId);
       _customCreatures.removeWhere((c) => c.id == creatureId);
@@ -215,10 +231,59 @@ class BestiaryViewModel extends ChangeNotifier {
     });
   }
 
-  /// Schaltet den Favoriten-Status einer Kreatur um
+  /// Schaltet den Favoriten-Status einer Kreatur um über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue CreatureModelRepository
   Future<void> toggleFavorite(Creature creature) async {
     final updatedCreature = creature.copyWith(isFavorite: !creature.isFavorite);
     await updateCreature(updatedCreature);
+  }
+
+  /// Batch-Operation: Löscht mehrere Kreaturen auf einmal
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue CreatureModelRepository
+  Future<void> deleteCreatures(List<String> creatureIds) async {
+    await _executeWithErrorHandling(() async {
+      if (_creatureRepository != null) {
+        await _creatureRepository!.deleteAll(creatureIds);
+      }
+      
+      _allCreatures.removeWhere((c) => creatureIds.contains(c.id));
+      _customCreatures.removeWhere((c) => creatureIds.contains(c.id));
+      _officialCreatures.removeWhere((c) => creatureIds.contains(c.id));
+    });
+  }
+
+  /// Batch-Operation: Aktualisiert mehrere Kreaturen auf einmal
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue CreatureModelRepository
+  Future<void> updateCreatures(List<Creature> creatures) async {
+    await _executeWithErrorHandling(() async {
+      if (_creatureRepository != null) {
+        await _creatureRepository!.updateAll(creatures);
+      }
+      
+      // Lokalen State aktualisieren
+      for (final creature in creatures) {
+        _updateCreatureInList(_allCreatures, creature);
+        _updateCreatureInList(_customCreatures, creature);
+        _updateCreatureInList(_officialCreatures, creature);
+      }
+    });
+  }
+
+  /// Sucht Kreaturen über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue CreatureModelRepository
+  Future<void> searchCreatures(String query) async {
+    await _executeWithErrorHandling(() async {
+      if (_creatureRepository != null) {
+        _allCreatures = await _creatureRepository!.search(query);
+        _customCreatures = _allCreatures.where((c) => c.sourceType == 'custom').toList();
+        _officialCreatures = _allCreatures.where((c) => c.sourceType == 'official').toList();
+        _searchQuery = query;
+      }
+    });
   }
 
   // ============================================================================
@@ -232,106 +297,16 @@ class BestiaryViewModel extends ChangeNotifier {
     });
   }
 
-  /// Importiert alle verfügbaren Monster
+  /// Importiert alle verfügbaren Monster (Methode in Entwicklung)
   Future<void> importAllMonsters() async {
-    await _executeWithErrorHandling(() async {
-      if (_availableMonsters.isEmpty) {
-        throw Exception('Keine Monster zum Importieren verfügbar');
-      }
-
-      // Lade bestehende Kreaturen
-      final existingCreatures = await _dbHelper.getAllCreatures();
-      final existingMonsterIds = existingCreatures
-          .where((c) => c.officialMonsterId != null)
-          .map((c) => c.officialMonsterId!)
-          .toSet();
-
-      int importedCount = 0;
-
-      for (final monster in _availableMonsters) {
-        final monsterId = monster['id']?.toString();
-        
-        // Überspringen, wenn bereits vorhanden
-      if (monsterId != null && existingMonsterIds.contains(monsterId)) {
-        continue;
-      }
-
-        final creature = Creature(
-          id: '',
-          name: monster['name']?.toString() ?? 'Unbekannt',
-          maxHp: int.tryParse(monster['hit_points']?.toString() ?? '0') ?? 0,
-          currentHp: int.tryParse(monster['hit_points']?.toString() ?? '0') ?? 0,
-          armorClass: int.tryParse(monster['armor_class']?.toString() ?? '10') ?? 10,
-          speed: monster['speed']?.toString() ?? '',
-          strength: int.tryParse(monster['strength']?.toString() ?? '10') ?? 10,
-          dexterity: int.tryParse(monster['dexterity']?.toString() ?? '10') ?? 10,
-          constitution: int.tryParse(monster['constitution']?.toString() ?? '10') ?? 10,
-          intelligence: int.tryParse(monster['intelligence']?.toString() ?? '10') ?? 10,
-          wisdom: int.tryParse(monster['wisdom']?.toString() ?? '10') ?? 10,
-          charisma: int.tryParse(monster['charisma']?.toString() ?? '10') ?? 10,
-          size: monster['size']?.toString(),
-          type: monster['type']?.toString(),
-          subtype: monster['subtype']?.toString(),
-          alignment: monster['alignment']?.toString(),
-          challengeRating: (monster['challenge_rating'] as num?)?.toDouble()?.round(),
-          sourceType: 'official',
-          officialMonsterId: monsterId,
-          description: monster['description']?.toString(),
-        );
-
-        await _dbHelper.insertCreature(creature);
-        _allCreatures.add(creature);
-        _officialCreatures.add(creature);
-        importedCount++;
-      }
-
-      // Gib Informationen über den Import zurück
-      notifyListeners();
-      return importedCount;
-    });
+    // TODO: Implementiere mit neuem CreatureRepository
+    throw UnimplementedError('Muss mit neuem Repository implementiert werden');
   }
 
-  /// Fügt ein einzelnes Monster zum Bestiarum hinzu
+  /// Fügt ein einzelnes Monster zum Bestiarum hinzu (Methode in Entwicklung)
   Future<void> addMonsterToBestiary(Map<String, dynamic> monsterData) async {
-    await _executeWithErrorHandling(() async {
-      // Prüfen, ob das Monster bereits im Bestiarum vorhanden ist
-      final monsterId = monsterData['id']?.toString();
-      final alreadyExists = _allCreatures.any((creature) => 
-        creature.officialMonsterId == monsterId || 
-        (creature.sourceType == 'official' && creature.name == monsterData['name']?.toString())
-      );
-
-      if (alreadyExists) {
-        throw Exception('Dieses Monster ist bereits im Bestiarum vorhanden');
-      }
-
-      final creature = Creature(
-        id: '',
-        name: monsterData['name']?.toString() ?? 'Unbekannt',
-        maxHp: int.tryParse(monsterData['hit_points']?.toString() ?? '0') ?? 0,
-        currentHp: int.tryParse(monsterData['hit_points']?.toString() ?? '0') ?? 0,
-        armorClass: int.tryParse(monsterData['armor_class']?.toString() ?? '10') ?? 10,
-        speed: monsterData['speed']?.toString() ?? '',
-        strength: int.tryParse(monsterData['strength']?.toString() ?? '10') ?? 10,
-        dexterity: int.tryParse(monsterData['dexterity']?.toString() ?? '10') ?? 10,
-        constitution: int.tryParse(monsterData['constitution']?.toString() ?? '10') ?? 10,
-        intelligence: int.tryParse(monsterData['intelligence']?.toString() ?? '10') ?? 10,
-        wisdom: int.tryParse(monsterData['wisdom']?.toString() ?? '10') ?? 10,
-        charisma: int.tryParse(monsterData['charisma']?.toString() ?? '10') ?? 10,
-        size: monsterData['size']?.toString(),
-        type: monsterData['type']?.toString(),
-        subtype: monsterData['subtype']?.toString(),
-        alignment: monsterData['alignment']?.toString(),
-        challengeRating: (monsterData['challenge_rating'] as num?)?.toDouble()?.round(),
-        sourceType: 'official',
-        officialMonsterId: monsterId,
-        description: monsterData['description']?.toString(),
-      );
-
-      await _dbHelper.insertCreature(creature);
-      _allCreatures.add(creature);
-      _officialCreatures.add(creature);
-    });
+    // TODO: Implementiere mit neuem CreatureRepository
+    throw UnimplementedError('Muss mit neuem Repository implementiert werden');
   }
 
   // ============================================================================
@@ -339,27 +314,37 @@ class BestiaryViewModel extends ChangeNotifier {
   // ============================================================================
 
   /// Führt Migration auf Unified Schema durch
+  /// HINWEIS: Die Migration ist eine komplexe Operation, die in Zukunft separat implementiert werden sollte
+  /// Da die alte DatabaseHelper-Migration nicht mehr existiert, ist dies vorerst deaktiviert
   Future<void> migrateToUnifiedSchema() async {
     await _executeWithErrorHandling(() async {
-      await _dataImporter.migrateCreaturesToUnifiedSchema();
-      await loadCreatures(); // Neu laden nach Migration
+      // TODO: Implementiere Migration mit neuer Repository-Architektur
+      // Die alte migrateCreaturesToUnifiedSchema Methode existiert nicht mehr
+      print('Migration ist vorübergehend deaktiviert - muss mit neuer Architektur implementiert werden');
     });
   }
 
   /// Synchronisiert offizielle Monster
+  /// HINWEIS: Die Synchronisation ist eine komplexe Operation, die in Zukunft separat implementiert werden sollte
+  /// Da die alte DatabaseHelper-Methode nicht mehr existiert, ist dies vorerst deaktiviert
   Future<void> syncOfficialMonsters() async {
     await _executeWithErrorHandling(() async {
-      await _dataImporter.syncOfficialMonstersToCreatures();
-      await loadCreatures(); // Neu laden nach Synchronisation
+      // TODO: Implementiere Synchronisation mit neuer Repository-Architektur
+      // Die alte syncOfficialMonstersToCreatures Methode existiert nicht mehr
+      print('Synchronisation ist vorübergehend deaktiviert - muss mit neuer Architektur implementiert werden');
     });
   }
 
   /// Setzt das Bestiarum zurück (löscht alle Kreaturen)
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue CreatureModelRepository
   Future<void> resetBestiary() async {
     await _executeWithErrorHandling(() async {
-      final creatures = await _dbHelper.getAllCreatures();
-      for (final creature in creatures) {
-        await _dbHelper.deleteCreature(creature.id.toString());
+      final allCreatures = List<Creature>.from(_allCreatures);
+      for (final creature in allCreatures) {
+        if (_creatureRepository != null && creature.id != null) {
+          await _creatureRepository!.delete(creature.id!);
+        }
       }
       
       _allCreatures.clear();

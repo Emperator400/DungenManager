@@ -1,9 +1,12 @@
 import 'package:flutter/foundation.dart';
 import '../models/scene.dart';
+import '../database/repositories/scene_model_repository.dart';
 import '../services/exceptions/service_exceptions.dart';
 
 /// ViewModel für die Scene-Bearbeitung mit Provider-Pattern
 class EditSceneViewModel extends ChangeNotifier {
+  final SceneModelRepository _sceneRepository;
+  
   // State Management
   Scene? _scene;
   bool _isLoading = false;
@@ -18,6 +21,9 @@ class EditSceneViewModel extends ChangeNotifier {
   bool get isEditing => _scene != null;
   bool get canSave => _scene != null && _hasValidScene();
 
+  EditSceneViewModel({required SceneModelRepository sceneRepository})
+      : _sceneRepository = sceneRepository;
+
   /// Initialisiert das ViewModel mit einer Scene oder erstellt eine neue
   Future<void> initialize(Scene? scene, {String? sessionId}) async {
     try {
@@ -26,9 +32,22 @@ class EditSceneViewModel extends ChangeNotifier {
       
       if (scene != null) {
         _scene = scene;
+      } else if (sessionId != null) {
+        // Hole den aktuellen orderIndex für neue Szenen
+        final sessionScenes = await _sceneRepository.findBySession(sessionId);
+        final maxOrderIndex = sessionScenes.isEmpty 
+            ? 0 
+            : sessionScenes.map((s) => s.orderIndex).reduce((a, b) => a > b ? a : b) + 1;
+        
+        _scene = Scene(
+          sessionId: sessionId,
+          orderIndex: maxOrderIndex,
+          name: '',
+          description: '',
+        );
       } else {
         _scene = Scene(
-          sessionId: sessionId ?? 'default',
+          sessionId: 'default',
           orderIndex: 0,
           name: '',
           description: '',
@@ -55,8 +74,21 @@ class EditSceneViewModel extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       
-      // Simuliere Datenbankoperation
-      await _simulateDatabaseOperation();
+      // Aktualisiere updatedAt
+      _scene = _scene!.copyWith(updatedAt: DateTime.now());
+      
+      // Speichern in der Datenbank
+      if (isEditing) {
+        final updatedScene = await _sceneRepository.update(_scene!);
+        if (updatedScene != null) {
+          _scene = updatedScene;
+        }
+      } else {
+        final createdScene = await _sceneRepository.create(_scene!);
+        if (createdScene != null) {
+          _scene = createdScene;
+        }
+      }
       
       _resetUnsavedChanges();
       return true;
@@ -83,8 +115,7 @@ class EditSceneViewModel extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       
-      // Simuliere Datenbankoperation
-      await _simulateDatabaseOperation();
+      await _sceneRepository.delete(_scene!.id);
       return true;
     } catch (e) {
       if (e is ServiceException) {
@@ -235,12 +266,6 @@ class EditSceneViewModel extends ChangeNotifier {
     if (_scene == null) return false;
     
     // Grundlegende Validierung
-    return _scene!.name.trim().isNotEmpty;
-  }
-
-  /// Simuliert eine Datenbankoperation
-  Future<void> _simulateDatabaseOperation() async {
-    // Simuliere Netzwerkverzögerung
-    await Future.delayed(const Duration(milliseconds: 500));
+    return _scene!.name.trim().isNotEmpty && _scene!.sessionId.isNotEmpty;
   }
 }

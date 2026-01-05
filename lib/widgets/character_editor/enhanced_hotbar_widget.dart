@@ -218,7 +218,7 @@ class _EnhancedHotbarWidgetState extends State<EnhancedHotbarWidget> {
             orElse: () => DisplayInventoryItem(
               inventoryItem: InventoryItem(
                 id: '',
-                ownerId: '',
+                characterId: '',
                 itemId: '',
                 isEquipped: false,
                 equipSlot: slot,
@@ -335,7 +335,7 @@ class _EnhancedHotbarWidgetState extends State<EnhancedHotbarWidget> {
       orElse: () => DisplayInventoryItem(
         inventoryItem: InventoryItem(
           id: '',
-          ownerId: '',
+          characterId: '',
           itemId: '',
           isEquipped: false,
           equipSlot: slot,

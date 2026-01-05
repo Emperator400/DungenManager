@@ -1,6 +1,8 @@
 // lib/widgets/campaign_dnd_data_tab.dart
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart';
+import '../database/core/database_connection.dart';
+import '../database/repositories/campaign_model_repository.dart';
+import '../database/repositories/creature_model_repository.dart';
 import '../models/campaign.dart';
 import '../models/official_monster.dart';
 import '../models/official_spell.dart';
@@ -16,7 +18,8 @@ class CampaignDndDataTab extends StatefulWidget {
 }
 
 class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
-  final dbHelper = DatabaseHelper.instance;
+  late final CampaignModelRepository _campaignRepository;
+  late final CreatureModelRepository _creatureRepository;
   List<OfficialMonster> _availableMonsters = [];
   List<OfficialSpell> _availableSpells = [];
   List<Creature> _campaignCreatures = [];
@@ -25,6 +28,8 @@ class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
   @override
   void initState() {
     super.initState();
+    _campaignRepository = CampaignModelRepository(DatabaseConnection.instance);
+    _creatureRepository = CreatureModelRepository(DatabaseConnection.instance);
     _loadData();
   }
 
@@ -32,17 +37,17 @@ class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
     setState(() => _isLoading = true);
     
     try {
-      // Lade verfügbare offizielle Monster
-      final monsters = await dbHelper.getAllOfficialMonsters();
-      _availableMonsters = monsters.map((m) => OfficialMonster.fromMap(m as Map<String, dynamic>)).toList();
+      // Lade verfügbare offizielle Monster (direkte Datenbank-Abfrage)
+      final db = await DatabaseConnection.instance.database;
+      final monsters = await db.query('official_monsters', orderBy: 'name ASC');
+      _availableMonsters = monsters.map((m) => OfficialMonster.fromMap(m)).toList();
       
-      // Lade verfügbare offizielle Zauber
-      final spells = await dbHelper.getAllOfficialSpells();
-      _availableSpells = spells.map((s) => OfficialSpell.fromMap(s as Map<String, dynamic>)).toList();
+      // Lade verfügbare offizielle Zauber (direkte Datenbank-Abfrage)
+      final spells = await db.query('official_spells', orderBy: 'name ASC');
+      _availableSpells = spells.map((s) => OfficialSpell.fromMap(s)).toList();
       
       // Lade Kreaturen der Kampagne (temporär alle Kreaturen)
-      final creatures = await dbHelper.getAllCreatures();
-      _campaignCreatures = creatures.map((c) => Creature.fromMap(c as Map<String, dynamic>)).toList();
+      _campaignCreatures = await _creatureRepository.findAll();
       
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -86,7 +91,7 @@ class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
       );
 
       // Speichere die Kreatur
-      await dbHelper.insertCreature(creature);
+      await _creatureRepository.create(creature);
       
       // Aktualisiere die Kampagne mit der neuen Monster-ID
       final updatedMonsters = List<String>.from(widget.campaign.availableMonsters);
@@ -100,7 +105,7 @@ class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
           updatedAt: DateTime.now(),
         );
         
-        await dbHelper.updateCampaign(updatedCampaign);
+        await _campaignRepository.update(updatedCampaign);
       }
       
       // Lade die Daten neu

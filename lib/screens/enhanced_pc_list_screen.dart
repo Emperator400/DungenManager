@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/campaign.dart';
 import '../models/player_character.dart';
-import '../screens/unified_character_editor_screen.dart';
+import '../screens/enhanced_edit_pc_screen.dart';
 import '../widgets/character_list/enhanced_hero_card_widget.dart';
 import '../widgets/character_list/character_list_helpers.dart';
-import '../widgets/character_editor/character_editor_controller.dart' show CharacterType;
 import '../theme/dnd_theme.dart';
 import '../viewmodels/character_editor_viewmodel.dart';
+import '../database/core/database_connection.dart';
+import '../database/repositories/player_character_model_repository.dart';
 
 class EnhancedPlayerCharacterListScreen extends StatefulWidget {
   final Campaign campaign;
@@ -31,7 +32,9 @@ class _EnhancedPlayerCharacterListScreenState extends State<EnhancedPlayerCharac
   @override
   void initState() {
     super.initState();
-    _viewModel = CharacterEditorViewModel();
+    _viewModel = CharacterEditorViewModel(
+      playerCharacterRepository: PlayerCharacterModelRepository(DatabaseConnection.instance),
+    );
     _tabController = TabController(length: 4, vsync: this);
     _loadCharacters();
   }
@@ -47,6 +50,7 @@ class _EnhancedPlayerCharacterListScreenState extends State<EnhancedPlayerCharac
   Future<void> _loadCharacters() async {
     try {
       await _viewModel.loadPlayerCharacters(widget.campaign.id);
+      setState(() {});
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -73,14 +77,13 @@ class _EnhancedPlayerCharacterListScreenState extends State<EnhancedPlayerCharac
       return matchesSearch && matchesFavorite;
     }).toList();
 
-    // Sortierung anwenden
     filteredPcs.sort((a, b) => CharacterListHelpers.compareCharacters(a, b, _sortOption));
     
     return filteredPcs;
   }
 
-  void _refreshCharacterList() {
-    _loadCharacters();
+  Future<void> _refreshCharacterList() async {
+    await _loadCharacters();
   }
 
   @override
@@ -214,9 +217,9 @@ class _EnhancedPlayerCharacterListScreenState extends State<EnhancedPlayerCharac
                       ),
                       const SizedBox(height: DnDTheme.md),
                       ElevatedButton.icon(
-                        onPressed: () {
+                        onPressed: () async {
                           viewModel.clearError();
-                          _refreshCharacterList();
+                          await _refreshCharacterList();
                         },
                         icon: const Icon(Icons.refresh),
                         label: const Text('Erneut versuchen'),
@@ -260,13 +263,13 @@ class _EnhancedPlayerCharacterListScreenState extends State<EnhancedPlayerCharac
                         Padding(
                           padding: const EdgeInsets.only(top: DnDTheme.md),
                           child: ElevatedButton.icon(
-                            onPressed: () {
+                            onPressed: () async {
                               setState(() {
                                 _searchQuery = '';
                                 _showFavoritesOnly = false;
                                 _searchController.clear();
                               });
-                              _refreshCharacterList();
+                              await _refreshCharacterList();
                             },
                             icon: const Icon(Icons.clear),
                             label: const Text('Filter zurücksetzen'),
@@ -302,20 +305,20 @@ class _EnhancedPlayerCharacterListScreenState extends State<EnhancedPlayerCharac
             icon: const Icon(Icons.add),
             label: const Text('Held hinzufügen'),
             onPressed: () async {
-              print("DEBUG: FloatingActionButton pressed - Opening Character Editor");
+              print('DEBUG: FloatingActionButton pressed - Opening Enhanced Edit PC Screen');
               try {
                 await Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (ctx) => UnifiedCharacterEditorScreen(
-                      characterType: CharacterType.player,
+                    builder: (ctx) => EnhancedEditPCScreen(
                       campaignId: widget.campaign.id,
                     ),
                   ),
                 );
-                print("DEBUG: Character Editor opened successfully");
-                _refreshCharacterList();
+                print('DEBUG: Enhanced Edit PC Screen closed');
+                await _refreshCharacterList();
+                print('DEBUG: Character list refreshed successfully');
               } catch (e) {
-                print("DEBUG: Error opening Character Editor: $e");
+                print('DEBUG: Error opening Enhanced Edit PC Screen: $e');
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -350,7 +353,6 @@ class _EnhancedPlayerCharacterListScreenState extends State<EnhancedPlayerCharac
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Suchleiste
           TextField(
             controller: _searchController,
             decoration: InputDecoration(
@@ -362,12 +364,12 @@ class _EnhancedPlayerCharacterListScreenState extends State<EnhancedPlayerCharac
               suffixIcon: _searchQuery.isNotEmpty
                   ? IconButton(
                       icon: Icon(Icons.clear, color: DnDTheme.errorRed),
-                      onPressed: () {
+                      onPressed: () async {
                         setState(() {
                           _searchQuery = '';
                           _searchController.clear();
                         });
-                        _refreshCharacterList();
+                        await _refreshCharacterList();
                       },
                     )
                   : null,
@@ -393,7 +395,6 @@ class _EnhancedPlayerCharacterListScreenState extends State<EnhancedPlayerCharac
               setState(() {
                 _searchQuery = value;
               });
-              // Kleine Verzögerung für die Suche
               Future.delayed(const Duration(milliseconds: 300), () {
                 if (mounted) _refreshCharacterList();
               });
@@ -402,10 +403,8 @@ class _EnhancedPlayerCharacterListScreenState extends State<EnhancedPlayerCharac
           
           const SizedBox(height: DnDTheme.sm),
           
-          // Filter-Row
           Row(
             children: [
-              // Favoriten-Filter
               FilterChip(
                 label: Text(
                   'Nur Favoriten',
@@ -414,11 +413,11 @@ class _EnhancedPlayerCharacterListScreenState extends State<EnhancedPlayerCharac
                   ),
                 ),
                 selected: _showFavoritesOnly,
-                onSelected: (selected) {
+                onSelected: (selected) async {
                   setState(() {
                     _showFavoritesOnly = selected;
                   });
-                  _refreshCharacterList();
+                  await _refreshCharacterList();
                 },
                 backgroundColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
                 selectedColor: DnDTheme.ancientGold,
@@ -430,7 +429,6 @@ class _EnhancedPlayerCharacterListScreenState extends State<EnhancedPlayerCharac
               
               const SizedBox(width: DnDTheme.sm),
               
-              // Sortierung
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
@@ -463,12 +461,12 @@ class _EnhancedPlayerCharacterListScreenState extends State<EnhancedPlayerCharac
                         ),
                       );
                     }).toList(),
-                    onChanged: (value) {
+                    onChanged: (value) async {
                       if (value != null) {
                         setState(() {
                           _sortOption = value;
                         });
-                        _refreshCharacterList();
+                        await _refreshCharacterList();
                       }
                     },
                   ),
@@ -572,7 +570,7 @@ class _EnhancedPlayerCharacterListScreenState extends State<EnhancedPlayerCharac
         return Padding(
           padding: const EdgeInsets.only(bottom: DnDTheme.lg),
           child: SizedBox(
-            height: 300, // Feste Höhe für Inventar-Karten
+            height: 300,
             child: EnhancedHeroCardWidget(
               character: pc,
               viewMode: HeroCardViewMode.inventory,
@@ -607,20 +605,19 @@ class _EnhancedPlayerCharacterListScreenState extends State<EnhancedPlayerCharac
   void _editCharacter(BuildContext context, PlayerCharacter pc) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (ctx) => UnifiedCharacterEditorScreen(
-          characterType: CharacterType.player,
+        builder: (ctx) => EnhancedEditPCScreen(
           campaignId: widget.campaign.id,
           pcToEdit: pc,
         ),
       ),
     );
-    _refreshCharacterList();
+    await _refreshCharacterList();
   }
 
   void _toggleFavorite(PlayerCharacter pc) async {
     try {
       await _viewModel.toggleFavorite(pc);
-      _refreshCharacterList();
+      await _refreshCharacterList();
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -761,13 +758,14 @@ class _EnhancedPlayerCharacterListScreenState extends State<EnhancedPlayerCharac
                 'Initiative: ${pc.initiativeBonus}',
                 style: DnDTheme.bodyText2.copyWith(color: DnDTheme.arcaneBlue),
               ),
-              if (pc.description != null && pc.description!.isNotEmpty) ...[
-                const SizedBox(height: DnDTheme.sm),
-                Text(
-                  pc.description!,
-                  style: DnDTheme.bodyText2.copyWith(color: Colors.white70),
+              if (pc.description != null && pc.description!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: DnDTheme.sm),
+                  child: Text(
+                    pc.description!,
+                    style: DnDTheme.bodyText2.copyWith(color: Colors.white70),
+                  ),
                 ),
-              ],
             ],
           ),
         ),
@@ -809,7 +807,7 @@ class _EnhancedPlayerCharacterListScreenState extends State<EnhancedPlayerCharac
           ),
         ),
         content: Text(
-          'Möchtest du ${pc.name} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
+          'Möchten Sie ${pc.name} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
           style: DnDTheme.bodyText1.copyWith(color: Colors.white70),
         ),
         actions: [
@@ -827,7 +825,7 @@ class _EnhancedPlayerCharacterListScreenState extends State<EnhancedPlayerCharac
               Navigator.pop(context);
               try {
                 await _viewModel.deletePlayerCharacter(pc.id);
-                _refreshCharacterList();
+                await _refreshCharacterList();
                 
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(

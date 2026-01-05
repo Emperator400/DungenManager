@@ -1,8 +1,11 @@
 // lib/widgets/sound_scenes_tab.dart
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart';
 import '../models/sound_scene.dart';
 
+/// Sound Scenes Tab - Verwaltung von Klang-Szenen
+/// 
+/// HINWEIS: Dies ist eine Demo-Implementierung mit eingeschränkter Funktionalität.
+/// Für die vollständige Funktionalität muss ein SoundSceneService erstellt werden.
 class SoundScenesTab extends StatefulWidget {
   const SoundScenesTab({super.key});
 
@@ -11,7 +14,6 @@ class SoundScenesTab extends StatefulWidget {
 }
 
 class SoundScenesTabState extends State<SoundScenesTab> {
-  final dbHelper = DatabaseHelper.instance;
   late Future<List<SoundScene>> _scenesFuture;
 
   @override
@@ -30,6 +32,7 @@ class SoundScenesTabState extends State<SoundScenesTab> {
     try {
       // Da es keine getAllSoundScenes Methode gibt, erstellen wir eine leere Liste
       // In einer echten Implementierung würde dies die Datenbank abfragen
+      await Future.delayed(const Duration(milliseconds: 100));
       return <SoundScene>[];
     } catch (e) {
       print('Fehler beim Laden der SoundScenes: $e');
@@ -46,29 +49,42 @@ class SoundScenesTabState extends State<SoundScenesTab> {
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            title: const Text("Neue Klang-Szene erstellen"),
+            title: const Text('Neue Klang-Szene erstellen'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: nameController, decoration: const InputDecoration(labelText: "Name der Szene"), autofocus: true),
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Name der Szene'),
+                  autofocus: true,
+                ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<SoundSceneType>(
                   value: selectedType,
-                  decoration: const InputDecoration(labelText: "Szenen-Typ"),
-                  items: SoundSceneType.values.map((type) => DropdownMenuItem(value: type, child: Text(type.toString().split('.').last))).toList(),
+                  decoration: const InputDecoration(labelText: 'Szenen-Typ'),
+                  items: SoundSceneType.values.map((type) => DropdownMenuItem(
+                    value: type,
+                    child: Text(type.toString().split('.').last),
+                  )).toList(),
                   onChanged: (val) => setDialogState(() => selectedType = val!),
                 ),
               ],
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text("Abbrechen")),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Abbrechen'),
+              ),
               ElevatedButton(
                 onPressed: () {
                   if (nameController.text.isNotEmpty) {
-                    Navigator.of(ctx).pop({'name': nameController.text, 'type': selectedType});
+                    Navigator.of(ctx).pop({
+                      'name': nameController.text,
+                      'type': selectedType,
+                    });
                   }
                 },
-                child: const Text("Erstellen"),
+                child: const Text('Erstellen'),
               ),
             ],
           );
@@ -77,28 +93,16 @@ class SoundScenesTabState extends State<SoundScenesTab> {
     );
 
     if (result != null) {
-      try {
-        final scene = SoundScene(
-          id: '', // Wird von der Datenbank generiert
-          name: result['name'] as String, 
-          type: result['type'] as SoundSceneType,
-          sceneId: '', // Temporäre leere sceneId für standalone SoundScenes
+      // Demo: SoundScene würde hier in der Datenbank gespeichert werden
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('SoundScene erstellt (Demo)'),
+            duration: Duration(seconds: 2),
+          ),
         );
-        
-        // Da es keine insertSoundScene Methode gibt, zeigen wir nur eine Nachricht
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('SoundScene "${scene.name}" erstellt (Demo)')),
-          );
-        }
-        _loadScenes();
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Fehler beim Erstellen: $e')),
-          );
-        }
       }
+      _loadScenes();
     }
   }
 
@@ -106,13 +110,19 @@ class SoundScenesTabState extends State<SoundScenesTab> {
     final bool? confirm = await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Szene löschen?"),
-        content: Text("Möchtest du die Klang-Szene '${scene.name}' wirklich endgültig löschen?"),
+        title: const Text('Szene löschen?'),
+        content: Text('Möchtest du die Klang-Szene "${scene.name}" wirklich endgültig löschen?'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text("Abbrechen")),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Abbrechen'),
+          ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text("Löschen", style: TextStyle(color: Colors.red)),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            child: const Text('Löschen'),
           ),
         ],
       ),
@@ -123,7 +133,10 @@ class SoundScenesTabState extends State<SoundScenesTab> {
         // Da es keine deleteSoundSceneAndLinks Methode gibt, zeigen wir nur eine Nachricht
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('SoundScene "${scene.name}" gelöscht (Demo)')),
+            const SnackBar(
+              content: Text('SoundScene gelöscht (Demo)'),
+              duration: Duration(seconds: 2),
+            ),
           );
         }
         _loadScenes();
@@ -143,23 +156,34 @@ class SoundScenesTabState extends State<SoundScenesTab> {
       body: FutureBuilder<List<SoundScene>>(
         future: _scenesFuture,
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
           final scenes = snapshot.data!;
-          if (scenes.isEmpty) return const Center(child: Text("Keine Klang-Szenen erstellt."));
+          if (scenes.isEmpty) {
+            return const Center(child: Text('Keine Klang-Szenen erstellt.'));
+          }
 
           return ListView.builder(
             itemCount: scenes.length,
             itemBuilder: (context, index) {
               final scene = scenes[index];
               return ListTile(
-                leading: Icon(scene.type == SoundSceneType.Ambiente ? Icons.music_video : Icons.surround_sound),
+                leading: Icon(
+                  scene.type == SoundSceneType.Ambiente
+                      ? Icons.music_video
+                      : Icons.surround_sound,
+                ),
                 title: Text(scene.name),
                 subtitle: Text(scene.type.toString().split('.').last),
                 onTap: () async {
                   // EditSoundSceneScreen existiert nicht, zeigen wir eine Demo-Nachricht
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Bearbeitung für "${scene.name}" (Demo)')),
+                      const SnackBar(
+                        content: Text('Bearbeitung (Demo)'),
+                        duration: Duration(seconds: 1),
+                      ),
                     );
                   }
                   _loadScenes();
@@ -173,7 +197,13 @@ class SoundScenesTabState extends State<SoundScenesTab> {
                   itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
                     const PopupMenuItem<String>(
                       value: 'delete',
-                      child: ListTile(leading: Icon(Icons.delete_forever, color: Colors.red), title: Text('Löschen', style: TextStyle(color: Colors.red))),
+                      child: ListTile(
+                        leading: Icon(Icons.delete_forever, color: Colors.red),
+                        title: Text(
+                          'Löschen',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -181,11 +211,6 @@ class SoundScenesTabState extends State<SoundScenesTab> {
             },
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _createNewScene,
-        child: const Icon(Icons.add),
-        tooltip: "Neue Klang-Szene erstellen",
       ),
     );
   }

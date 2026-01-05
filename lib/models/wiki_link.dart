@@ -28,24 +28,36 @@ class WikiLink {
   }) : id = id ?? UuidService().generateId(),
        createdAt = createdAt ?? DateTime.now();
 
+  /// Konvertiert WikiLink zu Datenbank-Map (Legacy)
   Map<String, dynamic> toMap() {
+    return toDatabaseMap();
+  }
+
+  /// Konvertiert WikiLink zu Datenbank-Map (Neu)
+  Map<String, dynamic> toDatabaseMap() {
     return {
       'id': id,
       'source_entry_id': sourceEntryId,
       'target_entry_id': targetEntryId,
-      'link_type': linkType.toString(),
+      'link_type': linkType.name, // Nur der Name, z.B. "reference" (nicht "WikiLinkType.reference")
       'created_at': createdAt.millisecondsSinceEpoch,
       'created_by': createdBy,
     };
   }
 
+  /// Factory für Datenbank-Map (Legacy)
   factory WikiLink.fromMap(Map<String, dynamic> map) {
+    return WikiLink.fromDatabaseMap(map);
+  }
+
+  /// Factory für Datenbank-Map (Neu)
+  factory WikiLink.fromDatabaseMap(Map<String, dynamic> map) {
     return WikiLink(
       id: ModelParsingHelper.safeId(map, 'id'),
       sourceEntryId: ModelParsingHelper.safeString(map, 'source_entry_id', ''),
       targetEntryId: ModelParsingHelper.safeString(map, 'target_entry_id', ''),
       linkType: WikiLinkType.values.firstWhere(
-        (e) => e.toString() == ModelParsingHelper.safeString(map, 'link_type', 'WikiLinkType.reference'),
+        (e) => e.name == ModelParsingHelper.safeString(map, 'link_type', 'reference'),
         orElse: () => WikiLinkType.reference,
       ),
       createdAt: DateTime.fromMillisecondsSinceEpoch(ModelParsingHelper.safeInt(map, 'created_at', 0)),

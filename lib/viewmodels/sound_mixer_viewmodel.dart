@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../models/sound.dart';
-import '../database/database_helper.dart';
+import '../database/repositories/sound_model_repository.dart';
+import '../database/core/database_connection.dart';
 
 /// Helfer-Klasse, um einen Player und seinen Zustand zu verwalten
 class ActiveSoundPlayer {
@@ -18,9 +19,10 @@ class ActiveSoundPlayer {
   });
 }
 
-/// ViewModel für Sound Mixer mit reactive State Management
+/// ViewModel für Sound Mixer mit neuer Repository-Architektur
+/// HINWEIS: Verwendet jetzt das neue SoundModelRepository
 class SoundMixerViewModel extends ChangeNotifier {
-  final DatabaseHelper _databaseHelper;
+  final SoundModelRepository _soundRepository;
   
   // State
   List<Sound> _sounds = [];
@@ -38,8 +40,8 @@ class SoundMixerViewModel extends ChangeNotifier {
   bool _showFavoritesOnly = false;
 
   SoundMixerViewModel({
-    DatabaseHelper? databaseHelper,
-  }) : _databaseHelper = databaseHelper ?? DatabaseHelper.instance;
+    SoundModelRepository? soundRepository,
+  }) : _soundRepository = soundRepository ?? SoundModelRepository(DatabaseConnection.instance);
 
   // Getters
   List<Sound> get sounds => List.unmodifiable(_sounds);
@@ -67,10 +69,11 @@ class SoundMixerViewModel extends ChangeNotifier {
   /// Gibt den aktiven Player für einen Sound zurück
   ActiveSoundPlayer? getActivePlayer(String soundId) => _activePlayers[soundId];
 
-  /// Lädt alle Sounds aus der Datenbank
+  /// Lädt alle Sounds aus der Datenbank über neues Repository
   Future<void> loadSounds() async {
     await _performAsyncOperation(() async {
-      _sounds = await _databaseHelper.getAllSounds();
+      // findAll gibt bereits Modelle zurück
+      _sounds = await _soundRepository.findAll();
       _filterAndCategorizeSounds();
     });
   }
@@ -257,7 +260,7 @@ class SoundMixerViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Toggle Favorite Status eines Sounds
+  /// Toggle Favorite Status eines Sounds über neues Repository
   Future<void> toggleFavorite(Sound sound) async {
     await _performAsyncOperation(() async {
       final updatedSound = sound.copyWith(
@@ -265,7 +268,8 @@ class SoundMixerViewModel extends ChangeNotifier {
         updatedAt: DateTime.now(),
       );
       
-      await _databaseHelper.updateSound(updatedSound);
+      // Model direkt aktualisieren (keine Entity-Konvertierung nötig)
+      await _soundRepository.update(updatedSound);
       
       // Update in lokalen Listen
       final index = _sounds.indexWhere((s) => s.id == sound.id);
@@ -287,19 +291,21 @@ class SoundMixerViewModel extends ChangeNotifier {
     });
   }
 
-  /// Fügt einen neuen Sound hinzu
+  /// Fügt einen neuen Sound hinzu über neues Repository
   Future<void> addSound(Sound sound) async {
     await _performAsyncOperation(() async {
-      await _databaseHelper.insertSound(sound);
-      _sounds.add(sound);
+      // Model direkt erstellen (keine Entity-Konvertierung nötig)
+      final createdSound = await _soundRepository.create(sound);
+      _sounds.add(createdSound);
       _filterAndCategorizeSounds();
     });
   }
 
-  /// Aktualisiert einen Sound
+  /// Aktualisiert einen Sound über neues Repository
   Future<void> updateSound(Sound sound) async {
     await _performAsyncOperation(() async {
-      await _databaseHelper.updateSound(sound);
+      // Model direkt aktualisieren (keine Entity-Konvertierung nötig)
+      await _soundRepository.update(sound);
       
       final index = _sounds.indexWhere((s) => s.id == sound.id);
       if (index != -1) {
@@ -320,13 +326,13 @@ class SoundMixerViewModel extends ChangeNotifier {
     });
   }
 
-  /// Löscht einen Sound
+  /// Löscht einen Sound über neues Repository
   Future<void> deleteSound(String soundId) async {
     await _performAsyncOperation(() async {
       // Zuerst Sound stoppen falls aktiv
       await _stopSound(soundId);
       
-      await _databaseHelper.deleteSound(soundId);
+      await _soundRepository.delete(soundId);
       _sounds.removeWhere((sound) => sound.id == soundId);
       _filterAndCategorizeSounds();
     });

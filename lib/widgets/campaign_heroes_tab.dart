@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
-import '../database/database_helper.dart';
+import '../database/core/database_connection.dart';
+import '../database/repositories/player_character_model_repository.dart';
 import '../models/campaign.dart';
 import '../models/player_character.dart';
 import '../screens/unified_character_editor_screen.dart';
@@ -18,7 +19,7 @@ class CampaignHeroesTab extends StatefulWidget {
 }
 
 class CampaignHeroesTabState extends State<CampaignHeroesTab> {
-  final dbHelper = DatabaseHelper.instance;
+  late final PlayerCharacterModelRepository _pcRepository;
   late Future<List<PlayerCharacter>> _pcsFuture;
   HeroCardViewMode _viewMode = HeroCardViewMode.compact;
   SortOption _sortOption = SortOption.name;
@@ -28,6 +29,7 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
   @override
   void initState() {
     super.initState();
+    _pcRepository = PlayerCharacterModelRepository(DatabaseConnection.instance);
     loadPcs();
   }
 
@@ -38,7 +40,7 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
   }
 
   Future<List<PlayerCharacter>> _loadFilteredCharacters() async {
-    final allPcs = await dbHelper.getPlayerCharactersForCampaign(widget.campaign.id);
+    final allPcs = await _pcRepository.findByCampaign(widget.campaign.id);
     
     var filteredPcs = allPcs.where((pc) {
       final matchesSearch = _searchQuery.isEmpty ||
@@ -98,6 +100,17 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
                         ),
                         textAlign: TextAlign.center,
                       ),
+                      const SizedBox(height: 16),
+                      // Helden erstellen Button wenn keine Helden vorhanden
+                      ElevatedButton.icon(
+                        onPressed: () => _createNewCharacter(context),
+                        icon: const Icon(Icons.person_add),
+                        label: const Text('Ersten Held erstellen'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
                       if (_searchQuery.isNotEmpty || _showFavoritesOnly)
                         Padding(
                           padding: const EdgeInsets.only(top: 16),
@@ -133,6 +146,25 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Helden erstellen Button
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 12.0),
+            child: ElevatedButton.icon(
+              onPressed: () => _createNewCharacter(context),
+              icon: const Icon(Icons.person_add, size: 20),
+              label: const Text(
+                'Neuen Held erstellen',
+                style: TextStyle(fontSize: 16),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+          
           // Suchleiste
           TextField(
             decoration: InputDecoration(
@@ -410,6 +442,16 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
     _refreshPcList();
   }
 
+  void _createNewCharacter(BuildContext context) async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (ctx) => UnifiedCharacterEditorScreen(
+        characterType: CharacterType.player,
+        campaignId: widget.campaign.id,
+      ),
+    ));
+    _refreshPcList();
+  }
+
   void _duplicateCharacter(PlayerCharacter pc) async {
     try {
       final newId = const Uuid().v4();
@@ -449,7 +491,7 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
         inventory: pc.inventory,
       );
 
-      await dbHelper.insertPlayerCharacter(duplicatedPc);
+      await _pcRepository.create(duplicatedPc);
       _refreshPcList();
       
       ScaffoldMessenger.of(context).showSnackBar(
@@ -465,7 +507,7 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
   void _toggleFavorite(PlayerCharacter pc) async {
     try {
       // Toggle den Favoriten-Status in der Datenbank
-      await dbHelper.togglePlayerCharacterFavorite(pc.id);
+      await _pcRepository.toggleFavorite(pc.id);
       _refreshPcList();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -588,7 +630,7 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
             onPressed: () async {
               Navigator.pop(context);
               try {
-                await dbHelper.deletePlayerCharacter(pc.id);
+                await _pcRepository.delete(pc.id);
                 _refreshPcList();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('${pc.name} wurde gelöscht')),

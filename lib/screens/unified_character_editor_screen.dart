@@ -38,6 +38,7 @@ class _UnifiedCharacterEditorScreenState extends State<UnifiedCharacterEditorScr
   late CharacterInventoryHandler _inventoryHandler;
   late TabController _tabController;
   final _formKey = GlobalKey<FormState>();
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -91,14 +92,22 @@ class _UnifiedCharacterEditorScreenState extends State<UnifiedCharacterEditorScr
   }
 
   Future<void> _loadInventory() async {
+    setState(() {
+      _isLoading = true;
+    });
     try {
       await _controller.loadInventory();
-      setState(() {});
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Fehler beim Laden des Inventars: $e')),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
@@ -107,7 +116,6 @@ class _UnifiedCharacterEditorScreenState extends State<UnifiedCharacterEditorScr
     if (_formKey.currentState?.validate() == true) {
       try {
         await _controller.saveForm();
-        
         if (mounted && context.mounted) {
           Navigator.of(context).pop();
         }
@@ -200,18 +208,24 @@ class _UnifiedCharacterEditorScreenState extends State<UnifiedCharacterEditorScr
           ),
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: DnDTheme.getMysticalGradient(
-            startColor: DnDTheme.dungeonBlack,
-            endColor: DnDTheme.stoneGrey,
-          ),
-        ),
-        child: TabBarView(
-          controller: _tabController,
-          children: _buildTabViews(),
-        ),
-      ),
+      body: _isLoading
+          ? Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(DnDTheme.ancientGold),
+              ),
+            )
+          : Container(
+              decoration: BoxDecoration(
+                gradient: DnDTheme.getMysticalGradient(
+                  startColor: DnDTheme.dungeonBlack,
+                  endColor: DnDTheme.stoneGrey,
+                ),
+              ),
+              child: TabBarView(
+                controller: _tabController,
+                children: _buildTabViews(),
+              ),
+            ),
     );
   }
 

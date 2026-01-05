@@ -3,47 +3,47 @@ import 'dart:async';
 
 // Eigene Projekte
 import '../models/campaign.dart';
-import '../database/database_helper.dart';
+import '../database/repositories/campaign_model_repository.dart';
+import '../database/core/database_connection.dart';
 import 'exceptions/service_exceptions.dart';
 
 /// Service für Campaign Business Logic
+/// 
+/// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
 /// 
 /// Bietet alle CRUD-Operationen für Kampagnen und
 /// kapselt die Datenbankzugriffe mit Validierung.
 /// Verwendet spezifische Exceptions und ServiceResult Pattern.
 class CampaignService {
-  final DatabaseHelper _databaseHelper;
+  final CampaignModelRepository _campaignRepository;
 
   CampaignService({
-    DatabaseHelper? databaseHelper,
-  }) : _databaseHelper = databaseHelper ?? DatabaseHelper.instance;
+    CampaignModelRepository? campaignRepository,
+  }) : _campaignRepository = campaignRepository ?? CampaignModelRepository(DatabaseConnection.instance);
 
   // ========== CRUD OPERATIONS ==========
 
-  /// Holt alle Kampagnen aus der Datenbank
+  /// Holt alle Kampagnen aus der Datenbank über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
   Future<ServiceResult<List<Campaign>>> getAllCampaigns() async {
     return performServiceOperation('getAllCampaigns', () async {
-      final maps = await (await _databaseHelper.database).query('campaigns');
-      return maps.map((map) => Campaign.fromMap(map)).toList();
+      return await _campaignRepository.findAll();
     });
   }
 
-  /// Holt eine Kampagne per ID
+  /// Holt eine Kampagne per ID über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
   Future<ServiceResult<Campaign?>> getCampaignById(String id) async {
     return performServiceOperation('getCampaignById', () async {
-      final maps = await (await _databaseHelper.database).query(
-        'campaigns',
-        where: 'id = ?',
-        whereArgs: [id],
-        limit: 1,
-      );
-      
-      if (maps.isEmpty) return null;
-      return Campaign.fromMap(maps.first);
+      return await _campaignRepository.findById(id);
     });
   }
 
-  /// Erstellt eine neue Kampagne
+  /// Erstellt eine neue Kampagne über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
   Future<ServiceResult<Campaign>> createCampaign(Campaign campaign) async {
     return performServiceOperation('createCampaign', () async {
       // Validierung
@@ -54,12 +54,13 @@ class CampaignService {
         );
       }
 
-      await _databaseHelper.insertCampaign(campaign);
-      return campaign;
+      return await _campaignRepository.create(campaign);
     });
   }
 
-  /// Aktualisiert eine Kampagne
+  /// Aktualisiert eine Kampagne über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
   Future<ServiceResult<Campaign>> updateCampaign(Campaign campaign) async {
     return performServiceOperation('updateCampaign', () async {
       // Validierung
@@ -70,12 +71,18 @@ class CampaignService {
         );
       }
 
-      await _databaseHelper.updateCampaign(campaign);
-      return campaign;
+      final updatedCampaign = await _campaignRepository.update(campaign);
+      if (updatedCampaign == null) {
+        throw DatabaseException(
+          'Kampagne nicht gefunden oder konnte nicht aktualisiert werden',
+          operation: 'updateCampaign',
+        );
+      }
+      return updatedCampaign;
     });
   }
 
-  /// Löscht eine Kampagne
+  /// Löscht eine Kampagne über neues Repository
   Future<ServiceResult<void>> deleteCampaign(String id) async {
     return performServiceOperation('deleteCampaign', () async {
       final exists = await campaignExists(id);
@@ -83,7 +90,7 @@ class CampaignService {
         throw ResourceNotFoundException.forId('Campaign', id, operation: 'deleteCampaign');
       }
       
-      await _databaseHelper.deleteCampaign(id);
+      await _campaignRepository.delete(id);
     });
   }
 
@@ -497,7 +504,9 @@ class CampaignService {
 
   // ========== STATISTICS METHODS ==========
 
-  /// Dupliziert eine Kampagne
+  /// Dupliziert eine Kampagne über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
   Future<ServiceResult<Campaign>> duplicateCampaign(String campaignId) async {
     return performServiceOperation('duplicateCampaign', () async {
       final originalCampaignResult = await getCampaignById(campaignId);
@@ -518,8 +527,7 @@ class CampaignService {
         settings: originalCampaign.settings,
       );
 
-      await _databaseHelper.insertCampaign(duplicatedCampaign);
-      return duplicatedCampaign;
+      return await _campaignRepository.create(duplicatedCampaign);
     });
   }
 

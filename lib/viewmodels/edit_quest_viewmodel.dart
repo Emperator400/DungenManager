@@ -2,10 +2,21 @@ import 'package:flutter/foundation.dart';
 import '../models/quest.dart';
 import '../models/quest_reward.dart';
 import '../services/uuid_service.dart';
+import '../database/repositories/quest_model_repository.dart';
+import '../database/core/database_connection.dart';
 
-/// ViewModel für das Editieren von Quests
+/// ViewModel für das Editieren von Quests mit neuer Repository-Architektur
+/// 
+/// HINWEIS: Verwendet jetzt das neue QuestModelRepository
 class EditQuestViewModel extends ChangeNotifier {
   final UuidService _uuidService = UuidService();
+  final QuestModelRepository _questRepository;
+
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue QuestModelRepository
+  /// 
+  EditQuestViewModel({QuestModelRepository? questRepository})
+      : _questRepository = questRepository ?? QuestModelRepository(DatabaseConnection.instance);
   
   // State variables
   Quest? _quest;
@@ -160,7 +171,9 @@ class EditQuestViewModel extends ChangeNotifier {
     }
   }
 
-  /// Speichert den Quest
+  /// Speichert den Quest über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue QuestModelRepository
   Future<bool> saveQuest() async {
     if (!isValid) {
       _errorMessage = 'Bitte füllen Sie alle Pflichtfelder aus';
@@ -172,14 +185,23 @@ class EditQuestViewModel extends ChangeNotifier {
     _errorMessage = null;
 
     try {
-      // Hier würde die tatsächliche Speicherung in der Datenbank erfolgen
-      // Für jetzt simulieren wir den Speichervorgang
-      await Future.delayed(const Duration(milliseconds: 500));
+      if (_quest!.id.toString().startsWith('new_')) {
+        // Create new quest
+        final savedQuest = await _questRepository.create(_quest!);
+        if (savedQuest != null) {
+          _quest = savedQuest;
+        }
+      } else {
+        // Update existing quest
+        final updatedQuest = await _questRepository.update(_quest!);
+        if (updatedQuest != null) {
+          _quest = updatedQuest;
+        }
+      }
       
       _hasUnsavedChanges = false;
       _setLoading(false);
       
-      // Navigation zurück zur Liste würde hier erfolgen
       return true;
     } catch (e) {
       _errorMessage = 'Fehler beim Speichern: ${e.toString()}';
@@ -188,15 +210,21 @@ class EditQuestViewModel extends ChangeNotifier {
     }
   }
 
-  /// Löscht den Quest
+  /// Löscht den Quest über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue QuestModelRepository
   Future<bool> deleteQuest() async {
+    if (_quest?.id.toString().startsWith('new_') == true) {
+      _errorMessage = 'Quest kann nicht gelöscht werden: Nicht gespeichert';
+      notifyListeners();
+      return false;
+    }
+
     _setLoading(true);
     _errorMessage = null;
 
     try {
-      // Hier würde das tatsächliche Löschen in der Datenbank erfolgen
-      await Future.delayed(const Duration(milliseconds: 300));
-      
+      await _questRepository.delete(_quest!.id.toString());
       _setLoading(false);
       return true;
     } catch (e) {

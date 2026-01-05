@@ -3,26 +3,26 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
-import '../models/campaign.dart';
-import '../models/campaign_quest.dart';
-import '../models/creature.dart';
-import '../models/inventory_item.dart';
-import '../models/item.dart';
-import '../models/player_character.dart';
-import '../models/quest.dart';
-import '../models/scene.dart';
-import '../models/session.dart';
-import '../models/sound.dart';
-import '../models/wiki_entry.dart';
-import '../models/official_monster.dart';
-import '../models/official_spell.dart';
+import '../../models/campaign.dart';
+import '../../models/campaign_quest.dart';
+import '../../models/creature.dart';
+import '../../models/inventory_item.dart';
+import '../../models/item.dart';
+import '../../models/player_character.dart';
+import '../../models/quest.dart';
+import '../../models/scene.dart';
+import '../../models/session.dart';
+import '../../models/sound.dart';
+import '../../models/wiki_entry.dart';
+import '../../models/official_monster.dart';
+import '../../models/official_spell.dart';
 
 final _uuid = const Uuid();
 
 
 class DatabaseHelper {
   static const _databaseName = "dnd_helper.db";
-  static const _databaseVersion = 31; // Erhöhte Version für finale Migration
+  static const _databaseVersion = 35; // maxhp Spaltennamen-Korrektur für PlayerCharacter
 
   DatabaseHelper._privateConstructor();
   static final DatabaseHelper instance = DatabaseHelper._privateConstructor();
@@ -45,6 +45,17 @@ class DatabaseHelper {
   Future<void> _onCreate(Database db, int version) async => await _createTables(db, version);
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    // Migration for owner_id in inventory_items
+    if (oldVersion < 32) {
+      try {
+        await db.execute('ALTER TABLE inventory_items ADD COLUMN owner_id TEXT');
+        // Copy data from old column if it exists
+      await db.execute('UPDATE inventory_items SET character_id = characterId WHERE characterId IS NOT NULL');
+      } catch (e) {
+        // Handle potential errors, e.g., column already exists
+        print('Error migrating inventory_items owner_id: $e');
+      }
+    }
     // Schrittweise Migration für bestehende Daten
     if (oldVersion < 18) {
       // Gold-Felder zur creatures-Tabelle hinzufügen
@@ -754,6 +765,204 @@ class DatabaseHelper {
       );
     }
     
+    // NEU: Migration für Version 33-34: Komplette Spaltennamen-Korrektur für PlayerCharacter
+    if (oldVersion < 34) {
+      // ALTE Spaltennamen korrigieren (falls noch vorhanden)
+      try {
+        await db.execute('ALTER TABLE player_characters RENAME COLUMN player_name TO playerName');
+      } catch (e) {
+        // Spalte existiert bereits oder wurde bereits umbenannt
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters RENAME COLUMN class_name TO className');
+      } catch (e) {
+        // Spalte existiert bereits oder wurde bereits umbenannt
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters RENAME COLUMN race_name TO raceName');
+      } catch (e) {
+        // Spalte existiert bereits oder wurde bereits umbenannt
+      }
+      
+      // Snake_case zu camelCase für alle D&D-Felder
+      try {
+        await db.execute('ALTER TABLE player_characters RENAME COLUMN max_hp TO maxHp');
+      } catch (e) {
+        // Spalte existiert bereits oder wurde bereits umbenannt
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters RENAME COLUMN armor_class TO armorClass');
+      } catch (e) {
+        // Spalte existiert bereits oder wurde bereits umbenannt
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters RENAME COLUMN initiative_bonus TO initiativeBonus');
+      } catch (e) {
+        // Spalte existiert bereits oder wurde bereits umbenannt
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters RENAME COLUMN image_path TO imagePath');
+      } catch (e) {
+        // Spalte existiert bereits oder wurde bereits umbenannt
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters RENAME COLUMN proficient_skills TO proficientSkills');
+      } catch (e) {
+        // Spalte existiert bereits oder wurde bereits umbenannt
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters RENAME COLUMN special_abilities TO specialAbilities');
+      } catch (e) {
+        // Spalte existiert bereits oder wurde bereits umbenannt
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters RENAME COLUMN attack_list TO attackList');
+      } catch (e) {
+        // Spalte existiert bereits oder wurde bereits umbenannt
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters RENAME COLUMN source_type TO sourceType');
+      } catch (e) {
+        // Spalte existiert bereits oder wurde bereits umbenannt
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters RENAME COLUMN source_id TO sourceId');
+      } catch (e) {
+        // Spalte existiert bereits oder wurde bereits umbenannt
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters RENAME COLUMN is_favorite TO isFavorite');
+      } catch (e) {
+        // Spalte existiert bereits oder wurde bereits umbenannt
+      }
+      
+      // D&D 5e spezifische Felder hinzufügen (falls noch nicht vorhanden)
+      try {
+        await db.execute('ALTER TABLE player_characters ADD COLUMN proficiencyBonus INTEGER DEFAULT 2');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters ADD COLUMN speed INTEGER DEFAULT 30');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters ADD COLUMN passivePerception INTEGER DEFAULT 10');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters ADD COLUMN spellSlots TEXT');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters ADD COLUMN spellSaveDc INTEGER DEFAULT 8');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      try {
+        await db.execute('ALTER TABLE player_characters ADD COLUMN spellAttackBonus INTEGER DEFAULT 0');
+      } catch (e) {
+        // Spalte existiert bereits
+      }
+      
+      print('PlayerCharacter Spaltennamen erfolgreich auf camelCase migriert');
+    }
+    
+    // NEU: Migration für Version 35: maxhp Spaltenkorrektur für PlayerCharacter
+    if (oldVersion < 35) {
+      // Problem beheben: Modell verwendet snake_case, aber Tabelle hat camelCase
+      // Wir müssen die Tabelle auf snake_case zurückändern, damit das Modell funktioniert
+      
+      try {
+        // Zuerst prüfen, ob maxHp Spalte existiert
+        final tableInfo = await db.rawQuery("PRAGMA table_info(player_characters)");
+        final hasMaxHp = tableInfo.any((column) => column['name'] == 'maxHp');
+        
+        if (hasMaxHp) {
+          // maxHp in max_hp umbenennen für Konsistenz mit dem Modell
+          await db.execute('ALTER TABLE player_characters RENAME COLUMN maxHp TO max_hp');
+          
+          // Auch andere D&D-Felder zurück auf snake_case ändern
+          try {
+            await db.execute('ALTER TABLE player_characters RENAME COLUMN armorClass TO armor_class');
+          } catch (e) {
+            // Spalte existiert möglicherweise nicht oder wurde bereits umbenannt
+          }
+          
+          try {
+            await db.execute('ALTER TABLE player_characters RENAME COLUMN initiativeBonus TO initiative_bonus');
+          } catch (e) {
+            // Spalte existiert möglicherweise nicht oder wurde bereits umbenannt
+          }
+          
+          try {
+            await db.execute('ALTER TABLE player_characters RENAME COLUMN imagePath TO image_path');
+          } catch (e) {
+            // Spalte existiert möglicherweise nicht oder wurde bereits umbenannt
+          }
+          
+          try {
+            await db.execute('ALTER TABLE player_characters RENAME COLUMN proficientSkills TO proficient_skills');
+          } catch (e) {
+            // Spalte existiert möglicherweise nicht oder wurde bereits umbenannt
+          }
+          
+          try {
+            await db.execute('ALTER TABLE player_characters RENAME COLUMN specialAbilities TO special_abilities');
+          } catch (e) {
+            // Spalte existiert möglicherweise nicht oder wurde bereits umbenannt
+          }
+          
+          try {
+            await db.execute('ALTER TABLE player_characters RENAME COLUMN attackList TO attack_list');
+          } catch (e) {
+            // Spalte existiert möglicherweise nicht oder wurde bereits umbenannt
+          }
+          
+          try {
+            await db.execute('ALTER TABLE player_characters RENAME COLUMN sourceType TO source_type');
+          } catch (e) {
+            // Spalte existiert möglicherweise nicht oder wurde bereits umbenannt
+          }
+          
+          try {
+            await db.execute('ALTER TABLE player_characters RENAME COLUMN sourceId TO source_id');
+          } catch (e) {
+            // Spalte existiert möglicherweise nicht oder wurde bereits umbenannt
+          }
+          
+          try {
+            await db.execute('ALTER TABLE player_characters RENAME COLUMN isFavorite TO is_favorite');
+          } catch (e) {
+            // Spalte existiert möglicherweise nicht oder wurde bereits umbenannt
+          }
+          
+          print('PlayerCharacter Spalten erfolgreich auf snake_case korrigiert für Modell-Kompatibilität');
+        }
+      } catch (e) {
+        print('Fehler bei maxhp Spaltenkorrektur: $e');
+      }
+    }
+    
     // Alte Migrationen für Version 17 und darunter
     if (oldVersion < 17) {
       // Alte Migrationen für Version 17 und darunter
@@ -775,10 +984,10 @@ class DatabaseHelper {
         id TEXT PRIMARY KEY, campaign_id TEXT NOT NULL, name TEXT NOT NULL, playerName TEXT NOT NULL, 
         className TEXT NOT NULL, 
         raceName TEXT NOT NULL,
-        level INTEGER NOT NULL, maxHp INTEGER NOT NULL, armorClass INTEGER NOT NULL, 
-        initiativeBonus INTEGER NOT NULL, imagePath TEXT, strength INTEGER NOT NULL, dexterity INTEGER NOT NULL, 
+        level INTEGER NOT NULL, max_hp INTEGER NOT NULL, armor_class INTEGER NOT NULL, 
+        initiative_bonus INTEGER NOT NULL, image_path TEXT, strength INTEGER NOT NULL, dexterity INTEGER NOT NULL, 
         constitution INTEGER NOT NULL, intelligence INTEGER NOT NULL, wisdom INTEGER NOT NULL, charisma INTEGER NOT NULL,
-        proficientSkills TEXT NOT NULL,
+        proficient_skills TEXT NOT NULL,
         -- NEU: D&D-Klassifikation
         size TEXT,
         type TEXT,
@@ -799,7 +1008,14 @@ class DatabaseHelper {
         version TEXT DEFAULT '1.0',
         -- NEU: Strukturierte Listen für Version 22
         attack_list TEXT,
-        inventory TEXT
+        inventory TEXT,
+        -- NEU: D&D 5e spezifische Felder für Version 33
+        proficiencyBonus INTEGER DEFAULT 2,
+        speed INTEGER DEFAULT 30,
+        passivePerception INTEGER DEFAULT 10,
+        spellSlots TEXT,
+        spellSaveDc INTEGER DEFAULT 8,
+        spellAttackBonus INTEGER DEFAULT 0
       )
     ''');
 
@@ -835,7 +1051,7 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE inventory_items (
         id TEXT PRIMARY KEY,
-        ownerId TEXT NOT NULL,
+        owner_id TEXT NOT NULL,
         itemId TEXT NOT NULL,
         quantity INTEGER NOT NULL DEFAULT 1,
         isEquipped INTEGER DEFAULT 0,
@@ -1265,19 +1481,19 @@ class DatabaseHelper {
     // Beginnen eine "Transaktion", um sicherzustellen, dass alles oder nichts gelöscht wird
     await db.transaction((txn) async {
       // 1. Finde alle Sessions, die zur Kampagne gehören
-      final sessions = await txn.query('sessions', where: 'campaignId = ? OR campaignId = ?', whereArgs: [campaignId, campaignId]);
+      final sessions = await txn.query('sessions', where: 'campaignId = ?', whereArgs: [campaignId]);
       for (var session in sessions) {
         // 2. Lösche alle Szenen, die zu jeder Session gehören
         await txn.delete('scenes', where: 'sessionId = ?', whereArgs: [session['id']]);
       }
       // 3. Lösche alle Sessions der Kampagne
-      await txn.delete('sessions', where: 'campaignId = ? OR campaignId = ?', whereArgs: [campaignId, campaignId]);
+      await txn.delete('sessions', where: 'campaignId = ?', whereArgs: [campaignId]);
 
       // 4. Finde alle Helden der Kampagne
       final playerCharacters = await txn.query('player_characters', where: 'campaign_id = ?', whereArgs: [campaignId]);
       for (var pc in playerCharacters) {
         // 5. Lösche das gesamte Inventar für jeden Helden
-        await txn.delete('inventory_items', where: 'ownerId = ?', whereArgs: [pc['id']]);
+        await txn.delete('inventory_items', where: 'owner_id = ?', whereArgs: [pc['id']]);
       }
       // 6. Lösche alle Helden der Kampagne
       await txn.delete('player_characters', where: 'campaign_id = ?', whereArgs: [campaignId]);
@@ -1389,7 +1605,7 @@ class DatabaseHelper {
     for (final item in inventory) {
       final newInventoryItem = InventoryItem(
         id: _uuid.v4(),
-        ownerId: newId,
+        characterId: newId,
         itemId: item.itemId,
         quantity: item.quantity,
         isEquipped: false, // Kopien sind nicht ausgerüstet
@@ -1604,13 +1820,13 @@ class DatabaseHelper {
 
   // --- Inventory CRUD ---
   Future<int> insertInventoryItem(InventoryItem inventoryItem) async => await (await database).insert('inventory_items', inventoryItem.toMap());
-  Future<List<InventoryItem>> getInventoryForOwner(String ownerId) async {
-    final maps = await (await database).query('inventory_items', where: 'ownerId = ? OR ownerId = ?', whereArgs: [ownerId, ownerId], orderBy: 'isEquipped DESC, itemId ASC');
+  Future<List<InventoryItem>> getInventoryForOwner(String characterId) async {
+    final maps = await (await database).query('inventory_items', where: 'character_id = ?', whereArgs: [characterId], orderBy: 'isEquipped DESC, itemId ASC');
     return List.generate(maps.length, (i) => InventoryItem.fromMap(maps[i]));
   }
   Future<int> updateInventoryItem(InventoryItem inventoryItem) async => await (await database).update('inventory_items', inventoryItem.toMap(), where: 'id = ?', whereArgs: [inventoryItem.id]);
   Future<int> deleteInventoryItem(String id) async => await (await database).delete('inventory_items', where: 'id = ?', whereArgs: [id]);
-  Future<void> deleteInventoryForOwner(String ownerId) async => await (await database).delete('inventory_items', where: 'ownerId = ?', whereArgs: [ownerId]);
+  Future<void> deleteInventoryForOwner(String characterId) async => await (await database).delete('inventory_items', where: 'character_id = ?', whereArgs: [characterId]);
 
   // --- Quest CRUD ---
   Future<int> insertQuest(Quest quest) async => await (await database).insert('quests', quest.toMap());
@@ -1771,14 +1987,14 @@ class DatabaseHelper {
   }
   
   /// Holt Inventardaten für einen bestimmten Owner zur Anzeige im Encounter Setup
-  Future<List<Map<String, dynamic>>> getDisplayInventoryForOwner(String ownerId) async {
+  Future<List<Map<String, dynamic>>> getDisplayInventoryForOwner(String characterId) async {
     final db = await database;
     
-    // Hole alle Inventar-Items für den Owner
+    // Hole alle Inventar-Items für den Character
     final inventoryItems = await db.query(
       'inventory_items',
-      where: 'ownerId = ?',
-      whereArgs: [ownerId],
+      where: 'character_id = ?',
+      whereArgs: [characterId],
     );
     
     final displayItems = <Map<String, dynamic>>[];

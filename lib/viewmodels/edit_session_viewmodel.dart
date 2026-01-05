@@ -1,9 +1,20 @@
 import 'package:flutter/foundation.dart';
 import '../models/session.dart';
 import '../services/exceptions/service_exceptions.dart';
+import '../database/repositories/session_model_repository.dart';
+import '../database/core/database_connection.dart';
 
-/// ViewModel für die Session-Bearbeitung mit Provider-Pattern
+/// ViewModel für die Session-Bearbeitung mit neuer Repository-Architektur
+/// 
+/// HINWEIS: Verwendet jetzt das neue SessionModelRepository
 class EditSessionViewModel extends ChangeNotifier {
+  final SessionModelRepository _sessionRepository;
+
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue SessionModelRepository
+  /// 
+  EditSessionViewModel({SessionModelRepository? sessionRepository})
+      : _sessionRepository = sessionRepository ?? SessionModelRepository(DatabaseConnection.instance);
   // State Management
   Session? _session;
   bool _isLoading = false;
@@ -42,7 +53,9 @@ class EditSessionViewModel extends ChangeNotifier {
     }
   }
 
-  /// Speichert die aktuelle Session
+  /// Speichert die aktuelle Session über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue SessionModelRepository
   Future<bool> saveSession() async {
     if (_session == null || !_hasValidSession()) {
       _setError('Ungültige Session-Daten');
@@ -53,8 +66,19 @@ class EditSessionViewModel extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       
-      // Simuliere Datenbankoperation
-      await _simulateDatabaseOperation();
+      if (_session!.id.isEmpty) {
+        // Create new session
+        final savedSession = await _sessionRepository.create(_session!);
+        if (savedSession != null) {
+          _session = savedSession;
+        }
+      } else {
+        // Update existing session
+        final updatedSession = await _sessionRepository.update(_session!);
+        if (updatedSession != null) {
+          _session = updatedSession;
+        }
+      }
       
       _resetUnsavedChanges();
       return true;
@@ -70,9 +94,9 @@ class EditSessionViewModel extends ChangeNotifier {
     }
   }
 
-  /// Löscht die aktuelle Session
+  /// Löscht die aktuelle Session über neues Repository
   Future<bool> deleteSession() async {
-    if (_session == null) {
+    if (_session == null || _session!.id.isEmpty) {
       _setError('Keine Session zum Löschen vorhanden');
       return false;
     }
@@ -81,8 +105,7 @@ class EditSessionViewModel extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       
-      // Simuliere Datenbankoperation
-      await _simulateDatabaseOperation();
+      await _sessionRepository.delete(_session!.id);
       return true;
     } catch (e) {
       if (e is ServiceException) {

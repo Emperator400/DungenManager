@@ -2,9 +2,20 @@ import 'package:flutter/foundation.dart';
 import '../models/campaign.dart';
 import '../models/session.dart';
 import '../services/exceptions/service_exceptions.dart';
+import '../database/repositories/session_model_repository.dart';
+import '../database/core/database_connection.dart';
 
-/// ViewModel für die Session-Liste einer Kampagne mit Provider-Pattern
+/// ViewModel für die Session-Liste einer Kampagne mit neuer Repository-Architektur
+/// 
+/// HINWEIS: Verwendet jetzt das neue SessionModelRepository
 class SessionListForCampaignViewModel extends ChangeNotifier {
+  final SessionModelRepository _sessionRepository;
+
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue SessionModelRepository
+  /// 
+  SessionListForCampaignViewModel({SessionModelRepository? sessionRepository})
+      : _sessionRepository = sessionRepository ?? SessionModelRepository(DatabaseConnection.instance);
   // State Management
   Campaign? _campaign;
   List<Session> _sessions = [];
@@ -32,30 +43,16 @@ class SessionListForCampaignViewModel extends ChangeNotifier {
     }
   }
 
-  /// Lädt die Sessions für die aktuelle Kampagne
+  /// Lädt die Sessions für die aktuelle Kampagne über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue SessionModelRepository
   Future<void> _loadSessions() async {
     if (_campaign == null) return;
 
     try {
-      // Simuliere Datenbankoperation
-      await _simulateDatabaseOperation();
-      
-      // Simulierte Session-Daten
-      _sessions = [
-        Session(
-          campaignId: _campaign!.id,
-          title: 'Session 1: Der Beginn',
-          inGameTimeInMinutes: 240,
-          liveNotes: 'Erste Session der Kampagne',
-        ),
-        Session(
-          campaignId: _campaign!.id,
-          title: 'Session 2: Die erste Herausforderung',
-          inGameTimeInMinutes: 300,
-          liveNotes: 'Combat mit Goblins',
-        ),
-      ];
-      
+      _sessions = await _sessionRepository!.findAll();
+      // Filtern nach Kampagne im ViewModel
+      _sessions = _sessions.where((session) => session.campaignId == _campaign!.id).toList();
       notifyListeners();
     } catch (e) {
       if (e is ServiceException) {
@@ -71,16 +68,15 @@ class SessionListForCampaignViewModel extends ChangeNotifier {
     await _loadSessions();
   }
 
-  /// Erstellt eine neue Session
+  /// Erstellt eine neue Session über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue SessionModelRepository
   Future<Session?> createSession({String? title}) async {
     if (_campaign == null) return null;
 
     try {
       _setLoading(true);
       _clearError();
-      
-      // Simuliere Datenbankoperation
-      await _simulateDatabaseOperation();
       
       final newSession = Session(
         campaignId: _campaign!.id,
@@ -89,9 +85,13 @@ class SessionListForCampaignViewModel extends ChangeNotifier {
         liveNotes: '',
       );
       
-      _sessions.insert(0, newSession);
-      notifyListeners();
-      return newSession;
+      final savedSession = await _sessionRepository.create(newSession);
+      if (savedSession != null) {
+        _sessions.insert(0, savedSession);
+        notifyListeners();
+        return savedSession;
+      }
+      return null;
     } catch (e) {
       if (e is ServiceException) {
         _setError(e.message);
@@ -104,14 +104,13 @@ class SessionListForCampaignViewModel extends ChangeNotifier {
     }
   }
 
-  /// Löscht eine Session
+  /// Löscht eine Session über neues Repository
   Future<bool> deleteSession(String sessionId) async {
     try {
       _setLoading(true);
       _clearError();
       
-      // Simuliere Datenbankoperation
-      await _simulateDatabaseOperation();
+      await _sessionRepository.delete(sessionId);
       
       _sessions.removeWhere((session) => session.id == sessionId);
       notifyListeners();
@@ -128,14 +127,13 @@ class SessionListForCampaignViewModel extends ChangeNotifier {
     }
   }
 
-  /// Dupliziert eine Session
+  /// Dupliziert eine Session über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue SessionModelRepository
   Future<Session?> duplicateSession(Session session) async {
     try {
       _setLoading(true);
       _clearError();
-      
-      // Simuliere Datenbankoperation
-      await _simulateDatabaseOperation();
       
       final duplicatedSession = Session(
         campaignId: _campaign!.id,
@@ -144,16 +142,20 @@ class SessionListForCampaignViewModel extends ChangeNotifier {
         liveNotes: session.liveNotes,
       );
       
-      // Einfügen nach der Original-Session
-      final originalIndex = _sessions.indexWhere((s) => s.id == session.id);
-      if (originalIndex != -1) {
-        _sessions.insert(originalIndex + 1, duplicatedSession);
-      } else {
-        _sessions.insert(0, duplicatedSession);
+      final savedSession = await _sessionRepository.create(duplicatedSession);
+      if (savedSession != null) {
+        // Einfügen nach der Original-Session
+        final originalIndex = _sessions.indexWhere((s) => s.id == session.id);
+        if (originalIndex != -1) {
+          _sessions.insert(originalIndex + 1, savedSession);
+        } else {
+          _sessions.insert(0, savedSession);
+        }
+        
+        notifyListeners();
+        return savedSession;
       }
-      
-      notifyListeners();
-      return duplicatedSession;
+      return null;
     } catch (e) {
       if (e is ServiceException) {
         _setError(e.message);

@@ -2,12 +2,15 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/campaign.dart';
 import '../models/session.dart';
-import '../database/database_helper.dart';
+import '../database/repositories/session_model_repository.dart';
+import '../database/core/database_connection.dart';
 
-/// ViewModel für aktive Sessions
+/// ViewModel für aktive Sessions mit neuer Repository-Architektur
 /// Zentralisiert State Management und Business-Logik für laufende D&D-Sessions
+/// 
+/// HINWEIS: Verwendet jetzt das neue SessionModelRepository
 class ActiveSessionViewModel extends ChangeNotifier {
-  final DatabaseHelper _dbHelper;
+  final SessionModelRepository _sessionRepository;
 
   // ============================================================================
   // STATE VARIABLES
@@ -34,19 +37,24 @@ class ActiveSessionViewModel extends ChangeNotifier {
   // CONSTRUCTOR
   // ============================================================================
 
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue SessionModelRepository
+  /// 
   ActiveSessionViewModel({
     required Session session,
     required Campaign campaign,
-    DatabaseHelper? dbHelper,
+    SessionModelRepository? sessionRepository,
   }) : _currentSession = session,
        _campaign = campaign,
-       _dbHelper = dbHelper ?? DatabaseHelper.instance;
+       _sessionRepository = sessionRepository ?? SessionModelRepository(DatabaseConnection.instance);
 
   // ============================================================================
   // SESSION OPERATIONS
   // ============================================================================
 
-  /// Fügt In-Game-Zeit zur Session hinzu
+  /// Fügt In-Game-Zeit zur Session hinzu über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue SessionModelRepository
   Future<void> addInGameTime(int minutesToAdd) async {
     await _executeWithErrorHandling(() async {
       _currentSession = Session(
@@ -57,12 +65,14 @@ class ActiveSessionViewModel extends ChangeNotifier {
         liveNotes: _currentSession.liveNotes,
       );
       
-      await _dbHelper.updateSession(_currentSession);
+      await _sessionRepository.update(_currentSession);
       notifyListeners();
     });
   }
 
-  /// Aktualisiert den Session-Titel
+  /// Aktualisiert den Session-Titel über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue SessionModelRepository
   Future<void> updateSessionTitle(String newTitle) async {
     await _executeWithErrorHandling(() async {
       _currentSession = Session(
@@ -73,12 +83,14 @@ class ActiveSessionViewModel extends ChangeNotifier {
         liveNotes: _currentSession.liveNotes,
       );
       
-      await _dbHelper.updateSession(_currentSession);
+      await _sessionRepository.update(_currentSession);
       notifyListeners();
     });
   }
 
-  /// Aktualisiert die Live-Notizen
+  /// Aktualisiert die Live-Notizen über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue SessionModelRepository
   Future<void> updateLiveNotes(String newNotes) async {
     await _executeWithErrorHandling(() async {
       _currentSession = Session(
@@ -89,7 +101,7 @@ class ActiveSessionViewModel extends ChangeNotifier {
         liveNotes: newNotes,
       );
       
-      await _dbHelper.updateSession(_currentSession);
+      await _sessionRepository.update(_currentSession);
       notifyListeners();
     });
   }

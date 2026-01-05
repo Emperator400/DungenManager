@@ -222,4 +222,67 @@ class Scene {
     
     return [];
   }
+
+  // ========== DATABASE MIGRATION METHODS ==========
+
+  /// Konvertiert das Model in ein Datenbank-Map (snake_case für Feldnamen)
+  /// 
+  /// HINWEIS: Verwendet snake_case-Feldnamen für die Datenbank
+  Map<String, dynamic> toDatabaseMap() {
+    return {
+      'id': id,
+      'session_id': sessionId,
+      'order_index': orderIndex,
+      'name': name,
+      'description': description,
+      'scene_type': sceneType.name,
+      'is_completed': isCompleted ? 1 : 0,
+      'estimated_duration': estimatedDuration?.inMilliseconds,
+      'complexity': complexity?.name,
+      'linked_wiki_entry_ids': jsonEncode(linkedWikiEntryIds),
+      'linked_quest_ids': jsonEncode(linkedQuestIds),
+      'created_at': createdAt.millisecondsSinceEpoch,
+      'updated_at': updatedAt.millisecondsSinceEpoch,
+    };
+  }
+
+  /// Erstellt ein Model aus einem Datenbank-Map
+  /// 
+  /// HINWEIS: Unterstützt sowohl camelCase (alt) als auch snake_case (neu) Feldnamen
+  factory Scene.fromDatabaseMap(Map<String, dynamic> map) {
+    try {
+      return Scene(
+        id: ModelParsingHelper.safeId(map, 'id'),
+        sessionId: ModelParsingHelper.safeString(map, 'session_id', ModelParsingHelper.safeString(map, 'sessionId', '')),
+        orderIndex: ModelParsingHelper.safeInt(map, 'order_index', ModelParsingHelper.safeInt(map, 'orderIndex', 0)),
+        name: ModelParsingHelper.safeString(map, 'name', ModelParsingHelper.safeString(map, 'title', "Unbenannte Szene")),
+        description: ModelParsingHelper.safeString(map, 'description', ''),
+        sceneType: SceneType.values.firstWhere(
+          (e) => e.name == ModelParsingHelper.safeString(map, 'scene_type', ModelParsingHelper.safeString(map, 'sceneType', 'Exploration')),
+          orElse: () => SceneType.Exploration,
+        ),
+        isCompleted: ModelParsingHelper.safeBool(map, 'is_completed', ModelParsingHelper.safeBool(map, 'isCompleted', false)),
+        estimatedDuration: ModelParsingHelper.safeIntOrNull(map, 'estimated_duration', ModelParsingHelper.safeIntOrNull(map, 'estimatedDuration', null)) != null
+            ? Duration(milliseconds: ModelParsingHelper.safeInt(map, 'estimated_duration', ModelParsingHelper.safeInt(map, 'estimatedDuration', 0)))
+            : null,
+        complexity: ModelParsingHelper.safeStringOrNull(map, 'complexity', ModelParsingHelper.safeStringOrNull(map, 'complexity', null)) != null
+            ? Complexity.values.firstWhere(
+                (e) => e.name == ModelParsingHelper.safeString(map, 'complexity', ModelParsingHelper.safeString(map, 'complexity', 'Easy')),
+                orElse: () => Complexity.Easy,
+              )
+            : null,
+        linkedWikiEntryIds: _parseStringList(map['linked_wiki_entry_ids'] ?? map['linkedWikiEntryIds']),
+        linkedQuestIds: _parseStringList(map['linked_quest_ids'] ?? map['linkedQuestIds']),
+        createdAt: ModelParsingHelper.safeDateTime(map, 'created_at', ModelParsingHelper.safeDateTime(map, 'createdAt', DateTime.now())),
+        updatedAt: ModelParsingHelper.safeDateTime(map, 'updated_at', ModelParsingHelper.safeDateTime(map, 'updatedAt', DateTime.now())),
+      );
+    } catch (e) {
+      // Fallback bei Parsing-Fehlern
+      return Scene(
+        sessionId: ModelParsingHelper.safeString(map, 'session_id', ModelParsingHelper.safeString(map, 'sessionId', '')),
+        orderIndex: ModelParsingHelper.safeInt(map, 'order_index', ModelParsingHelper.safeInt(map, 'orderIndex', 0)),
+        name: ModelParsingHelper.safeString(map, 'name', "Fehlerhafte Szene"),
+      );
+    }
+  }
 }

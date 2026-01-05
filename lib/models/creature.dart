@@ -101,26 +101,31 @@ class Creature {
     this.initiative,
   }) : currentHp = currentHp ?? maxHp; // Auto-set auf maxHp wenn nicht gesetzt
 
-  /// Konvertierung für Datenbank
+  /// Konvertiert das Creature zu einer Datenbank-Map (Legacy)
   Map<String, dynamic> toMap() {
+    return toDatabaseMap();
+  }
+
+  /// Konvertiert das Creature zu einer Datenbank-Map (Neu)
+  Map<String, dynamic> toDatabaseMap() {
     final attackListResult = CreatureDataService.serializeAttackList(attackList);
     final inventoryResult = CreatureDataService.serializeInventory(inventory);
     
     return {
       'id': id,
       'name': name,
-      'maxHp': maxHp,
-      'armorClass': armorClass,
+      'max_hp': maxHp,
+      'armor_class': armorClass,
       'speed': speed,
       'attacks': attacks,
-      'initiativeBonus': initiativeBonus,
+      'initiative_bonus': initiativeBonus,
       'strength': strength,
       'dexterity': dexterity,
       'constitution': constitution,
       'intelligence': intelligence,
       'wisdom': wisdom,
       'charisma': charisma,
-      'isPlayer': isPlayer,
+      'is_player': isPlayer,
       'gold': gold,
       'silver': silver,
       'copper': copper,
@@ -142,33 +147,38 @@ class Creature {
       'source_id': sourceId,
       'is_favorite': isFavorite,
       'version': version,
-      'currentHp': currentHp,
+      'current_hp': currentHp,
       'initiative': initiative,
       'conditions': conditions.map((c) => c.toString()).join(','),
     };
   }
 
-  /// Erstellung aus Datenbank
+  /// Factory für Datenbank-Map mit sicherem Parsing (Legacy)
   factory Creature.fromMap(Map<String, dynamic> map) {
+    return Creature.fromDatabaseMap(map);
+  }
+
+  /// Factory für Datenbank-Map mit sicherem Parsing (Neu)
+  factory Creature.fromDatabaseMap(Map<String, dynamic> map) {
     final attackListResult = CreatureDataService.parseAttackList(map['attack_list']);
     final inventoryResult = CreatureDataService.parseInventory(map['inventory']);
     
     return Creature(
       id: ModelParsingHelper.safeId(map, 'id'),
       name: ModelParsingHelper.safeString(map, 'name', ''),
-      maxHp: ModelParsingHelper.safeInt(map, 'maxHp', 0),
-      currentHp: ModelParsingHelper.safeInt(map, 'currentHp', 0),
-      armorClass: ModelParsingHelper.safeInt(map, 'armorClass', 10),
+      maxHp: ModelParsingHelper.safeInt(map, 'max_hp', 0),
+      currentHp: ModelParsingHelper.safeInt(map, 'current_hp', 0),
+      armorClass: ModelParsingHelper.safeInt(map, 'armor_class', 10),
       speed: ModelParsingHelper.safeString(map, 'speed', "30ft"),
       attacks: ModelParsingHelper.safeString(map, 'attacks', ""),
-      initiativeBonus: ModelParsingHelper.safeInt(map, 'initiativeBonus', 0),
+      initiativeBonus: ModelParsingHelper.safeInt(map, 'initiative_bonus', 0),
       strength: ModelParsingHelper.safeInt(map, 'strength', 10),
       dexterity: ModelParsingHelper.safeInt(map, 'dexterity', 10),
       constitution: ModelParsingHelper.safeInt(map, 'constitution', 10),
       intelligence: ModelParsingHelper.safeInt(map, 'intelligence', 10),
       wisdom: ModelParsingHelper.safeInt(map, 'wisdom', 10),
       charisma: ModelParsingHelper.safeInt(map, 'charisma', 10),
-      isPlayer: ModelParsingHelper.safeBool(map, 'isPlayer', false),
+      isPlayer: ModelParsingHelper.safeBool(map, 'is_player', false),
       inventory: inventoryResult.isSuccess ? inventoryResult.data! : (map['inventory'] as List<Object>?)?.cast<Map<String, dynamic>>() ?? const [],
       gold: ModelParsingHelper.safeDouble(map, 'gold', 0.0),
       silver: ModelParsingHelper.safeDouble(map, 'silver', 0.0),

@@ -724,7 +724,7 @@ class _EnhancedInventoryTabWidgetState extends State<EnhancedInventoryTabWidget>
     final result = await Navigator.of(context).push<Map<String, dynamic>>(
       MaterialPageRoute(
         builder: (context) => AddItemFromLibraryScreen(
-          ownerId: characterId!,
+          characterId: characterId!,
         ),
       ),
     );

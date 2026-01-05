@@ -275,6 +275,13 @@ class EnhancedCharacterEditorController {
       'wisdom': int.tryParse(wisController.text) ?? 10,
       'charisma': int.tryParse(chaController.text) ?? 10,
       'attackList': attackList,
+      // FEHLENDE FELDER HINZUFÜGEN:
+      'attacks': characterType == CharacterType.player 
+          ? '' // PCs haben keine Legacy-Attack-Strings
+          : attacksController.text, // Nur für NPCs/Monster
+      'specialAbilities': characterType == CharacterType.player
+          ? null // PCs haben keine Special Abilities
+          : specialAbilitiesController.text, // Nur für NPCs/Monster
     };
 
     if (characterType == CharacterType.player) {
@@ -290,17 +297,24 @@ class EnhancedCharacterEditorController {
         'type': selectedType,
         'subtype': selectedSubtype.isNotEmpty ? selectedSubtype : null,
         'alignment': selectedAlignment,
+        // Explizit für PCs setzen:
+        'specialAbilities': null,
+        'attacks': '',
       };
     } else {
       return {
         ...baseData,
         'challengeRating': double.tryParse(crController.text) ?? 0.25,
         'attacks': attacksController.text,
-        'specialAbilities': specialAbilitiesController.text.isNotEmpty ? specialAbilitiesController.text : null,
-        'legendaryActions': legendaryActionsController.text.isNotEmpty ? legendaryActionsController.text : null,
+        'specialAbilities': specialAbilitiesController.text.isNotEmpty 
+            ? specialAbilitiesController.text 
+            : null,
+        'legendaryActions': legendaryActionsController.text.isNotEmpty 
+            ? legendaryActionsController.text 
+            : null,
         'size': selectedSize,
         'type': selectedType,
-        'subtype': selectedSubtype?.isNotEmpty == true ? selectedSubtype : null,
+        'subtype': selectedSubtype.isNotEmpty ? selectedSubtype : null,
         'alignment': selectedAlignment,
       };
     }
@@ -342,6 +356,31 @@ class EnhancedCharacterEditorController {
       proficientSkills.remove(skillName);
     } else {
       proficientSkills.add(skillName);
+    }
+  }
+
+  /// Berechnet die maximalen HP basierend auf Klasse, Level und Constitution
+  int calculateMaxHp() {
+    final level = int.tryParse(levelController.text) ?? 1;
+    final con = int.tryParse(conController.text) ?? 10;
+    final conModifier = getModifier(con);
+    final hitDie = selectedClass?.hitDie ?? 8;
+    
+    // HP = HitDie + ConModifier (Level 1)
+    // Für höhere Level: HP = HitDie + (Level-1) * ((HitDie+1)/2 + ConModifier)
+    if (level == 1) {
+      return hitDie + conModifier;
+    } else {
+      final averageRoll = (hitDie + 1) ~/ 2;
+      return hitDie + (level - 1) * (averageRoll + conModifier);
+    }
+  }
+
+  /// Aktualisiert den HP-Controller mit berechneten Werten
+  void updateCalculatedHp() {
+    final calculatedHp = calculateMaxHp();
+    if (hpController.text.isEmpty || int.tryParse(hpController.text) == 10) {
+      hpController.text = calculatedHp.toString();
     }
   }
 

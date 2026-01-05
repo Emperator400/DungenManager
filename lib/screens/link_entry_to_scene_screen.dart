@@ -1,6 +1,7 @@
 // lib/screens/link_entry_to_scene_screen.dart
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart';
+import '../database/core/database_connection.dart';
+import '../database/repositories/wiki_entry_model_repository.dart';
 import '../models/wiki_entry.dart';
 
 class LinkEntryToSceneScreen extends StatefulWidget {
@@ -12,12 +13,13 @@ class LinkEntryToSceneScreen extends StatefulWidget {
 }
 
 class _LinkEntryToSceneScreenState extends State<LinkEntryToSceneScreen> {
-  final dbHelper = DatabaseHelper.instance;
+  late WikiEntryModelRepository _wikiRepository;
   late Set<String> _selectedIds;
 
   @override
   void initState() {
     super.initState();
+    _wikiRepository = WikiEntryModelRepository(DatabaseConnection.instance);
     _selectedIds = widget.previouslyLinkedIds.toSet();
   }
 
@@ -34,7 +36,7 @@ class _LinkEntryToSceneScreenState extends State<LinkEntryToSceneScreen> {
         ],
       ),
       body: FutureBuilder<List<WikiEntry>>(
-        future: dbHelper.getAllWikiEntries(),
+        future: _wikiRepository.findAll(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           final entries = snapshot.data!;

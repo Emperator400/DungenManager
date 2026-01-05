@@ -1,6 +1,7 @@
 // lib/widgets/campaign_quests_tab.dart
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart';
+import '../database/core/database_connection.dart';
+import '../database/repositories/quest_model_repository.dart';
 import '../models/campaign.dart';
 import '../models/quest.dart';
 import '../models/campaign_quest.dart';
@@ -16,12 +17,13 @@ class CampaignQuestsTab extends StatefulWidget {
 }
 
 class CampaignQuestsTabState extends State<CampaignQuestsTab> {
-  final dbHelper = DatabaseHelper.instance;
+  late final QuestModelRepository _questRepository;
   late Future<List<CampaignQuest>> _campaignQuestsFuture;
 
   @override
   void initState() {
     super.initState();
+    _questRepository = QuestModelRepository(DatabaseConnection.instance);
     _loadQuests();
   }
 

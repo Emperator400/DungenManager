@@ -7,7 +7,11 @@ import '../models/item.dart';
 import '../models/equip_slot.dart';
 import '../models/creature.dart';
 import '../models/player_character.dart';
-import '../database/database_helper.dart';
+import '../database/repositories/inventory_item_model_repository.dart';
+import '../database/repositories/item_model_repository.dart';
+import '../database/repositories/creature_model_repository.dart';
+import '../database/repositories/player_character_model_repository.dart';
+import '../database/core/database_connection.dart';
 import 'exceptions/service_exceptions.dart';
 import 'uuid_service.dart';
 import 'creature_helper_service.dart';
@@ -16,71 +20,79 @@ import 'creature_helper_service.dart';
 /// entfernt direkte Datenbankzugriffe aus UI-Components
 /// Verwendet spezifische Exceptions und ServiceResult Pattern.
 class InventoryService {
-  final DatabaseHelper _dbHelper;
+  final InventoryItemModelRepository _inventoryRepository;
+  final ItemModelRepository _itemRepository;
+  final CreatureModelRepository _creatureRepository;
+  final PlayerCharacterModelRepository _playerCharacterRepository;
   final UuidService _uuidService;
 
   InventoryService({
-    DatabaseHelper? dbHelper,
+    InventoryItemModelRepository? inventoryRepository,
+    ItemModelRepository? itemRepository,
+    CreatureModelRepository? creatureRepository,
+    PlayerCharacterModelRepository? playerCharacterRepository,
     UuidService? uuidService,
-  }) : _dbHelper = dbHelper ?? DatabaseHelper.instance,
+  }) : _inventoryRepository = inventoryRepository ?? InventoryItemModelRepository(DatabaseConnection.instance),
+       _itemRepository = itemRepository ?? ItemModelRepository(DatabaseConnection.instance),
+       _creatureRepository = creatureRepository ?? CreatureModelRepository(DatabaseConnection.instance),
+       _playerCharacterRepository = playerCharacterRepository ?? PlayerCharacterModelRepository(DatabaseConnection.instance),
        _uuidService = uuidService ?? UuidService();
 
   // ============================================================================
   // INVENTORY MANAGEMENT
   // ============================================================================
 
-  /// Lädt das Inventar für einen Character (PC oder Creature)
-  Future<List<InventoryItem>> loadInventory(String ownerId) async {
-    return performServiceOperation('loadInventory', () async {
-      if (ownerId.isEmpty) {
+  /// Lädt das Inventar für einen Character (PC oder Creature) über neues Repository
+  Future<List<InventoryItem>> loadInventory(String characterId) async {
+    try {
+      if (characterId.isEmpty) {
         throw ValidationException(
-          'Owner ID ist erforderlich',
+          'Character ID ist erforderlich',
           operation: 'loadInventory',
         );
       }
 
-      final db = await _dbHelper.database;
-      final maps = await db.query(
-        'inventory_items',
-        where: 'owner_id = ? OR ownerId = ?',
-        whereArgs: [ownerId, ownerId],
-        orderBy: 'is_equipped DESC, item_id ASC',
-      );
-      return maps.map((map) => InventoryItem.fromMap(map)).toList();
-    }).then((result) => result.isSuccess ? result.data! : throw DatabaseException(
-         result.hasErrors ? result.errors.first : 'Unbekannter Fehler',
-         operation: 'loadInventory',
-       ));
+      return await _inventoryRepository.getByOwnerId(characterId);
+    } catch (e) {
+      throw Exception('Fehler beim Laden des Inventars: $e');
+    }
   }
 
-  /// Fügt ein Item zum Inventar hinzu
+  /// Fügt ein Item zum Inventar hinzu über neues Repository
   Future<void> addItemToInventory({
-    required String ownerId,
+    required String characterId,
     required String itemId,
     required int quantity,
     EquipSlot? equipSlot,
   }) async {
     try {
+      // Item-Daten laden, um name und description zu erhalten
+      final item = await _itemRepository.findById(itemId);
+      if (item == null) {
+        throw Exception('Item mit ID $itemId nicht gefunden');
+      }
+
       final inventoryItem = InventoryItem(
         id: _uuidService.generateId(),
-        ownerId: ownerId,
+        characterId: characterId,
         itemId: itemId,
+        name: item.name, // Name aus Item übernehmen
+        description: item.description, // Beschreibung aus Item übernehmen
         quantity: quantity,
         isEquipped: equipSlot != null,
         equipSlot: equipSlot,
       );
 
-      final db = await _dbHelper.database;
-      await db.insert('inventory_items', inventoryItem.toMap());
+      await _inventoryRepository.create(inventoryItem);
     } catch (e) {
       throw Exception('Fehler beim Hinzufügen des Items: $e');
     }
   }
 
-  /// Aktualisiert die Menge eines Inventar-Items
+  /// Aktualisiert die Menge eines Inventar-Items über neues Repository
   Future<void> updateItemQuantity({
     required String inventoryItemId,
-    required String ownerId,
+    required String characterId,
     required int newQuantity,
   }) async {
     if (newQuantity <= 0) {
@@ -89,28 +101,20 @@ class InventoryService {
     }
 
     try {
-      final inventoryItems = await loadInventory(ownerId);
+      final inventoryItems = await _inventoryRepository.getByOwnerId(characterId);
       final currentItem = inventoryItems.firstWhere((item) => item.id == inventoryItemId);
       
       final updatedItem = currentItem.copyWith(quantity: newQuantity);
-      
-      final db = await _dbHelper.database;
-      await db.update(
-        'inventory_items',
-        updatedItem.toMap(),
-        where: 'id = ?',
-        whereArgs: [inventoryItemId],
-      );
+      await _inventoryRepository.update(updatedItem);
     } catch (e) {
       throw Exception('Fehler beim Aktualisieren der Menge: $e');
     }
   }
 
-  /// Entfernt ein Item aus dem Inventar
+  /// Entfernt ein Item aus dem Inventar über neues Repository
   Future<void> removeItem(String inventoryItemId) async {
     try {
-      final db = await _dbHelper.database;
-      await db.delete('inventory_items', where: 'id = ?', whereArgs: [inventoryItemId]);
+      await _inventoryRepository.delete(inventoryItemId);
     } catch (e) {
       throw Exception('Fehler beim Entfernen des Items: $e');
     }
@@ -120,15 +124,15 @@ class InventoryService {
   // EQUIPMENT MANAGEMENT
   // ============================================================================
 
-  /// Rüstet ein Item aus
+  /// Rüstet ein Item aus über neues Repository
   Future<void> equipItem({
     required String inventoryItemId,
-    required String ownerId,
+    required String characterId,
     required EquipSlot equipSlot,
   }) async {
     try {
       // Inventory Item holen
-      final inventoryItems = await loadInventory(ownerId);
+      final inventoryItems = await loadInventory(characterId);
       final inventoryItem = inventoryItems.firstWhere((item) => item.id == inventoryItemId);
       
       // Item-Daten holen
@@ -138,7 +142,7 @@ class InventoryService {
       }
 
       // Prüfen, ob bereits etwas im Slot ausgerüstet ist
-      await _unequipSlot(ownerId, equipSlot);
+      await _unequipSlot(characterId, equipSlot);
 
       // Item ausrüsten
       final updatedItem = inventoryItem.copyWith(
@@ -146,22 +150,16 @@ class InventoryService {
         equipSlot: equipSlot,
       );
 
-      final db = await _dbHelper.database;
-      await db.update(
-        'inventory_items',
-        updatedItem.toMap(),
-        where: 'id = ?',
-        whereArgs: [inventoryItemId],
-      );
+      await _inventoryRepository.update(updatedItem);
     } catch (e) {
       throw Exception('Fehler beim Ausrüsten: $e');
     }
   }
 
-  /// Legt ein Item ab (unequip)
-  Future<void> unequipItem(String inventoryItemId, String ownerId) async {
+  /// Legt ein Item ab (unequip) über neues Repository
+  Future<void> unequipItem(String inventoryItemId, String characterId) async {
     try {
-      final inventoryItems = await loadInventory(ownerId);
+      final inventoryItems = await loadInventory(characterId);
       final inventoryItem = inventoryItems.firstWhere((item) => item.id == inventoryItemId);
 
       final updatedItem = inventoryItem.copyWith(
@@ -169,26 +167,20 @@ class InventoryService {
         equipSlot: null,
       );
 
-      final db = await _dbHelper.database;
-      await db.update(
-        'inventory_items',
-        updatedItem.toMap(),
-        where: 'id = ?',
-        whereArgs: [inventoryItemId],
-      );
+      await _inventoryRepository.update(updatedItem);
     } catch (e) {
       throw Exception('Fehler beim Ablegen: $e');
     }
   }
 
   /// Legt alle Items in einem bestimmten Slot ab
-  Future<void> _unequipSlot(String ownerId, EquipSlot equipSlot) async {
+  Future<void> _unequipSlot(String characterId, EquipSlot equipSlot) async {
     try {
-      final inventoryItems = await loadInventory(ownerId);
+      final inventoryItems = await loadInventory(characterId);
       
       for (final item in inventoryItems) {
         if (item.equipSlot == equipSlot && item.isEquipped) {
-          await unequipItem(item.id, ownerId);
+          await unequipItem(item.id, characterId);
         }
       }
     } catch (e) {
@@ -264,26 +256,19 @@ class InventoryService {
   // ITEM DATA ACCESS
   // ============================================================================
 
-  /// Holt ein Item anhand seiner ID
+  /// Holt ein Item anhand seiner ID über neues Repository
   Future<Item?> getItemById(String itemId) async {
     try {
-      final db = await _dbHelper.database;
-      final maps = await db.query('items', where: 'id = ?', whereArgs: [itemId]);
-      if (maps.isNotEmpty) {
-        return Item.fromMap(maps.first);
-      }
-      return null;
+      return await _itemRepository.findById(itemId);
     } catch (e) {
       return null;
     }
   }
 
-  /// Holt alle Items
+  /// Holt alle Items über neues Repository
   Future<List<Item>> getAllItems() async {
     try {
-      final db = await _dbHelper.database;
-      final maps = await db.query('items', orderBy: 'name ASC');
-      return maps.map((map) => Item.fromMap(map)).toList();
+      return await _itemRepository.findAll();
     } catch (e) {
       return [];
     }
@@ -293,13 +278,13 @@ class InventoryService {
   // GOLD MANAGEMENT (für NPCs/Monster)
   // ============================================================================
 
-  /// Aktualisiert das Gold einer Kreatur
+  /// Aktualisiert das Gold einer Kreatur über neues Repository
   Future<void> updateCreatureGold({
     required String creatureId,
     required double gold,
   }) async {
     try {
-      final creature = await getCreatureById(creatureId);
+      final creature = await _creatureRepository.findById(creatureId);
       if (creature == null) {
         throw Exception('Kreatur nicht gefunden');
       }
@@ -307,25 +292,19 @@ class InventoryService {
       // Verwende die CreatureHelperService.copyWith Methode
       final updatedCreature = CreatureHelperService.copyWith(creature, gold: gold);
       
-      final db = await _dbHelper.database;
-      await db.update(
-        'creatures',
-        updatedCreature.toMap(),
-        where: 'id = ?',
-        whereArgs: [creatureId],
-      );
+      await _creatureRepository.update(updatedCreature);
     } catch (e) {
       throw Exception('Fehler beim Aktualisieren des Goldes: $e');
     }
   }
 
-  /// Aktualisiert das Gold eines Player Characters
+  /// Aktualisiert das Gold eines Player Characters über neues Repository
   Future<void> updatePlayerGold({
     required String playerId,
     required double gold,
   }) async {
     try {
-      final player = await getPlayerCharacterById(playerId);
+      final player = await _playerCharacterRepository.findById(playerId);
       if (player == null) {
         throw Exception('Player Character nicht gefunden');
       }
@@ -336,13 +315,7 @@ class InventoryService {
         copper: player.copper,
       );
       
-      final db = await _dbHelper.database;
-      await db.update(
-        'player_characters',
-        updatedPlayer.toMap(),
-        where: 'id = ?',
-        whereArgs: [playerId],
-      );
+      await _playerCharacterRepository.update(updatedPlayer);
     } catch (e) {
       throw Exception('Fehler beim Aktualisieren des Goldes: $e');
     }
@@ -352,29 +325,19 @@ class InventoryService {
   // CREATURE/PLAYER DATA ACCESS
   // ============================================================================
 
-  /// Holt eine Kreatur anhand ihrer ID
+  /// Holt eine Kreatur anhand ihrer ID über neues Repository
   Future<Creature?> getCreatureById(String creatureId) async {
     try {
-      final db = await _dbHelper.database;
-      final maps = await db.query('creatures', where: 'id = ?', whereArgs: [creatureId]);
-      if (maps.isNotEmpty) {
-        return Creature.fromMap(maps.first);
-      }
-      return null;
+      return await _creatureRepository.findById(creatureId);
     } catch (e) {
       return null;
     }
   }
 
-  /// Holt einen Player Character anhand seiner ID
+  /// Holt einen Player Character anhand seiner ID über neues Repository
   Future<PlayerCharacter?> getPlayerCharacterById(String playerId) async {
     try {
-      final db = await _dbHelper.database;
-      final maps = await db.query('player_characters', where: 'id = ?', whereArgs: [playerId]);
-      if (maps.isNotEmpty) {
-        return PlayerCharacter.fromMap(maps.first);
-      }
-      return null;
+      return await _playerCharacterRepository.findById(playerId);
     } catch (e) {
       return null;
     }
@@ -385,9 +348,9 @@ class InventoryService {
   // ============================================================================
 
   /// Validiert Inventar-Operationen
-  void _validateInventoryOperation(String ownerId, String itemId) {
-    if (ownerId.isEmpty) {
-      throw ArgumentError('Owner ID ist erforderlich');
+  void _validateInventoryOperation(String characterId, String itemId) {
+    if (characterId.isEmpty) {
+      throw ArgumentError('Character ID ist erforderlich');
     }
     
     if (itemId.isEmpty) {

@@ -66,8 +66,13 @@ class Sound {
     );
   }
 
-  /// Converts Sound to Map for database storage
+  /// Converts Sound to Map for database storage (Legacy)
   Map<String, dynamic> toMap() {
+    return toDatabaseMap();
+  }
+
+  /// Converts Sound to Map for database storage (Neu)
+  Map<String, dynamic> toDatabaseMap() {
     return {
       'id': id,
       'name': name,
@@ -84,8 +89,13 @@ class Sound {
     };
   }
 
-  /// Creates Sound from Map from database
+  /// Creates Sound from Map from database (Legacy)
   factory Sound.fromMap(Map<String, dynamic> map) {
+    return Sound.fromDatabaseMap(map);
+  }
+
+  /// Creates Sound from Map from database (Neu)
+  factory Sound.fromDatabaseMap(Map<String, dynamic> map) {
     return Sound(
       id: ModelParsingHelper.safeId(map, 'id'),
       name: ModelParsingHelper.safeString(map, 'name', 'Unbekannter Sound'),

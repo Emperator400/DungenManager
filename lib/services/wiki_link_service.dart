@@ -1,284 +1,626 @@
 // lib/services/wiki_link_service.dart
+import 'dart:async';
 import 'package:uuid/uuid.dart';
 import '../models/wiki_link.dart';
 import '../models/wiki_entry.dart';
-import '../database/database_helper.dart';
+import '../database/core/database_connection.dart';
+import '../database/repositories/wiki_link_model_repository.dart';
+import '../database/repositories/wiki_entry_model_repository.dart';
+import 'exceptions/service_exceptions.dart';
 
 /// Service für Wiki-Link-Management
 /// Handhabt Beziehungen zwischen Wiki-Einträgen
+/// 
+/// Bietet CRUD-Operationen und Business-Logic für Wiki-Links.
+/// Verwendet spezifische Exceptions und ServiceResult Pattern.
+/// 
+/// MIGRIERT: Verwendet WikiLinkModelRepository und WikiEntryModelRepository
 class WikiLinkService {
+  final WikiLinkModelRepository _wikiLinkRepository;
+  final WikiEntryModelRepository _wikiRepository;
   static const _uuid = Uuid();
-  static DatabaseHelper get _db => DatabaseHelper.instance;
+
+  WikiLinkService({
+    WikiLinkModelRepository? wikiLinkRepository,
+    WikiEntryModelRepository? wikiRepository,
+  }) : _wikiLinkRepository = wikiLinkRepository ?? WikiLinkModelRepository(DatabaseConnection.instance),
+       _wikiRepository = wikiRepository ?? WikiEntryModelRepository(DatabaseConnection.instance);
+
+  // ========== CRUD OPERATIONS ==========
 
   /// Erstellt einen neuen Wiki-Link
-  static Future<String> createLink({
+  Future<ServiceResult<String>> createLink({
     required String sourceEntryId,
     required String targetEntryId,
     required WikiLinkType linkType,
     String? createdBy,
   }) async {
-    final db = await _db.database;
-    final linkId = _uuid.v4();
-    
-    final link = WikiLink(
-      id: linkId,
-      sourceEntryId: sourceEntryId,
-      targetEntryId: targetEntryId,
-      linkType: linkType,
-      createdAt: DateTime.now(),
-      createdBy: createdBy,
-    );
-    
-    await db.insert('wiki_links', link.toMap());
-    return linkId;
+    return performServiceOperation('createLink', () async {
+      // Validierung
+      if (sourceEntryId.isEmpty || targetEntryId.isEmpty) {
+        throw ValidationException(
+          'Source und Target Entry IDs dürfen nicht leer sein',
+          operation: 'createLink',
+        );
+      }
+
+      if (sourceEntryId == targetEntryId) {
+        throw ValidationException(
+          'Source und Target Entry dürfen nicht identisch sein',
+          operation: 'createLink',
+        );
+      }
+
+      // Prüfen ob beide Einträge existieren
+      final sourceEntry = await _wikiRepository.findById(sourceEntryId);
+      final targetEntry = await _wikiRepository.findById(targetEntryId);
+      
+      if (sourceEntry == null) {
+        throw ResourceNotFoundException.forId(
+          'WikiEntry',
+          sourceEntryId,
+          operation: 'createLink',
+        );
+      }
+
+      if (targetEntry == null) {
+        throw ResourceNotFoundException.forId(
+          'WikiEntry',
+          targetEntryId,
+          operation: 'createLink',
+        );
+      }
+
+      final linkId = _uuid.v4();
+      final link = WikiLink(
+        id: linkId,
+        sourceEntryId: sourceEntryId,
+        targetEntryId: targetEntryId,
+        linkType: linkType,
+        createdAt: DateTime.now(),
+        createdBy: createdBy,
+      );
+
+      await _wikiLinkRepository.create(link);
+      
+      return linkId;
+    });
   }
 
   /// Löscht einen Wiki-Link
-  static Future<void> deleteLink(String linkId) async {
-    final db = await _db.database;
-    await db.delete('wiki_links', where: 'id = ?', whereArgs: [linkId]);
+  Future<ServiceResult<void>> deleteLink(String linkId) async {
+    return performServiceOperation('deleteLink', () async {
+      final existingLink = await _wikiLinkRepository.findById(linkId);
+      if (existingLink == null) {
+        throw ResourceNotFoundException.forId(
+          'WikiLink',
+          linkId,
+          operation: 'deleteLink',
+        );
+      }
+      
+      await _wikiLinkRepository.delete(linkId);
+      return;
+    });
   }
 
   /// Löscht alle Links für einen Wiki-Eintrag
-  static Future<void> deleteAllLinksForEntry(String entryId) async {
-    final db = await _db.database;
-    await db.delete('wiki_links', where: 'source_entry_id = ? OR target_entry_id = ?', whereArgs: [entryId, entryId]);
+  Future<ServiceResult<void>> deleteAllLinksForEntry(String entryId) async {
+    return performServiceOperation('deleteAllLinksForEntry', () async {
+      final entry = await _wikiRepository.findById(entryId);
+      if (entry == null) {
+        throw ResourceNotFoundException.forId(
+          'WikiEntry',
+          entryId,
+          operation: 'deleteAllLinksForEntry',
+        );
+      }
+      
+      final links = await _wikiLinkRepository.findBySourceEntry(entryId);
+      for (final link in links) {
+        await _wikiLinkRepository.delete(link.id);
+      }
+      return;
+    });
   }
 
-  /// Holt alle Links für einen Wiki-Eintrag ( ausgehende Links )
-  static Future<List<WikiLink>> getLinksForEntry(String entryId) async {
-    final db = await _db.database;
-    final maps = await db.query(
-      'wiki_links',
-      where: 'source_entry_id = ?',
-      whereArgs: [entryId],
-      orderBy: 'created_at DESC',
-    );
-    return maps.map((map) => WikiLink.fromMap(map)).toList();
+  // ========== QUERY OPERATIONS ==========
+
+  /// Holt alle Links für einen Wiki-Eintrag (ausgehende Links)
+  Future<List<WikiLink>> getLinksForEntry(String entryId) async {
+    return await _wikiLinkRepository.findBySourceEntry(entryId);
   }
 
-  /// Holt alle Backlinks für einen Wiki-Eintrag ( eingehende Links )
-  static Future<List<WikiLink>> getBacklinksForEntry(String entryId) async {
-    final db = await _db.database;
-    final maps = await db.query(
-      'wiki_links',
-      where: 'target_entry_id = ?',
-      whereArgs: [entryId],
-      orderBy: 'created_at DESC',
-    );
-    return maps.map((map) => WikiLink.fromMap(map)).toList();
+  /// Holt alle Backlinks für einen Wiki-Eintrag (eingehende Links)
+  Future<List<WikiLink>> getBacklinksForEntry(String entryId) async {
+    return await _wikiLinkRepository.findByTargetEntry(entryId);
   }
 
   /// Holt alle verknüpften Einträge für einen Wiki-Eintrag
-  static Future<List<WikiEntry>> getLinkedEntries(String entryId) async {
-    final db = await _db.database;
-    final maps = await db.rawQuery('''
-      SELECT we.* FROM wiki_entries we
-      INNER JOIN wiki_links wl ON we.id = wl.target_entry_id
-      WHERE wl.source_entry_id = ?
-      ORDER BY wl.created_at DESC
-    ''', [entryId]);
-    
-    return maps.map((map) => WikiEntry.fromMap(map)).toList();
+  Future<ServiceResult<List<WikiEntry>>> getLinkedEntries(String entryId) async {
+    try {
+      final links = await _wikiLinkRepository.findBySourceEntry(entryId);
+      
+      final linkedEntries = <WikiEntry>[];
+      for (final link in links) {
+        final entry = await _wikiRepository.findById(link.targetEntryId);
+        if (entry != null) {
+          linkedEntries.add(entry);
+        }
+      }
+      
+      return ServiceResult.success(
+        linkedEntries,
+        operation: 'getLinkedEntries',
+      );
+    } catch (e) {
+      return ServiceResult.unexpectedError(
+        e,
+        operation: 'getLinkedEntries',
+      );
+    }
   }
 
   /// Prüft ob ein Link zwischen zwei Einträgen existiert
-  static Future<bool> linkExists({
+  Future<ServiceResult<bool>> linkExists({
     required String sourceEntryId,
     required String targetEntryId,
     WikiLinkType? linkType,
   }) async {
-    final db = await _db.database;
-    String whereClause = 'source_entry_id = ? AND target_entry_id = ?';
-    List<dynamic> whereArgs = [sourceEntryId, targetEntryId];
-    
-    if (linkType != null) {
-      whereClause += ' AND link_type = ?';
-      whereArgs.add(linkType.toString());
-    }
-    
-    final maps = await db.query('wiki_links', where: whereClause, whereArgs: whereArgs);
-    return maps.isNotEmpty;
-  }
-
-  /// Aktualisiert einen Wiki-Link
-  static Future<void> updateLink(String linkId, {
-    WikiLinkType? linkType,
-  }) async {
-    final db = await _db.database;
-    final updates = <String, dynamic>{};
-    
-    if (linkType != null) {
-      updates['link_type'] = linkType.toString();
-    }
-    
-    if (updates.isNotEmpty) {
-      await db.update('wiki_links', updates, where: 'id = ?', whereArgs: [linkId]);
+    try {
+      final sourceLinks = await _wikiLinkRepository.findBySourceEntry(sourceEntryId);
+      
+      for (final link in sourceLinks) {
+        if (link.targetEntryId == targetEntryId) {
+          if (linkType == null || link.linkType == linkType) {
+            return ServiceResult.success(
+              true,
+              operation: 'linkExists',
+            );
+          }
+        }
+      }
+      
+      return ServiceResult.success(
+        false,
+        operation: 'linkExists',
+      );
+    } catch (e) {
+      return ServiceResult.unexpectedError(
+        e,
+        operation: 'linkExists',
+      );
     }
   }
 
   /// Holt Links nach Typ
-  static Future<List<WikiLink>> getLinksByType(WikiLinkType linkType) async {
-    final db = await _db.database;
-    final maps = await db.query(
-      'wiki_links',
-      where: 'link_type = ?',
-      whereArgs: [linkType.toString()],
-      orderBy: 'created_at DESC',
-    );
-    return maps.map((map) => WikiLink.fromMap(map)).toList();
+  Future<List<WikiLink>> getLinksByType(WikiLinkType linkType) async {
+    return await _wikiLinkRepository.findByType(linkType);
   }
 
   /// Holt alle Links eines bestimmten Benutzers
-  static Future<List<WikiLink>> getLinksByUser(String userId) async {
-    final db = await _db.database;
-    final maps = await db.query(
-      'wiki_links',
-      where: 'created_by = ?',
-      whereArgs: [userId],
-      orderBy: 'created_at DESC',
-    );
-    return maps.map((map) => WikiLink.fromMap(map)).toList();
+  Future<ServiceResult<List<WikiLink>>> getLinksByUser(String userId) async {
+    try {
+      // TODO: Implementiere userId-Filter im WikiLinkModelRepository
+      final allLinks = await _wikiLinkRepository.findAll();
+      
+      final userLinks = allLinks.where((link) => 
+          link.createdBy == userId).toList();
+      
+      return ServiceResult.success(
+        userLinks,
+        operation: 'getLinksByUser',
+      );
+    } catch (e) {
+      return ServiceResult.unexpectedError(
+        e,
+        operation: 'getLinksByUser',
+      );
+    }
   }
 
   /// Sucht nach Links basierend auf Entry-Titeln
-  static Future<List<WikiLink>> searchLinks(String query) async {
-    final db = await _db.database;
-    final maps = await db.rawQuery('''
-      SELECT wl.* FROM wiki_links wl
-      INNER JOIN wiki_entries we_source ON wl.source_entry_id = we_source.id
-      INNER JOIN wiki_entries we_target ON wl.target_entry_id = we_target.id
-      WHERE we_source.title LIKE ? OR we_target.title LIKE ?
-      ORDER BY wl.created_at DESC
-    ''', ['%$query%', '%$query%']);
-    
-    return maps.map((map) => WikiLink.fromMap(map)).toList();
+  Future<ServiceResult<List<WikiLink>>> searchLinks(String query) async {
+    try {
+      if (query.trim().isEmpty) {
+        return ServiceResult.validationError(
+          ValidationException(
+            'Suchbegriff darf nicht leer sein',
+            operation: 'searchLinks',
+          ),
+          operation: 'searchLinks',
+        );
+      }
+
+      // Suche nach Einträgen und hole deren Links
+      final entries = await _wikiRepository.search(query, fields: ['title']);
+      
+      final matchingLinks = <WikiLink>[];
+      for (final entry in entries) {
+        final outgoingLinks = await _wikiLinkRepository.findBySourceEntry(entry.id);
+        matchingLinks.addAll(outgoingLinks);
+        
+        final incomingLinks = await _wikiLinkRepository.findByTargetEntry(entry.id);
+        matchingLinks.addAll(incomingLinks);
+      }
+      
+      return ServiceResult.success(
+        matchingLinks,
+        operation: 'searchLinks',
+      );
+    } catch (e) {
+      return ServiceResult.unexpectedError(
+        e,
+        operation: 'searchLinks',
+      );
+    }
   }
 
   /// Holt Link-Statistiken
-  static Future<Map<String, dynamic>> getLinkStatistics() async {
-    final db = await _db.database;
-    
-    // Gesamtzahl der Links
-    final totalLinksResult = await db.rawQuery('SELECT COUNT(*) as count FROM wiki_links');
-    final totalLinks = totalLinksResult.first['count'] as int;
-    
-    // Links nach Typ
-    final linksByTypeResult = await db.rawQuery('''
-      SELECT link_type, COUNT(*) as count 
-      FROM wiki_links 
-      GROUP BY link_type 
-      ORDER BY count DESC
-    ''');
-    
-    // Meiste verknüpfte Einträge
-    final mostLinkedResult = await db.rawQuery('''
-      SELECT 
-        we.id,
-        we.title,
-        COUNT(*) as link_count
-      FROM wiki_entries we
-      INNER JOIN wiki_links wl ON we.id = wl.target_entry_id
-      GROUP BY we.id, we.title
-      ORDER BY link_count DESC
-      LIMIT 10
-    ''');
-    
-    return {
-      'totalLinks': totalLinks,
-      'linksByType': linksByTypeResult,
-      'mostLinked': mostLinkedResult,
-    };
+  Future<ServiceResult<Map<String, dynamic>>> getLinkStatistics() async {
+    try {
+      final totalLinks = await _wikiLinkRepository.count();
+      
+      // Verteilung nach Typ
+      final typeDistribution = <String, int>{};
+      for (final type in WikiLinkType.values) {
+        final links = await _wikiLinkRepository.findByType(type);
+        typeDistribution[type.name] = links.length;
+      }
+      
+      return ServiceResult.success(
+        {
+          'totalLinks': totalLinks,
+          'typeDistribution': typeDistribution,
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+        operation: 'getLinkStatistics',
+      );
+    } catch (e) {
+      return ServiceResult.unexpectedError(
+        e,
+        operation: 'getLinkStatistics',
+      );
+    }
+  }
+
+  // ========== BUSINESS LOGIC OPERATIONS ==========
+
+  /// Aktualisiert einen Wiki-Link
+  Future<ServiceResult<WikiLink>> updateLink(String linkId, {
+    WikiLinkType? linkType,
+  }) async {
+    try {
+      final existing = await _wikiLinkRepository.findById(linkId);
+      if (existing == null) {
+        return ServiceResult.notFound(
+          ResourceNotFoundException.forId(
+            'WikiLink',
+            linkId,
+            operation: 'updateLink',
+          ),
+          operation: 'updateLink',
+        );
+      }
+
+      if (linkType == null) {
+        return ServiceResult.validationError(
+          ValidationException(
+            'LinkType darf nicht null sein',
+            operation: 'updateLink',
+          ),
+          operation: 'updateLink',
+        );
+      }
+
+      final updatedLink = WikiLink(
+        id: existing.id,
+        sourceEntryId: existing.sourceEntryId,
+        targetEntryId: existing.targetEntryId,
+        linkType: linkType,
+        createdAt: existing.createdAt,
+        createdBy: existing.createdBy,
+      );
+
+      await _wikiLinkRepository.update(updatedLink);
+      return ServiceResult.success(
+        updatedLink,
+        operation: 'updateLink',
+      );
+    } catch (e) {
+      return ServiceResult.unexpectedError(
+        e,
+        operation: 'updateLink',
+      );
+    }
   }
 
   /// Bereinigt ungültige Links (verweist auf nicht existierende Einträge)
-  static Future<int> cleanupInvalidLinks() async {
-    final db = await _db.database;
-    
-    return await db.transaction((txn) async {
-      // Lösche Links mit ungültiger Source
-      await txn.rawQuery('''
-        DELETE FROM wiki_links 
-        WHERE source_entry_id NOT IN (SELECT id FROM wiki_entries)
-      ''');
+  Future<ServiceResult<int>> cleanupInvalidLinks() async {
+    try {
+      final allLinks = await _wikiLinkRepository.findAll();
       
-      // Lösche Links mit ungültigem Target
-      final result = await txn.rawQuery('''
-        DELETE FROM wiki_links 
-        WHERE target_entry_id NOT IN (SELECT id FROM wiki_entries)
-      ''');
+      int cleanedCount = 0;
+      for (final link in allLinks) {
+        // Prüfe Source Entry
+        final sourceEntry = await _wikiRepository.findById(link.sourceEntryId);
+        if (sourceEntry == null) {
+          await _wikiLinkRepository.delete(link.id);
+          cleanedCount++;
+          continue;
+        }
+        
+        // Prüfe Target Entry
+        final targetEntry = await _wikiRepository.findById(link.targetEntryId);
+        if (targetEntry == null) {
+          await _wikiLinkRepository.delete(link.id);
+          cleanedCount++;
+        }
+      }
       
-      return result.first.values.first as int;
-    });
+      return ServiceResult.success(
+        cleanedCount,
+        operation: 'cleanupInvalidLinks',
+      );
+    } catch (e) {
+      return ServiceResult.unexpectedError(
+        e,
+        operation: 'cleanupInvalidLinks',
+      );
+    }
   }
 
   /// Dupliziert Links für einen kopierten Eintrag
-  static Future<void> duplicateLinksForEntry({
+  Future<ServiceResult<void>> duplicateLinksForEntry({
     required String originalEntryId,
     required String newEntryId,
     String? createdBy,
   }) async {
-    final db = await _db.database;
-    final originalLinks = await getLinksForEntry(originalEntryId);
-    
-    await db.transaction((txn) async {
-      for (final link in originalLinks) {
+    try {
+      final originalEntry = await _wikiRepository.findById(originalEntryId);
+      if (originalEntry == null) {
+        return ServiceResult.notFound(
+          ResourceNotFoundException.forId(
+            'WikiEntry',
+            originalEntryId,
+            operation: 'duplicateLinksForEntry',
+          ),
+          operation: 'duplicateLinksForEntry',
+        );
+      }
+
+      final newEntry = await _wikiRepository.findById(newEntryId);
+      if (newEntry == null) {
+        return ServiceResult.notFound(
+          ResourceNotFoundException.forId(
+            'WikiEntry',
+            newEntryId,
+            operation: 'duplicateLinksForEntry',
+          ),
+          operation: 'duplicateLinksForEntry',
+        );
+      }
+
+      final originalLinks = await _wikiLinkRepository.findBySourceEntry(originalEntryId);
+      
+      for (final originalLink in originalLinks) {
         final newLink = WikiLink(
           id: _uuid.v4(),
           sourceEntryId: newEntryId,
-          targetEntryId: link.targetEntryId,
-          linkType: link.linkType,
+          targetEntryId: originalLink.targetEntryId,
+          linkType: originalLink.linkType,
           createdAt: DateTime.now(),
           createdBy: createdBy,
         );
-        
-        await txn.insert('wiki_links', newLink.toMap());
+
+        await _wikiLinkRepository.create(newLink);
       }
-    });
+      
+      return ServiceResult.success(
+        null,
+        operation: 'duplicateLinksForEntry',
+      );
+    } catch (e) {
+      return ServiceResult.unexpectedError(
+        e,
+        operation: 'duplicateLinksForEntry',
+      );
+    }
   }
 
   /// Importiert Links aus einer Liste
-  static Future<WikiLinkImportResult> importLinks(List<Map<String, dynamic>> linkData) async {
-    final db = await _db.database;
-    int importedCount = 0;
-    int skippedCount = 0;
-    final List<String> errors = [];
-    
-    await db.transaction((txn) async {
-      for (final data in linkData) {
+  Future<ServiceResult<WikiLinkImportResult>> importLinks(List<Map<String, dynamic>> linkData) async {
+    try {
+      if (linkData.isEmpty) {
+        return ServiceResult.validationError(
+          ValidationException(
+            'Link-Daten dürfen nicht leer sein',
+            operation: 'importLinks',
+          ),
+          operation: 'importLinks',
+        );
+      }
+
+      final wikiLinks = linkData.map((data) => WikiLink.fromMap(data)).toList();
+      final importedIds = <String>[];
+      final errors = <String>[];
+      
+      for (final link in wikiLinks) {
         try {
-          final link = WikiLink.fromMap(data);
+          // Prüfe ob Einträge existieren
+          final sourceEntry = await _wikiRepository.findById(link.sourceEntryId);
+          final targetEntry = await _wikiRepository.findById(link.targetEntryId);
           
-          // Prüfen ob Link bereits existiert
-          final existing = await txn.query(
-            'wiki_links',
-            where: 'source_entry_id = ? AND target_entry_id = ? AND link_type = ?',
-            whereArgs: [link.sourceEntryId, link.targetEntryId, link.linkType.toString()],
-          );
-          
-          if (existing.isEmpty) {
-            await txn.insert('wiki_links', link.toMap());
-            importedCount++;
-          } else {
-            skippedCount++;
+          if (sourceEntry == null || targetEntry == null) {
+            errors.add('Einträge nicht gefunden für Link: ${link.id}');
+            continue;
           }
+          
+          await _wikiLinkRepository.create(link);
+          importedIds.add(link.id);
         } catch (e) {
-          errors.add('Fehler bei Link: $e');
-          skippedCount++;
+          errors.add('Fehler beim Import von Link ${link.id}: $e');
         }
       }
-    });
-    
-    return WikiLinkImportResult(
-      success: true,
-      importedCount: importedCount,
-      skippedCount: skippedCount,
-      errors: errors,
-    );
+      
+      return ServiceResult.success(
+        WikiLinkImportResult(
+          success: errors.isEmpty,
+          importedCount: importedIds.length,
+          skippedCount: linkData.length - importedIds.length,
+          errors: errors,
+        ),
+        operation: 'importLinks',
+        affectedCount: importedIds.length,
+      );
+    } catch (e) {
+      return ServiceResult.unexpectedError(
+        e,
+        operation: 'importLinks',
+      );
+    }
   }
 
+  // ========== DETAILED QUERY OPERATIONS ==========
+
+  /// Holt eingehende Links mit Details
+  Future<ServiceResult<List<Map<String, dynamic>>>> getBacklinksWithDetails(String entryId) async {
+    try {
+      final entry = await _wikiRepository.findById(entryId);
+      if (entry == null) {
+        return ServiceResult.notFound(
+          ResourceNotFoundException.forId(
+            'WikiEntry',
+            entryId,
+            operation: 'getBacklinksWithDetails',
+          ),
+          operation: 'getBacklinksWithDetails',
+        );
+      }
+      
+      final links = await _wikiLinkRepository.findByTargetEntry(entryId);
+      
+      final details = <Map<String, dynamic>>[];
+      for (final link in links) {
+        final sourceEntry = await _wikiRepository.findById(link.sourceEntryId);
+        if (sourceEntry != null) {
+          details.add({
+            'link': link.toMap(),
+            'sourceEntry': sourceEntry.toMap(),
+          });
+        }
+      }
+      
+      return ServiceResult.success(
+        details,
+        operation: 'getBacklinksWithDetails',
+      );
+    } catch (e) {
+      return ServiceResult.unexpectedError(
+        e,
+        operation: 'getBacklinksWithDetails',
+      );
+    }
+  }
+
+  /// Holt ausgehende Links mit Details
+  Future<ServiceResult<List<Map<String, dynamic>>>> getLinkedEntriesWithDetails(String entryId) async {
+    try {
+      final entry = await _wikiRepository.findById(entryId);
+      if (entry == null) {
+        return ServiceResult.notFound(
+          ResourceNotFoundException.forId(
+            'WikiEntry',
+            entryId,
+            operation: 'getLinkedEntriesWithDetails',
+          ),
+          operation: 'getLinkedEntriesWithDetails',
+        );
+      }
+      
+      final links = await _wikiLinkRepository.findBySourceEntry(entryId);
+      
+      final details = <Map<String, dynamic>>[];
+      for (final link in links) {
+        final targetEntry = await _wikiRepository.findById(link.targetEntryId);
+        if (targetEntry != null) {
+          details.add({
+            'link': link.toMap(),
+            'targetEntry': targetEntry.toMap(),
+          });
+        }
+      }
+      
+      return ServiceResult.success(
+        details,
+        operation: 'getLinkedEntriesWithDetails',
+      );
+    } catch (e) {
+      return ServiceResult.unexpectedError(
+        e,
+        operation: 'getLinkedEntriesWithDetails',
+      );
+    }
+  }
+
+  /// Baut Wiki-Hierarchie auf
+  Future<ServiceResult<List<Map<String, dynamic>>>> buildHierarchy(String rootEntryId) async {
+    try {
+      final entry = await _wikiRepository.findById(rootEntryId);
+      if (entry == null) {
+        return ServiceResult.notFound(
+          ResourceNotFoundException.forId(
+            'WikiEntry',
+            rootEntryId,
+            operation: 'buildHierarchy',
+          ),
+          operation: 'buildHierarchy',
+        );
+      }
+      
+      final hierarchy = <Map<String, dynamic>>[];
+      await _buildHierarchyRecursive(rootEntryId, hierarchy, 0, 3); // Max 3 Level tief
+      
+      return ServiceResult.success(
+        hierarchy,
+        operation: 'buildHierarchy',
+      );
+    } catch (e) {
+      return ServiceResult.unexpectedError(
+        e,
+        operation: 'buildHierarchy',
+      );
+    }
+  }
+
+  Future<void> _buildHierarchyRecursive(
+    String entryId,
+    List<Map<String, dynamic>> hierarchy,
+    int level,
+    int maxLevel,
+  ) async {
+    if (level >= maxLevel) return;
+    
+    final entry = await _wikiRepository.findById(entryId);
+    if (entry == null) return;
+    
+    final links = await _wikiLinkRepository.findBySourceEntry(entryId);
+    
+    hierarchy.add({
+      'entry': entry.toMap(),
+      'level': level,
+      'linksCount': links.length,
+    });
+    
+    for (final link in links) {
+      await _buildHierarchyRecursive(link.targetEntryId, hierarchy, level + 1, maxLevel);
+    }
+  }
+
+  // ========== CONVENIENCE METHODS ==========
+
   /// Manuellen Link erstellen (Alias für createLink)
-  static Future<String> createManualLink({
+  Future<ServiceResult<String>> createManualLink({
     required String sourceEntryId,
     required String targetEntryId,
     required WikiLinkType linkType,
@@ -293,74 +635,45 @@ class WikiLinkService {
   }
 
   /// Holt ausgehende Links (Alias für getLinksForEntry)
-  static Future<List<WikiLink>> getOutgoingLinks(String entryId) async {
+  Future<List<WikiLink>> getOutgoingLinks(String entryId) async {
     return await getLinksForEntry(entryId);
   }
 
-  /// Holt eingehende Links mit Details
-  static Future<List<Map<String, dynamic>>> getBacklinksWithDetails(String entryId) async {
-    final db = await _db.database;
-    final maps = await db.rawQuery('''
-      SELECT 
-        wl.*,
-        we.title as source_title,
-        we.entry_type as source_type
-      FROM wiki_links wl
-      INNER JOIN wiki_entries we ON wl.source_entry_id = we.id
-      WHERE wl.target_entry_id = ?
-      ORDER BY wl.created_at DESC
-    ''', [entryId]);
-    
-    return maps;
+  // ========== STATIC HELPER METHODS ==========
+
+  /// Konvertiert WikiLinkType zu String
+  static String linkTypeToString(WikiLinkType linkType) => linkType.name;
+
+  /// Konvertiert String zu WikiLinkType
+  static WikiLinkType stringToLinkType(String linkTypeString) {
+    return WikiLinkType.values.firstWhere(
+      (type) => type.name == linkTypeString,
+      orElse: () => WikiLinkType.reference,
+    );
   }
 
-  /// Holt ausgehende Links mit Details
-  static Future<List<Map<String, dynamic>>> getLinkedEntriesWithDetails(String entryId) async {
-    final db = await _db.database;
-    final maps = await db.rawQuery('''
-      SELECT 
-        wl.*,
-        we.title as target_title,
-        we.entry_type as target_type
-      FROM wiki_links wl
-      INNER JOIN wiki_entries we ON wl.target_entry_id = we.id
-      WHERE wl.source_entry_id = ?
-      ORDER BY wl.created_at DESC
-    ''', [entryId]);
+  /// Formatiert WikiLink für Anzeige
+  static String formatWikiLink(WikiLink link) {
+    final buffer = StringBuffer();
+    buffer.writeln('WikiLink: ${link.id}');
+    buffer.writeln('  Source: ${link.sourceEntryId}');
+    buffer.writeln('  Target: ${link.targetEntryId}');
+    buffer.writeln('  Type: ${link.linkType}');
+    buffer.writeln('  Created: ${link.createdAt}');
     
-    return maps;
+    if (link.createdBy != null) {
+      buffer.writeln('  Created By: ${link.createdBy}');
+    }
+    
+    return buffer.toString();
   }
 
-  /// Baut Wiki-Hierarchie auf
-  static Future<List<Map<String, dynamic>>> buildHierarchy(String rootEntryId) async {
-    final db = await _db.database;
-    final maps = await db.rawQuery('''
-      WITH RECURSIVE wiki_tree AS (
-        SELECT 
-          id,
-          title,
-          entry_type,
-          parent_id,
-          0 as level
-        FROM wiki_entries
-        WHERE id = ?
-        
-        UNION ALL
-        
-        SELECT 
-          we.id,
-          we.title,
-          we.entry_type,
-          we.parent_id,
-          wt.level + 1
-        FROM wiki_entries we
-        INNER JOIN wiki_tree wt ON we.parent_id = wt.id
-        WHERE we.parent_id IS NOT NULL
-      )
-      SELECT * FROM wiki_tree ORDER BY level, title
-    ''', [rootEntryId]);
-    
-    return maps;
+  /// Prüft ob ein Link-Valid ist
+  static bool isValidLink(WikiLink link) {
+    return link.sourceEntryId.isNotEmpty &&
+           link.targetEntryId.isNotEmpty &&
+           link.sourceEntryId != link.targetEntryId &&
+           link.id.isNotEmpty;
   }
 }
 

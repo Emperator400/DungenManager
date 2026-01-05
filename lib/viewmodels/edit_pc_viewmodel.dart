@@ -1,18 +1,22 @@
-import 'dart:async';
 import 'package:flutter/foundation.dart';
-import '../models/player_character.dart';
-import '../models/inventory_item.dart';
-import '../models/item.dart';
-import '../database/database_helper.dart';
-import '../game_data/game_data.dart';
+import '../database/repositories/player_character_model_repository.dart';
+import '../database/repositories/inventory_item_model_repository.dart';
+import '../database/core/database_connection.dart';
 import '../game_data/dnd_logic.dart';
 import '../game_data/dnd_models.dart';
+import '../game_data/game_data.dart';
+import '../models/inventory_item.dart';
+import '../models/item.dart';
+import '../models/player_character.dart';
 import '../services/inventory_service.dart';
 
 /// ViewModel für die Bearbeitung von Player Characters
+/// 
+/// HINWEIS: Verwendet jetzt die neuen ModelRepositories
 /// Zentralisiert State Management und Business-Logik für PC-Erstellung und -Bearbeitung
 class EditPCViewModel extends ChangeNotifier {
-  final DatabaseHelper _dbHelper;
+  final PlayerCharacterModelRepository _pcRepository;
+  final InventoryItemModelRepository _inventoryRepository;
   final InventoryService _inventoryService;
 
   // ============================================================================
@@ -39,12 +43,24 @@ class EditPCViewModel extends ChangeNotifier {
   String? _imagePath;
 
   // Loading States
-  bool _isLoading = false;
+  final bool _isLoading = false;
   bool _isSaving = false;
   String? _error;
 
   // Inventory
   List<DisplayInventoryItem> _inventory = [];
+
+  // D&D Details State
+  String _size = 'Medium';
+  String _type = 'Humanoid';
+  String? _subtype;
+  String _alignment = 'Neutral';
+  String _description = '';
+  String? _specialAbilities;
+  String _attacks = '';
+  double _gold = 0.0;
+  double _silver = 0.0;
+  double _copper = 0.0;
 
   // ============================================================================
   // GETTERS
@@ -72,6 +88,18 @@ class EditPCViewModel extends ChangeNotifier {
   String? get error => _error;
   List<DisplayInventoryItem> get inventory => _inventory;
 
+  // D&D Details Getters
+  String get size => _size;
+  String get type => _type;
+  String? get subtype => _subtype;
+  String get alignment => _alignment;
+  String get description => _description;
+  String? get specialAbilities => _specialAbilities;
+  String get attacks => _attacks;
+  double get gold => _gold;
+  double get silver => _silver;
+  double get copper => _copper;
+
   // Computed Properties
   int get initiativeBonus => getModifier(_dexterity);
   int get proficiencyBonus => getProficiencyBonus(_level);
@@ -81,10 +109,15 @@ class EditPCViewModel extends ChangeNotifier {
   // CONSTRUCTOR
   // ============================================================================
 
+  /// 
+  /// HINWEIS: Verwendet jetzt die neuen ModelRepositories
+  /// 
   EditPCViewModel({
-    DatabaseHelper? dbHelper,
+    PlayerCharacterModelRepository? pcRepository,
+    InventoryItemModelRepository? inventoryRepository,
     InventoryService? inventoryService,
-  }) : _dbHelper = dbHelper ?? DatabaseHelper.instance,
+  }) : _pcRepository = pcRepository ?? PlayerCharacterModelRepository(DatabaseConnection.instance),
+       _inventoryRepository = inventoryRepository ?? InventoryItemModelRepository(DatabaseConnection.instance),
        _inventoryService = inventoryService ?? InventoryService();
 
   // ============================================================================
@@ -93,7 +126,10 @@ class EditPCViewModel extends ChangeNotifier {
 
   /// Initialisiert den ViewModel mit PC-Daten
   Future<void> initialize(String campaignId, PlayerCharacter? pc) async {
-    await _executeWithErrorHandling(() async {
+    try {
+      _error = null;
+      notifyListeners();
+      
       _campaignId = campaignId;
       _pcToEdit = pc;
 
@@ -112,6 +148,18 @@ class EditPCViewModel extends ChangeNotifier {
         _charisma = pc.charisma;
         _proficientSkills = pc.proficientSkills.toSet();
         _imagePath = pc.imagePath;
+
+        // Lade D&D Details
+        _size = pc.size ?? 'Medium';
+        _type = pc.type ?? 'Humanoid';
+        _subtype = pc.subtype;
+        _alignment = pc.alignment ?? 'Neutral';
+        _description = pc.description ?? '';
+        _specialAbilities = pc.specialAbilities;
+        _attacks = pc.attacks ?? '';
+        _gold = pc.gold ?? 0.0;
+        _silver = pc.silver ?? 0.0;
+        _copper = pc.copper ?? 0.0;
 
         // Finde Klasse und Rasse
         _selectedClass = allDndClasses.firstWhere(
@@ -141,13 +189,29 @@ class EditPCViewModel extends ChangeNotifier {
         _proficientSkills = {};
         _imagePath = null;
 
+        // Setze Standard-D&D Details
+        _size = 'Medium';
+        _type = 'Humanoid';
+        _subtype = null;
+        _alignment = 'Neutral';
+        _description = '';
+        _specialAbilities = null;
+        _attacks = '';
+        _gold = 0.0;
+        _silver = 0.0;
+        _copper = 0.0;
+
         // Setze Standard-Klasse und Rasse
         _selectedClass = allDndClasses.first;
         _selectedRace = allDndRaces.first;
 
         _inventory = [];
       }
-    });
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
   }
 
   // ============================================================================
@@ -248,6 +312,57 @@ class EditPCViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  // D&D Details Updaters
+  void updateSize(String size) {
+    _size = size;
+    notifyListeners();
+  }
+
+  void updateType(String type) {
+    _type = type;
+    notifyListeners();
+  }
+
+  void updateSubtype(String? subtype) {
+    _subtype = subtype;
+    notifyListeners();
+  }
+
+  void updateAlignment(String alignment) {
+    _alignment = alignment;
+    notifyListeners();
+  }
+
+  void updateDescription(String description) {
+    _description = description;
+    notifyListeners();
+  }
+
+  void updateSpecialAbilities(String? specialAbilities) {
+    _specialAbilities = specialAbilities;
+    notifyListeners();
+  }
+
+  void updateAttacks(String attacks) {
+    _attacks = attacks;
+    notifyListeners();
+  }
+
+  void updateGold(double gold) {
+    _gold = gold;
+    notifyListeners();
+  }
+
+  void updateSilver(double silver) {
+    _silver = silver;
+    notifyListeners();
+  }
+
+  void updateCopper(double copper) {
+    _copper = copper;
+    notifyListeners();
+  }
+
   // ============================================================================
   // SKILL CALCULATIONS
   // ============================================================================
@@ -289,15 +404,29 @@ class EditPCViewModel extends ChangeNotifier {
 
   /// Speichert den Character (Create oder Update)
   Future<void> saveCharacter() async {
-    await _executeWithErrorHandling(() async {
+    try {
+      _isSaving = true;
+      _error = null;
+      notifyListeners();
+      
+      print('=== SAVE CHARACTER START ===');
+      print('Campaign ID: $_campaignId');
+      print('Name: $_name');
+      print('Player Name: $_playerName');
+      
       if (_selectedClass == null || _selectedRace == null) {
-        throw Exception('Klasse und Rasse müssen ausgewählt werden');
+        final errorMsg = 'Klasse und Rasse müssen ausgewählt werden';
+        print('FEHLER: $errorMsg');
+        throw Exception(errorMsg);
       }
 
       if (_name.isEmpty || _playerName.isEmpty) {
-        throw Exception('Name und Spielername müssen ausgefüllt werden');
+        final errorMsg = 'Name und Spielername müssen ausgefüllt werden';
+        print('FEHLER: $errorMsg');
+        throw Exception(errorMsg);
       }
 
+      print('Erstelle PlayerCharacter...');
       final pc = PlayerCharacter.create(
         campaignId: _campaignId,
         name: _name,
@@ -316,75 +445,147 @@ class EditPCViewModel extends ChangeNotifier {
         wisdom: _wisdom,
         charisma: _charisma,
         proficientSkills: _proficientSkills.toList(),
+        
+        // D&D-Erweiterungsfelder
+        size: _size,
+        type: _type,
+        subtype: _subtype,
+        alignment: _alignment,
+        description: _description,
+        specialAbilities: _specialAbilities,
+        attacks: _attacks,
+        
+        // Strukturierte Daten
+        attackList: [],
+        inventory: _inventory.map((item) => item.inventoryItem).toList(),
+        
+        // Währung
+        gold: _gold,
+        silver: _silver,
+        copper: _copper,
+        
+        // Metadaten
+        sourceType: 'custom',
+        sourceId: null,
+        isFavorite: false,
+        version: '1.0',
       );
+      
+      print('PlayerCharacter erstellt mit ID: ${pc.id}');
 
       if (_pcToEdit != null) {
         // Update existing character
-        final updatedPc = pc.copyWith(id: _pcToEdit!.id);
-        await _dbHelper.updatePlayerCharacter(updatedPc);
+        print('Update existing character: ${_pcToEdit!.id}');
+        final updatePc = pc.copyWith(id: _pcToEdit!.id);
+        print('Update PC ID: ${updatePc.id}');
+        final savedPc = await _pcRepository.update(updatePc);
+        print('Character erfolgreich aktualisiert: ${savedPc.id}');
+        if (savedPc != null) {
+          _pcToEdit = savedPc;
+        }
       } else {
         // Create new character
-        await _dbHelper.insertPlayerCharacter(pc);
+        print('Create new character...');
+        print('PC Repository: $_pcRepository');
+        final savedPc = await _pcRepository.create(pc);
+        print('Character erfolgreich erstellt mit ID: ${savedPc.id}');
+        if (savedPc != null) {
+          _pcToEdit = savedPc;
+          print('PC nach Speichern gesetzt: ${_pcToEdit?.id}');
+        } else {
+          print('WARNUNG: savedPc ist null!');
+        }
       }
-    });
+      
+      print('=== SAVE CHARACTER SUCCESS ===');
+    } catch (e, stackTrace) {
+      _error = e.toString();
+      print('=== SAVE CHARACTER FEHLER ===');
+      print('Fehler: $e');
+      print('Stack Trace: $stackTrace');
+      print('============================');
+      notifyListeners();
+      rethrow;
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
   }
 
   // ============================================================================
   // INVENTORY OPERATIONS
   // ============================================================================
 
-  /// Lädt das Inventar eines Charakters
+  /// Lädt das Inventar eines Charakters über neues Repository
   Future<void> _loadInventory(String characterId) async {
-    final inventoryItems = await _dbHelper.getInventoryForOwner(characterId);
-    _inventory = inventoryItems.map((item) => DisplayInventoryItem(
-      inventoryItem: item,
-      item: Item(
-        id: item.itemId, 
-        name: 'Item', 
-        description: 'Beschreibung',
-        itemType: ItemType.Weapon,
-      ),
-    )).toList();
-    notifyListeners();
+    try {
+      final inventoryItems = await _inventoryRepository.findByCharacter(characterId);
+      _inventory = inventoryItems.map((item) => DisplayInventoryItem(
+        inventoryItem: item,
+        item: Item(
+          id: item.itemId, 
+          name: 'Item', 
+          description: 'Beschreibung',
+          itemType: ItemType.Weapon,
+        ),
+      )).toList();
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
   }
 
-  /// Fügt ein Item zum Inventar hinzu
+  /// Fügt ein Item zum Inventar hinzu über neues Repository
   Future<void> addItemToInventory(String itemId, {int quantity = 1}) async {
     if (_pcToEdit == null) {
       throw Exception('Charakter muss zuerst gespeichert werden');
     }
 
-    await _executeWithErrorHandling(() async {
+    try {
       final inventoryItem = InventoryItem(
         id: '',
-        ownerId: _pcToEdit!.id,
+        characterId: _pcToEdit!.id,
         itemId: itemId,
         quantity: quantity,
       );
-      await _dbHelper.insertInventoryItem(inventoryItem);
+      await _inventoryRepository.create(inventoryItem);
       await _loadInventory(_pcToEdit!.id);
-    });
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
   }
 
-  /// Aktualisiert die Menge eines Inventar-Items
+  /// Aktualisiert die Menge eines Inventar-Items über neues Repository
   Future<void> updateInventoryItemQuantity(String inventoryItemId, int quantity) async {
-    await _executeWithErrorHandling(() async {
-      await _dbHelper.updateInventoryItem(InventoryItem(
-        id: inventoryItemId,
-        ownerId: '',
-        itemId: '',
-        quantity: quantity,
-      ));
-      await _loadInventory(_pcToEdit!.id);
-    });
+    try {
+      final existingItem = await _inventoryRepository.findById(inventoryItemId);
+      if (existingItem != null) {
+        final updatedItem = existingItem.copyWith(quantity: quantity);
+        await _inventoryRepository.update(updatedItem);
+        await _loadInventory(_pcToEdit!.id);
+      }
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
   }
 
-  /// Entfernt ein Item aus dem Inventar
+  /// Entfernt ein Item aus dem Inventar über neues Repository
   Future<void> removeInventoryItem(String inventoryItemId) async {
-    await _executeWithErrorHandling(() async {
-      await _dbHelper.deleteInventoryItem(inventoryItemId);
-      await _loadInventory(_pcToEdit!.id);
-    });
+    try {
+      await _inventoryRepository.delete(inventoryItemId);
+      if (_pcToEdit != null) {
+        await _loadInventory(_pcToEdit!.id);
+      }
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
   }
 
   // ============================================================================
@@ -451,32 +652,9 @@ class EditPCViewModel extends ChangeNotifier {
   // ERROR HANDLING
   // ============================================================================
 
-  /// Führt eine Operation mit Error Handling durch
-  Future<T> _executeWithErrorHandling<T>(Future<T> Function() operation) async {
-    try {
-      _error = null;
-      notifyListeners();
-      
-      return await operation();
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-      rethrow;
-    }
-  }
-
   /// Löscht den Fehler-Zustand
   void clearError() {
     _error = null;
     notifyListeners();
-  }
-
-  // ============================================================================
-  // DISPOSE
-  // ============================================================================
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 }

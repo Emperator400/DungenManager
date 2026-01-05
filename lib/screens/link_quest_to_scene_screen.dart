@@ -1,6 +1,7 @@
 // lib/screens/link_quest_to_scene_screen.dart
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart';
+import '../database/core/database_connection.dart';
+import '../database/repositories/quest_model_repository.dart';
 import '../models/quest.dart';
 
 class LinkQuestToSceneScreen extends StatefulWidget {
@@ -12,12 +13,13 @@ class LinkQuestToSceneScreen extends StatefulWidget {
 }
 
 class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
-  final dbHelper = DatabaseHelper.instance;
+  late QuestModelRepository _questRepository;
   late Set<String> _selectedIds;
 
   @override
   void initState() {
     super.initState();
+    _questRepository = QuestModelRepository(DatabaseConnection.instance);
     _selectedIds = widget.previouslyLinkedIds.toSet();
   }
 
@@ -34,7 +36,7 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
         ],
       ),
       body: FutureBuilder<List<Quest>>(
-        future: dbHelper.getAllQuests(),
+        future: _questRepository.findAll(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           final quests = snapshot.data!;

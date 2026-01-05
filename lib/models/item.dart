@@ -111,6 +111,97 @@ class Item {
     };
   }
 
+  /// NEUE METHODE: Serialisiert für Datenbank mit konsistenten Feldnamen
+  /// Diese Methode ersetzt zukünftig die Entity-Konvertierung
+  Map<String, dynamic> toDatabaseMap() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'item_type': _itemTypeToString(),
+      'weight': weight,
+      'cost': cost,
+      'image_url': imageUrl,
+      'damage': damage,
+      'properties': properties,
+      'ac_formula': acFormula,
+      'strength_requirement': strengthRequirement,
+      'stealth_disadvantage': stealthDisadvantage == true ? 1 : 0,
+      'rarity': rarity,
+      'requires_attunement': requiresAttunement == true ? 1 : 0,
+      'has_durability': hasDurability == true ? 1 : 0,
+      'max_durability': maxDurability,
+      'is_repairable': isRepairable == true ? 1 : 0,
+      'spell_id': spellId,
+      'is_spell': isSpell == true ? 1 : 0,
+      'spell_level': spellLevel,
+      'spell_school': spellSchool,
+      'is_cantrip': isCantrip == true ? 1 : 0,
+      'max_casts_per_day': maxCastsPerDay,
+      'requires_concentration': requiresConcentration == true ? 1 : 0,
+      'source_type': 'custom',
+      'source_id': null,
+      'is_custom': 1,
+      'is_favorite': 0,
+      'version': '1.0',
+      'created_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+  }
+
+  /// NEUE METHODE: Deserialisiert von Datenbank mit konsistenten Feldnamen
+  /// Diese Methode ersetzt zukünftig die Entity-Konvertierung
+  factory Item.fromDatabaseMap(Map<String, dynamic> map) {
+    return Item(
+      id: ModelParsingHelper.safeId(map, 'id'),
+      name: ModelParsingHelper.safeString(map, 'name', 'Unbenanntes Item'),
+      description: ModelParsingHelper.safeString(map, 'description', ''),
+      itemType: _parseItemType(map['item_type'] as String?),
+      weight: ModelParsingHelper.safeDouble(map, 'weight', 0.0),
+      cost: ModelParsingHelper.safeDouble(map, 'cost', 0.0),
+      imageUrl: ModelParsingHelper.safeString(map, 'image_url', ''),
+      damage: ModelParsingHelper.safeStringOrNull(map, 'damage', null),
+      properties: ModelParsingHelper.safeStringOrNull(map, 'properties', null),
+      acFormula: ModelParsingHelper.safeStringOrNull(map, 'ac_formula', null),
+      strengthRequirement: ModelParsingHelper.safeIntOrNull(map, 'strength_requirement', null),
+      stealthDisadvantage: (map['stealth_disadvantage'] as int?) == 1,
+      rarity: ModelParsingHelper.safeStringOrNull(map, 'rarity', null),
+      requiresAttunement: (map['requires_attunement'] as int?) == 1,
+      hasDurability: (map['has_durability'] as int?) == 1,
+      maxDurability: ModelParsingHelper.safeIntOrNull(map, 'max_durability', null),
+      isRepairable: (map['is_repairable'] as int?) == 1,
+      spellId: ModelParsingHelper.safeStringOrNull(map, 'spell_id', null),
+      isSpell: (map['is_spell'] as int?) == 1,
+      spellLevel: ModelParsingHelper.safeIntOrNull(map, 'spell_level', null),
+      spellSchool: ModelParsingHelper.safeStringOrNull(map, 'spell_school', null),
+      isCantrip: (map['is_cantrip'] as int?) == 1,
+      maxCastsPerDay: ModelParsingHelper.safeIntOrNull(map, 'max_casts_per_day', null),
+      requiresConcentration: (map['requires_concentration'] as int?) == 1,
+    );
+  }
+
+  /// Hilfsmethode: Konvertiert ItemType zu String für Datenbank
+  String _itemTypeToString() {
+    return itemType.toString().replaceAll('ItemType.', '');
+  }
+
+  /// Hilfsmethode: Parsiert ItemType aus Datenbank-String
+  static ItemType _parseItemType(String? itemTypeString) {
+    if (itemTypeString == null || itemTypeString.isEmpty) return ItemType.Weapon;
+    
+    try {
+      return ItemType.values.firstWhere(
+        (type) => type.toString().contains(itemTypeString),
+        orElse: () => ItemType.Weapon,
+      );
+    } catch (e) {
+      return ItemType.Weapon;
+    }
+  }
+
+  /// Gibt den Tabellennamen für die Datenbank zurück
+  static String get tableName => 'items';
+
   factory Item.fromMap(Map<String, dynamic> map) {
     return Item(
       id: ModelParsingHelper.safeId(map, 'id'),

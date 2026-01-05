@@ -1,6 +1,7 @@
 // lib/screens/add_quest_from_library_screen.dart
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart';
+import '../database/core/database_connection.dart';
+import '../database/repositories/quest_model_repository.dart';
 import '../models/quest.dart';
 import '../widgets/quest_library/enhanced_quest_card_widget.dart';
 import '../screens/enhanced_quest_library_screen.dart';
@@ -15,7 +16,7 @@ class AddQuestFromLibraryScreen extends StatefulWidget {
 }
 
 class _AddQuestFromLibraryScreenState extends State<AddQuestFromLibraryScreen> {
-  final dbHelper = DatabaseHelper.instance;
+  late QuestModelRepository _questRepository;
   late Future<List<Quest>> _allQuestsFuture;
   late Future<List<Map<String, dynamic>>> _linkedQuestsFuture;
   
@@ -25,8 +26,9 @@ class _AddQuestFromLibraryScreenState extends State<AddQuestFromLibraryScreen> {
   @override
   void initState() {
     super.initState();
-    _allQuestsFuture = dbHelper.getAllQuests();
-    _linkedQuestsFuture = dbHelper.getAllQuests().then((quests) => 
+    _questRepository = QuestModelRepository(DatabaseConnection.instance);
+    _allQuestsFuture = _questRepository.findAll();
+    _linkedQuestsFuture = _questRepository.findAll().then((quests) => 
       quests.where((q) => q.campaignId == widget.campaignId)
         .map((q) => {'questId': q.id.toString()})
         .toList()
@@ -57,10 +59,10 @@ class _AddQuestFromLibraryScreenState extends State<AddQuestFromLibraryScreen> {
 
     for (final questId in _selectedQuestIds) {
       // Finde den Quest und aktualisiere seine campaignId
-      final quests = await dbHelper.getAllQuests();
+      final quests = await _questRepository.findAll();
       final quest = quests.firstWhere((q) => q.id.toString() == questId);
       final updatedQuest = quest.copyWith(campaignId: widget.campaignId);
-      await dbHelper.updateQuest(updatedQuest);
+      await _questRepository.update(updatedQuest);
     }
     if (mounted) Navigator.of(context).pop();
   }
@@ -75,7 +77,7 @@ class _AddQuestFromLibraryScreenState extends State<AddQuestFromLibraryScreen> {
     if (result == true) {
       // Quests wurden in der Bibliothek geändert, lade neu
       setState(() {
-        _allQuestsFuture = dbHelper.getAllQuests();
+        _allQuestsFuture = _questRepository.findAll();
       });
     }
   }

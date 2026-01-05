@@ -1,34 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../theme/dnd_theme.dart';
-import '../models/campaign.dart';
 
-// Import all Enhanced Screens
-import 'enhanced_quest_library_screen.dart';
-import 'enhanced_lore_keeper_screen.dart';
-import 'enhanced_item_library_screen.dart';
+import '../models/campaign.dart';
+import '../theme/dnd_theme.dart';
+import '../viewmodels/bestiary_viewmodel.dart';
+import '../viewmodels/campaign_viewmodel.dart';
+import '../viewmodels/character_editor_viewmodel.dart';
+import '../viewmodels/item_library_viewmodel.dart';
+import '../viewmodels/official_monsters_viewmodel.dart';
+import '../viewmodels/quest_library_viewmodel.dart';
+import '../viewmodels/session_list_for_campaign_viewmodel.dart';
+import '../viewmodels/sound_library_viewmodel.dart';
+import '../viewmodels/wiki_viewmodel.dart';
+
+// Screens
 import 'enhanced_bestiary_screen.dart';
-import 'enhanced_sound_library_screen.dart';
-import 'enhanced_official_monsters_screen.dart';
 import 'enhanced_campaign_dashboard_screen.dart';
+import 'enhanced_item_library_screen.dart';
+import 'enhanced_lore_keeper_screen.dart';
+import 'enhanced_official_monsters_screen.dart';
 import 'enhanced_pc_list_screen.dart';
+import 'enhanced_quest_library_screen.dart';
+import 'enhanced_sound_library_screen.dart';
 import 'session_list_for_campaign_screen.dart';
 
-// Import ViewModels
-import '../viewmodels/quest_library_viewmodel.dart';
-import '../viewmodels/wiki_viewmodel.dart';
-import '../viewmodels/item_library_viewmodel.dart';
-import '../viewmodels/bestiary_viewmodel.dart';
-import '../viewmodels/sound_library_viewmodel.dart';
-import '../viewmodels/official_monsters_viewmodel.dart';
-import '../viewmodels/campaign_viewmodel.dart';
-import '../viewmodels/session_list_for_campaign_viewmodel.dart';
-import '../viewmodels/character_editor_viewmodel.dart';
-
-/// Enhanced Main Navigation Screen mit modernem Design und intuitiver Benutzerführung
+/// Enhanced Main Navigation Screen
 /// 
 /// Zentrale Navigation für alle D&D Kampagnen-Management Funktionen
-/// mit klaren visuellen Hierarchien und schnellen Zugriffen
 class EnhancedMainNavigationScreen extends StatelessWidget {
   final Campaign? campaign;
   
@@ -70,28 +68,18 @@ class _MainNavigationLayout extends StatelessWidget {
       backgroundColor: DnDTheme.dungeonBlack,
       body: CustomScrollView(
         slivers: [
-          // Moderner Custom AppBar mit Kampagnen-Info
           _buildSliverAppBar(context),
           
-          // Campaign Management (wenn Kampagne ausgewählt)
           if (campaign != null) _buildCampaignSection(context, campaign!),
-          
-          // Content Management Bibliotheken
           _buildContentSection(context),
-          
-          // Tools & Utilities
           _buildToolsSection(context),
           
-          // Bottom Padding
-          const SliverToBoxAdapter(
-            child: SizedBox(height: 100),
-          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],
       ),
     );
   }
 
-  /// Moderner SliverAppBar mit Kampagnen-Info und Quick Actions
   Widget _buildSliverAppBar(BuildContext context) {
     return SliverAppBar(
       expandedHeight: 120,
@@ -138,14 +126,12 @@ class _MainNavigationLayout extends StatelessWidget {
         ),
       ),
       actions: [
-        // Quick Action: Sessions (wichtigste Funktion)
         if (campaign != null)
           IconButton(
             icon: const Icon(Icons.play_circle, color: Colors.white),
             onPressed: () => _navigateToScreen(context, ScreenType.sessions, campaign: campaign),
             tooltip: 'Sessions',
           ),
-        // Settings
         IconButton(
           icon: const Icon(Icons.settings, color: Colors.white),
           onPressed: () => _showSettingsDialog(context),
@@ -155,8 +141,6 @@ class _MainNavigationLayout extends StatelessWidget {
     );
   }
 
-
-  /// Kampagnen-spezifische Sektion
   Widget _buildCampaignSection(BuildContext context, Campaign campaign) {
     return SliverToBoxAdapter(
       child: Container(
@@ -182,11 +166,7 @@ class _MainNavigationLayout extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.campaign,
-                  color: DnDTheme.ancientGold,
-                  size: 20,
-                ),
+                Icon(Icons.campaign, color: DnDTheme.ancientGold, size: 20),
                 const SizedBox(width: 6),
                 Text(
                   'Aktuelle Kampagne',
@@ -225,7 +205,6 @@ class _MainNavigationLayout extends StatelessWidget {
     );
   }
 
-  /// Content Management Bibliotheken als List View
   Widget _buildContentSection(BuildContext context) {
     return SliverToBoxAdapter(
       child: Container(
@@ -241,7 +220,7 @@ class _MainNavigationLayout extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            // Helden nur anzeigen, wenn Kampagne ausgewählt
+            
             if (campaign != null) _ContentListItem(
               title: 'Helden',
               subtitle: 'Charaktere erstellen & verwalten',
@@ -283,7 +262,6 @@ class _MainNavigationLayout extends StatelessWidget {
     );
   }
 
-  /// Tools & Utilities Sektion
   Widget _buildToolsSection(BuildContext context) {
     return SliverToBoxAdapter(
       child: Container(
@@ -320,8 +298,10 @@ class _MainNavigationLayout extends StatelessWidget {
   }
 }
 
+// ============================================================================
+// Helper Widgets
+// ============================================================================
 
-/// Kampagnen-Info Zeile
 class _CampaignInfoRow extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -338,11 +318,7 @@ class _CampaignInfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(
-          icon,
-          size: 16,
-          color: DnDTheme.ancientGold.withOpacity(0.7),
-        ),
+        Icon(icon, size: 16, color: DnDTheme.ancientGold.withOpacity(0.7)),
         const SizedBox(width: 8),
         Text(
           '$label: ',
@@ -355,10 +331,7 @@ class _CampaignInfoRow extends StatelessWidget {
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-            ),
+            style: const TextStyle(color: Colors.white, fontSize: 14),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -367,7 +340,6 @@ class _CampaignInfoRow extends StatelessWidget {
   }
 }
 
-/// Kampagnen-Action Buttons
 class _CampaignActionButtons extends StatelessWidget {
   final BuildContext context;
   final Campaign campaign;
@@ -410,36 +382,8 @@ class _CampaignActionButtons extends StatelessWidget {
       ],
     );
   }
-
-  void _navigateToScreen(BuildContext context, ScreenType screenType, {Campaign? campaign}) {
-    Widget screen;
-
-    switch (screenType) {
-      case ScreenType.campaigns:
-        screen = ChangeNotifierProvider<CampaignViewModel>(
-          create: (_) => CampaignViewModel(),
-          child: const EnhancedCampaignDashboardScreen(),
-        );
-        break;
-      case ScreenType.sessions:
-        screen = ChangeNotifierProvider<SessionListForCampaignViewModel>(
-          create: (_) => SessionListForCampaignViewModel(),
-          child: SessionListForCampaignScreen(campaign: campaign!),
-        );
-        break;
-      default:
-        return;
-    }
-
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => screen,
-      ),
-    );
-  }
 }
 
-/// Content List Item für List View Darstellung
 class _ContentListItem extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -464,16 +408,10 @@ class _ContentListItem extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            color.withOpacity(0.1),
-            color.withOpacity(0.05),
-          ],
+          colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
         ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withOpacity(0.3),
-          width: 1,
-        ),
+        border: Border.all(color: color.withOpacity(0.3), width: 1),
       ),
       child: Material(
         color: Colors.transparent,
@@ -490,11 +428,7 @@ class _ContentListItem extends StatelessWidget {
                     color: color.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(
-                    icon,
-                    color: color,
-                    size: 24,
-                  ),
+                  child: Icon(icon, color: color, size: 24),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -520,11 +454,7 @@ class _ContentListItem extends StatelessWidget {
                     ],
                   ),
                 ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: color.withOpacity(0.6),
-                  size: 16,
-                ),
+                Icon(Icons.arrow_forward_ios, color: color.withOpacity(0.6), size: 16),
               ],
             ),
           ),
@@ -534,105 +464,6 @@ class _ContentListItem extends StatelessWidget {
   }
 }
 
-
-enum ScreenType {
-  campaigns,
-  quests,
-  wiki,
-  characters,
-  party,
-  items,
-  bestiary,
-  sessions,
-  sounds,
-  monsters,
-}
-
-/// Globale Navigations-Funktion
-void _navigateToScreen(BuildContext context, ScreenType screenType, {Campaign? campaign}) {
-  Widget screen;
-
-  switch (screenType) {
-    case ScreenType.campaigns:
-      screen = ChangeNotifierProvider<CampaignViewModel>(
-        create: (_) => CampaignViewModel(),
-        child: const EnhancedCampaignDashboardScreen(),
-      );
-      break;
-    case ScreenType.quests:
-      screen = const EnhancedQuestLibraryScreen();
-      break;
-    case ScreenType.wiki:
-      screen = const EnhancedLoreKeeperScreen();
-      break;
-    case ScreenType.characters:
-      if (campaign != null) {
-        screen = ChangeNotifierProvider(
-          create: (_) => CharacterEditorViewModel(),
-          child: EnhancedPlayerCharacterListScreen(campaign: campaign!),
-        );
-      } else {
-        screen = const _PlaceholderScreen(title: 'Helden - Keine Kampagne  asdasd ausgewählt');
-      }
-      break;
-    case ScreenType.party: 
-      screen = const _PlaceholderScreen(title: 'Gruppe');
-      break;
-    case ScreenType.items:
-      screen = const EnhancedItemLibraryScreen();
-      break;
-    case ScreenType.bestiary:
-      screen = const EnhancedBestiaryScreen();
-      break;
-      case ScreenType.sessions:
-        if (campaign != null) {
-          screen = ChangeNotifierProvider<SessionListForCampaignViewModel>(
-            create: (_) => SessionListForCampaignViewModel(),
-            child: SessionListForCampaignScreen(campaign: campaign!),
-          );
-        } else {
-          screen = const _PlaceholderScreen(title: 'Sessions - Keine Kampagne ausgewählt');
-        }
-        break;
-    case ScreenType.sounds:
-      screen = const EnhancedSoundLibraryScreen();
-      break;
-    case ScreenType.monsters:
-      screen = const EnhancedOfficialMonstersScreen();
-      break;
-  }
-
-  Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (context) => screen,
-    ),
-  );
-}
-
-/// Settings Dialog (Placeholder)
-void _showSettingsDialog(BuildContext context) {
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Einstellungen'),
-      content: const Text('Einstellungen werden in zukünftigen Versionen verfügbar sein.'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('OK'),
-        ),
-      ],
-    ),
-  );
-}
-
-/// Datum formatieren
-String _formatDate(DateTime? date) {
-  if (date == null) return 'Unbekannt';
-  return '${date.day}.${date.month}.${date.year}';
-}
-
-/// Placeholder screen for screens that need additional parameters
 class _PlaceholderScreen extends StatelessWidget {
   final String title;
 
@@ -653,37 +484,130 @@ class _PlaceholderScreen extends StatelessWidget {
         backgroundColor: DnDTheme.mysticalPurple,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Center(
-        child: Container(
-          padding: const EdgeInsets.all(DnDTheme.lg),
-          decoration: DnDTheme.getDungeonWallDecoration(),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.construction,
-                size: 64,
-                color: DnDTheme.ancientGold.withValues(alpha: 0.6),
-              ),
-              const SizedBox(height: DnDTheme.md),
-              Text(
-                'In Arbeit',
-                style: DnDTheme.headline3.copyWith(
-                  color: DnDTheme.ancientGold,
-                ),
-              ),
-              const SizedBox(height: DnDTheme.sm),
-              Text(
-                'Dieser Bereich wird aktuell überarbeitet.\nDemnächst verfügbar!',
-                style: DnDTheme.bodyText1.copyWith(
-                  color: Colors.white70,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.construction,
+            size: 80,
+            color: DnDTheme.ancientGold.withValues(alpha: 0.6),
           ),
-        ),
+          const SizedBox(height: DnDTheme.lg),
+          Text(
+            'In Arbeit',
+            style: DnDTheme.headline2.copyWith(
+              color: DnDTheme.ancientGold,
+            ),
+          ),
+          const SizedBox(height: DnDTheme.sm),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              'Dieser Bereich wird aktuell überarbeitet.\nDemnächst verfügbar!',
+              style: DnDTheme.bodyText1.copyWith(
+                color: Colors.white70,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+// ============================================================================
+// Navigation & Helper Functions
+// ============================================================================
+
+enum ScreenType {
+  campaigns,
+  quests,
+  wiki,
+  characters,
+  party,
+  items,
+  bestiary,
+  sessions,
+  sounds,
+  monsters,
+}
+
+void _navigateToScreen(BuildContext context, ScreenType screenType, {Campaign? campaign}) {
+  Widget screen;
+
+  switch (screenType) {
+    case ScreenType.campaigns:
+      screen = ChangeNotifierProvider<CampaignViewModel>(
+        create: (_) => CampaignViewModel(),
+        child: const EnhancedCampaignDashboardScreen(),
+      );
+      break;
+    case ScreenType.quests:
+      screen = const EnhancedQuestLibraryScreen();
+      break;
+    case ScreenType.wiki:
+      screen = const EnhancedLoreKeeperScreen();
+      break;
+    case ScreenType.characters:
+      if (campaign != null) {
+        screen = ChangeNotifierProvider(
+          create: (_) => CharacterEditorViewModel(),
+          child: EnhancedPlayerCharacterListScreen(campaign: campaign),
+        );
+      } else {
+        screen = const _PlaceholderScreen(title: 'Helden - Keine Kampagne ausgewählt');
+      }
+      break;
+    case ScreenType.party:
+      screen = const _PlaceholderScreen(title: 'Gruppe');
+      break;
+    case ScreenType.items:
+      screen = const EnhancedItemLibraryScreen();
+      break;
+    case ScreenType.bestiary:
+      screen = const EnhancedBestiaryScreen();
+      break;
+    case ScreenType.sessions:
+      if (campaign != null) {
+        screen = ChangeNotifierProvider<SessionListForCampaignViewModel>(
+          create: (_) => SessionListForCampaignViewModel(),
+          child: SessionListForCampaignScreen(campaign: campaign),
+        );
+      } else {
+        screen = const _PlaceholderScreen(title: 'Sessions - Keine Kampagne ausgewählt');
+      }
+      break;
+    case ScreenType.sounds:
+      screen = const EnhancedSoundLibraryScreen();
+      break;
+    case ScreenType.monsters:
+      screen = const EnhancedOfficialMonstersScreen();
+      break;
+  }
+
+  Navigator.of(context).push(
+    MaterialPageRoute(builder: (context) => screen),
+  );
+}
+
+void _showSettingsDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Einstellungen'),
+      content: const Text('Einstellungen werden in zukünftigen Versionen verfügbar sein.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('OK'),
+        ),
+      ],
+    ),
+  );
+}
+
+String _formatDate(DateTime? date) {
+  if (date == null) return 'Unbekannt';
+  return '${date.day}.${date.month}.${date.year}';
 }

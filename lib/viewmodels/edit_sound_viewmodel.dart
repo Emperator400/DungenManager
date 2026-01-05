@@ -1,9 +1,20 @@
 import 'package:flutter/foundation.dart';
 import '../models/sound.dart';
 import '../services/exceptions/service_exceptions.dart';
+import '../database/repositories/sound_model_repository.dart';
+import '../database/core/database_connection.dart';
 
-/// ViewModel für die Sound-Bearbeitung mit Provider-Pattern
+/// ViewModel für die Sound-Bearbeitung mit neuer Repository-Architektur
+/// 
+/// HINWEIS: Verwendet jetzt das neue SoundModelRepository
 class EditSoundViewModel extends ChangeNotifier {
+  final SoundModelRepository _soundRepository;
+
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue SoundModelRepository
+  /// 
+  EditSoundViewModel({SoundModelRepository? soundRepository})
+      : _soundRepository = soundRepository ?? SoundModelRepository(DatabaseConnection.instance);
   // State Management
   Sound? _sound;
   bool _isLoading = false;
@@ -43,7 +54,9 @@ class EditSoundViewModel extends ChangeNotifier {
     }
   }
 
-  /// Speichert den aktuellen Sound
+  /// Speichert den aktuellen Sound über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue SoundModelRepository
   Future<bool> saveSound() async {
     if (_sound == null || !_hasValidSound()) {
       _setError('Ungültige Sound-Daten');
@@ -54,8 +67,19 @@ class EditSoundViewModel extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       
-      // Simuliere Datenbankoperation
-      await _simulateDatabaseOperation();
+      if (_sound!.id.isEmpty) {
+        // Create new sound
+        final savedSound = await _soundRepository.create(_sound!);
+        if (savedSound != null) {
+          _sound = savedSound;
+        }
+      } else {
+        // Update existing sound
+        final updatedSound = await _soundRepository.update(_sound!);
+        if (updatedSound != null) {
+          _sound = updatedSound;
+        }
+      }
       
       _resetUnsavedChanges();
       return true;
@@ -71,9 +95,9 @@ class EditSoundViewModel extends ChangeNotifier {
     }
   }
 
-  /// Löscht den aktuellen Sound
+  /// Löscht den aktuellen Sound über neues Repository
   Future<bool> deleteSound() async {
-    if (_sound == null) {
+    if (_sound == null || _sound!.id.isEmpty) {
       _setError('Kein Sound zum Löschen vorhanden');
       return false;
     }
@@ -82,8 +106,7 @@ class EditSoundViewModel extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       
-      // Simuliere Datenbankoperation
-      await _simulateDatabaseOperation();
+      await _soundRepository.delete(_sound!.id);
       return true;
     } catch (e) {
       if (e is ServiceException) {

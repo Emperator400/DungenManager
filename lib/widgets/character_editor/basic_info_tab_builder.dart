@@ -36,8 +36,24 @@ class BasicInfoTabBuilder {
             
             DropdownButtonFormField<DndClass>(
               value: controller.selectedClass,
-              decoration: const InputDecoration(labelText: 'Klasse *'),
-              items: allDndClasses.map((c) => DropdownMenuItem(value: c, child: Text(c.name))).toList(),
+              decoration: InputDecoration(
+                labelText: 'Klasse *',
+                helperText: controller.selectedClass != null ? 
+                  'Würfel: d${controller.selectedClass!.hitDie} | Rettungswürfe: ${controller.selectedClass!.savingThrowProficiencies.map((a) => a.name.substring(0, 3)).join(", ")}' : 
+                  null,
+                helperStyle: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+              items: allDndClasses.map((c) => DropdownMenuItem(
+                value: c, 
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(c.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text('d${c.hitDie} HP', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                  ],
+                ),
+              )).toList(),
               onChanged: (val) {
                 controller.selectedClass = val;
                 onStateChanged();
@@ -48,8 +64,27 @@ class BasicInfoTabBuilder {
             
             DropdownButtonFormField<DndRace>(
               value: controller.selectedRace,
-              decoration: const InputDecoration(labelText: 'Rasse *'),
-              items: allDndRaces.map((r) => DropdownMenuItem(value: r, child: Text(r.name))).toList(),
+              decoration: InputDecoration(
+                labelText: 'Rasse *',
+                helperText: controller.selectedRace != null ? 
+                  'Attributs-Boni: ${controller.selectedRace!.abilityScoreBonuses.entries.map((e) => '${e.key.name.substring(0, 3)}+${e.value}').join(", ")}' : 
+                  null,
+                helperStyle: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+              items: allDndRaces.map((r) => DropdownMenuItem(
+                value: r, 
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(r.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(
+                      r.abilityScoreBonuses.entries.map((e) => '${e.key.name.substring(0, 3)}+${e.value}').join(", "),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              )).toList(),
               onChanged: (val) {
                 controller.selectedRace = val;
                 onStateChanged();
@@ -79,7 +114,28 @@ class BasicInfoTabBuilder {
             const Divider(),
             Row(
               children: [
-                Expanded(child: _buildNumberField(controller.hpController, 'Maximale HP', onStateChanged)),
+                Expanded(
+                  child: TextFormField(
+                    controller: controller.hpController,
+                    decoration: InputDecoration(
+                      labelText: 'Maximale HP',
+                      helperText: 'Berechnet: ${controller.calculateMaxHp()} HP (Klasse d${controller.selectedClass?.hitDie ?? 8}, Level ${controller.levelController.text}, CON ${controller.conController.text})',
+                      helperStyle: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.refresh, size: 18),
+                        onPressed: () {
+                          controller.updateCalculatedHp();
+                          onStateChanged();
+                        },
+                        tooltip: 'HP neu berechnen',
+                      ),
+                    ),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    validator: controller.validateNumber,
+                    onChanged: (_) => onStateChanged(),
+                  ),
+                ),
                 const SizedBox(width: 16),
                 Expanded(child: _buildNumberField(controller.acController, 'Rüstungsklasse', onStateChanged)),
               ],

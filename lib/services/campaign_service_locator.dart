@@ -1,4 +1,5 @@
-import '../database/database_helper.dart';
+import '../database/repositories/campaign_repository.dart';
+import '../database/core/database_connection.dart';
 import '../services/campaign_service.dart';
 
 /// Service Locator für Campaign Management
@@ -7,7 +8,7 @@ import '../services/campaign_service.dart';
 /// und ermöglicht Dependency Injection für Testing.
 class CampaignServiceLocator {
   static CampaignService? _campaignService;
-  static DatabaseHelper? _databaseHelper;
+  static CampaignRepository? _campaignRepository;
 
   /// Holt den CampaignService
   static CampaignService get campaignService {
@@ -15,24 +16,24 @@ class CampaignServiceLocator {
     return _campaignService!;
   }
 
-  /// Holt den DatabaseHelper
-  static DatabaseHelper get databaseHelper {
-    _databaseHelper ??= DatabaseHelper.instance;
-    return _databaseHelper!;
+  /// Holt den CampaignRepository
+  static CampaignRepository get campaignRepository {
+    _campaignRepository ??= CampaignRepository(DatabaseConnection.instance);
+    return _campaignRepository!;
   }
 
   /// Setzt Mock Services für Testing
   static void setMocks({
     CampaignService? campaignService,
-    DatabaseHelper? databaseHelper,
+    CampaignRepository? campaignRepository,
   }) {
     _campaignService = campaignService;
-    _databaseHelper = databaseHelper;
+    _campaignRepository = campaignRepository;
   }
 
   /// Resetet alle Services
   static void reset() {
     _campaignService = null;
-    _databaseHelper = null;
+    _campaignRepository = null;
   }
 }

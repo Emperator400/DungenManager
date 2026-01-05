@@ -162,7 +162,7 @@ class _EnhancedInventoryGridWidgetState extends State<EnhancedInventoryGridWidge
       orElse: () => DisplayInventoryItem(
         inventoryItem: InventoryItem(
           id: '',
-          ownerId: '',
+          characterId: '',
           itemId: '',
           isEquipped: false,
           equipSlot: slot,

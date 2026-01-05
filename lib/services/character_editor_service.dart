@@ -6,7 +6,9 @@ import '../models/attack.dart';
 import '../models/creature.dart';
 import '../models/inventory_item.dart';
 import '../models/player_character.dart';
-import '../database/database_helper.dart';
+import '../database/repositories/player_character_model_repository.dart';
+import '../database/repositories/creature_model_repository.dart';
+import '../database/core/database_connection.dart';
 import 'attack_parser_service.dart';
 import 'exceptions/service_exceptions.dart';
 import 'uuid_service.dart';
@@ -16,14 +18,17 @@ import 'uuid_service.dart';
 /// Verwendet spezifische Exceptions und ServiceResult Pattern.
 class CharacterEditorService {
   // Constructor-Abschnitt - Muss zuerst stehen (sort_constructors_first)
-  final DatabaseHelper _dbHelper;
+  final PlayerCharacterModelRepository _playerCharacterRepository;
+  final CreatureModelRepository _creatureRepository;
   final UuidService _uuidService;
 
   CharacterEditorService({
-    DatabaseHelper? dbHelper,
+    PlayerCharacterModelRepository? playerCharacterRepository,
+    CreatureModelRepository? creatureRepository,
     UuidService? uuidService,
-  })  : _dbHelper = dbHelper ?? DatabaseHelper.instance,
-        _uuidService = uuidService ?? UuidService();
+  }) : _playerCharacterRepository = playerCharacterRepository ?? PlayerCharacterModelRepository(DatabaseConnection.instance),
+       _creatureRepository = creatureRepository ?? CreatureModelRepository(DatabaseConnection.instance),
+       _uuidService = uuidService ?? UuidService();
 
   // ============================================================================
 
@@ -114,7 +119,7 @@ class CharacterEditorService {
           version: '1.0',
         );
 
-        await _dbHelper.insertPlayerCharacter(pc);
+        await _playerCharacterRepository.create(pc);
         return id;
       });
       return ServiceResult<String>.success(characterId, operation: 'createPlayerCharacter');
@@ -128,8 +133,8 @@ class CharacterEditorService {
     try {
       await performServiceOperation('updatePlayerCharacter', () async {
         // Prüfe ob Character existiert
-        final existing = await _dbHelper.getPlayerCharacterById(character.id);
-        if (existing == null) {
+        final existingCharacter = await _playerCharacterRepository.findById(character.id);
+        if (existingCharacter == null) {
           throw ResourceNotFoundException.forId(
             'PlayerCharacter',
             character.id,
@@ -154,7 +159,7 @@ class CharacterEditorService {
           },
         );
 
-        await _dbHelper.updatePlayerCharacter(character);
+        await _playerCharacterRepository.update(character);
       });
       return ServiceResult<void>.success(null, operation: 'updatePlayerCharacter');
     } catch (e) {
@@ -227,7 +232,7 @@ class CharacterEditorService {
           inventory: const [],
         );
 
-        await _dbHelper.insertCreature(creature);
+        await _creatureRepository.create(creature);
         return id;
       });
       return ServiceResult<String>.success(creatureId, operation: 'createCreature');
@@ -241,8 +246,8 @@ class CharacterEditorService {
     try {
       await performServiceOperation('updateCreature', () async {
         // Prüfe ob Kreatur existiert
-        final existing = await _dbHelper.getCreatureById(creature.id);
-        if (existing == null) {
+        final existingCreature = await _creatureRepository.findById(creature.id);
+        if (existingCreature == null) {
           throw ResourceNotFoundException.forId(
             'Creature',
             creature.id,
@@ -263,7 +268,7 @@ class CharacterEditorService {
           challengeRating: creature.challengeRating ?? 0,
         );
 
-        await _dbHelper.updateCreature(creature);
+        await _creatureRepository.update(creature);
       });
       return ServiceResult<void>.success(null, operation: 'updateCreature');
     } catch (e) {
@@ -370,7 +375,7 @@ class CharacterEditorService {
     try {
       final newCharacterId = await performServiceOperation('duplicateCharacter', () async {
         // Hole den Original-Character aus der Datenbank
-        final originalCharacter = await _dbHelper.getPlayerCharacterById(characterId);
+        final originalCharacter = await _playerCharacterRepository.findById(characterId);
         if (originalCharacter == null) {
           throw ResourceNotFoundException.forId(
             'PlayerCharacter',
@@ -411,7 +416,7 @@ class CharacterEditorService {
           version: '1.0',
         );
 
-        await _dbHelper.insertPlayerCharacter(duplicatedCharacter);
+        await _playerCharacterRepository.create(duplicatedCharacter);
         return id;
       });
       return ServiceResult<String>.success(newCharacterId, operation: 'duplicateCharacter');

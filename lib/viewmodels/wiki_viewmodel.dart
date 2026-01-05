@@ -1,10 +1,15 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/wiki_entry.dart';
-import '../database/database_helper.dart';
+import '../database/repositories/wiki_entry_model_repository.dart';
+import '../database/core/database_connection.dart';
 
-/// ViewModel für Wiki Management mit reactive State Management
+/// ViewModel für Wiki Management mit neuer Repository-Architektur
+/// Zentralisiert State Management und Business-Logik für Wiki-Einträge
+/// 
+/// HINWEIS: Verwendet jetzt das neue WikiEntryModelRepository
 class WikiViewModel extends ChangeNotifier {
-  final DatabaseHelper _databaseHelper;
+  final WikiEntryModelRepository _wikiRepository;
   
   // State
   List<WikiEntry> _entries = [];
@@ -23,9 +28,12 @@ class WikiViewModel extends ChangeNotifier {
   WikiSortOption _sortOption = WikiSortOption.updatedAt;
   bool _sortAscending = false;
 
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue WikiEntryModelRepository
+  /// 
   WikiViewModel({
-    DatabaseHelper? databaseHelper,
-  }) : _databaseHelper = databaseHelper ?? DatabaseHelper.instance;
+    WikiEntryModelRepository? wikiRepository,
+  }) : _wikiRepository = wikiRepository ?? WikiEntryModelRepository(DatabaseConnection.instance);
 
   // Getters
   List<WikiEntry> get allEntries => List.unmodifiable(_entries);
@@ -66,16 +74,69 @@ class WikiViewModel extends ChangeNotifier {
     return counts;
   }
 
-  /// Lädt alle Wiki-Einträge aus der Datenbank
+  // ============================================================================
+  // WIKI ENTRY MANAGEMENT
+  // ============================================================================
+
+  /// Lädt alle Wiki-Einträge aus der Datenbank über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue WikiEntryModelRepository
   Future<void> loadEntries() async {
     await _performAsyncOperation(() async {
-      _entries = await _databaseHelper.getAllWikiEntries();
+      _entries = await _wikiRepository.findAll();
       _applyFiltersAndSort();
     });
   }
 
-  /// Sucht nach Wiki-Einträgen
-  void searchEntries(String query) {
+  /// Lädt Wiki-Einträge nach Typ über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue WikiEntryModelRepository
+  Future<void> loadEntriesByType(WikiEntryType entryType) async {
+    await _performAsyncOperation(() async {
+      _entries = await _wikiRepository!.findAll();
+      // Filtern nach Typ im ViewModel
+      _entries = _entries.where((entry) => entry.entryType == entryType).toList();
+      _applyFiltersAndSort();
+    });
+  }
+
+  /// Lädt globale Wiki-Einträge über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue WikiEntryModelRepository
+  Future<void> loadGlobalEntries() async {
+    await _performAsyncOperation(() async {
+      _entries = await _wikiRepository.findAll();
+      // Filtern nach globalen Einträgen im ViewModel
+      _entries = _entries.where((entry) => entry.campaignId == null).toList();
+      _applyFiltersAndSort();
+    });
+  }
+
+  /// Lädt Wiki-Einträge für eine Kampagne über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue WikiEntryModelRepository
+  Future<void> loadCampaignEntries(String campaignId) async {
+    await _performAsyncOperation(() async {
+      _entries = await _wikiRepository.findAll();
+      // Filtern nach Kampagne im ViewModel
+      _entries = _entries.where((entry) => entry.campaignId == campaignId).toList();
+      _applyFiltersAndSort();
+    });
+  }
+
+  /// Sucht Wiki-Einträge über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue WikiEntryModelRepository
+  Future<void> searchEntries(String query) async {
+    await _performAsyncOperation(() async {
+      _entries = await _wikiRepository.search(query);
+      _searchQuery = query;
+      _applyFiltersAndSort();
+    });
+  }
+
+  /// Lokale Suche ohne Neuladen aus Datenbank
+  void searchEntriesLocal(String query) {
     _searchQuery = query;
     _applyFiltersAndSort();
     notifyListeners();
@@ -226,38 +287,47 @@ class WikiViewModel extends ChangeNotifier {
     }
   }
 
-  /// Fügt einen neuen Wiki-Eintrag hinzu
+  /// Erstellt einen neuen Wiki-Eintrag über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue WikiEntryModelRepository
   Future<void> addEntry(WikiEntry entry) async {
     await _performAsyncOperation(() async {
-      await _databaseHelper.insertWikiEntry(entry);
-      _entries.add(entry);
-      _applyFiltersAndSort();
-    });
-  }
-
-  /// Aktualisiert einen Wiki-Eintrag
-  Future<void> updateEntry(WikiEntry entry) async {
-    await _performAsyncOperation(() async {
-      await _databaseHelper.updateWikiEntry(entry);
-      
-      final index = _entries.indexWhere((e) => e.id == entry.id);
-      if (index != -1) {
-        _entries[index] = entry;
+      WikiEntry? savedEntry = await _wikiRepository.create(entry);
+      if (savedEntry != null) {
+        _entries.add(savedEntry);
         _applyFiltersAndSort();
       }
     });
   }
 
-  /// Löscht einen Wiki-Eintrag
+  /// Aktualisiert einen Wiki-Eintrag über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue WikiEntryModelRepository
+  Future<void> updateEntry(WikiEntry entry) async {
+    await _performAsyncOperation(() async {
+      WikiEntry? updatedEntry = await _wikiRepository.update(entry);
+      if (updatedEntry != null) {
+        final index = _entries.indexWhere((e) => e.id == entry.id);
+        if (index != -1) {
+          _entries[index] = updatedEntry;
+          _applyFiltersAndSort();
+        }
+      }
+    });
+  }
+
+  /// Löscht einen Wiki-Eintrag über neues Repository
   Future<void> deleteEntry(String entryId) async {
     await _performAsyncOperation(() async {
-      await _databaseHelper.deleteWikiEntry(entryId);
+      await _wikiRepository.delete(entryId);
       _entries.removeWhere((entry) => entry.id == entryId);
       _applyFiltersAndSort();
     });
   }
 
-  /// Dupliziert einen Wiki-Eintrag
+  /// Dupliziert einen Wiki-Eintrag über neues Repository
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue WikiEntryModelRepository
   Future<void> duplicateEntry(WikiEntry entry) async {
     await _performAsyncOperation(() async {
       final duplicatedEntry = entry.copyWith(
@@ -267,8 +337,37 @@ class WikiViewModel extends ChangeNotifier {
         updatedAt: DateTime.now(),
       );
       
-      await _databaseHelper.insertWikiEntry(duplicatedEntry);
-      _entries.add(duplicatedEntry);
+      WikiEntry? savedEntry = await _wikiRepository.create(duplicatedEntry);
+      if (savedEntry != null) {
+        _entries.add(savedEntry);
+        _applyFiltersAndSort();
+      }
+    });
+  }
+
+  /// Batch-Operation: Löscht mehrere Einträge auf einmal
+  Future<void> deleteEntries(List<String> entryIds) async {
+    await _performAsyncOperation(() async {
+      await _wikiRepository.deleteAll(entryIds);
+      _entries.removeWhere((entry) => entryIds.contains(entry.id));
+      _applyFiltersAndSort();
+    });
+  }
+
+  /// Batch-Operation: Aktualisiert mehrere Einträge auf einmal
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue WikiEntryModelRepository
+  Future<void> updateEntries(List<WikiEntry> entries) async {
+    await _performAsyncOperation(() async {
+      await _wikiRepository.updateAll(entries);
+      
+      // Lokalen State aktualisieren
+      for (final entry in entries) {
+        final index = _entries.indexWhere((e) => e.id == entry.id);
+        if (index != -1) {
+          _entries[index] = entry;
+        }
+      }
       _applyFiltersAndSort();
     });
   }

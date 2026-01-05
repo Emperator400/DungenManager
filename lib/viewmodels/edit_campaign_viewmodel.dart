@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
 import '../models/campaign.dart';
+import '../database/repositories/campaign_model_repository.dart';
 import '../services/exceptions/service_exceptions.dart';
-import '../services/campaign_service_locator.dart';
 
 /// ViewModel für die Campaign-Bearbeitung mit Provider-Pattern
 class EditCampaignViewModel extends ChangeNotifier {
+  final CampaignModelRepository _campaignRepository;
+  
   // State Management
   Campaign? _campaign;
   bool _isLoading = false;
@@ -18,6 +20,9 @@ class EditCampaignViewModel extends ChangeNotifier {
   bool get hasUnsavedChanges => _hasUnsavedChanges;
   bool get isEditing => _campaign != null;
   bool get canSave => _campaign != null && _hasValidCampaign();
+
+  EditCampaignViewModel({required CampaignModelRepository campaignRepository})
+      : _campaignRepository = campaignRepository;
 
   /// Initialisiert das ViewModel mit einer Campaign oder erstellt eine neue
   Future<void> initialize(Campaign? campaign) async {
@@ -54,31 +59,24 @@ class EditCampaignViewModel extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       
-      final campaignService = CampaignServiceLocator.campaignService;
+      // Aktualisiere updatedAt
+      _campaign = _campaign!.copyWith(updatedAt: DateTime.now());
       
-      if (_campaign!.id == null || _campaign!.id!.isEmpty) {
-        // Neue Kampagne erstellen
-        final result = await campaignService.createCampaign(_campaign!);
-        if (result.isSuccess && result.data != null) {
-          _campaign = result.data;
-          _resetUnsavedChanges();
-          return true;
-        } else {
-          _setError(result.userMessage ?? 'Fehler beim Erstellen der Kampagne');
-          return false;
+      // Speichern in der Datenbank
+      if (isEditing) {
+        final updatedCampaign = await _campaignRepository.update(_campaign!);
+        if (updatedCampaign != null) {
+          _campaign = updatedCampaign;
         }
       } else {
-        // Bestehende Kampagne aktualisieren
-        final result = await campaignService.updateCampaign(_campaign!);
-        if (result.isSuccess && result.data != null) {
-          _campaign = result.data;
-          _resetUnsavedChanges();
-          return true;
-        } else {
-          _setError(result.userMessage ?? 'Fehler beim Aktualisieren der Kampagne');
-          return false;
+        final createdCampaign = await _campaignRepository.create(_campaign!);
+        if (createdCampaign != null) {
+          _campaign = createdCampaign;
         }
       }
+      
+      _resetUnsavedChanges();
+      return true;
     } catch (e) {
       if (e is ServiceException) {
         _setError(e.message);
@@ -93,7 +91,7 @@ class EditCampaignViewModel extends ChangeNotifier {
 
   /// Löscht die aktuelle Campaign
   Future<bool> deleteCampaign() async {
-    if (_campaign == null) {
+    if (_campaign == null || _campaign!.id == null || _campaign!.id!.isEmpty) {
       _setError('Keine Campaign zum Löschen vorhanden');
       return false;
     }
@@ -102,15 +100,8 @@ class EditCampaignViewModel extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       
-      final campaignService = CampaignServiceLocator.campaignService;
-      final result = await campaignService.deleteCampaign(_campaign!.id!);
-      
-      if (result.isSuccess) {
-        return true;
-      } else {
-        _setError(result.userMessage ?? 'Fehler beim Löschen der Kampagne');
-        return false;
-      }
+      await _campaignRepository.delete(_campaign!.id!);
+      return true;
     } catch (e) {
       if (e is ServiceException) {
         _setError(e.message);
@@ -254,13 +245,6 @@ class EditCampaignViewModel extends ChangeNotifier {
     if (_campaign == null) return false;
     
     // Grundlegende Validierung
-    return _campaign!.title.trim().isNotEmpty && 
-           _campaign!.description.trim().isNotEmpty;
-  }
-
-  /// Simuliert eine Datenbankoperation
-  Future<void> _simulateDatabaseOperation() async {
-    // Simuliere Netzwerkverzögerung
-    await Future.delayed(const Duration(milliseconds: 500));
+    return _campaign!.title.trim().isNotEmpty;
   }
 }

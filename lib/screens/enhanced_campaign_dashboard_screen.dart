@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../viewmodels/campaign_viewmodel.dart';
-import '../widgets/campaign/enhanced_campaign_card_widget.dart';
-import '../widgets/campaign/enhanced_campaign_filter_chips_widget.dart';
+
 import '../models/campaign.dart';
+import '../theme/dnd_theme.dart';
+import '../viewmodels/campaign_viewmodel.dart';
+import '../widgets/campaign/campaign_create_dialog_widget.dart';
+import '../widgets/campaign/campaign_tabs_widget.dart';
+import '../widgets/campaign/enhanced_campaign_filter_chips_widget.dart';
+import '../widgets/ui_components/cards/unified_campaign_card.dart';
+import '../widgets/ui_components/feedback/snackbar_helper.dart';
+
 import 'enhanced_edit_campaign_screen.dart';
 import 'session_list_for_campaign_screen.dart';
 
@@ -61,21 +67,21 @@ class _EnhancedCampaignDashboardScreenState extends State<EnhancedCampaignDashbo
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Kampagnen Dashboard'),
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        backgroundColor: DnDTheme.dungeonBlack,
         elevation: 0,
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.dashboard), text: 'Übersicht'),
-            Tab(icon: Icon(Icons.home), text: 'Homebrew'),
-            Tab(icon: Icon(Icons.book), text: 'Module'),
-            Tab(icon: Icon(Icons.map), text: 'Paths'),
-            Tab(icon: Icon(Icons.flash_on), text: 'One-Shots'),
-          ],
-          labelColor: Theme.of(context).tabBarTheme.labelColor,
-          unselectedLabelColor: Theme.of(context).tabBarTheme.unselectedLabelColor,
-          indicatorColor: Theme.of(context).tabBarTheme.indicatorColor,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                DnDTheme.dungeonBlack,
+                DnDTheme.stoneGrey.withOpacity(0.3),
+              ],
+            ),
+          ),
         ),
+        bottom: CampaignTabsWidget(tabController: _tabController),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -146,7 +152,6 @@ class _EnhancedCampaignDashboardScreenState extends State<EnhancedCampaignDashbo
           }
           
           // Zeige FloatingActionButton nur wenn Kampagnen existieren
-          // Prüfe sowohl Gesamtanzahl als auch gefilterte Anzahl
           if (viewModel.campaigns.isNotEmpty && viewModel.filteredCampaigns.isNotEmpty) {
             return FloatingActionButton(
               onPressed: () => _showCreateCampaignDialog(),
@@ -155,8 +160,6 @@ class _EnhancedCampaignDashboardScreenState extends State<EnhancedCampaignDashbo
             );
           }
           
-          // Kein FloatingActionButton wenn keine Kampagnen existieren
-          // (der Button wird im leeren Zustand angezeigt)
           return const SizedBox.shrink();
         },
       ),
@@ -180,7 +183,6 @@ class _EnhancedCampaignDashboardScreenState extends State<EnhancedCampaignDashbo
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Search Field
               TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
@@ -210,7 +212,6 @@ class _EnhancedCampaignDashboardScreenState extends State<EnhancedCampaignDashbo
               
               const SizedBox(height: 12),
               
-              // Filter Chips
               EnhancedCampaignFilterChipsWidget(
                 viewModel: viewModel,
               ),
@@ -294,15 +295,7 @@ class _EnhancedCampaignDashboardScreenState extends State<EnhancedCampaignDashbo
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ChangeNotifierProvider.value(
-                          value: context.read<CampaignViewModel>(),
-                          child: const EnhancedEditCampaignScreen(),
-                        ),
-                      ),
-                    ),
+                    onPressed: () => _showCreateCampaignDialog(),
                     icon: const Icon(Icons.add),
                     label: const Text('Kampagne erstellen'),
                   ),
@@ -312,7 +305,6 @@ class _EnhancedCampaignDashboardScreenState extends State<EnhancedCampaignDashbo
           );
         }
 
-        // Sort order toggle
         return Column(
           children: [
             Padding(
@@ -342,7 +334,6 @@ class _EnhancedCampaignDashboardScreenState extends State<EnhancedCampaignDashbo
               ),
             ),
             
-            // Campaign Grid
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -356,11 +347,11 @@ class _EnhancedCampaignDashboardScreenState extends State<EnhancedCampaignDashbo
                   itemCount: viewModel.filteredCampaigns.length,
                   itemBuilder: (context, index) {
                     final campaign = viewModel.filteredCampaigns[index];
-                    return EnhancedCampaignCardWidget(
+                    return UnifiedCampaignCard(
                       campaign: campaign,
-                      onTap: () => _navigateToCampaign(campaign),
+                      viewModel: viewModel,
+                      onNavigate: () => _navigateToCampaign(campaign),
                       onEdit: () => _editCampaign(campaign),
-                      onDelete: () => _deleteCampaign(campaign),
                       onDuplicate: () => _duplicateCampaign(campaign),
                       onToggleFavorite: () => _toggleFavorite(campaign),
                     );
@@ -416,11 +407,11 @@ class _EnhancedCampaignDashboardScreenState extends State<EnhancedCampaignDashbo
           itemCount: typeCampaigns.length,
           itemBuilder: (context, index) {
             final campaign = typeCampaigns[index];
-            return EnhancedCampaignCardWidget(
+            return UnifiedCampaignCard(
               campaign: campaign,
-              onTap: () => _navigateToCampaign(campaign),
+              viewModel: viewModel,
+              onNavigate: () => _navigateToCampaign(campaign),
               onEdit: () => _editCampaign(campaign),
-              onDelete: () => _deleteCampaign(campaign),
               onDuplicate: () => _duplicateCampaign(campaign),
               onToggleFavorite: () => _toggleFavorite(campaign),
             );
@@ -430,33 +421,12 @@ class _EnhancedCampaignDashboardScreenState extends State<EnhancedCampaignDashbo
     );
   }
 
-  CampaignStatus? _getSelectedStatus(CampaignViewModel viewModel) {
-    // Implementiere Status-Filter basierend auf viewModel.state
-    return null; // Placeholder
-  }
-
   void _showCreateCampaignDialog() {
-    Navigator.push(
+    final viewModel = context.read<CampaignViewModel>();
+    CampaignCreateDialogWidget.show(
       context,
-      MaterialPageRoute(
-        builder: (context) => ChangeNotifierProvider.value(
-          value: context.read<CampaignViewModel>(),
-          child: const EnhancedEditCampaignScreen(),
-        ),
-      ),
-    ).then((_) {
-      // Kampagnen neu laden, wenn man vom Edit-Screen zurückkommt
-      debugPrint('Dashboard: Returned from create campaign screen, calling refresh()');
-      context.read<CampaignViewModel>().refresh();
-    });
-  }
-
-  void _navigateToCampaign(Campaign campaign) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => SessionListForCampaignScreen(campaign: campaign),
-      ),
+      viewModel: viewModel,
+      onSuccess: () => viewModel.refresh(),
     );
   }
 
@@ -469,250 +439,77 @@ class _EnhancedCampaignDashboardScreenState extends State<EnhancedCampaignDashbo
           child: EnhancedEditCampaignScreen(campaign: campaign),
         ),
       ),
-    ).then((_) {
-      // Kampagnen neu laden, wenn man vom Edit-Screen zurückkommt
-      debugPrint('Dashboard: Returned from edit campaign screen, calling refresh()');
-      context.read<CampaignViewModel>().refresh();
-    });
-  }
-
-  void _deleteCampaign(Campaign campaign) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Kampagne löschen'),
-        content: Text(
-          'Möchtest du die Kampagne "${campaign.title}" wirklich löschen? '
-          'Diese Aktion kann nicht rückgängig gemacht werden.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Abbrechen'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await context.read<CampaignViewModel>().deleteCampaign(campaign);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
-            child: const Text('Löschen'),
-          ),
-        ],
-      ),
     );
   }
 
-  void _duplicateCampaign(Campaign campaign) async {
-    await context.read<CampaignViewModel>().duplicateCampaign(campaign);
-  }
-
-  void _toggleFavorite(Campaign campaign) async {
-    await context.read<CampaignViewModel>().toggleFavorite(campaign);
-  }
-}
-
-/// Dialog zum Erstellen einer neuen Kampagne
-class _CreateCampaignDialog extends StatefulWidget {
-  @override
-  State<_CreateCampaignDialog> createState() => _CreateCampaignDialogState();
-}
-
-class _CreateCampaignDialogState extends State<_CreateCampaignDialog> {
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  CampaignType _selectedType = CampaignType.homebrew;
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(
-        'Neue Kampagne erstellen',
-        style: TextStyle(
-          color: Theme.of(context).textTheme.titleLarge?.color,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      content: SizedBox(
-        width: 400,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _titleController,
-              style: TextStyle(
-                color: Theme.of(context).textTheme.bodyLarge?.color,
-              ),
-              decoration: InputDecoration(
-                labelText: 'Titel *',
-                hintText: 'Name der Kampagne',
-                labelStyle: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                ),
-                hintStyle: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: Theme.of(context).primaryColor,
-                    width: 2,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _descriptionController,
-              style: TextStyle(
-                color: Theme.of(context).textTheme.bodyLarge?.color,
-              ),
-              decoration: InputDecoration(
-                labelText: 'Beschreibung *',
-                hintText: 'Kurze Beschreibung der Kampagne',
-                labelStyle: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                ),
-                hintStyle: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: Theme.of(context).primaryColor,
-                    width: 2,
-                  ),
-                ),
-              ),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<CampaignType>(
-              value: _selectedType,
-              style: TextStyle(
-                color: Theme.of(context).textTheme.bodyLarge?.color,
-              ),
-              decoration: InputDecoration(
-                labelText: 'Kampagnen-Typ',
-                labelStyle: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: Theme.of(context).primaryColor,
-                    width: 2,
-                  ),
-                ),
-              ),
-              items: CampaignType.values.map((type) {
-                return DropdownMenuItem(
-                  value: type,
-                  child: Text(
-                    type.displayName,
-                    style: TextStyle(
-                      color: Theme.of(context).textTheme.bodyLarge?.color,
-                    ),
-                  ),
-                );
-              }).toList(),
-              onChanged: (type) => setState(() => _selectedType = type!),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(
-            'Abbrechen',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          ),
-        ),
-        ElevatedButton(
-          onPressed: _createCampaign,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Theme.of(context).colorScheme.onPrimary,
-          ),
-          child: const Text('Erstellen'),
-        ),
-      ],
-    );
-  }
-
-  void _createCampaign() async {
-    if (_titleController.text.trim().isEmpty || 
-        _descriptionController.text.trim().isEmpty) {
-      return;
+  Future<void> _duplicateCampaign(Campaign campaign) async {
+    final viewModel = context.read<CampaignViewModel>();
+    try {
+      await viewModel.duplicateCampaign(campaign);
+      if (mounted) {
+        SnackBarHelper.showSuccess(context, 'Kampagne dupliziert');
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackBarHelper.showError(context, 'Fehler beim Duplizieren: $e');
+      }
     }
-
-    Navigator.pop(context);
-    
-    await context.read<CampaignViewModel>().createCampaign(
-      title: _titleController.text.trim(),
-      description: _descriptionController.text.trim(),
-    );
   }
-}
 
-/// Extension für CampaignType Display Names
-extension CampaignTypeExtension on CampaignType {
-  String get displayName {
-    switch (this) {
-      case CampaignType.homebrew:
-        return 'Homebrew';
-      case CampaignType.module:
-        return 'Module';
-      case CampaignType.adventurePath:
-        return 'Adventure Path';
-      case CampaignType.oneShot:
-        return 'One-Shot';
+  Future<void> _toggleFavorite(Campaign campaign) async {
+    final viewModel = context.read<CampaignViewModel>();
+    try {
+      await viewModel.updateCampaign(
+        campaign.copyWith(isFavorite: !campaign.isFavorite),
+      );
+      
+      if (mounted) {
+        SnackBarHelper.showInfo(
+          context,
+          campaign.isFavorite 
+            ? 'Kampagne von Favoriten entfernt' 
+            : 'Kampagne als Favorit markiert',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackBarHelper.showError(context, 'Fehler beim Aktualisieren: $e');
+      }
     }
+  }
+
+  Future<void> _toggleActive(Campaign campaign) async {
+    final viewModel = context.read<CampaignViewModel>();
+    try {
+      final newStatus = campaign.status == CampaignStatus.active 
+        ? CampaignStatus.paused 
+        : CampaignStatus.active;
+      
+      await viewModel.updateCampaign(
+        campaign.copyWith(status: newStatus),
+      );
+      
+      if (mounted) {
+        SnackBarHelper.showInfo(
+          context,
+          newStatus == CampaignStatus.active 
+            ? 'Kampagne als aktiv markiert' 
+            : 'Kampagne als inaktiv markiert',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackBarHelper.showError(context, 'Fehler beim Aktualisieren: $e');
+      }
+    }
+  }
+
+  void _navigateToCampaign(Campaign campaign) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SessionListForCampaignScreen(campaign: campaign),
+      ),
+    );
   }
 }

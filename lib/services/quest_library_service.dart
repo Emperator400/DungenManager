@@ -4,7 +4,8 @@ import 'dart:async';
 // Eigene Projekte
 import '../models/quest.dart';
 import '../models/quest_reward.dart';
-import '../database/database_helper.dart';
+import '../database/repositories/quest_model_repository.dart';
+import '../database/core/database_connection.dart';
 import '../services/quest_helper_service.dart';
 import 'exceptions/service_exceptions.dart';
 
@@ -14,18 +15,19 @@ import 'exceptions/service_exceptions.dart';
 /// und bietet eine saubere API für die UI-Schicht.
 /// Verwendet spezifische Exceptions und ServiceResult Pattern.
 class QuestLibraryService {
-  final DatabaseHelper _databaseHelper;
+  final QuestModelRepository _questRepository;
 
   QuestLibraryService({
-    DatabaseHelper? databaseHelper,
-  }) : _databaseHelper = databaseHelper ?? DatabaseHelper.instance;
+    QuestModelRepository? questRepository,
+  }) : _questRepository = questRepository ?? QuestModelRepository(DatabaseConnection.instance);
 
   // ========== CRUD OPERATIONS ==========
 
   /// Lädt alle Quests aus der Datenbank
   Future<ServiceResult<List<Quest>>> getAllQuests() async =>
-      performServiceOperation('getAllQuests', () async =>
-          await _databaseHelper.getAllQuests());
+      performServiceOperation('getAllQuests', () async {
+      return await _questRepository.findAll();
+      });
 
   /// Erstellt eine neue Quest
   Future<ServiceResult<Quest>> createQuest({
@@ -88,8 +90,8 @@ class QuestLibraryService {
         updatedAt: DateTime.now(),
       );
 
-      final createdId = await _databaseHelper.insertQuest(quest);
-      return quest.copyWith(id: createdId);
+      await _questRepository.create(quest);
+      return quest;
     });
   }
 
@@ -130,7 +132,7 @@ class QuestLibraryService {
       }
 
       final updatedQuest = quest.copyWith(updatedAt: DateTime.now());
-      await _databaseHelper.updateQuest(updatedQuest);
+      await _questRepository.update(updatedQuest);
       return updatedQuest;
     });
   }
@@ -156,7 +158,7 @@ class QuestLibraryService {
         );
       }
 
-      await _databaseHelper.deleteQuest(questId);
+      await _questRepository.delete(questId);
     });
   }
 
@@ -270,7 +272,7 @@ class QuestLibraryService {
       );
 
       final updatedQuest = QuestHelperService.toggleFavorite(quest);
-      await _databaseHelper.updateQuest(updatedQuest);
+      await _questRepository.update(updatedQuest);
       return updatedQuest;
     });
   }

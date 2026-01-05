@@ -1,8 +1,9 @@
 // lib/viewmodels/campaign_viewmodel.dart
 import 'package:flutter/foundation.dart';
 import '../models/campaign.dart';
-import '../services/campaign_service.dart';
-import '../services/campaign_service_locator.dart';
+import '../services/uuid_service.dart';
+import '../database/repositories/campaign_model_repository.dart';
+import '../database/repositories/player_character_model_repository.dart';
 
 enum CampaignViewMode {
   overview,
@@ -26,31 +27,39 @@ enum CampaignSortOption {
 }
 
 class CampaignViewModel extends ChangeNotifier {
-  final CampaignService _campaignService;
+  final CampaignModelRepository? _campaignRepo;
+  final PlayerCharacterModelRepository? _characterRepo;
   
-  CampaignViewModel() : _campaignService = CampaignServiceLocator.campaignService {
+  CampaignViewModel({
+    CampaignModelRepository? campaignRepo,
+    PlayerCharacterModelRepository? characterRepo,
+  }) : _campaignRepo = campaignRepo,
+       _characterRepo = characterRepo {
     // Automatisch Kampagnen beim Erstellen laden
     _initializeCampaigns();
   }
 
   /// Initialisiert die Kampagnenliste
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
   Future<void> _initializeCampaigns() async {
     try {
       _setLoading(true);
       _setError(null);
       
       debugPrint('CampaignViewModel: _initializeCampaigns() - Loading campaigns');
-      final result = await _campaignService.getAllCampaigns();
-      debugPrint('CampaignViewModel: _initializeCampaigns() - Result: ${result.isSuccess}, campaigns: ${result.data?.length ?? 0}');
       
-      if (result.isSuccess && result.data != null) {
-        _campaigns = result.data!;
-        debugPrint('CampaignViewModel: _initializeCampaigns() - Loaded ${_campaigns.length} campaigns');
-        notifyListeners();
+      if (_campaignRepo != null) {
+        _campaigns = await _campaignRepo!.findAll();
       } else {
-        debugPrint('CampaignViewModel: _initializeCampaigns() - Error: ${result.userMessage}');
-        _setError(result.userMessage ?? 'Unbekannter Fehler beim Laden der Kampagnen');
+        debugPrint('CampaignViewModel: CampaignModelRepository nicht verfügbar');
+        _campaigns = [];
       }
+      
+      debugPrint('CampaignViewModel: _initializeCampaigns() - Result: ${_campaigns.length} campaigns');
+      debugPrint('CampaignViewModel: _initializeCampaigns() - Loaded ${_campaigns.length} campaigns');
+      notifyListeners();
+      
     } catch (e) {
       debugPrint('CampaignViewModel: _initializeCampaigns() - Exception: $e');
       _setError('Ausnahme beim Laden der Kampagnen: $e');
@@ -107,24 +116,30 @@ class CampaignViewModel extends ChangeNotifier {
   }
   
   // Methods
+  
+  /// Lädt alle Kampagnen
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
   Future<void> loadCampaigns() async {
     debugPrint('CampaignViewModel: loadCampaigns() called');
     _setLoading(true);
     _setError(null);
     
     try {
-      debugPrint('CampaignViewModel: Calling getAllCampaigns()');
-      final result = await _campaignService.getAllCampaigns();
-      debugPrint('CampaignViewModel: getAllCampaigns() result - success: ${result.isSuccess}, data count: ${result.data?.length ?? 0}');
-      if (result.isSuccess && result.data != null) {
-        _campaigns = result.data!;
-        debugPrint('CampaignViewModel: Updated _campaigns with ${_campaigns.length} campaigns');
-        notifyListeners();
-        debugPrint('CampaignViewModel: notifyListeners() called');
+      debugPrint('CampaignViewModel: Calling findAll()');
+      
+      if (_campaignRepo != null) {
+        _campaigns = await _campaignRepo!.findAll();
       } else {
-        debugPrint('CampaignViewModel: Error in result - ${result.userMessage}');
-        _setError(result.userMessage);
+        throw Exception('CampaignModelRepository nicht verfügbar');
       }
+      
+      debugPrint('CampaignViewModel: findAll() result - campaigns: ${_campaigns.length}');
+      debugPrint('CampaignViewModel: Updated _campaigns with ${_campaigns.length} campaigns');
+      
+      notifyListeners();
+      debugPrint('CampaignViewModel: notifyListeners() called');
+      
     } catch (e) {
       debugPrint('CampaignViewModel: Exception in loadCampaigns() - $e');
       _setError('Fehler beim Laden der Kampagnen: $e');
@@ -139,6 +154,9 @@ class CampaignViewModel extends ChangeNotifier {
     notifyListeners();
   }
   
+  /// Erstellt eine neue Kampagne
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
   Future<void> createCampaign({
     required String title,
     required String description,
@@ -153,22 +171,24 @@ class CampaignViewModel extends ChangeNotifier {
         description: description,
       );
       
-      debugPrint('CampaignViewModel: Calling createCampaign service');
-      final result = await _campaignService.createCampaign(campaign);
-      debugPrint('CampaignViewModel: createCampaign result - success: ${result.isSuccess}, data: ${result.data?.title}');
-      if (result.isSuccess && result.data != null) {
-        _campaigns.insert(0, result.data!);
-        debugPrint('CampaignViewModel: Added campaign to list, total campaigns: ${_campaigns.length}');
-        
-        // Automatisch auswählen
-        await selectCampaign(result.data!);
-        
-        notifyListeners();
-        debugPrint('CampaignViewModel: notifyListeners() called after create');
+      debugPrint('CampaignViewModel: Calling create()');
+      
+      if (_campaignRepo != null) {
+        final savedCampaign = await _campaignRepo!.create(campaign);
+        debugPrint('CampaignViewModel: save() result - data: ${savedCampaign.title}');
+        _campaigns.insert(0, savedCampaign);
       } else {
-        debugPrint('CampaignViewModel: createCampaign failed - ${result.userMessage}');
-        _setError(result.userMessage);
+        throw Exception('CampaignModelRepository nicht verfügbar');
       }
+      
+      debugPrint('CampaignViewModel: Added campaign to list, total campaigns: ${_campaigns.length}');
+      
+      // Automatisch auswählen
+      await selectCampaign(_campaigns.first);
+      
+      notifyListeners();
+      debugPrint('CampaignViewModel: notifyListeners() called after create');
+      
     } catch (e) {
       debugPrint('CampaignViewModel: Exception in createCampaign - $e');
       _setError('Fehler beim Erstellen der Kampagne: $e');
@@ -177,29 +197,33 @@ class CampaignViewModel extends ChangeNotifier {
     }
   }
   
+  /// Aktualisiert eine Kampagne
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
   Future<void> updateCampaign(Campaign campaign) async {
     _setLoading(true);
     _setError(null);
     
     try {
-      final result = await _campaignService.updateCampaign(campaign);
-      if (result.isSuccess && result.data != null) {
-        final updatedCampaign = result.data!;
-        
-        final index = _campaigns.indexWhere((c) => c.id == campaign.id);
-        if (index != -1) {
-          _campaigns[index] = updatedCampaign;
-          
-          // Aktualisiere auch die Auswahl
-          if (_selectedCampaign?.id == campaign.id) {
-            _selectedCampaign = updatedCampaign;
-          }
-        }
-        
-        notifyListeners();
+      Campaign updatedCampaign;
+      
+      if (_campaignRepo != null) {
+        updatedCampaign = await _campaignRepo!.update(campaign);
       } else {
-        _setError(result.userMessage);
+        throw Exception('CampaignModelRepository nicht verfügbar');
       }
+      
+      final index = _campaigns.indexWhere((c) => c.id == campaign.id);
+      if (index != -1) {
+        _campaigns[index] = updatedCampaign;
+        
+        // Aktualisiere auch die Auswahl
+        if (_selectedCampaign?.id == campaign.id) {
+          _selectedCampaign = updatedCampaign;
+        }
+      }
+      
+      notifyListeners();
     } catch (e) {
       _setError('Fehler beim Aktualisieren der Kampagne: $e');
     } finally {
@@ -207,24 +231,28 @@ class CampaignViewModel extends ChangeNotifier {
     }
   }
   
+  /// Löscht eine Kampagne
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
   Future<void> deleteCampaign(Campaign campaign) async {
     _setLoading(true);
     _setError(null);
     
     try {
-      final result = await _campaignService.deleteCampaign(campaign.id!);
-      if (result.isSuccess) {
-        _campaigns.removeWhere((c) => c.id == campaign.id);
-        
-        // Auswahl zurücksetzen wenn gelöschte Kampagne ausgewählt war
-        if (_selectedCampaign?.id == campaign.id) {
-          _selectedCampaign = _campaigns.isNotEmpty ? _campaigns.first : null;
-        }
-        
-        notifyListeners();
+      if (_campaignRepo != null) {
+        await _campaignRepo!.delete(campaign.id!);
       } else {
-        _setError(result.userMessage);
+        throw Exception('CampaignModelRepository nicht verfügbar');
       }
+      
+      _campaigns.removeWhere((c) => c.id == campaign.id);
+      
+      // Auswahl zurücksetzen wenn gelöschte Kampagne ausgewählt war
+      if (_selectedCampaign?.id == campaign.id) {
+        _selectedCampaign = _campaigns.isNotEmpty ? _campaigns.first : null;
+      }
+      
+      notifyListeners();
     } catch (e) {
       _setError('Fehler beim Löschen der Kampagne: $e');
     } finally {
@@ -232,22 +260,36 @@ class CampaignViewModel extends ChangeNotifier {
     }
   }
   
+  /// Dupliziert eine Kampagne
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
   Future<void> duplicateCampaign(Campaign campaign) async {
     _setLoading(true);
     _setError(null);
     
     try {
-      final result = await _campaignService.duplicateCampaign(campaign.id!);
-      if (result.isSuccess && result.data != null) {
-        _campaigns.insert(0, result.data!);
-        
-        // Duplizierte Kampagne auswählen
-        await selectCampaign(result.data!);
-        
-        notifyListeners();
+      // Erstelle eine Kopie der Kampagne mit neuer UUID
+      final duplicatedCampaign = campaign.copyWith(
+        id: UuidService().generateId(), // Neue UUID explizit generieren
+        title: '${campaign.title} (Kopie)',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      
+      Campaign savedCampaign;
+      
+      if (_campaignRepo != null) {
+        savedCampaign = await _campaignRepo!.create(duplicatedCampaign);
       } else {
-        _setError(result.userMessage);
+        throw Exception('CampaignModelRepository nicht verfügbar');
       }
+      
+      _campaigns.insert(0, savedCampaign);
+      
+      // Duplizierte Kampagne auswählen
+      await selectCampaign(savedCampaign);
+      
+      notifyListeners();
     } catch (e) {
       _setError('Fehler beim Duplizieren der Kampagne: $e');
     } finally {
@@ -301,36 +343,76 @@ class CampaignViewModel extends ChangeNotifier {
     _setError(null);
   }
   
+  /// Schaltet den Favoriten-/Archiv-Status einer Kampagne um
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
   Future<void> toggleFavorite(Campaign campaign) async {
     try {
-      // Toggle favorite status (placeholder implementation)
-      // In einer echten Implementierung würde dies die Datenbank aktualisieren
-      final index = _campaigns.indexWhere((c) => c.id == campaign.id);
-      if (index != -1) {
-        // Hier würde der Favoriten-Status umgeschaltet
-        // Da das Campaign Model noch kein favorite flag hat, ist dies ein Placeholder
-        notifyListeners();
+      if (_campaignRepo != null) {
+        // Campaign hat kein isActive Feld - wir simulieren es über title prefix
+        final newStatus = !campaign.title.startsWith('[ARCHIVIERT] ');
+        final updatedTitle = newStatus 
+            ? campaign.title 
+            : '[ARCHIVIERT] ${campaign.title.replaceFirst('[ARCHIVIERT] ', '')}';
+        
+        final updatedCampaign = await _campaignRepo!.update(
+          campaign.copyWith(title: updatedTitle),
+        );
+        
+        // Lokale Liste aktualisieren
+        final index = _campaigns.indexWhere((c) => c.id == campaign.id);
+        if (index != -1) {
+          _campaigns[index] = updatedCampaign;
+          if (_selectedCampaign?.id == campaign.id) {
+            _selectedCampaign = updatedCampaign;
+          }
+        }
+      } else {
+        throw Exception('CampaignModelRepository nicht verfügbar');
       }
+      
+      notifyListeners();
     } catch (e) {
       _setError('Fehler beim Umschalten des Favoriten-Status: $e');
     }
   }
   
   // Statistics helpers
+  
+  /// Holt die Anzahl der Helden für eine Kampagne
+  /// 
+  /// HINWEIS: Verwendet jetzt das neue PlayerCharacterModelRepository
   Future<int> getHeroCount(String campaignId) async {
-    return await _campaignService.getHeroCount(campaignId);
+    try {
+      if (_characterRepo != null) {
+        final characters = await _characterRepo!.findByCampaign(campaignId);
+        return characters.length;
+      } else {
+        debugPrint('CampaignViewModel: PlayerCharacterModelRepository nicht verfügbar');
+        return 0;
+      }
+    } catch (e) {
+      debugPrint('CampaignViewModel: Fehler beim Ermitteln der Hero-Count: $e');
+      return 0;
+    }
   }
   
   Future<int> getSessionCount(String campaignId) async {
-    return await _campaignService.getSessionCount(campaignId);
+    // Placeholder - Session Repository würde hier verwendet
+    // TODO: Implementieren wenn SessionModelRepository verfügbar ist
+    return 0;
   }
   
   Future<int> getQuestCount(String campaignId) async {
-    return await _campaignService.getQuestCount(campaignId);
+    // Placeholder - Quest Repository würde hier verwendet
+    // TODO: Implementieren wenn QuestModelRepository verfügbar ist
+    return 0;
   }
   
   Future<DateTime?> getLastActiveDate(String campaignId) async {
-    return await _campaignService.getLastActiveDate(campaignId);
+    // Placeholder - würde letzte Session-Activity zurückgeben
+    // TODO: Implementieren wenn SessionModelRepository verfügbar ist
+    return null;
   }
   
   // Private helper methods
@@ -356,8 +438,7 @@ class CampaignViewModel extends ChangeNotifier {
         result = a.title.compareTo(b.title);
         break;
       case CampaignSortOption.createdDate:
-        // Placeholder - müsste im Campaign Model ergänzt werden
-        result = 0;
+        result = a.createdAt.compareTo(b.createdAt);
         break;
       case CampaignSortOption.lastActive:
         result = a.updatedAt.compareTo(b.updatedAt);
@@ -382,14 +463,17 @@ class CampaignViewModel extends ChangeNotifier {
         break;
       case CampaignSortOption.monsters:
         // Placeholder für Monster-Sortierung
+        // TODO: Implementieren wenn CreatureModelRepository verfügbar ist
         result = 0;
         break;
       case CampaignSortOption.npcs:
         // Placeholder für NPC-Sortierung
+        // TODO: Implementieren wenn CreatureModelRepository verfügbar ist
         result = 0;
         break;
       case CampaignSortOption.items:
         // Placeholder für Item-Sortierung
+        // TODO: Implementieren wenn ItemModelRepository verfügbar ist
         result = 0;
         break;
       case CampaignSortOption.spells:

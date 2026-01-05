@@ -1,4 +1,5 @@
 // lib/models/player_character.dart
+import 'dart:convert';
 import '../services/uuid_service.dart';
 import '../services/player_character_service.dart';
 import 'inventory_item.dart';
@@ -55,6 +56,14 @@ class PlayerCharacter {
   final String? sourceId;
   final bool isFavorite;
   final String version;
+  
+  // D&D 5e spezifische Felder
+  final int proficiencyBonus;
+  final int speed;
+  final int passivePerception;
+  final String? spellSlots; // JSON-String für Spell-Slot-Verwaltung
+  final int spellSaveDc;
+  final int spellAttackBonus;
 
   const PlayerCharacter({
     required this.id,
@@ -91,6 +100,12 @@ class PlayerCharacter {
     this.attacks,
     this.sourceId,
     this.isFavorite = false,
+    this.proficiencyBonus = 2,
+    this.speed = 30,
+    this.passivePerception = 10,
+    this.spellSlots,
+    this.spellSaveDc = 8,
+    this.spellAttackBonus = 0,
   });
 
   /// Factory für neuen Player Character
@@ -128,6 +143,12 @@ class PlayerCharacter {
     String version = '1.0',
     String? imagePath,
     bool isFavorite = false,
+    int proficiencyBonus = 2,
+    int speed = 30,
+    int passivePerception = 10,
+    String? spellSlots,
+    int spellSaveDc = 8,
+    int spellAttackBonus = 0,
   }) {
     return PlayerCharacter(
       id: UuidService().generateId(),
@@ -164,10 +185,20 @@ class PlayerCharacter {
       version: version,
       imagePath: imagePath,
       isFavorite: isFavorite,
+      proficiencyBonus: proficiencyBonus,
+      speed: speed,
+      passivePerception: passivePerception,
+      spellSlots: spellSlots,
+      spellSaveDc: spellSaveDc,
+      spellAttackBonus: spellAttackBonus,
     );
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toMap() => toDatabaseMap();
+
+  /// NEUE METHODE: Serialisiert für Datenbank mit konsistenten Feldnamen
+  /// Diese Methode ersetzt zukünftig die Entity-Konvertierung
+  Map<String, dynamic> toDatabaseMap() {
     return {
       'id': id,
       'campaign_id': campaignId,
@@ -177,36 +208,61 @@ class PlayerCharacter {
       'race_name': raceName,
       'level': level,
       'max_hp': maxHp,
+      'current_hp': maxHp, // Für zukünftige Verwendung
       'armor_class': armorClass,
       'initiative_bonus': initiativeBonus,
       'image_path': imagePath,
+      
+      // 6 Hauptattribute
       'strength': strength,
       'dexterity': dexterity,
       'constitution': constitution,
       'intelligence': intelligence,
       'wisdom': wisdom,
       'charisma': charisma,
-      'proficient_skills': PlayerCharacterService.serializeSkills(proficientSkills),
+      
+      // Komplexe Daten als JSON
+      'proficient_skills': _serializeList(proficientSkills),
+      'special_abilities': specialAbilities,
+      'attacks': attacks,
+      'attack_list': _serializeAttackList(attackList),
+      'inventory': _serializeInventory(inventory),
+      
+      // D&D-Klassifikation
       'size': size,
       'type': type,
       'subtype': subtype,
       'alignment': alignment,
       'description': description,
-      'special_abilities': specialAbilities,
-      'attacks': attacks,
-      'attack_list': PlayerCharacterService.serializeAttackList(attackList),
-      'inventory': PlayerCharacterService.serializeInventory(inventory),
+      
+      // Währung
       'gold': gold,
       'silver': silver,
       'copper': copper,
+      
+      // Metadaten
       'source_type': sourceType,
       'source_id': sourceId,
-      'is_favorite': isFavorite,
+      'is_favorite': isFavorite ? 1 : 0,
       'version': version,
+      
+      // D&D 5e Felder
+      'proficiency_bonus': proficiencyBonus,
+      'speed': speed,
+      'passive_perception': passivePerception,
+      'spell_slots': spellSlots,
+      'spell_save_dc': spellSaveDc,
+      'spell_attack_bonus': spellAttackBonus,
+      
+      // Timestamps
+      'created_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toIso8601String(),
     };
   }
 
-  factory PlayerCharacter.fromMap(Map<String, dynamic> map) {
+  /// NEUE METHODE: Deserialisiert von Datenbank mit konsistenten Feldnamen
+  /// Diese Methode ersetzt zukünftig die Entity-Konvertierung
+  factory PlayerCharacter.fromDatabaseMap(Map<String, dynamic> map) {
     return PlayerCharacter(
       id: ModelParsingHelper.safeId(map, 'id'),
       campaignId: ModelParsingHelper.safeString(map, 'campaign_id', ''),
@@ -214,6 +270,130 @@ class PlayerCharacter {
       playerName: ModelParsingHelper.safeString(map, 'player_name', 'Unbekannt'),
       className: ModelParsingHelper.safeString(map, 'class_name', 'Unbekannt'),
       raceName: ModelParsingHelper.safeString(map, 'race_name', 'Mensch'),
+      level: ModelParsingHelper.safeInt(map, 'level', 1),
+      maxHp: ModelParsingHelper.safeInt(map, 'max_hp', 10),
+      armorClass: ModelParsingHelper.safeInt(map, 'armor_class', 10),
+      initiativeBonus: ModelParsingHelper.safeInt(map, 'initiative_bonus', 0),
+      imagePath: ModelParsingHelper.safeStringOrNull(map, 'image_path', null),
+      
+      // 6 Hauptattribute
+      strength: ModelParsingHelper.safeInt(map, 'strength', 10),
+      dexterity: ModelParsingHelper.safeInt(map, 'dexterity', 10),
+      constitution: ModelParsingHelper.safeInt(map, 'constitution', 10),
+      intelligence: ModelParsingHelper.safeInt(map, 'intelligence', 10),
+      wisdom: ModelParsingHelper.safeInt(map, 'wisdom', 10),
+      charisma: ModelParsingHelper.safeInt(map, 'charisma', 10),
+      
+      // Komplexe Daten
+      proficientSkills: _deserializeList(map['proficient_skills'] as String?),
+      specialAbilities: ModelParsingHelper.safeStringOrNull(map, 'special_abilities', null),
+      attacks: map['attacks']?.toString(),
+      attackList: _deserializeAttackList(map['attack_list'] as String?),
+      inventory: _deserializeInventory(map['inventory'] as String?),
+      
+      // D&D-Klassifikation
+      size: ModelParsingHelper.safeStringOrNull(map, 'size', null),
+      type: ModelParsingHelper.safeStringOrNull(map, 'type', null),
+      subtype: ModelParsingHelper.safeStringOrNull(map, 'subtype', null),
+      alignment: ModelParsingHelper.safeStringOrNull(map, 'alignment', null),
+      description: ModelParsingHelper.safeStringOrNull(map, 'description', null),
+      
+      // Währung
+      gold: ModelParsingHelper.safeDouble(map, 'gold', 0.0),
+      silver: ModelParsingHelper.safeDouble(map, 'silver', 0.0),
+      copper: ModelParsingHelper.safeDouble(map, 'copper', 0.0),
+      
+      // Metadaten
+      sourceType: ModelParsingHelper.safeString(map, 'source_type', 'custom'),
+      sourceId: ModelParsingHelper.safeStringOrNull(map, 'source_id', null),
+      isFavorite: ModelParsingHelper.safeBool(map, 'is_favorite', false),
+      version: ModelParsingHelper.safeString(map, 'version', '1.0'),
+      
+      // D&D 5e Felder
+      proficiencyBonus: ModelParsingHelper.safeInt(map, 'proficiency_bonus', 2),
+      speed: ModelParsingHelper.safeInt(map, 'speed', 30),
+      passivePerception: ModelParsingHelper.safeInt(map, 'passive_perception', 10),
+      spellSlots: ModelParsingHelper.safeStringOrNull(map, 'spell_slots', null),
+      spellSaveDc: ModelParsingHelper.safeInt(map, 'spell_save_dc', 8),
+      spellAttackBonus: ModelParsingHelper.safeInt(map, 'spell_attack_bonus', 0),
+    );
+  }
+
+  // Hilfsmethoden für komplexe Daten
+
+  /// Serialisiert eine Liste von Strings als JSON
+  static String _serializeList(List<String> list) {
+    try {
+      return jsonEncode(list);
+    } catch (e) {
+      return '[]';
+    }
+  }
+
+  /// Deserialisiert eine Liste von Strings aus JSON
+  static List<String> _deserializeList(String? json) {
+    if (json == null || json.trim().isEmpty) return [];
+    try {
+      final decoded = jsonDecode(json) as List;
+      return decoded.map((item) => item.toString()).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Serialisiert eine Liste von Angriffen als JSON
+  static String _serializeAttackList(List<Attack> attacks) {
+    try {
+      final list = attacks.map((a) => a.toMap()).toList();
+      return jsonEncode(list);
+    } catch (e) {
+      return '[]';
+    }
+  }
+
+  /// Deserialisiert eine Liste von Angriffen aus JSON
+  static List<Attack> _deserializeAttackList(String? json) {
+    if (json == null || json.trim().isEmpty) return [];
+    try {
+      final decoded = jsonDecode(json) as List;
+      return decoded.map((item) => Attack.fromMap(item as Map<String, dynamic>)).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Serialisiert ein Inventar als JSON
+  static String _serializeInventory(List<InventoryItem> inventory) {
+    try {
+      final list = inventory.map((i) => i.toMap()).toList();
+      return jsonEncode(list);
+    } catch (e) {
+      return '[]';
+    }
+  }
+
+  /// Deserialisiert ein Inventar aus JSON
+  static List<InventoryItem> _deserializeInventory(String? json) {
+    if (json == null || json.trim().isEmpty) return [];
+    try {
+      final decoded = jsonDecode(json) as List;
+      return decoded.map((item) => InventoryItem.fromMap(item as Map<String, dynamic>)).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Gibt den Tabellennamen für die Datenbank zurück
+  static String get tableName => 'player_characters';
+
+  factory PlayerCharacter.fromMap(Map<String, dynamic> map) {
+    return PlayerCharacter(
+      id: ModelParsingHelper.safeId(map, 'id'),
+      campaignId: map['campaignId']?.toString() ?? ModelParsingHelper.safeString(map, 'campaign_id', ''),
+      name: ModelParsingHelper.safeString(map, 'name', 'Unbenannt'),
+      playerName: map['playerName']?.toString() ?? ModelParsingHelper.safeString(map, 'player_name', 'Unbekannt'),
+      className: map['className']?.toString() ?? ModelParsingHelper.safeString(map, 'class_name', 'Unbekannt'),
+      raceName: map['raceName']?.toString() ?? ModelParsingHelper.safeString(map, 'race_name', 'Mensch'),
       level: ModelParsingHelper.safeInt(map, 'level', 1),
       maxHp: ModelParsingHelper.safeInt(map, 'max_hp', 10),
       armorClass: ModelParsingHelper.safeInt(map, 'armor_class', 10),
@@ -242,6 +422,12 @@ class PlayerCharacter {
       sourceId: ModelParsingHelper.safeStringOrNull(map, 'source_id', null),
       isFavorite: ModelParsingHelper.safeBool(map, 'is_favorite', false),
       version: ModelParsingHelper.safeString(map, 'version', '1.0'),
+      proficiencyBonus: ModelParsingHelper.safeInt(map, 'proficiencyBonus', 2),
+      speed: ModelParsingHelper.safeInt(map, 'speed', 30),
+      passivePerception: ModelParsingHelper.safeInt(map, 'passivePerception', 10),
+      spellSlots: ModelParsingHelper.safeStringOrNull(map, 'spellSlots', null),
+      spellSaveDc: ModelParsingHelper.safeInt(map, 'spellSaveDc', 8),
+      spellAttackBonus: ModelParsingHelper.safeInt(map, 'spellAttackBonus', 0),
     );
   }
 

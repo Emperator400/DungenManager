@@ -1,6 +1,7 @@
 // lib/screens/link_wiki_entries_screen.dart
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart'; // Unser Helper
+import '../database/core/database_connection.dart';
+import '../database/repositories/wiki_entry_model_repository.dart';
 import '../models/wiki_entry.dart';
 
 class LinkWikiEntriesScreen extends StatefulWidget {
@@ -12,14 +13,15 @@ class LinkWikiEntriesScreen extends StatefulWidget {
 }
 
 class _LinkWikiEntriesScreenState extends State<LinkWikiEntriesScreen> {
-  final dbHelper = DatabaseHelper.instance;
+  late WikiEntryModelRepository _wikiRepository;
   late Future<List<WikiEntry>> _entriesFuture;
   late final List<String> _selectedIds;
 
   @override
   void initState() {
     super.initState();
-    _entriesFuture = dbHelper.getAllWikiEntries();
+    _wikiRepository = WikiEntryModelRepository(DatabaseConnection.instance);
+    _entriesFuture = _wikiRepository.findAll();
     _selectedIds = List.from(widget.previouslyLinkedIds);
   }
 
