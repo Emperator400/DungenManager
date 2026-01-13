@@ -265,28 +265,14 @@ class _EnhancedInventoryTabWidgetState extends State<EnhancedInventoryTabWidget>
   Widget _buildEnhancedGridView(CharacterEditorViewModel viewModel) {
     final separatedItems = viewModel.equippedAndUnequippedItems;
     
-    // Konvertiere InventoryItem zu DisplayInventoryItem
+    // Konvertiere InventoryItem zu DisplayInventoryItem mit echten Item-Details
     final equippedDisplayItems = separatedItems.equipped.map((invItem) {
-      // Hier müsste der eigentliche Item aus der Datenbank geladen werden
-      // Für jetzt erstellen wir ein Dummy-Item
-      final item = Item(
-        id: invItem.itemId,
-        name: 'Gegenstand',
-        itemType: ItemType.Weapon,
-        weight: 1.0,
-        description: '',
-      );
+      final item = viewModel.getItemDetails(invItem.itemId) ?? _createFallbackItem(invItem);
       return DisplayInventoryItem(inventoryItem: invItem, item: item);
     }).toList();
     
     final unequippedDisplayItems = separatedItems.unequipped.map((invItem) {
-      final item = Item(
-        id: invItem.itemId,
-        name: 'Gegenstand',
-        itemType: ItemType.Weapon,
-        weight: 1.0,
-        description: '',
-      );
+      final item = viewModel.getItemDetails(invItem.itemId) ?? _createFallbackItem(invItem);
       return DisplayInventoryItem(inventoryItem: invItem, item: item);
     }).toList();
     
@@ -308,26 +294,14 @@ class _EnhancedInventoryTabWidgetState extends State<EnhancedInventoryTabWidget>
     final equippedItems = separatedItems.equipped;
     final unequippedItems = separatedItems.unequipped;
     
-    // Konvertiere zu DisplayInventoryItem
+    // Konvertiere zu DisplayInventoryItem mit echten Item-Details
     final equippedDisplayItems = equippedItems.map((invItem) {
-      final item = Item(
-        id: invItem.itemId,
-        name: 'Gegenstand',
-        itemType: ItemType.Weapon,
-        weight: 1.0,
-        description: '',
-      );
+      final item = viewModel.getItemDetails(invItem.itemId) ?? _createFallbackItem(invItem);
       return DisplayInventoryItem(inventoryItem: invItem, item: item);
     }).toList();
     
     final unequippedDisplayItems = unequippedItems.map((invItem) {
-      final item = Item(
-        id: invItem.itemId,
-        name: 'Gegenstand',
-        itemType: ItemType.Weapon,
-        weight: 1.0,
-        description: '',
-      );
+      final item = viewModel.getItemDetails(invItem.itemId) ?? _createFallbackItem(invItem);
       return DisplayInventoryItem(inventoryItem: invItem, item: item);
     }).toList();
     
@@ -765,5 +739,21 @@ class _EnhancedInventoryTabWidgetState extends State<EnhancedInventoryTabWidget>
     // Player-Characters können ihre Items ausrüsten/ablegen, aber nicht Menge bearbeiten
     // NPCs/Monster können vom DM vollständig bearbeitet werden (Menge, Ausrüstung, etc.)
     return true; // Alle können Items ausrüsten
+  }
+
+  /// Erstellt ein Fallback-Item wenn die Details nicht gefunden wurden
+  Item _createFallbackItem(InventoryItem invItem) {
+    print('=== FALLBACK ITEM CREATED ===');
+    print('InventoryItem ID: ${invItem.id}');
+    print('Item ID: ${invItem.itemId}');
+    print('Inventory Name: ${invItem.name}');
+    
+    return Item(
+      id: invItem.itemId,
+      name: invItem.name.isNotEmpty ? invItem.name : 'Unbekannter Gegenstand',
+      itemType: ItemType.AdventuringGear, // Default Typ
+      weight: 1.0,
+      description: invItem.description ?? '',
+    );
   }
 }

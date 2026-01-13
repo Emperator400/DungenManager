@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -6,15 +8,19 @@ import '../game_data/dnd_logic.dart';
 import '../game_data/dnd_models.dart';
 import '../game_data/game_data.dart';
 import '../models/player_character.dart';
+import '../models/inventory_item.dart';
 import '../theme/dnd_theme.dart';
 import '../viewmodels/edit_pc_viewmodel.dart';
 import '../widgets/ui_components/feedback/snackbar_helper.dart';
+import '../widgets/ui_components/forms/form_field_widget.dart';
+import '../widgets/ui_components/stats/ability_score_widget.dart';
+import '../widgets/ui_components/skills/skill_list_widget.dart';
 import '../database/core/database_connection.dart';
 import '../database/repositories/player_character_model_repository.dart';
 
 import 'add_item_from_library_screen.dart';
 
-/// Enhanced Edit PC Screen mit Provider-Pattern und modernem, übersichtlichem D&D Design
+/// Enhanced Edit PC Screen mit Provider-Pattern und modernem, uebersichtlichem D&D Design
 class EnhancedEditPCScreen extends StatefulWidget {
   final String campaignId;
   final PlayerCharacter? pcToEdit;
@@ -31,12 +37,18 @@ class EnhancedEditPCScreen extends StatefulWidget {
 
 class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
     with SingleTickerProviderStateMixin {
+  static const int _tabCount = 4;
+  static const int _minAbilityScore = 1;
+  static const int _maxAbilityScore = 20;
+  static const Duration _debounceDelay = Duration(milliseconds: 300);
+
   late EditPCViewModel _viewModel;
   late TabController _tabController;
   final _formKey = GlobalKey<FormState>();
   final _scrollController = ScrollController();
   bool _isInitialized = false;
   String _skillSearchQuery = '';
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -44,7 +56,7 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
     _viewModel = EditPCViewModel(
       pcRepository: PlayerCharacterModelRepository(DatabaseConnection.instance),
     );
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: _tabCount, vsync: this);
     _initializeViewModel();
   }
 
@@ -52,6 +64,7 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
   void dispose() {
     _tabController.dispose();
     _scrollController.dispose();
+    _debounce?.cancel();
     _viewModel.dispose();
     super.dispose();
   }
@@ -75,11 +88,14 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<EditPCViewModel>.value(
       value: _viewModel,
-      child: Scaffold(
-        backgroundColor: DnDTheme.dungeonBlack,
-        appBar: _buildAppBar(),
-        body: _buildBody(),
-        floatingActionButton: _buildFloatingActionButton(),
+      child: WillPopScope(
+        onWillPop: _onWillPop,
+        child: Scaffold(
+          backgroundColor: DnDTheme.dungeonBlack,
+          appBar: _buildAppBar(),
+          body: _buildBody(),
+          floatingActionButton: _buildFloatingActionButton(),
+        ),
       ),
     );
   }
@@ -99,20 +115,6 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
       foregroundColor: Colors.white,
       elevation: 2,
       centerTitle: true,
-      actions: [
-        Container(
-          margin: const EdgeInsets.only(right: DnDTheme.sm),
-          decoration: BoxDecoration(
-            color: DnDTheme.successGreen,
-            borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.save),
-            tooltip: 'Speichern',
-            onPressed: _saveCharacter,
-          ),
-        ),
-      ],
       bottom: TabBar(
         controller: _tabController,
         indicatorColor: DnDTheme.ancientGold,
@@ -120,10 +122,10 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
         unselectedLabelColor: Colors.white70,
         labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         tabs: const [
-          Tab(icon: Icon(Icons.person), text: 'Stammdaten'),
-          Tab(icon: Icon(Icons.fitness_center), text: 'Attribute'),
-          Tab(icon: Icon(Icons.category), text: 'D&D Details'),
-          Tab(icon: Icon(Icons.inventory), text: 'Inventar'),
+          Tab(icon: Icon(Icons.person), text: ' Stammdaten'),
+          Tab(icon: Icon(Icons.fitness_center), text: ' Attribute'),
+          Tab(icon: Icon(Icons.category), text: ' D&D Details'),
+          Tab(icon: Icon(Icons.inventory), text: ' Inventar'),
         ],
       ),
     );
@@ -243,12 +245,12 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
       builder: (context, viewModel, child) {
         return SingleChildScrollView(
           controller: _scrollController,
-          padding: const EdgeInsets.all(DnDTheme.lg),
+          padding: const EdgeInsets.all(8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildSectionTitle('Attributspunkte', Icons.fitness_center),
-              const SizedBox(height: DnDTheme.md),
+              const SizedBox(height: 8),
               _buildAbilityGrid(),
             ],
           ),
@@ -304,7 +306,7 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
                   ),
                   const SizedBox(height: DnDTheme.sm),
                   Text(
-                    'Speichere den Charakter zuerst,\numit du Gegenstände hinzufügen kannst.',
+                    'Speichere den Charakter zuerst,\nmoechtest du Gegenstaende hinzufuegen kannst.',
                     style: DnDTheme.bodyText1.copyWith(
                       color: Colors.white70,
                     ),
@@ -325,7 +327,7 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
                 child: ElevatedButton.icon(
                   onPressed: _addItemFromLibrary,
                   icon: const Icon(Icons.add),
-                  label: const Text('Gegenstand aus Bibliothek hinzufügen'),
+                  label: const Text('Gegenstand aus Bibliothek hinzufuegen'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: DnDTheme.arcaneBlue,
                     foregroundColor: Colors.white,
@@ -384,14 +386,15 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
         Icon(
           icon,
           color: DnDTheme.ancientGold,
-          size: 28,
+          size: 22,
         ),
-        const SizedBox(width: DnDTheme.sm),
+        const SizedBox(width: 6),
         Text(
           title,
           style: DnDTheme.headline2.copyWith(
             color: DnDTheme.ancientGold,
             fontWeight: FontWeight.bold,
+            fontSize: 18,
           ),
         ),
       ],
@@ -399,253 +402,203 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
   }
 
   Widget _buildCharacterCard() {
-    return Container(
-      padding: const EdgeInsets.all(DnDTheme.lg),
-      decoration: BoxDecoration(
-        color: DnDTheme.slateGrey,
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-      ),
-      child: Column(
-        children: [
-          _buildTextField(
-            'Name des Charakters',
-            _viewModel.name,
-            (value) => _viewModel.updateName(value),
-            validator: _viewModel.validateName,
-            icon: Icons.person,
-          ),
-          const SizedBox(height: DnDTheme.lg),
-          _buildTextField(
-            'Name des Spielers',
-            _viewModel.playerName,
-            (value) => _viewModel.updatePlayerName(value),
-            validator: _viewModel.validatePlayerName,
-            icon: Icons.person_outline,
-          ),
-        ],
-      ),
+    return FormSectionWidget(
+      title: 'Charakter-Informationen',
+      icon: Icons.person,
+      backgroundColor: DnDTheme.slateGrey,
+      borderRadius: DnDTheme.radiusMedium,
+      children: [
+        FormFieldWidget(
+          label: 'Name des Charakters',
+          value: _viewModel.name,
+          onChanged: (value) => _viewModel.updateName(value),
+          validator: _viewModel.validateName,
+          icon: Icons.person,
+        ),
+        const SizedBox(height: 16),
+        FormFieldWidget(
+          label: 'Name des Spielers',
+          value: _viewModel.playerName,
+          onChanged: (value) => _viewModel.updatePlayerName(value),
+          validator: _viewModel.validatePlayerName,
+          icon: Icons.person_outline,
+        ),
+      ],
     );
   }
 
   Widget _buildClassRaceCard() {
-    return Container(
-      padding: const EdgeInsets.all(DnDTheme.lg),
-      decoration: BoxDecoration(
-        color: DnDTheme.slateGrey,
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-      ),
-      child: Column(
-        children: [
-          _buildDropdownField<DndClass>(
-            'Klasse',
-            _viewModel.selectedClass,
-            allDndClasses,
-            (value) => _viewModel.updateClass(value),
-            validator: _viewModel.validateClass,
-            icon: Icons.shield,
-          ),
-          const SizedBox(height: DnDTheme.lg),
-          _buildDropdownField<DndRace>(
-            'Rasse',
-            _viewModel.selectedRace,
-            allDndRaces,
-            (value) => _viewModel.updateRace(value),
-            validator: _viewModel.validateRace,
-            icon: Icons.public,
-          ),
-        ],
-      ),
+    return FormSectionWidget(
+      title: 'Klasse & Rasse',
+      icon: Icons.category,
+      backgroundColor: DnDTheme.slateGrey,
+      borderRadius: DnDTheme.radiusMedium,
+      children: [
+        DropdownFormFieldWidget<DndClass>(
+          label: 'Klasse',
+          value: _viewModel.selectedClass,
+          items: allDndClasses,
+          onChanged: (value) => _viewModel.updateClass(value),
+          validator: _viewModel.validateClass,
+          icon: Icons.shield,
+          itemLabelBuilder: (dndClass) => dndClass.name,
+        ),
+        const SizedBox(height: 16),
+        DropdownFormFieldWidget<DndRace>(
+          label: 'Rasse',
+          value: _viewModel.selectedRace,
+          items: allDndRaces,
+          onChanged: (value) => _viewModel.updateRace(value),
+          validator: _viewModel.validateRace,
+          icon: Icons.public,
+          itemLabelBuilder: (dndRace) => dndRace.name,
+        ),
+      ],
     );
   }
 
   Widget _buildCombatStatsCard() {
-    return Container(
-      padding: const EdgeInsets.all(DnDTheme.lg),
-      decoration: BoxDecoration(
-        color: DnDTheme.slateGrey,
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Kampfwerte',
-            style: DnDTheme.headline3.copyWith(
-              color: DnDTheme.ancientGold,
-              fontWeight: FontWeight.bold,
+    return FormSectionWidget(
+      title: 'Kampfwerte',
+      icon: Icons.security,
+      backgroundColor: DnDTheme.slateGrey,
+      borderRadius: DnDTheme.radiusMedium,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: FormFieldWidget(
+                label: 'Stufe',
+                value: _viewModel.level.toString(),
+                onChanged: (value) => _viewModel.updateLevel(int.tryParse(value) ?? 1),
+                validator: _viewModel.validateNumber,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                icon: Icons.star,
+              ),
             ),
-          ),
-          const SizedBox(height: DnDTheme.lg),
-          Row(
-            children: [
-              Expanded(
-                child: _buildNumberField(
-                  'Stufe',
-                  _viewModel.level.toString(),
-                  (value) => _viewModel.updateLevel(int.tryParse(value) ?? 1),
-                  validator: _viewModel.validateNumber,
-                  icon: Icons.star,
-                ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: FormFieldWidget(
+                label: 'Max. HP',
+                value: _viewModel.maxHp.toString(),
+                onChanged: (value) => _viewModel.updateMaxHp(int.tryParse(value) ?? 10),
+                validator: _viewModel.validateNumber,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                icon: Icons.favorite,
               ),
-              const SizedBox(width: DnDTheme.lg),
-              Expanded(
-                child: _buildNumberField(
-                  'Max. HP',
-                  _viewModel.maxHp.toString(),
-                  (value) => _viewModel.updateMaxHp(int.tryParse(value) ?? 10),
-                  validator: _viewModel.validateNumber,
-                  icon: Icons.favorite,
-                ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: FormFieldWidget(
+                label: 'Ruestungsklasse',
+                value: _viewModel.armorClass.toString(),
+                onChanged: (value) => _viewModel.updateArmorClass(int.tryParse(value) ?? 10),
+                validator: _viewModel.validateNumber,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                icon: Icons.security,
               ),
-            ],
-          ),
-          const SizedBox(height: DnDTheme.lg),
-          Row(
-            children: [
-              Expanded(
-                child: _buildNumberField(
-                  'Rüstungsklasse',
-                  _viewModel.armorClass.toString(),
-                  (value) => _viewModel.updateArmorClass(int.tryParse(value) ?? 10),
-                  validator: _viewModel.validateNumber,
-                  icon: Icons.security,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: DnDTheme.stoneGrey,
+                  borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
                 ),
-              ),
-              const SizedBox(width: DnDTheme.lg),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(DnDTheme.lg),
-                  decoration: BoxDecoration(
-                    color: DnDTheme.stoneGrey,
-                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.flash_on,
-                            color: DnDTheme.ancientGold,
-                            size: 20,
-                          ),
-                          const SizedBox(width: DnDTheme.sm),
-                          Text(
-                            'Initiative-Bonus',
-                            style: DnDTheme.bodyText1.copyWith(
-                              color: DnDTheme.ancientGold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        '+${_viewModel.initiativeBonus}',
-                        style: DnDTheme.headline2.copyWith(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.flash_on,
                           color: DnDTheme.ancientGold,
-                          fontWeight: FontWeight.bold,
+                          size: 20,
                         ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Initiative-Bonus',
+                          style: DnDTheme.bodyText1.copyWith(
+                            color: DnDTheme.ancientGold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      '+${_viewModel.initiativeBonus}',
+                      style: DnDTheme.headline2.copyWith(
+                        color: DnDTheme.ancientGold,
+                        fontWeight: FontWeight.bold,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: DnDTheme.xl),
-          Text(
-            'Währung',
-            style: DnDTheme.headline3.copyWith(
-              color: DnDTheme.ancientGold,
-              fontWeight: FontWeight.bold,
             ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: DnDTheme.stoneGrey,
+            borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
           ),
-          const SizedBox(height: DnDTheme.lg),
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: _buildTextField(
-                  'Gold',
-                  _viewModel.gold.toString(),
-                  (value) => _viewModel.updateGold(double.tryParse(value) ?? 0.0),
-                  icon: Icons.monetization_on,
-                ),
+              Row(
+                children: [
+                  Icon(
+                    Icons.monetization_on,
+                    color: DnDTheme.ancientGold,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Währung',
+                    style: DnDTheme.headline3.copyWith(
+                      color: DnDTheme.ancientGold,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: DnDTheme.lg),
-              Expanded(
-                child: _buildTextField(
-                  'Silber',
-                  _viewModel.silver.toString(),
-                  (value) => _viewModel.updateSilver(double.tryParse(value) ?? 0.0),
-                  icon: Icons.monetization_on,
-                ),
-              ),
-              const SizedBox(width: DnDTheme.lg),
-              Expanded(
-                child: _buildTextField(
-                  'Kupfer',
-                  _viewModel.copper.toString(),
-                  (value) => _viewModel.updateCopper(double.tryParse(value) ?? 0.0),
-                  icon: Icons.monetization_on,
-                ),
+              const SizedBox(height: 16),
+              CurrencyWidget(
+                gold: _viewModel.gold,
+                silver: _viewModel.silver,
+                copper: _viewModel.copper,
               ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildAbilityGrid() {
-    return GridView.count(
-      crossAxisCount: 3,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: DnDTheme.md,
-      crossAxisSpacing: DnDTheme.md,
-      children: [
-        _buildAbilityScoreCard(
-          'Stärke',
-          _viewModel.strength,
-          Icons.fitness_center,
-          Colors.red,
-          updateAbility: (value) => _viewModel.updateStrength(value),
-        ),
-        _buildAbilityScoreCard(
-          'Geschicklichkeit',
-          _viewModel.dexterity,
-          Icons.flash_on,
-          Colors.green,
-          updateAbility: (value) => _viewModel.updateDexterity(value),
-        ),
-        _buildAbilityScoreCard(
-          'Konstitution',
-          _viewModel.constitution,
-          Icons.favorite,
-          Colors.orange,
-          updateAbility: (value) => _viewModel.updateConstitution(value),
-        ),
-        _buildAbilityScoreCard(
-          'Intelligenz',
-          _viewModel.intelligence,
-          Icons.school,
-          Colors.blue,
-          updateAbility: (value) => _viewModel.updateIntelligence(value),
-        ),
-        _buildAbilityScoreCard(
-          'Weisheit',
-          _viewModel.wisdom,
-          Icons.psychology,
-          Colors.purple,
-          updateAbility: (value) => _viewModel.updateWisdom(value),
-        ),
-        _buildAbilityScoreCard(
-          'Charisma',
-          _viewModel.charisma,
-          Icons.people,
-          Colors.pink,
-          updateAbility: (value) => _viewModel.updateCharisma(value),
-        ),
-      ],
+    return AbilityScoreGrid(
+      strength: _viewModel.strength,
+      dexterity: _viewModel.dexterity,
+      constitution: _viewModel.constitution,
+      intelligence: _viewModel.intelligence,
+      wisdom: _viewModel.wisdom,
+      charisma: _viewModel.charisma,
+      onStrengthChanged: (value) => _viewModel.updateStrength(value),
+      onDexterityChanged: (value) => _viewModel.updateDexterity(value),
+      onConstitutionChanged: (value) => _viewModel.updateConstitution(value),
+      onIntelligenceChanged: (value) => _viewModel.updateIntelligence(value),
+      onWisdomChanged: (value) => _viewModel.updateWisdom(value),
+      onCharismaChanged: (value) => _viewModel.updateCharisma(value),
     );
   }
 
@@ -704,7 +657,7 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
               ),
               onChanged: (newValue) {
                 final newValueInt = int.tryParse(newValue);
-                if (newValueInt != null && newValueInt >= 1 && newValueInt <= 20) {
+                if (newValueInt != null && newValueInt >= _minAbilityScore && newValueInt <= _maxAbilityScore) {
                   updateAbility(newValueInt);
                 }
               },
@@ -737,31 +690,6 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
   Widget _buildSkillsCard() {
     return Consumer<EditPCViewModel>(
       builder: (context, viewModel, child) {
-        Container searchField = Container(
-          padding: const EdgeInsets.all(DnDTheme.md),
-          decoration: BoxDecoration(
-            color: DnDTheme.slateGrey,
-            borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-          ),
-          child: TextField(
-            onChanged: (value) {
-              setState(() {
-                _skillSearchQuery = value.toLowerCase();
-              });
-            },
-            decoration: InputDecoration(
-              hintText: 'Fertigkeiten durchsuchen...',
-              hintStyle: DnDTheme.bodyText2.copyWith(
-                color: Colors.white60,
-              ),
-              prefixIcon: Icon(Icons.search, color: DnDTheme.ancientGold),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.all(DnDTheme.md),
-            ),
-            style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-          ),
-        );
-
         Map<Ability, List<DndSkill>> skillsByAbility = {
           Ability.strength: allDndSkills.where((s) => s.ability == Ability.strength).toList(),
           Ability.dexterity: allDndSkills.where((s) => s.ability == Ability.dexterity).toList(),
@@ -770,123 +698,49 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
           Ability.charisma: allDndSkills.where((s) => s.ability == Ability.charisma).toList(),
         };
 
-        List<MapEntry<Ability, List<DndSkill>>> filteredSections = skillsByAbility.entries
-            .where((entry) {
-              if (_skillSearchQuery.isEmpty) return true;
-              return entry.value.any((skill) =>
-                  skill.name.toLowerCase().contains(_skillSearchQuery));
-            })
-            .toList();
+        Map<String, String> skillBonuses = {};
+        for (var skill in allDndSkills) {
+          skillBonuses[skill.name] = viewModel.getSkillBonusString(skill);
+        }
 
-        return Container(
-          padding: const EdgeInsets.all(DnDTheme.lg),
-          decoration: BoxDecoration(
-            color: DnDTheme.slateGrey,
-            borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-          ),
-          child: Column(
-            children: [
-              searchField,
-              const SizedBox(height: DnDTheme.lg),
-              ...filteredSections.map((entry) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: DnDTheme.md,
-                        vertical: DnDTheme.sm,
-                      ),
-                      decoration: BoxDecoration(
-                        color: DnDTheme.stoneGrey,
-                        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            _getAbilityIcon(entry.key),
-                            color: DnDTheme.ancientGold,
-                            size: 20,
-                          ),
-                          const SizedBox(width: DnDTheme.sm),
-                          Text(
-                            _getAbilityName(entry.key),
-                            style: DnDTheme.bodyText1.copyWith(
-                              color: DnDTheme.ancientGold,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: DnDTheme.sm),
-                    ...entry.value.map((skill) {
-                      final bonus = _viewModel.getSkillBonusString(skill);
-                      final isProficient = _viewModel.proficientSkills.contains(skill.name);
-                      final matchesSearch = _skillSearchQuery.isEmpty ||
-                          skill.name.toLowerCase().contains(_skillSearchQuery);
-
-                      if (!matchesSearch) return const SizedBox.shrink();
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: DnDTheme.xs),
-                        decoration: BoxDecoration(
-                          color: isProficient 
-                              ? DnDTheme.successGreen.withValues(alpha: 0.2)
-                              : DnDTheme.stoneGrey,
-                          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                        ),
-                        child: ListTile(
-                          dense: true,
-                          leading: Container(
-                            width: 32,
-                            height: 32,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: isProficient ? DnDTheme.successGreen : DnDTheme.slateGrey,
-                              shape: BoxShape.circle,
-                            ),
-                            child: isProficient
-                                ? Icon(Icons.check, color: Colors.white, size: 20)
-                                : Icon(Icons.check_box_outline_blank, color: Colors.white60, size: 20),
-                          ),
-                          title: Text(
-                            skill.name,
-                            style: DnDTheme.bodyText1.copyWith(
-                              color: Colors.white,
-                              fontWeight: isProficient ? FontWeight.bold : FontWeight.normal,
-                            ),
-                          ),
-                          trailing: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: DnDTheme.sm,
-                              vertical: DnDTheme.xs,
-                            ),
-                            decoration: BoxDecoration(
-                              color: DnDTheme.ancientGold,
-                              borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                            ),
-                            child: Text(
-                              bonus,
-                              style: DnDTheme.bodyText2.copyWith(
-                                color: DnDTheme.dungeonBlack,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          onTap: () => _viewModel.toggleSkillProficiency(skill.name),
-                        ),
-                      );
-                    }).toList(),
-                    const SizedBox(height: DnDTheme.md),
-                  ],
-                );
-              }).toList(),
-            ],
-          ),
+        return FormSectionWidget(
+          title: 'Fertigkeiten',
+          icon: Icons.build,
+          backgroundColor: DnDTheme.slateGrey,
+          borderRadius: DnDTheme.radiusMedium,
+          children: [
+            SkillSelectionWithSearch(
+              skillsByAbility: skillsByAbility,
+              skillBonuses: skillBonuses,
+              proficientSkills: viewModel.proficientSkills,
+              onSkillToggle: (skillName) => viewModel.toggleSkillProficiency(skillName),
+              searchQuery: _skillSearchQuery,
+              onSearchChanged: (query) {
+                _debounce?.cancel();
+                _debounce = Timer(_debounceDelay, () {
+                  if (mounted) {
+                    setState(() {
+                      _skillSearchQuery = query.toLowerCase();
+                    });
+                  }
+                });
+              },
+            ),
+          ],
         );
       },
     );
+  }
+
+  void _onSearchChanged(String query) {
+    _debounce?.cancel();
+    _debounce = Timer(_debounceDelay, () {
+      if (mounted) {
+        setState(() {
+          _skillSearchQuery = query.toLowerCase();
+        });
+      }
+    });
   }
 
   IconData _getAbilityIcon(Ability ability) {
@@ -909,7 +763,7 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
   String _getAbilityName(Ability ability) {
     switch (ability) {
       case Ability.strength:
-        return 'Stärke';
+        return 'Staerke';
       case Ability.dexterity:
         return 'Geschicklichkeit';
       case Ability.constitution:
@@ -924,100 +778,97 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
   }
 
   Widget _buildDnDBasicCard() {
-    return Container(
-      padding: const EdgeInsets.all(DnDTheme.lg),
-      decoration: BoxDecoration(
-        color: DnDTheme.slateGrey,
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _buildTextField(
-                  'Größe',
-                  _viewModel.size,
-                  (value) => _viewModel.updateSize(value),
-                  icon: Icons.straighten,
-                ),
+    return FormSectionWidget(
+      title: 'D&D Grunddaten',
+      icon: Icons.category,
+      backgroundColor: DnDTheme.slateGrey,
+      borderRadius: DnDTheme.radiusMedium,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: FormFieldWidget(
+                label: 'Groesse',
+                value: _viewModel.size,
+                onChanged: (value) => _viewModel.updateSize(value),
+                icon: Icons.straighten,
               ),
-              const SizedBox(width: DnDTheme.lg),
-              Expanded(
-                child: _buildTextField(
-                  'Typ',
-                  _viewModel.type,
-                  (value) => _viewModel.updateType(value),
-                  icon: Icons.category,
-                ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: FormFieldWidget(
+                label: 'Typ',
+                value: _viewModel.type,
+                onChanged: (value) => _viewModel.updateType(value),
+                icon: Icons.category,
               ),
-            ],
-          ),
-          const SizedBox(height: DnDTheme.lg),
-          Row(
-            children: [
-              Expanded(
-                child: _buildTextField(
-                  'Subtyp',
-                  _viewModel.subtype ?? '',
-                  (value) => _viewModel.updateSubtype(value.isEmpty ? null : value),
-                  icon: Icons.layers,
-                ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: FormFieldWidget(
+                label: 'Subtyp',
+                value: _viewModel.subtype ?? '',
+                onChanged: (value) => _viewModel.updateSubtype(value.isEmpty ? null : value),
+                icon: Icons.layers,
               ),
-              const SizedBox(width: DnDTheme.lg),
-              Expanded(
-                child: _buildTextField(
-                  'Ausrichtung',
-                  _viewModel.alignment,
-                  (value) => _viewModel.updateAlignment(value),
-                  icon: Icons.compass_calibration,
-                ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: FormFieldWidget(
+                label: 'Ausrichtung',
+                value: _viewModel.alignment,
+                onChanged: (value) => _viewModel.updateAlignment(value),
+                icon: Icons.compass_calibration,
               ),
-            ],
-          ),
-        ],
-      ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
   Widget _buildDnDAdvancedCard() {
-    return Container(
-      padding: const EdgeInsets.all(DnDTheme.lg),
-      decoration: BoxDecoration(
-        color: DnDTheme.slateGrey,
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-      ),
-      child: Column(
-        children: [
-          _buildMultilineField(
-            'Beschreibung',
-            _viewModel.description,
-            (value) => _viewModel.updateDescription(value),
-            icon: Icons.description,
-            maxLines: 4,
-          ),
-          const SizedBox(height: DnDTheme.lg),
-          _buildMultilineField(
-            'Spezielle Fähigkeiten',
-            _viewModel.specialAbilities ?? '',
-            (value) => _viewModel.updateSpecialAbilities(value.isEmpty ? null : value),
-            icon: Icons.auto_awesome,
-            maxLines: 3,
-          ),
-          const SizedBox(height: DnDTheme.lg),
-          _buildMultilineField(
-            'Angriffe',
-            _viewModel.attacks,
-            (value) => _viewModel.updateAttacks(value),
-            icon: Icons.gavel,
-            maxLines: 3,
-          ),
-        ],
-      ),
+    return FormSectionWidget(
+      title: 'Erweiterte Informationen',
+      icon: Icons.psychology,
+      backgroundColor: DnDTheme.slateGrey,
+      borderRadius: DnDTheme.radiusMedium,
+      children: [
+        FormFieldWidget(
+          label: 'Beschreibung',
+          value: _viewModel.description,
+          onChanged: (value) => _viewModel.updateDescription(value),
+          icon: Icons.description,
+          maxLines: 4,
+        ),
+        const SizedBox(height: 16),
+        FormFieldWidget(
+          label: 'Spezielle Faehigkeiten',
+          value: _viewModel.specialAbilities ?? '',
+          onChanged: (value) => _viewModel.updateSpecialAbilities(value.isEmpty ? null : value),
+          icon: Icons.auto_awesome,
+          maxLines: 3,
+        ),
+        const SizedBox(height: 16),
+        FormFieldWidget(
+          label: 'Angriffe',
+          value: _viewModel.attacks,
+          onChanged: (value) => _viewModel.updateAttacks(value),
+          icon: Icons.gavel,
+          maxLines: 3,
+        ),
+      ],
     );
   }
 
-  Widget _buildInventoryItemCard(dynamic displayItem) {
+  Widget _buildInventoryItemCard(DisplayInventoryItem displayItem) {
+    final item = displayItem.item;
+    final invItem = displayItem.inventoryItem;
+    
     return Container(
       margin: const EdgeInsets.only(bottom: DnDTheme.md),
       padding: const EdgeInsets.all(DnDTheme.lg),
@@ -1037,43 +888,49 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
           child: const Icon(Icons.inventory, color: Colors.white, size: 24),
         ),
         title: Text(
-          'Gegenstand',
+          item.name,
           style: DnDTheme.bodyText1.copyWith(
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
         ),
         subtitle: Text(
-          'Beschreibung...',
+          item.description.isNotEmpty 
+              ? item.description 
+              : '${item.itemType.name} • ${item.weight} Pfund',
           style: DnDTheme.bodyText2.copyWith(
             color: Colors.white60,
           ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: DnDTheme.md,
-                vertical: DnDTheme.xs,
-              ),
-              decoration: BoxDecoration(
-                color: DnDTheme.ancientGold,
-                borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-              ),
-              child: Text(
-                'x1',
-                style: DnDTheme.bodyText2.copyWith(
-                  color: DnDTheme.dungeonBlack,
-                  fontWeight: FontWeight.bold,
+            if (invItem.quantity > 1) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: DnDTheme.md,
+                  vertical: DnDTheme.xs,
+                ),
+                decoration: BoxDecoration(
+                  color: DnDTheme.ancientGold,
+                  borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                ),
+                child: Text(
+                  'x${invItem.quantity}',
+                  style: DnDTheme.bodyText2.copyWith(
+                    color: DnDTheme.dungeonBlack,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: DnDTheme.sm),
+              const SizedBox(width: DnDTheme.sm),
+            ],
             IconButton(
               icon: const Icon(Icons.delete, color: DnDTheme.errorRed),
               onPressed: () => _showDeleteItemDialog(displayItem),
-              tooltip: 'Löschen',
+              tooltip: 'Loeschen',
             ),
           ],
         ),
@@ -1257,17 +1114,58 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
   // ============================================================================
 
   Future<void> _saveCharacter() async {
-    if (_formKey.currentState == null || !_formKey.currentState!.validate()) {
+    // Keyboard dismissen
+    FocusScope.of(context).unfocus();
+    
+    // Sammle alle Validierungsfehler
+    final errors = <String>[];
+    
+    // Prüfe Name des Charakters
+    if (_viewModel.name.isEmpty) {
+      errors.add('Name des Charakters');
+    }
+    
+    // Prüfe Name des Spielers
+    if (_viewModel.playerName.isEmpty) {
+      errors.add('Name des Spielers');
+    }
+    
+    // Prüfe Klasse
+    if (_viewModel.selectedClass == null) {
+      errors.add('Klasse');
+    }
+    
+    // Prüfe Rasse
+    if (_viewModel.selectedRace == null) {
+      errors.add('Rasse');
+    }
+    
+    // Prüfe Stufe
+    if (_viewModel.level < 1) {
+      errors.add('Stufe (muss mindestens 1 sein)');
+    }
+    
+    // Prüfe Max. HP
+    if (_viewModel.maxHp < 1) {
+      errors.add('Max. HP (muss mindestens 1 sein)');
+    }
+    
+    // Prüfe Rüstungsklasse
+    if (_viewModel.armorClass < 1) {
+      errors.add('Rüstungsklasse (muss mindestens 1 sein)');
+    }
+    
+    // Zeige Fehler an, wenn welche vorhanden sind
+    if (errors.isNotEmpty) {
+      final errorMessage = 'Bitte folgende Pflichtfelder ausfüllen:\n\n${errors.map((e) => '• $e').join('\n')}';
       if (mounted) {
-        SnackBarHelper.showError(context, 'Bitte fülle alle Pflichtfelder aus');
+        SnackBarHelper.showError(context, errorMessage);
       }
       return;
     }
 
     try {
       await _viewModel.saveCharacter();
-      
-      await Future.delayed(const Duration(milliseconds: 100));
       
       if (mounted) {
         SnackBarHelper.showSuccess(
@@ -1276,7 +1174,6 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
               ? 'Charakter erfolgreich aktualisiert'
               : 'Neuer Charakter erstellt',
         );
-        await Future.delayed(const Duration(milliseconds: 500));
         if (mounted) {
           Navigator.of(context).pop();
         }
@@ -1288,11 +1185,55 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
     }
   }
 
+  Future<bool> _onWillPop() async {
+    if (!_viewModel.isEdit) {
+      return true;
+    }
+    
+    final shouldPop = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: DnDTheme.stoneGrey,
+        title: Text(
+          'Ungespeicherte Aenderungen',
+          style: DnDTheme.headline2.copyWith(
+            color: DnDTheme.ancientGold,
+          ),
+        ),
+        content: Text(
+          'Moechtest du wirklich ohne Speichern gehen?',
+          style: DnDTheme.bodyText1.copyWith(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Abbrechen',
+              style: DnDTheme.bodyText1.copyWith(
+                color: DnDTheme.mysticalPurple,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DnDTheme.errorRed,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Verlassen'),
+          ),
+        ],
+      ),
+    );
+    
+    return shouldPop ?? false;
+  }
+
   Future<void> _addItemFromLibrary() async {
     if (_viewModel.pcToEdit == null) {
       SnackBarHelper.showError(
         context,
-        'Bitte speichere den Charakter zuerst, bevor du Gegenstände hinzufügst.'
+        'Bitte speichere den Charakter zuerst, bevor du Gegenstaende hinzufuegst.'
       );
       return;
     }
@@ -1315,52 +1256,57 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
     }
   }
 
-  void _showDeleteItemDialog(dynamic displayItem) {
+  void _showDeleteItemDialog(DisplayInventoryItem displayItem) {
     showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
-        title: Text(
-          'Gegenstand löschen',
-          style: DnDTheme.headline2.copyWith(
-            color: DnDTheme.ancientGold,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: DnDTheme.stoneGrey,
+          title: Text(
+            '${displayItem.item.name} loeschen',
+            style: DnDTheme.headline2.copyWith(
+              color: DnDTheme.ancientGold,
+            ),
           ),
-        ),
-        content: Text(
-          'Möchtest du diesen Gegenstand wirklich löschen?',
-          style: DnDTheme.bodyText1.copyWith(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(
-                color: DnDTheme.mysticalPurple,
+          content: Text(
+            'Moechtest du "${displayItem.item.name}" wirklich loeschen?',
+            style: DnDTheme.bodyText1.copyWith(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(
+                'Abbrechen',
+                style: DnDTheme.bodyText1.copyWith(
+                  color: DnDTheme.mysticalPurple,
+                ),
               ),
             ),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              try {
-                if (mounted) {
-                  SnackBarHelper.showSuccess(context, 'Gegenstand gelöscht');
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                await Future.delayed(const Duration(milliseconds: 100));
+                if (!mounted) return;
+                try {
+                  await _viewModel.removeInventoryItem(displayItem.inventoryItem.id);
+                  if (mounted) {
+                    SnackBarHelper.showSuccess(context, '${displayItem.item.name} geloescht');
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    SnackBarHelper.showError(context, 'Fehler beim Loeschen: $e');
+                  }
                 }
-              } catch (e) {
-                if (mounted) {
-                  SnackBarHelper.showError(context, 'Fehler beim Löschen: $e');
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.errorRed,
-              foregroundColor: Colors.white,
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: DnDTheme.errorRed,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Loeschen'),
             ),
-            child: const Text('Löschen'),
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     );
   }
 }

@@ -1,10 +1,12 @@
 // lib/main.dart
 
 // 1. Dart Core
+import 'dart:async';
 import 'dart:io';
 
 // 2. Externe Packages
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:provider/provider.dart';
@@ -15,295 +17,323 @@ import 'screens/all_screens_screen.dart';
 import 'screens/screen_graph_visualization_screen.dart';
 import 'inventory_demo_app.dart';
 import 'theme/dnd_theme.dart';
-import 'services/wiki_service_locator.dart';
+import 'services/session_service.dart';
 import 'viewmodels/campaign_viewmodel.dart';
 import 'database/core/database_connection.dart';
 import 'database/repositories/campaign_model_repository.dart';
 import 'database/repositories/player_character_model_repository.dart';
 
+/// Hauptfunktion der App
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // KORREKTUR: Database Factory MUSS vor Service Initialisierung stehen
-  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
-  }
+  // Datenbank initialisieren
+  _initializeDatabase();
   
-  // Datenbank-Reset für Schema-Korrekturen (Version 3)
-  await _resetDatabaseForSchemaFix();
+  // Audio konfigurieren
+  await _configureAudio();
   
-  // Initialisiere alle Service Locator NACH der Database Factory Initialisierung
-  await _initializeServices();
-  
-  await AudioPlayer.global.setAudioContext( AudioContext(
-    iOS: AudioContextIOS(
-      category: AVAudioSessionCategory.playback,
-      options: {AVAudioSessionOptions.mixWithOthers},
-    ),
-    android: AudioContextAndroid(
-      isSpeakerphoneOn: true,
-      stayAwake: true,
-      contentType: AndroidContentType.music,
-      usageType: AndroidUsageType.media,
-      audioFocus: AndroidAudioFocus.gain,
-    ),
-  ));
-  
+  // App starten
   runApp(const DmApp());
 }
 
-/// Setzt die Datenbank zurück für Schema-Korrekturen (löscht Datei komplett)
-Future<void> _resetDatabaseForSchemaFix() async {
-  try {
-    print('🔄 Lösche alte Datenbank-Datei für Schema-Korrekturen...');
-    
-    // Lösche die Datenbank-Datei komplett
-    await DatabaseConnection.instance.deleteDatabaseFile();
-    
-    print('✅ Datenbank-Datei wurde gelöscht - neue wird beim Start erstellt');
-  } catch (e) {
-    print('⚠️ Fehler beim Löschen der Datenbank: $e');
-    // App trotzdem starten
+/// Initialisiert die Datenbank
+void _initializeDatabase() {
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    print('🗄️ SQLite FFI für Desktop initialisiert');
   }
 }
 
-/// Initialisiert alle Service Locator
-Future<void> _initializeServices() async {
+/// Konfiguriert den Audio-Kontext für Hintergrundmusik
+Future<void> _configureAudio() async {
   try {
-    // Initialisiere nur Wiki Service (hat async initialize)
-    final wikiLocator = WikiServiceLocator();
-    await wikiLocator.initialize();
-    
-    print('Wiki Service Locator erfolgreich initialisiert');
+    await AudioPlayer.global.setAudioContext(
+      AudioContext(
+        iOS: AudioContextIOS(
+          category: AVAudioSessionCategory.playback,
+          options: const {
+            AVAudioSessionOptions.mixWithOthers,
+            AVAudioSessionOptions.allowBluetoothA2DP,
+          },
+        ),
+        android: AudioContextAndroid(
+          isSpeakerphoneOn: true,
+          stayAwake: true,
+          contentType: AndroidContentType.music,
+          usageType: AndroidUsageType.media,
+          audioFocus: AndroidAudioFocus.gain,
+        ),
+      ),
+    );
+    print('Audio Kontext erfolgreich konfiguriert');
   } catch (e) {
-    print('Fehler bei der Service-Initialisierung: $e');
-    // App trotzdem starten, aber mit Fehlermeldung
+    print('Fehler bei der Audio-Konfiguration: $e');
   }
 }
 
+/// Haupt-App Klasse
 class DmApp extends StatelessWidget {
   const DmApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<CampaignViewModel>(
+    final sessionService = SessionService();
+    final dbConnection = DatabaseConnection.instance;
+
+    return ChangeNotifierProvider(
       create: (_) => CampaignViewModel(
-        campaignRepo: CampaignModelRepository(DatabaseConnection.instance),
-        characterRepo: PlayerCharacterModelRepository(DatabaseConnection.instance),
+        campaignRepo: CampaignModelRepository(dbConnection),
+        characterRepo: PlayerCharacterModelRepository(dbConnection),
+        sessionService: sessionService,
       ),
       child: MaterialApp(
         title: 'Dungeon Manager',
         theme: DnDTheme.darkTheme,
-        home: const AppSelectionScreen(), // Auswahl zwischen Haupt-App und Demo
+        home: const AppSelectionScreen(),
+        debugShowCheckedModeBanner: false,
       ),
     );
   }
 }
 
-class AppSelectionScreen extends StatelessWidget {
+/// App Selection Screen - Hauptauswahl zwischen allen Anwendungen
+class AppSelectionScreen extends StatefulWidget {
   const AppSelectionScreen({super.key});
+
+  @override
+  State<AppSelectionScreen> createState() => _AppSelectionScreenState();
+}
+
+class _AppSelectionScreenState extends State<AppSelectionScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeAnimations();
+  }
+
+  void _initializeAnimations() {
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _fadeController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _fadeController.forward();
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: DnDTheme.dungeonBlack,
-      body: Center(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(DnDTheme.xl),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Titel mit mystischem Effekt
-                Container(
-                  decoration: DnDTheme.getMysticalBorder(borderColor: DnDTheme.ancientGold),
-                  padding: const EdgeInsets.all(DnDTheme.md),
-                  child: Text(
-                    'Dungeon Manager',
-                    style: DnDTheme.headline1.copyWith(
-                      color: DnDTheme.ancientGold,
-                      shadows: [
-                        Shadow(
-                          blurRadius: 15,
-                          color: DnDTheme.ancientGold.withValues(alpha: 0.5),
-                          offset: const Offset(2, 2),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: DnDTheme.lg),
-                Text(
-                  'Wählen Sie eine Anwendung',
-                  style: DnDTheme.headline3.copyWith(
-                    color: DnDTheme.mysticalPurple,
-                  ),
-                ),
-                const SizedBox(height: DnDTheme.xxl),
-                
-                // Haupt-App Button mit Fantasy-Style
-                Container(
-                  width: double.infinity,
-                  height: 80,
-                  decoration: DnDTheme.getFantasyCardDecoration(
-                    borderColor: DnDTheme.ancientGold,
-                    isLegendary: true,
-                  ),
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(
-                          builder: (context) => const CampaignSelectionScreen(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.castle, size: 32),
-                    label: const Text(
-                      'Hauptanwendung',
-                      style: TextStyle(fontSize: 20),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      foregroundColor: DnDTheme.ancientGold,
-                      elevation: 0,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+      body: SafeArea(
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Titel
+                  _buildTitle(),
+                  const SizedBox(height: 24.0),
+                  
+                  // Haupt-App Button
+                  _buildAppButton(
+                    'Hauptanwendung',
+                    Icons.castle,
+                    DnDTheme.ancientGold,
+                    () => Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (context) => const CampaignSelectionScreen(),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: DnDTheme.lg),
-                
-                // Demo Button mit Fantasy-Style
-                Container(
-                  width: double.infinity,
-                  height: 80,
-                  decoration: DnDTheme.getFantasyCardDecoration(
-                    borderColor: DnDTheme.arcaneBlue,
-                  ),
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(
-                          builder: (context) => const InventoryDemoApp(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.inventory, size: 32),
-                    label: const Text(
-                      'Inventar-Demo',
-                      style: TextStyle(fontSize: 20),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      foregroundColor: DnDTheme.arcaneBlue,
-                      elevation: 0,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                  const SizedBox(height: 16.0),
+                  
+                  // Demo App Button
+                  _buildAppButton(
+                    'Inventar-Demo',
+                    Icons.inventory,
+                    DnDTheme.arcaneBlue,
+                    () => Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (context) => const InventoryDemoApp(),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: DnDTheme.lg),
-                
-                // Alle Screens Button mit Fantasy-Style
-                Container(
-                  width: double.infinity,
-                  height: 80,
-                  decoration: DnDTheme.getFantasyCardDecoration(
-                    borderColor: DnDTheme.warningOrange,
-                  ),
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const AllScreensScreen(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.grid_view, size: 32),
-                    label: const Text(
-                      'Alle Screens',
-                      style: TextStyle(fontSize: 20),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      foregroundColor: DnDTheme.warningOrange,
-                      elevation: 0,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                  const SizedBox(height: 16.0),
+                  
+                  // Alle Screens Button
+                  _buildAppButton(
+                    'Alle Screens',
+                    Icons.grid_view,
+                    DnDTheme.warningOrange,
+                    () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const AllScreensScreen(),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: DnDTheme.lg),
-                
-                // Screen Graph Visualizer Button mit Fantasy-Style
-                Container(
-                  width: double.infinity,
-                  height: 80,
-                  decoration: DnDTheme.getFantasyCardDecoration(
-                    borderColor: DnDTheme.mysticalPurple,
-                  ),
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const ScreenGraphVisualizationScreen(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.account_tree, size: 32),
-                    label: const Text(
-                      'Screen Graph',
-                      style: TextStyle(fontSize: 20),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      foregroundColor: DnDTheme.mysticalPurple,
-                      elevation: 0,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                  const SizedBox(height: 16.0),
+                  
+                  // Screen Graph Visualizer Button
+                  _buildAppButton(
+                    'Screen Graph',
+                    Icons.account_tree,
+                    DnDTheme.mysticalPurple,
+                    () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const ScreenGraphVisualizationScreen(),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: DnDTheme.xl),
-                
-                // Hinweis mit mystischem Design
-                Container(
-                  padding: const EdgeInsets.all(DnDTheme.md),
-                  decoration: DnDTheme.getDungeonWallDecoration(),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        color: DnDTheme.infoBlue,
-                        size: 24,
-                      ),
-                      const SizedBox(height: DnDTheme.sm),
-                      Text(
-                        'Hauptanwendung: Volles DM Helper mit allen Features\n'
-                        'Inventar-Demo: Zeigt das neue erweiterte Inventar-System\n'
-                        'Alle Screens: Testing-Übersicht aller 29 verfügbaren Screens\n'
-                        'Screen Graph: Interaktiver Graph aller Screens und ihrer Verbindungen',
-                        textAlign: TextAlign.center,
-                        style: DnDTheme.bodyText2.copyWith(
-                          color: DnDTheme.infoBlue,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                  const SizedBox(height: 32.0),
+                  
+                  // Hinweis
+                  _buildInfoCard(),
+                ],
+              ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTitle() {
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: DnDTheme.ancientGold,
+          width: 2.0,
+        ),
+        borderRadius: BorderRadius.circular(8.0),
+      ),
+      child: Text(
+        'Dungeon Manager',
+        style: TextStyle(
+          fontSize: 32.0,
+          fontWeight: FontWeight.bold,
+          color: DnDTheme.ancientGold,
+          shadows: [
+            Shadow(
+              blurRadius: 15.0,
+              color: DnDTheme.ancientGold.withOpacity(0.5),
+              offset: const Offset(2.0, 2.0),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppButton(
+    String label,
+    IconData icon,
+    Color borderColor,
+    VoidCallback onPressed,
+  ) {
+    return Container(
+      width: double.infinity,
+      height: 80.0,
+      decoration: BoxDecoration(
+        color: DnDTheme.slateGrey,
+        border: Border.all(
+          color: borderColor,
+          width: 2.0,
+        ),
+        borderRadius: BorderRadius.circular(8.0),
+      ),
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 32),
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 20),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          foregroundColor: borderColor,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8.0),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoCard() {
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: DnDTheme.stoneGrey,
+        borderRadius: BorderRadius.circular(8.0),
+      ),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.info_outline,
+            color: DnDTheme.infoBlue,
+            size: 24,
+          ),
+          const SizedBox(height: 8.0),
+          const Text(
+            'Hauptanwendung: Vollständiger DM Helper mit allen Features',
+            style: TextStyle(
+              fontSize: 14,
+              color: DnDTheme.infoBlue,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8.0),
+          const Text(
+            'Inventar-Demo: Zeigt das neue erweiterte Inventar-System',
+            style: TextStyle(
+              fontSize: 14,
+              color: DnDTheme.infoBlue,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8.0),
+          const Text(
+            'Alle Screens: Testing-Übersicht aller verfügbaren Screens',
+            style: TextStyle(
+              fontSize: 14,
+              color: DnDTheme.infoBlue,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8.0),
+          const Text(
+            'Screen Graph: Interaktiver Graph aller Screens und ihrer Verbindungen',
+            style: TextStyle(
+              fontSize: 14,
+              color: DnDTheme.infoBlue,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }

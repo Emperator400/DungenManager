@@ -7,6 +7,7 @@ import '../../models/item.dart';
 import '../../screens/enhanced_item_library_screen.dart';
 import '../../screens/add_item_from_library_screen.dart';
 import '../../services/uuid_service.dart';
+import '../../viewmodels/character_editor_viewmodel.dart';
 import 'character_editor_controller.dart'
     show CharacterType;
 import 'enhanced_character_editor_controller.dart'
@@ -17,12 +18,15 @@ class CharacterInventoryHandler {
   final BuildContext context;
   final VoidCallback onInventoryChanged;
   final InventoryItemModelRepository _inventoryRepository;
+  final CharacterEditorViewModel? _viewModel;
 
   CharacterInventoryHandler({
     required this.controller,
     required this.context,
     required this.onInventoryChanged,
-  }) : _inventoryRepository = InventoryItemModelRepository(DatabaseConnection.instance);
+    CharacterEditorViewModel? viewModel,
+  }) : _inventoryRepository = InventoryItemModelRepository(DatabaseConnection.instance),
+       _viewModel = viewModel;
 
   Future<void> addItemFromLibrary() async {
     String? characterId;
@@ -73,9 +77,35 @@ class CharacterInventoryHandler {
 
   Future<void> loadInventory() async {
     try {
-      await controller.loadInventory();
+      print('=== LOAD INVENTORY DEBUG ===');
+      print('CharacterType: ${controller.characterType}');
+      print('ViewModel verfügbar: ${_viewModel != null}');
+      
+      // Wenn ViewModel verfügbar ist, lade darüber
+      if (_viewModel != null) {
+        if (controller.characterType == CharacterType.player) {
+          final pcId = controller.pcToEdit?.id;
+          if (pcId != null) {
+            print('Lade Player Character Inventory: $pcId');
+            await _viewModel!.initWithPlayerCharacter(pcId);
+          }
+        } else {
+          final creatureId = controller.creatureToEdit?.id;
+          if (creatureId != null) {
+            print('Lade Creature Inventory: $creatureId');
+            await _viewModel!.initWithCreature(creatureId);
+          }
+        }
+      } else {
+        print('WARNUNG: Kein ViewModel verfügbar!');
+      }
+      
       onInventoryChanged();
+      print('Inventar neu geladen');
     } catch (e) {
+      print('=== LOAD INVENTORY ERROR ===');
+      print('Error: $e');
+      
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Fehler beim Laden des Inventars: $e')),
@@ -168,15 +198,27 @@ class CharacterInventoryHandler {
 
   Future<void> removeItem(DisplayInventoryItem displayItem) async {
     try {
+      print('=== REMOVE ITEM DEBUG ===');
+      print('InventoryItem ID: ${displayItem.inventoryItem.id}');
+      print('InventoryItem Name: ${displayItem.inventoryItem.name}');
+      print('Repository: ${_inventoryRepository.runtimeType}');
+      
       await _inventoryRepository.delete(displayItem.inventoryItem.id);
+      print('Item erfolgreich gelöscht');
+      
       await loadInventory();
+      print('Inventar neu geladen');
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${displayItem.item.name} wurde entfernt')),
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('=== REMOVE ITEM ERROR ===');
+      print('Error: $e');
+      print('StackTrace: $stackTrace');
+      
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Fehler beim Entfernen: $e')),

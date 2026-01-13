@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../database/repositories/player_character_model_repository.dart';
 import '../database/repositories/inventory_item_model_repository.dart';
+import '../database/repositories/item_model_repository.dart';
 import '../database/core/database_connection.dart';
 import '../game_data/dnd_logic.dart';
 import '../game_data/dnd_models.dart';
@@ -17,6 +18,7 @@ import '../services/inventory_service.dart';
 class EditPCViewModel extends ChangeNotifier {
   final PlayerCharacterModelRepository _pcRepository;
   final InventoryItemModelRepository _inventoryRepository;
+  final ItemModelRepository _itemRepository;
   final InventoryService _inventoryService;
 
   // ============================================================================
@@ -115,9 +117,11 @@ class EditPCViewModel extends ChangeNotifier {
   EditPCViewModel({
     PlayerCharacterModelRepository? pcRepository,
     InventoryItemModelRepository? inventoryRepository,
+    ItemModelRepository? itemRepository,
     InventoryService? inventoryService,
   }) : _pcRepository = pcRepository ?? PlayerCharacterModelRepository(DatabaseConnection.instance),
        _inventoryRepository = inventoryRepository ?? InventoryItemModelRepository(DatabaseConnection.instance),
+       _itemRepository = itemRepository ?? ItemModelRepository(DatabaseConnection.instance),
        _inventoryService = inventoryService ?? InventoryService();
 
   // ============================================================================
@@ -516,24 +520,58 @@ class EditPCViewModel extends ChangeNotifier {
   // INVENTORY OPERATIONS
   // ============================================================================
 
-  /// Lädt das Inventar eines Charakters über neues Repository
+  /// Lädt das Inventar eines Charakters über neues Repository mit echten Item-Daten
   Future<void> _loadInventory(String characterId) async {
     try {
+      print('=== LOAD INVENTORY START ===');
+      print('Character ID: $characterId');
+      
       final inventoryItems = await _inventoryRepository.findByCharacter(characterId);
-      _inventory = inventoryItems.map((item) => DisplayInventoryItem(
-        inventoryItem: item,
-        item: Item(
-          id: item.itemId, 
-          name: 'Item', 
-          description: 'Beschreibung',
-          itemType: ItemType.Weapon,
-        ),
-      )).toList();
+      print('${inventoryItems.length} Inventory-Items gefunden');
+      
+      final displayItems = <DisplayInventoryItem>[];
+      
+      for (final invItem in inventoryItems) {
+        try {
+          // Lade echtes Item aus der Datenbank
+          final item = await _itemRepository.findById(invItem.itemId);
+          
+          print('  Item geladen: ${item?.name ?? invItem.name} (ID: ${invItem.itemId})');
+          
+          displayItems.add(DisplayInventoryItem(
+            inventoryItem: invItem,
+            item: item ?? _createFallbackItem(invItem),
+          ));
+        } catch (e) {
+          print('  FEHLER beim Laden von Item ${invItem.itemId}: $e');
+          // Fallback auf InventoryItem-Daten
+          displayItems.add(DisplayInventoryItem(
+            inventoryItem: invItem,
+            item: _createFallbackItem(invItem),
+          ));
+        }
+      }
+      
+      _inventory = displayItems;
+      print('${_inventory.length} Display-Items erstellt');
       notifyListeners();
     } catch (e) {
+      print('=== LOAD INVENTORY ERROR ===');
+      print('Fehler: $e');
       _error = e.toString();
       notifyListeners();
     }
+  }
+
+  /// Erstellt ein Fallback-Item wenn die Details nicht gefunden wurden
+  Item _createFallbackItem(InventoryItem invItem) {
+    return Item(
+      id: invItem.itemId,
+      name: invItem.name.isNotEmpty ? invItem.name : 'Unbekannter Gegenstand',
+      itemType: ItemType.AdventuringGear,
+      weight: 1.0,
+      description: invItem.description ?? '',
+    );
   }
 
   /// Fügt ein Item zum Inventar hinzu über neues Repository

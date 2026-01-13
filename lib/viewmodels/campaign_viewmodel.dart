@@ -2,6 +2,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/campaign.dart';
 import '../services/uuid_service.dart';
+import '../services/session_service.dart';
 import '../database/repositories/campaign_model_repository.dart';
 import '../database/repositories/player_character_model_repository.dart';
 
@@ -29,19 +30,19 @@ enum CampaignSortOption {
 class CampaignViewModel extends ChangeNotifier {
   final CampaignModelRepository? _campaignRepo;
   final PlayerCharacterModelRepository? _characterRepo;
+  final SessionService? _sessionService;
   
   CampaignViewModel({
     CampaignModelRepository? campaignRepo,
     PlayerCharacterModelRepository? characterRepo,
+    SessionService? sessionService,
   }) : _campaignRepo = campaignRepo,
-       _characterRepo = characterRepo {
-    // Automatisch Kampagnen beim Erstellen laden
+       _characterRepo = characterRepo,
+       _sessionService = sessionService {
     _initializeCampaigns();
   }
 
   /// Initialisiert die Kampagnenliste
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
   Future<void> _initializeCampaigns() async {
     try {
       _setLoading(true);
@@ -98,7 +99,7 @@ class CampaignViewModel extends ChangeNotifier {
   // Filtered campaigns
   List<Campaign> get filteredCampaigns {
     final filtered = _campaigns.where((campaign) {
-      // Suchfilter
+      // Search filter
       if (_searchQuery.isNotEmpty) {
         final query = _searchQuery.toLowerCase();
         if (!(campaign.title.toLowerCase().contains(query) ||
@@ -109,7 +110,7 @@ class CampaignViewModel extends ChangeNotifier {
       return true;
     }).toList();
     
-    // Sortierung anwenden
+    // Sorting
     filtered.sort((a, b) => _compareCampaigns(a, b));
     
     return filtered;
@@ -117,9 +118,7 @@ class CampaignViewModel extends ChangeNotifier {
   
   // Methods
   
-  /// Lädt alle Kampagnen
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
+  /// Loads all campaigns
   Future<void> loadCampaigns() async {
     debugPrint('CampaignViewModel: loadCampaigns() called');
     _setLoading(true);
@@ -154,9 +153,7 @@ class CampaignViewModel extends ChangeNotifier {
     notifyListeners();
   }
   
-  /// Erstellt eine neue Kampagne
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
+  /// Creates a new campaign
   Future<void> createCampaign({
     required String title,
     required String description,
@@ -183,9 +180,6 @@ class CampaignViewModel extends ChangeNotifier {
       
       debugPrint('CampaignViewModel: Added campaign to list, total campaigns: ${_campaigns.length}');
       
-      // Automatisch auswählen
-      await selectCampaign(_campaigns.first);
-      
       notifyListeners();
       debugPrint('CampaignViewModel: notifyListeners() called after create');
       
@@ -197,9 +191,7 @@ class CampaignViewModel extends ChangeNotifier {
     }
   }
   
-  /// Aktualisiert eine Kampagne
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
+  /// Updates a campaign
   Future<void> updateCampaign(Campaign campaign) async {
     _setLoading(true);
     _setError(null);
@@ -217,7 +209,7 @@ class CampaignViewModel extends ChangeNotifier {
       if (index != -1) {
         _campaigns[index] = updatedCampaign;
         
-        // Aktualisiere auch die Auswahl
+        // Update selection as well
         if (_selectedCampaign?.id == campaign.id) {
           _selectedCampaign = updatedCampaign;
         }
@@ -231,9 +223,7 @@ class CampaignViewModel extends ChangeNotifier {
     }
   }
   
-  /// Löscht eine Kampagne
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
+  /// Deletes a campaign
   Future<void> deleteCampaign(Campaign campaign) async {
     _setLoading(true);
     _setError(null);
@@ -247,7 +237,7 @@ class CampaignViewModel extends ChangeNotifier {
       
       _campaigns.removeWhere((c) => c.id == campaign.id);
       
-      // Auswahl zurücksetzen wenn gelöschte Kampagne ausgewählt war
+      // Reset selection if deleted campaign was selected
       if (_selectedCampaign?.id == campaign.id) {
         _selectedCampaign = _campaigns.isNotEmpty ? _campaigns.first : null;
       }
@@ -260,17 +250,15 @@ class CampaignViewModel extends ChangeNotifier {
     }
   }
   
-  /// Dupliziert eine Kampagne
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
+  /// Duplicates a campaign
   Future<void> duplicateCampaign(Campaign campaign) async {
     _setLoading(true);
     _setError(null);
     
     try {
-      // Erstelle eine Kopie der Kampagne mit neuer UUID
+      // Create a copy of campaign with new UUID
       final duplicatedCampaign = campaign.copyWith(
-        id: UuidService().generateId(), // Neue UUID explizit generieren
+        id: UuidService().generateId(),
         title: '${campaign.title} (Kopie)',
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
@@ -286,7 +274,7 @@ class CampaignViewModel extends ChangeNotifier {
       
       _campaigns.insert(0, savedCampaign);
       
-      // Duplizierte Kampagne auswählen
+      // Select duplicated campaign
       await selectCampaign(savedCampaign);
       
       notifyListeners();
@@ -343,13 +331,11 @@ class CampaignViewModel extends ChangeNotifier {
     _setError(null);
   }
   
-  /// Schaltet den Favoriten-/Archiv-Status einer Kampagne um
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
+  /// Toggles the favorite/archive status of a campaign
   Future<void> toggleFavorite(Campaign campaign) async {
     try {
       if (_campaignRepo != null) {
-        // Campaign hat kein isActive Feld - wir simulieren es über title prefix
+        // Campaign has no isActive field - we simulate it via title prefix
         final newStatus = !campaign.title.startsWith('[ARCHIVIERT] ');
         final updatedTitle = newStatus 
             ? campaign.title 
@@ -359,7 +345,7 @@ class CampaignViewModel extends ChangeNotifier {
           campaign.copyWith(title: updatedTitle),
         );
         
-        // Lokale Liste aktualisieren
+        // Update local list
         final index = _campaigns.indexWhere((c) => c.id == campaign.id);
         if (index != -1) {
           _campaigns[index] = updatedCampaign;
@@ -379,9 +365,7 @@ class CampaignViewModel extends ChangeNotifier {
   
   // Statistics helpers
   
-  /// Holt die Anzahl der Helden für eine Kampagne
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue PlayerCharacterModelRepository
+  /// Gets the number of heroes for a campaign
   Future<int> getHeroCount(String campaignId) async {
     try {
       if (_characterRepo != null) {
@@ -398,20 +382,20 @@ class CampaignViewModel extends ChangeNotifier {
   }
   
   Future<int> getSessionCount(String campaignId) async {
-    // Placeholder - Session Repository würde hier verwendet
-    // TODO: Implementieren wenn SessionModelRepository verfügbar ist
+    // Placeholder - Session Repository would be used here
+    // TODO: Implement when SessionModelRepository is available
     return 0;
   }
   
   Future<int> getQuestCount(String campaignId) async {
-    // Placeholder - Quest Repository würde hier verwendet
-    // TODO: Implementieren wenn QuestModelRepository verfügbar ist
+    // Placeholder - Quest Repository would be used here
+    // TODO: Implement when QuestModelRepository is available
     return 0;
   }
   
   Future<DateTime?> getLastActiveDate(String campaignId) async {
-    // Placeholder - würde letzte Session-Activity zurückgeben
-    // TODO: Implementieren wenn SessionModelRepository verfügbar ist
+    // Placeholder - would return last session-activity
+    // TODO: Implement when SessionModelRepository is available
     return null;
   }
   
@@ -462,22 +446,22 @@ class CampaignViewModel extends ChangeNotifier {
         result = a.title.compareTo(b.title);
         break;
       case CampaignSortOption.monsters:
-        // Placeholder für Monster-Sortierung
-        // TODO: Implementieren wenn CreatureModelRepository verfügbar ist
+        // Placeholder for Monster sorting
+        // TODO: Implement when CreatureModelRepository is available
         result = 0;
         break;
       case CampaignSortOption.npcs:
-        // Placeholder für NPC-Sortierung
-        // TODO: Implementieren wenn CreatureModelRepository verfügbar ist
+        // Placeholder for NPC sorting
+        // TODO: Implement when CreatureModelRepository is available
         result = 0;
         break;
       case CampaignSortOption.items:
-        // Placeholder für Item-Sortierung
-        // TODO: Implementieren wenn ItemModelRepository verfügbar ist
+        // Placeholder for Item sorting
+        // TODO: Implement when ItemModelRepository is available
         result = 0;
         break;
       case CampaignSortOption.spells:
-        // Placeholder für Spell-Sortierung
+        // Placeholder for Spell sorting
         result = 0;
         break;
     }

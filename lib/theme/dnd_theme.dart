@@ -1,5 +1,7 @@
+// lib/theme/dnd_theme.dart
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 
 /// D&D Dark Theme Configuration
 /// Mystisches, dunkles Design für Dungeon Manager
@@ -178,7 +180,6 @@ class DnDTheme {
   
   /// Glowing animation for magical items
 
-  
   /// Pulse animation for important elements
   static Animation<double> getPulseAnimation(AnimationController controller) {
     return Tween<double>(
@@ -324,7 +325,6 @@ class DnDTheme {
           color: Colors.white,
           size: 24,
         ),
-        systemOverlayStyle: SystemUiOverlayStyle.light,
       ),
       
       // Card Theme
