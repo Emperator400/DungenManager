@@ -4,17 +4,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import '../game_data/dnd_logic.dart';
 import '../game_data/dnd_models.dart';
 import '../game_data/game_data.dart';
 import '../models/player_character.dart';
 import '../models/inventory_item.dart';
+import '../models/equipment.dart';
 import '../theme/dnd_theme.dart';
 import '../viewmodels/edit_pc_viewmodel.dart';
 import '../widgets/ui_components/feedback/snackbar_helper.dart';
 import '../widgets/ui_components/forms/form_field_widget.dart';
+import '../widgets/ui_components/stats/attributes_section_widget.dart';
 import '../widgets/ui_components/stats/ability_score_widget.dart';
 import '../widgets/ui_components/skills/skill_list_widget.dart';
+import '../widgets/ui_components/inventory/unified_inventory_widget.dart';
+import '../widgets/ui_components/inventory/equipment_widget.dart';
+import '../widgets/ui_components/inventory/backpack_widget.dart';
 import '../database/core/database_connection.dart';
 import '../database/repositories/player_character_model_repository.dart';
 
@@ -37,7 +41,7 @@ class EnhancedEditPCScreen extends StatefulWidget {
 
 class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
     with SingleTickerProviderStateMixin {
-  static const int _tabCount = 4;
+  static const int _tabCount = 5;
   static const int _minAbilityScore = 1;
   static const int _maxAbilityScore = 20;
   static const Duration _debounceDelay = Duration(milliseconds: 300);
@@ -126,6 +130,7 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
           Tab(icon: Icon(Icons.fitness_center), text: ' Attribute'),
           Tab(icon: Icon(Icons.category), text: ' D&D Details'),
           Tab(icon: Icon(Icons.inventory), text: ' Inventar'),
+          Tab(icon: Icon(Icons.shield), text: ' Ausrüstung'),
         ],
       ),
     );
@@ -148,6 +153,7 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
             _buildAttributesTab(),
             _buildDnDDetailsTab(),
             _buildInventoryTab(),
+            _buildEquipmentTab(),
           ],
         );
       },
@@ -245,15 +251,8 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
       builder: (context, viewModel, child) {
         return SingleChildScrollView(
           controller: _scrollController,
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildSectionTitle('Attributspunkte', Icons.fitness_center),
-              const SizedBox(height: 8),
-              _buildAbilityGrid(),
-            ],
-          ),
+          padding: const EdgeInsets.all(DnDTheme.lg),
+          child: _buildAbilityGrid(),
         );
       },
     );
@@ -318,61 +317,128 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
           );
         }
 
-        return Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(DnDTheme.lg),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _addItemFromLibrary,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Gegenstand aus Bibliothek hinzufuegen'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: DnDTheme.arcaneBlue,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: DnDTheme.lg,
-                      vertical: DnDTheme.md,
+        return UnifiedInventoryWidget(
+          displayItems: viewModel.inventory,
+          onAddItem: _addItemFromLibrary,
+          onDeleteItem: (displayItem) async {
+            await Future.delayed(const Duration(milliseconds: 100));
+            if (!mounted) return;
+            try {
+              await _viewModel.removeInventoryItem(displayItem.inventoryItem.id);
+              if (mounted) {
+                SnackBarHelper.showSuccess(context, '${displayItem.item.name} geloescht');
+              }
+            } catch (e) {
+              if (mounted) {
+                SnackBarHelper.showError(context, 'Fehler beim Loeschen: $e');
+              }
+            }
+          },
+          showAddButton: true,
+          emptyTitle: 'Inventar ist leer',
+          emptySubtitle: 'Fuege Gegenstaende aus der Bibliothek hinzu',
+        );
+      },
+    );
+  }
+
+  Widget _buildEquipmentTab() {
+    return Consumer<EditPCViewModel>(
+      builder: (context, viewModel, child) {
+        if (!viewModel.isEdit) {
+          return Center(
+            child: Container(
+              padding: const EdgeInsets.all(DnDTheme.xl),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.shield_outlined,
+                    size: 80,
+                    color: DnDTheme.mysticalPurple.withValues(alpha: 0.6),
+                  ),
+                  const SizedBox(height: DnDTheme.lg),
+                  Text(
+                    'Ausrüstung',
+                    style: DnDTheme.headline2.copyWith(
+                      color: DnDTheme.ancientGold,
                     ),
                   ),
-                ),
+                  const SizedBox(height: DnDTheme.sm),
+                  Text(
+                    'Speichere den Charakter zuerst,\nbevor du Ausrüstung verwalten kannst.',
+                    style: DnDTheme.bodyText1.copyWith(
+                      color: Colors.white70,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
             ),
-            Expanded(
-              child: viewModel.inventory.isEmpty
-                  ? Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(DnDTheme.xl),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.inventory_2_outlined,
-                              size: 80,
-                              color: DnDTheme.mysticalPurple.withValues(alpha: 0.4),
-                            ),
-                            const SizedBox(height: DnDTheme.lg),
-                            Text(
-                              'Inventar ist leer',
-                              style: DnDTheme.bodyText1.copyWith(
-                                color: Colors.white60,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(DnDTheme.md),
-                      itemCount: viewModel.inventory.length,
-                      itemBuilder: (context, index) {
-                        final displayItem = viewModel.inventory[index];
-                        return _buildInventoryItemCard(displayItem);
-                      },
-                    ),
-            ),
-          ],
+          );
+        }
+
+        return SingleChildScrollView(
+          controller: _scrollController,
+          padding: const EdgeInsets.all(DnDTheme.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Equipment-Slots
+              EquipmentWidget(
+                equipment: viewModel.equipmentMap,
+                onEquipItem: (slot, displayItem) async {
+                  try {
+                    await viewModel.equipItem(slot, displayItem);
+                    if (mounted) {
+                      SnackBarHelper.showSuccess(context, '${displayItem.item.name} ausgerüstet');
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      SnackBarHelper.showError(context, e.toString());
+                    }
+                  }
+                },
+                onUnequipItem: (slot) async {
+                  try {
+                    await viewModel.unequipItem(slot);
+                    if (mounted) {
+                      SnackBarHelper.showSuccess(context, 'Item abgelegt');
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      SnackBarHelper.showError(context, e.toString());
+                    }
+                  }
+                },
+              ),
+              const SizedBox(height: DnDTheme.xl),
+              
+              // Tasche/Rucksack
+              BackpackWidget(
+                inventoryItems: viewModel.inventory,
+                equippedItemIds: viewModel.equippedItemIds,
+                onEquipItem: (displayItem) async {
+                  // Öffne Dialog zur Auswahl des Slots
+                  await _showEquipDialog(context, displayItem);
+                },
+                onDeleteItem: (displayItem) async {
+                  await Future.delayed(const Duration(milliseconds: 100));
+                  if (!mounted) return;
+                  try {
+                    await _viewModel.removeInventoryItem(displayItem.inventoryItem.id);
+                    if (mounted) {
+                      SnackBarHelper.showSuccess(context, '${displayItem.item.name} gelöscht');
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      SnackBarHelper.showError(context, 'Fehler beim Löschen: $e');
+                    }
+                  }
+                },
+              ),
+            ],
+          ),
         );
       },
     );
@@ -507,40 +573,13 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: DnDTheme.stoneGrey,
-                  borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.flash_on,
-                          color: DnDTheme.ancientGold,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Initiative-Bonus',
-                          style: DnDTheme.bodyText1.copyWith(
-                            color: DnDTheme.ancientGold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      '+${_viewModel.initiativeBonus}',
-                      style: DnDTheme.headline2.copyWith(
-                        color: DnDTheme.ancientGold,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
+              child: CombatStatChip(
+                label: 'Initiative',
+                value: _viewModel.initiativeBonus >= 0 
+                    ? '+${_viewModel.initiativeBonus}' 
+                    : '${_viewModel.initiativeBonus}',
+                icon: Icons.flash_on,
+                color: DnDTheme.ancientGold,
               ),
             ),
           ],
@@ -586,7 +625,7 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
   }
 
   Widget _buildAbilityGrid() {
-    return AbilityScoreGrid(
+    return AttributesSectionWidget(
       strength: _viewModel.strength,
       dexterity: _viewModel.dexterity,
       constitution: _viewModel.constitution,
@@ -599,91 +638,9 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
       onIntelligenceChanged: (value) => _viewModel.updateIntelligence(value),
       onWisdomChanged: (value) => _viewModel.updateWisdom(value),
       onCharismaChanged: (value) => _viewModel.updateCharisma(value),
-    );
-  }
-
-  Widget _buildAbilityScoreCard(
-    String name,
-    int value,
-    IconData icon,
-    Color color, {
-    required Function(int) updateAbility,
-  }) {
-    final modifierString = getModifierString(value);
-    
-    return Container(
-      padding: const EdgeInsets.all(DnDTheme.lg),
-      decoration: BoxDecoration(
-        color: DnDTheme.slateGrey,
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 32),
-          const SizedBox(height: DnDTheme.sm),
-          Text(
-            name,
-            style: DnDTheme.bodyText1.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: DnDTheme.md),
-          Container(
-            width: 60,
-            height: 50,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: DnDTheme.stoneGrey,
-              borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-              border: Border.all(
-                color: DnDTheme.ancientGold,
-                width: 2,
-              ),
-            ),
-            child: TextFormField(
-              initialValue: value.toString(),
-              textAlign: TextAlign.center,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.zero,
-              ),
-              style: DnDTheme.headline2.copyWith(
-                color: DnDTheme.ancientGold,
-                fontWeight: FontWeight.bold,
-              ),
-              onChanged: (newValue) {
-                final newValueInt = int.tryParse(newValue);
-                if (newValueInt != null && newValueInt >= _minAbilityScore && newValueInt <= _maxAbilityScore) {
-                  updateAbility(newValueInt);
-                }
-              },
-            ),
-          ),
-          const SizedBox(height: DnDTheme.sm),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Modifikator: ',
-                style: DnDTheme.bodyText2.copyWith(
-                  color: Colors.white60,
-                ),
-              ),
-              Text(
-                modifierString,
-                style: DnDTheme.bodyText1.copyWith(
-                  color: DnDTheme.ancientGold,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+      title: 'Attributspunkte',
+      icon: Icons.fitness_center,
+      useSectionCard: true,
     );
   }
 
@@ -730,51 +687,6 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
         );
       },
     );
-  }
-
-  void _onSearchChanged(String query) {
-    _debounce?.cancel();
-    _debounce = Timer(_debounceDelay, () {
-      if (mounted) {
-        setState(() {
-          _skillSearchQuery = query.toLowerCase();
-        });
-      }
-    });
-  }
-
-  IconData _getAbilityIcon(Ability ability) {
-    switch (ability) {
-      case Ability.strength:
-        return Icons.fitness_center;
-      case Ability.dexterity:
-        return Icons.flash_on;
-      case Ability.constitution:
-        return Icons.favorite;
-      case Ability.intelligence:
-        return Icons.school;
-      case Ability.wisdom:
-        return Icons.psychology;
-      case Ability.charisma:
-        return Icons.people;
-    }
-  }
-
-  String _getAbilityName(Ability ability) {
-    switch (ability) {
-      case Ability.strength:
-        return 'Staerke';
-      case Ability.dexterity:
-        return 'Geschicklichkeit';
-      case Ability.constitution:
-        return 'Konstitution';
-      case Ability.intelligence:
-        return 'Intelligenz';
-      case Ability.wisdom:
-        return 'Weisheit';
-      case Ability.charisma:
-        return 'Charisma';
-    }
   }
 
   Widget _buildDnDBasicCard() {
@@ -865,226 +777,6 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
     );
   }
 
-  Widget _buildInventoryItemCard(DisplayInventoryItem displayItem) {
-    final item = displayItem.item;
-    final invItem = displayItem.inventoryItem;
-    
-    return Container(
-      margin: const EdgeInsets.only(bottom: DnDTheme.md),
-      padding: const EdgeInsets.all(DnDTheme.lg),
-      decoration: BoxDecoration(
-        color: DnDTheme.slateGrey,
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-      ),
-      child: ListTile(
-        leading: Container(
-          width: 48,
-          height: 48,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: DnDTheme.arcaneBlue,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.inventory, color: Colors.white, size: 24),
-        ),
-        title: Text(
-          item.name,
-          style: DnDTheme.bodyText1.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        subtitle: Text(
-          item.description.isNotEmpty 
-              ? item.description 
-              : '${item.itemType.name} • ${item.weight} Pfund',
-          style: DnDTheme.bodyText2.copyWith(
-            color: Colors.white60,
-          ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (invItem.quantity > 1) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: DnDTheme.md,
-                  vertical: DnDTheme.xs,
-                ),
-                decoration: BoxDecoration(
-                  color: DnDTheme.ancientGold,
-                  borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                ),
-                child: Text(
-                  'x${invItem.quantity}',
-                  style: DnDTheme.bodyText2.copyWith(
-                    color: DnDTheme.dungeonBlack,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(width: DnDTheme.sm),
-            ],
-            IconButton(
-              icon: const Icon(Icons.delete, color: DnDTheme.errorRed),
-              onPressed: () => _showDeleteItemDialog(displayItem),
-              tooltip: 'Loeschen',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ============================================================================
-
-  Widget _buildTextField(
-    String label,
-    String value,
-    Function(String) onChanged, {
-    String? Function(String?)? validator,
-    IconData? icon,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: DnDTheme.stoneGrey,
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-      ),
-      child: TextFormField(
-        key: ValueKey<String>('$_isInitialized-$label'),
-        initialValue: value,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: DnDTheme.bodyText2.copyWith(
-            color: DnDTheme.ancientGold,
-          ),
-          prefixIcon: icon != null ? Icon(icon, color: DnDTheme.ancientGold) : null,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.all(DnDTheme.md),
-        ),
-        style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-        validator: validator,
-        onChanged: onChanged,
-      ),
-    );
-  }
-
-  Widget _buildMultilineField(
-    String label,
-    String value,
-    Function(String) onChanged, {
-    IconData? icon,
-    int maxLines = 1,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: DnDTheme.stoneGrey,
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-      ),
-      child: TextFormField(
-        key: ValueKey<String>('$_isInitialized-$label'),
-        initialValue: value,
-        maxLines: maxLines,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: DnDTheme.bodyText2.copyWith(
-            color: DnDTheme.ancientGold,
-          ),
-          prefixIcon: icon != null ? Icon(icon, color: DnDTheme.ancientGold) : null,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.all(DnDTheme.md),
-        ),
-        style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-        onChanged: onChanged,
-      ),
-    );
-  }
-
-  Widget _buildNumberField(
-    String label,
-    String value,
-    Function(String) onChanged, {
-    String? Function(String?)? validator,
-    IconData? icon,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: DnDTheme.stoneGrey,
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-      ),
-      child: TextFormField(
-        initialValue: value,
-        keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: DnDTheme.bodyText2.copyWith(
-            color: DnDTheme.ancientGold,
-          ),
-          prefixIcon: icon != null ? Icon(icon, color: DnDTheme.ancientGold) : null,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.all(DnDTheme.md),
-        ),
-        style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-        validator: validator,
-        onChanged: onChanged,
-      ),
-    );
-  }
-
-  Widget _buildDropdownField<T>(
-    String label,
-    T? value,
-    List<T> items,
-    Function(T?) onChanged, {
-    String? Function(T?)? validator,
-    IconData? icon,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: DnDTheme.stoneGrey,
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-      ),
-      child: DropdownButtonFormField<T>(
-        value: value,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: DnDTheme.bodyText2.copyWith(
-            color: DnDTheme.ancientGold,
-          ),
-          prefixIcon: icon != null ? Icon(icon, color: DnDTheme.ancientGold) : null,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.all(DnDTheme.md),
-        ),
-        style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-        items: items.map((item) {
-          String displayName = '';
-          
-          if (item is DndClass) {
-            displayName = item.name;
-          } else if (item is DndRace) {
-            displayName = item.name;
-          } else {
-            displayName = item.toString();
-          }
-          
-          return DropdownMenuItem<T>(
-            value: item,
-            child: Text(
-              displayName,
-              style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-            ),
-          );
-        }).toList(),
-        onChanged: onChanged,
-        validator: validator,
-      ),
-    );
-  }
-
-  // ============================================================================
 
   Widget _buildFloatingActionButton() {
     return Consumer<EditPCViewModel>(
@@ -1255,58 +947,133 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
       }
     }
   }
-
-  void _showDeleteItemDialog(DisplayInventoryItem displayItem) {
-    showDialog<void>(
+  
+  /// Zeigt Dialog zur Auswahl des Equipment-Slots für ein Item
+  Future<void> _showEquipDialog(BuildContext context, DisplayInventoryItem displayItem) async {
+    final item = displayItem.item;
+    
+    await showDialog(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: DnDTheme.stoneGrey,
-          title: Text(
-            '${displayItem.item.name} loeschen',
-            style: DnDTheme.headline2.copyWith(
-              color: DnDTheme.ancientGold,
-            ),
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: DnDTheme.stoneGrey,
+        title: Text(
+          '${item.name} ausrüsten',
+          style: DnDTheme.headline2.copyWith(
+            color: DnDTheme.ancientGold,
           ),
-          content: Text(
-            'Moechtest du "${displayItem.item.name}" wirklich loeschen?',
-            style: DnDTheme.bodyText1.copyWith(color: Colors.white70),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(
-                'Abbrechen',
-                style: DnDTheme.bodyText1.copyWith(
-                  color: DnDTheme.mysticalPurple,
-                ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Wähle einen Slot für ${item.name}:',
+              style: DnDTheme.bodyText1.copyWith(
+                color: Colors.white70,
               ),
             ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(dialogContext).pop();
-                await Future.delayed(const Duration(milliseconds: 100));
-                if (!mounted) return;
-                try {
-                  await _viewModel.removeInventoryItem(displayItem.inventoryItem.id);
-                  if (mounted) {
-                    SnackBarHelper.showSuccess(context, '${displayItem.item.name} geloescht');
-                  }
-                } catch (e) {
-                  if (mounted) {
-                    SnackBarHelper.showError(context, 'Fehler beim Loeschen: $e');
-                  }
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: DnDTheme.errorRed,
-                foregroundColor: Colors.white,
+            const SizedBox(height: DnDTheme.md),
+            SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: EquipmentSlot.values.map((slot) {
+                  final isEquipped = _viewModel.equipmentMap[slot] != null;
+                  final slotName = Equipment.getSlotName(slot);
+                  
+                  return ListTile(
+                    enabled: !isEquipped,
+                    leading: Icon(
+                      _getSlotIcon(slot),
+                      color: isEquipped 
+                          ? Colors.white30 
+                          : DnDTheme.ancientGold,
+                    ),
+                    title: Text(
+                      slotName,
+                      style: DnDTheme.bodyText1.copyWith(
+                        color: isEquipped 
+                            ? Colors.white30 
+                            : Colors.white,
+                      ),
+                    ),
+                    subtitle: Text(
+                      Equipment.getSlotDescription(slot),
+                      style: DnDTheme.bodyText2.copyWith(
+                        color: Colors.white60,
+                      ),
+                    ),
+                    trailing: isEquipped
+                        ? Text(
+                            'Belegt',
+                            style: DnDTheme.bodyText2.copyWith(
+                              color: DnDTheme.errorRed,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.check_circle_outline,
+                            color: DnDTheme.successGreen,
+                          ),
+                    onTap: () async {
+                      if (isEquipped) return;
+                      
+                      Navigator.of(dialogContext).pop();
+                      try {
+                        await _viewModel.equipItem(slot, displayItem);
+                        if (mounted) {
+                          SnackBarHelper.showSuccess(context, '${item.name} im $slotName ausgerüstet');
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          SnackBarHelper.showError(context, e.toString());
+                        }
+                      }
+                    },
+                  );
+                }).toList(),
               ),
-              child: const Text('Loeschen'),
             ),
           ],
-        );
-      },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(
+              'Abbrechen',
+              style: DnDTheme.bodyText1.copyWith(
+                color: Colors.white70,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
+  
+  IconData _getSlotIcon(EquipmentSlot slot) {
+    switch (slot) {
+      case EquipmentSlot.helmet:
+        return Icons.security;
+      case EquipmentSlot.armor:
+        return Icons.shield;
+      case EquipmentSlot.shield:
+        return Icons.shield;
+      case EquipmentSlot.weaponPrimary:
+        return Icons.sports_martial_arts;
+      case EquipmentSlot.weaponSecondary:
+        return Icons.sports_martial_arts;
+      case EquipmentSlot.gloves:
+        return Icons.pan_tool;
+      case EquipmentSlot.boots:
+        return Icons.hiking;
+      case EquipmentSlot.ring1:
+      case EquipmentSlot.ring2:
+        return Icons.circle;
+      case EquipmentSlot.amulet:
+        return Icons.emoji_events;
+      case EquipmentSlot.cloak:
+        return Icons.checkroom;
+    }
+  }
+
 }
