@@ -9,6 +9,8 @@ import '../game_data/game_data.dart';
 import '../models/inventory_item.dart';
 import '../models/item.dart';
 import '../models/player_character.dart';
+import '../models/equipment.dart';
+import '../models/equip_slot.dart';
 import '../services/inventory_service.dart';
 
 /// ViewModel für die Bearbeitung von Player Characters
@@ -51,6 +53,9 @@ class EditPCViewModel extends ChangeNotifier {
 
   // Inventory
   List<DisplayInventoryItem> _inventory = [];
+  
+  // Equipment
+  Equipment _equipment = Equipment.empty();
 
   // D&D Details State
   String _size = 'Medium';
@@ -89,6 +94,26 @@ class EditPCViewModel extends ChangeNotifier {
   bool get isSaving => _isSaving;
   String? get error => _error;
   List<DisplayInventoryItem> get inventory => _inventory;
+  Equipment get equipment => _equipment;
+  
+  /// Gibt Equipment als Map für das Widget zurück
+  Map<EquipmentSlot, DisplayInventoryItem?> get equipmentMap {
+    final map = <EquipmentSlot, DisplayInventoryItem?>{};
+    for (final slot in EquipmentSlot.values) {
+      final equippedItem = _equipment.getItem(slot);
+      map[slot] = equippedItem?.item;
+    }
+    return map;
+  }
+  
+  /// Gibt die IDs aller ausgerüsteten Items zurück (für BackpackWidget)
+  Set<String> get equippedItemIds {
+    return _equipment.getEquippedItems()
+        .map((equipped) => equipped.inventoryItemId)
+        .where((id) => id != null)
+        .cast<String>()
+        .toSet();
+  }
 
   // D&D Details Getters
   String get size => _size;
@@ -463,6 +488,9 @@ class EditPCViewModel extends ChangeNotifier {
         attackList: [],
         inventory: _inventory.map((item) => item.inventoryItem).toList(),
         
+        // Equipment
+        equipment: _equipment.toMap(),
+        
         // Währung
         gold: _gold,
         silver: _silver,
@@ -554,12 +582,61 @@ class EditPCViewModel extends ChangeNotifier {
       
       _inventory = displayItems;
       print('${_inventory.length} Display-Items erstellt');
+      
+      // Lade Equipment basierend auf Inventory-Items
+      _loadEquipment();
+      
       notifyListeners();
     } catch (e) {
       print('=== LOAD INVENTORY ERROR ===');
       print('Fehler: $e');
       _error = e.toString();
       notifyListeners();
+    }
+  }
+  
+  /// Lädt Equipment basierend auf den InventoryItems
+  /// WICHTIG: Baut Equipment direkt aus InventoryItems.isEquipped auf
+  /// anstatt aus der veralteten equipment Map
+  void _loadEquipment() {
+    print('=== LOAD EQUIPMENT START ===');
+    _equipment = Equipment.empty();
+    
+    // Durchlaufe alle InventoryItems und finde ausgerüstete Items
+    for (final displayItem in _inventory) {
+      final invItem = displayItem.inventoryItem;
+      
+      if (invItem.isEquipped && invItem.equipSlot != null) {
+        // Konvertiere EquipSlot zu EquipmentSlot
+        final equipmentSlot = _convertToEquipmentSlot(invItem.equipSlot!);
+        
+        if (equipmentSlot != null) {
+          // Rüste das Item aus
+          _equipment = _equipment.equip(equipmentSlot, displayItem);
+          print('  Item ausgerüstet: ${displayItem.item.name} in ${equipmentSlot.name} (Slot: ${invItem.equipSlot})');
+        } else {
+          print('  ⚠️ Kein passender EquipmentSlot für ${invItem.equipSlot}');
+        }
+      }
+    }
+    
+    print('Equipment erfolgreich geladen: ${_equipment.getEquippedItems().length} Items ausgerüstet');
+    print('=== LOAD EQUIPMENT END ===');
+  }
+  
+  /// Konvertiert EquipSlot zu EquipmentSlot
+  EquipmentSlot? _convertToEquipmentSlot(EquipSlot equipSlot) {
+    try {
+      // Direkter String-Vergleich da beide Enums gleiche Namen haben
+      for (final es in EquipmentSlot.values) {
+        if (es.name == equipSlot.name) {
+          return es;
+        }
+      }
+      return null;
+    } catch (e) {
+      print('⚠️ [EditPCViewModel] Konvertierungsfehler: $e');
+      return null;
     }
   }
 
@@ -619,6 +696,113 @@ class EditPCViewModel extends ChangeNotifier {
       if (_pcToEdit != null) {
         await _loadInventory(_pcToEdit!.id);
       }
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  // ============================================================================
+  // EQUIPMENT OPERATIONS
+  // ============================================================================
+
+  /// Rüstet ein Item in einem Slot aus
+  Future<void> equipItem(EquipmentSlot slot, DisplayInventoryItem item) async {
+    print('🎯 [EditPCViewModel] equipItem aufgerufen: slot=$slot, item=${item.item.name}');
+    
+    try {
+      // Prüfe ob der Item-Typ für den Slot geeignet ist
+      if (!Equipment.canEquip(slot)) {
+        throw Exception('${item.item.name} kann nicht im ${Equipment.getSlotName(slot)}-Slot ausgerüstet werden');
+      }
+
+      // Prüfe ob das Item bereits ausgerüstet ist
+      if (_equipment.isItemEquipped(item.inventoryItem.id)) {
+        throw Exception('Dieser Gegenstand ist bereits ausgerüstet');
+      }
+
+      // Aktualisiere lokales Equipment
+      _equipment = _equipment.equip(slot, item);
+      
+      // WICHTIG: Aktualisiere auch das InventoryItem in der Datenbank!
+      final equipSlot = _convertToEquipSlot(slot);
+      await _updateInventoryItemEquipment(item.inventoryItem.id, equipSlot);
+      
+      notifyListeners();
+      print('✅ [EditPCViewModel] Item ${item.item.name} erfolgreich in $slot ausgerüstet');
+    } catch (e) {
+      print('❌ [EditPCViewModel] Fehler beim Ausrüsten: $e');
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  /// Legt ein Item ab (entfernt es aus dem Slot)
+  Future<void> unequipItem(EquipmentSlot slot) async {
+    print('🎯 [EditPCViewModel] unequipItem aufgerufen: slot=$slot');
+    
+    try {
+      final equippedItem = _equipment.getItem(slot);
+      
+      // Aktualisiere lokales Equipment
+      _equipment = _equipment.unequip(slot);
+      
+      // WICHTIG: Entferne Equipment-Flag vom InventoryItem in der Datenbank!
+      if (equippedItem != null && equippedItem.inventoryItemId != null) {
+        await _updateInventoryItemEquipment(equippedItem.inventoryItemId!, null);
+        print('✅ [EditPCViewModel] Item ${equippedItem.itemName} erfolgreich aus $slot abgelegt');
+      }
+      
+      notifyListeners();
+    } catch (e) {
+      print('❌ [EditPCViewModel] Fehler beim Ablegen: $e');
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  /// Aktualisiert das Equipment-Flag eines InventoryItems in der Datenbank
+  Future<void> _updateInventoryItemEquipment(String inventoryItemId, EquipSlot? equipSlot) async {
+    try {
+      final existingItem = await _inventoryRepository.findById(inventoryItemId);
+      if (existingItem != null) {
+        final updatedItem = existingItem.copyWith(
+          isEquipped: equipSlot != null,
+          equipSlot: equipSlot,
+        );
+        await _inventoryRepository.update(updatedItem);
+        print('💾 [EditPCViewModel] InventoryItem $inventoryItemId in Datenbank aktualisiert: equipSlot=$equipSlot');
+      }
+    } catch (e) {
+      print('❌ [EditPCViewModel] Fehler beim Aktualisieren des InventoryItems: $e');
+      throw Exception('Fehler beim Aktualisieren des InventoryItems: $e');
+    }
+  }
+
+  /// Konvertiert EquipmentSlot zu EquipSlot
+  EquipSlot? _convertToEquipSlot(EquipmentSlot equipmentSlot) {
+    try {
+      for (final es in EquipSlot.values) {
+        if (es.name == equipmentSlot.name) {
+          return es;
+        }
+      }
+      print('⚠️ [EditPCViewModel] Kein passender EquipSlot gefunden für ${equipmentSlot.name}');
+      return null; // Fallback auf null
+    } catch (e) {
+      print('⚠️ [EditPCViewModel] Konvertierungsfehler: $e');
+      return null; // Fallback auf null
+    }
+  }
+
+  /// Tauscht ein Item gegen ein anderes
+  Future<void> swapItem(EquipmentSlot slot, DisplayInventoryItem newItem) async {
+    try {
+      _equipment = _equipment.swap(slot, newItem);
+      notifyListeners();
     } catch (e) {
       _error = e.toString();
       notifyListeners();
