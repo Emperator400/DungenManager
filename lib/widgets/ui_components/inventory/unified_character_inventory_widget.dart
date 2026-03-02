@@ -1050,12 +1050,228 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
   }
 
   void _showItemDetails(DisplayInventoryItem displayItem) {
-    setState(() {
-      _selectedItem = displayItem;
-      _showDetailPanel = true;
-    });
-    _fadeController.forward();
-    _slideController.forward();
+    // Prüfe ob das Item ausgerüstet ist
+    final equippedSlot = widget.equipmentMap.entries
+        .firstWhere(
+          (entry) => entry.value?.inventoryItem.id == displayItem.inventoryItem.id,
+          orElse: () => MapEntry(EquipmentSlot.armor, null),
+        )
+        .key;
+
+    final isEquipped = displayItem.inventoryItem.isEquipped;
+
+    if (isEquipped) {
+      // Zeige Dialog mit Abwählen und Tauschen
+      _showEquippedItemDialog(equippedSlot, displayItem);
+    } else {
+      // Zeige Detail-Panel für nicht ausgerüstete Items
+      setState(() {
+        _selectedItem = displayItem;
+        _showDetailPanel = true;
+      });
+      _fadeController.forward();
+      _slideController.forward();
+    }
+  }
+
+  void _showEquippedItemDialog(EquipmentSlot slot, DisplayInventoryItem displayItem) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: DnDTheme.stoneGrey,
+        title: Text(
+          displayItem.item.name,
+          style: DnDTheme.headline2.copyWith(
+            color: DnDTheme.ancientGold,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: ItemColorHelper.getItemTypeColor(displayItem.item.itemType),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    ItemColorHelper.getItemTypeIcon(displayItem.item.itemType),
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: DnDTheme.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayItem.item.name,
+                        style: DnDTheme.bodyText1.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        Equipment.getSlotName(slot),
+                        style: DnDTheme.bodyText2.copyWith(
+                          color: DnDTheme.ancientGold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: DnDTheme.md),
+            Text(
+              displayItem.item.description.isNotEmpty
+                  ? displayItem.item.description
+                  : 'Keine Beschreibung',
+              style: DnDTheme.bodyText2.copyWith(
+                color: Colors.white70,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+        actions: [
+          // Abwählen Button
+          if (widget.onUnequipItem != null)
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                widget.onUnequipItem!(slot);
+              },
+              icon: const Icon(Icons.undo, size: 18),
+              label: const Text('Abwählen'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: DnDTheme.errorRed,
+                side: const BorderSide(color: DnDTheme.errorRed),
+              ),
+            ),
+          const SizedBox(width: DnDTheme.sm),
+          // Tauschen Button
+          if (widget.onEquipItem != null)
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                _showSwapDialog(slot, displayItem);
+              },
+              icon: const Icon(Icons.swap_horiz, size: 18),
+              label: const Text('Tauschen'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: DnDTheme.ancientGold,
+                foregroundColor: DnDTheme.dungeonBlack,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showSwapDialog(EquipmentSlot slot, DisplayInventoryItem currentItem) {
+    // Finde alle nicht ausgerüsteten Items die in diesen Slot passen
+    final unequippedItems = _getUnequippedItems();
+    final swappableItems = unequippedItems.where((item) {
+      return _getAvailableSlotsForItem(item.item).contains(slot);
+    }).toList();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: DnDTheme.stoneGrey,
+        title: Text(
+          '${currentItem.item.name} tauschen',
+          style: DnDTheme.headline2.copyWith(
+            color: DnDTheme.ancientGold,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Wähle einen Gegenstand zum Tauschen:',
+              style: DnDTheme.bodyText1.copyWith(
+                color: Colors.white70,
+              ),
+            ),
+            const SizedBox(height: DnDTheme.md),
+            if (swappableItems.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(DnDTheme.md),
+                child: Center(
+                  child: Text(
+                    'Keine tauschbaren Gegenstände im Inventar',
+                    style: DnDTheme.bodyText2.copyWith(
+                      color: Colors.white60,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              )
+            else
+              ...swappableItems.map((item) {
+                return ListTile(
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: ItemColorHelper.getItemTypeColor(item.item.itemType),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Icon(
+                      ItemColorHelper.getItemTypeIcon(item.item.itemType),
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  title: Text(
+                    item.item.name,
+                    style: DnDTheme.bodyText1.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Text(
+                    ItemColorHelper.getItemTypeDisplayName(item.item.itemType),
+                    style: DnDTheme.bodyText2.copyWith(
+                      color: Colors.white60,
+                      fontSize: 11,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.of(dialogContext).pop();
+                    // Erst ablegen, dann ausrüsten
+                    widget.onUnequipItem!(slot);
+                    // Kleine Verzögerung damit das Ablegen fertig ist
+                    Future.delayed(const Duration(milliseconds: 100), () {
+                      widget.onEquipItem!(slot, item);
+                    });
+                  },
+                );
+              }).toList(),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(
+              'Abbrechen',
+              style: DnDTheme.bodyText1.copyWith(
+                color: Colors.white70,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _closeDetailPanel() {
