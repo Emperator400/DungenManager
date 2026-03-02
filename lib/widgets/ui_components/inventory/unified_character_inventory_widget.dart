@@ -304,16 +304,12 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
         ),
         child: Stack(
           children: [
-            Padding(
-              padding: const EdgeInsets.all(4),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (isEquipped) ...[
-                    // Item-Icon wenn ausgerüstet
-                    Container(
-                      width: 24,
-                      height: 24,
+            // Zentriertes Icon oder Slot-Name
+            Center(
+              child: isEquipped
+                  ? Container(
+                      width: 32,
+                      height: 32,
                       decoration: BoxDecoration(
                         color: ItemColorHelper.getItemTypeColor(equippedItem!.item.itemType),
                         borderRadius: BorderRadius.circular(4),
@@ -321,53 +317,41 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
                       child: Icon(
                         ItemColorHelper.getItemTypeIcon(equippedItem.item.itemType),
                         color: Colors.white,
-                        size: 14,
+                        size: 18,
                       ),
+                    )
+                  : Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          slotIcon,
+                          color: DnDTheme.mysticalPurple.withValues(alpha: 0.6),
+                          size: 20,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          slotName,
+                          style: DnDTheme.bodyText2.copyWith(
+                            color: Colors.white60,
+                            fontSize: 7,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      equippedItem.item.name,
-                      style: DnDTheme.bodyText2.copyWith(
-                        color: DnDTheme.ancientGold,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ] else ...[
-                    // Slot-Icon wenn leer
-                    Icon(
-                      slotIcon,
-                      color: DnDTheme.mysticalPurple.withValues(alpha: 0.6),
-                      size: 18,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      slotName,
-                      style: DnDTheme.bodyText2.copyWith(
-                        color: Colors.white60,
-                        fontSize: 8,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ],
-              ),
             ),
             // Ablegen-Button oben rechts
             if (isEquipped && widget.onUnequipItem != null)
               Positioned(
-                top: 1,
-                right: 1,
+                top: 2,
+                right: 2,
                 child: GestureDetector(
                   onTap: () => _showUnequipConfirmation(slot, equippedItem!),
                   child: Container(
-                    padding: const EdgeInsets.all(1),
+                    padding: const EdgeInsets.all(2),
                     decoration: BoxDecoration(
                       color: DnDTheme.errorRed,
                       shape: BoxShape.circle,
@@ -375,11 +359,11 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
                     child: const Icon(
                       Icons.close,
                       color: Colors.white,
-                      size: 10,
+                      size: 12,
                     ),
-                  ),
                 ),
               ),
+            ),
           ],
         ),
       ),
