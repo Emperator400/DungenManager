@@ -309,52 +309,61 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
               padding: const EdgeInsets.all(4),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   if (isEquipped) ...[
                     // Item-Icon wenn ausgerüstet
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: ItemColorHelper.getItemTypeColor(equippedItem!.item.itemType),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Icon(
-                        ItemColorHelper.getItemTypeIcon(equippedItem.item.itemType),
-                        color: Colors.white,
-                        size: 22,
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: ItemColorHelper.getItemTypeColor(equippedItem!.item.itemType),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Icon(
+                          ItemColorHelper.getItemTypeIcon(equippedItem.item.itemType),
+                          color: Colors.white,
+                          size: 22,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      equippedItem.item.name,
-                      style: DnDTheme.bodyText2.copyWith(
-                        color: DnDTheme.ancientGold,
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
+                    Center(
+                      child: Text(
+                        equippedItem.item.name,
+                        style: DnDTheme.bodyText2.copyWith(
+                          color: DnDTheme.ancientGold,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ] else ...[
                     // Slot-Icon wenn leer
-                    Icon(
-                      slotIcon,
-                      color: DnDTheme.mysticalPurple.withValues(alpha: 0.6),
-                      size: 24,
+                    Center(
+                      child: Icon(
+                        slotIcon,
+                        color: DnDTheme.mysticalPurple.withValues(alpha: 0.6),
+                        size: 24,
+                      ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      slotName,
-                      style: DnDTheme.bodyText2.copyWith(
-                        color: Colors.white60,
-                        fontSize: 8,
-                        fontWeight: FontWeight.w500,
+                    Center(
+                      child: Text(
+                        slotName,
+                        style: DnDTheme.bodyText2.copyWith(
+                          color: Colors.white60,
+                          fontSize: 8,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ],
