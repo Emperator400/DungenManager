@@ -7,8 +7,6 @@ import 'package:provider/provider.dart';
 import '../game_data/dnd_models.dart';
 import '../game_data/game_data.dart';
 import '../models/player_character.dart';
-import '../models/inventory_item.dart';
-import '../models/equipment.dart';
 import '../theme/dnd_theme.dart';
 import '../viewmodels/edit_pc_viewmodel.dart';
 import '../widgets/ui_components/feedback/snackbar_helper.dart';
@@ -16,9 +14,7 @@ import '../widgets/ui_components/forms/form_field_widget.dart';
 import '../widgets/ui_components/stats/attributes_section_widget.dart';
 import '../widgets/ui_components/stats/ability_score_widget.dart';
 import '../widgets/ui_components/skills/skill_list_widget.dart';
-import '../widgets/ui_components/inventory/unified_inventory_widget.dart';
-import '../widgets/ui_components/inventory/equipment_widget.dart';
-import '../widgets/ui_components/inventory/backpack_widget.dart';
+import '../widgets/ui_components/inventory/unified_character_inventory_widget.dart';
 import '../database/core/database_connection.dart';
 import '../database/repositories/player_character_model_repository.dart';
 
@@ -41,7 +37,7 @@ class EnhancedEditPCScreen extends StatefulWidget {
 
 class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
     with SingleTickerProviderStateMixin {
-  static const int _tabCount = 5;
+  static const int _tabCount = 4;
   static const int _minAbilityScore = 1;
   static const int _maxAbilityScore = 20;
   static const Duration _debounceDelay = Duration(milliseconds: 300);
@@ -129,8 +125,7 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
           Tab(icon: Icon(Icons.person), text: ' Stammdaten'),
           Tab(icon: Icon(Icons.fitness_center), text: ' Attribute'),
           Tab(icon: Icon(Icons.category), text: ' D&D Details'),
-          Tab(icon: Icon(Icons.inventory), text: ' Inventar'),
-          Tab(icon: Icon(Icons.shield), text: ' Ausrüstung'),
+          Tab(icon: Icon(Icons.inventory_2), text: ' Inventar & Ausrüstung'),
         ],
       ),
     );
@@ -152,8 +147,7 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
             _buildBasicInfoTab(),
             _buildAttributesTab(),
             _buildDnDDetailsTab(),
-            _buildInventoryTab(),
-            _buildEquipmentTab(),
+            _buildUnifiedInventoryTab(),
           ],
         );
       },
@@ -281,7 +275,7 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
     );
   }
 
-  Widget _buildInventoryTab() {
+  Widget _buildUnifiedInventoryTab() {
     return Consumer<EditPCViewModel>(
       builder: (context, viewModel, child) {
         if (!viewModel.isEdit) {
@@ -298,14 +292,14 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
                   ),
                   const SizedBox(height: DnDTheme.lg),
                   Text(
-                    'Inventar-Verwaltung',
+                    'Inventar & Ausrüstung',
                     style: DnDTheme.headline2.copyWith(
                       color: DnDTheme.ancientGold,
                     ),
                   ),
                   const SizedBox(height: DnDTheme.sm),
                   Text(
-                    'Speichere den Charakter zuerst,\nmoechtest du Gegenstaende hinzufuegen kannst.',
+                    'Speichere den Charakter zuerst,\nbevor du Inventar und Ausrüstung verwalten kannst.',
                     style: DnDTheme.bodyText1.copyWith(
                       color: Colors.white70,
                     ),
@@ -317,8 +311,40 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
           );
         }
 
-        return UnifiedInventoryWidget(
-          displayItems: viewModel.inventory,
+        return UnifiedCharacterInventoryWidget(
+          inventoryItems: viewModel.inventory,
+          equipmentMap: viewModel.equipmentMap,
+          gold: viewModel.gold.toInt(),
+          silver: viewModel.silver?.toInt(),
+          copper: viewModel.copper?.toInt(),
+          onEquipItem: (slot, displayItem) async {
+            try {
+              await viewModel.equipItem(slot, displayItem);
+              // Automatisch speichern nach dem Ausrüsten
+              await _saveWithoutNavigation();
+              if (mounted) {
+                SnackBarHelper.showSuccess(context, '${displayItem.item.name} ausgerüstet und gespeichert');
+              }
+            } catch (e) {
+              if (mounted) {
+                SnackBarHelper.showError(context, e.toString());
+              }
+            }
+          },
+          onUnequipItem: (slot) async {
+            try {
+              await viewModel.unequipItem(slot);
+              // Automatisch speichern nach dem Ablegen
+              await _saveWithoutNavigation();
+              if (mounted) {
+                SnackBarHelper.showSuccess(context, 'Item abgelegt und gespeichert');
+              }
+            } catch (e) {
+              if (mounted) {
+                SnackBarHelper.showError(context, e.toString());
+              }
+            }
+          },
           onAddItem: _addItemFromLibrary,
           onDeleteItem: (displayItem) async {
             await Future.delayed(const Duration(milliseconds: 100));
@@ -326,119 +352,14 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
             try {
               await _viewModel.removeInventoryItem(displayItem.inventoryItem.id);
               if (mounted) {
-                SnackBarHelper.showSuccess(context, '${displayItem.item.name} geloescht');
+                SnackBarHelper.showSuccess(context, '${displayItem.item.name} gelöscht');
               }
             } catch (e) {
               if (mounted) {
-                SnackBarHelper.showError(context, 'Fehler beim Loeschen: $e');
+                SnackBarHelper.showError(context, 'Fehler beim Löschen: $e');
               }
             }
           },
-          showAddButton: true,
-          emptyTitle: 'Inventar ist leer',
-          emptySubtitle: 'Fuege Gegenstaende aus der Bibliothek hinzu',
-        );
-      },
-    );
-  }
-
-  Widget _buildEquipmentTab() {
-    return Consumer<EditPCViewModel>(
-      builder: (context, viewModel, child) {
-        if (!viewModel.isEdit) {
-          return Center(
-            child: Container(
-              padding: const EdgeInsets.all(DnDTheme.xl),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.shield_outlined,
-                    size: 80,
-                    color: DnDTheme.mysticalPurple.withValues(alpha: 0.6),
-                  ),
-                  const SizedBox(height: DnDTheme.lg),
-                  Text(
-                    'Ausrüstung',
-                    style: DnDTheme.headline2.copyWith(
-                      color: DnDTheme.ancientGold,
-                    ),
-                  ),
-                  const SizedBox(height: DnDTheme.sm),
-                  Text(
-                    'Speichere den Charakter zuerst,\nbevor du Ausrüstung verwalten kannst.',
-                    style: DnDTheme.bodyText1.copyWith(
-                      color: Colors.white70,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        return SingleChildScrollView(
-          controller: _scrollController,
-          padding: const EdgeInsets.all(DnDTheme.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Equipment-Slots
-              EquipmentWidget(
-                equipment: viewModel.equipmentMap,
-                onEquipItem: (slot, displayItem) async {
-                  try {
-                    await viewModel.equipItem(slot, displayItem);
-                    if (mounted) {
-                      SnackBarHelper.showSuccess(context, '${displayItem.item.name} ausgerüstet');
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      SnackBarHelper.showError(context, e.toString());
-                    }
-                  }
-                },
-                onUnequipItem: (slot) async {
-                  try {
-                    await viewModel.unequipItem(slot);
-                    if (mounted) {
-                      SnackBarHelper.showSuccess(context, 'Item abgelegt');
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      SnackBarHelper.showError(context, e.toString());
-                    }
-                  }
-                },
-              ),
-              const SizedBox(height: DnDTheme.xl),
-              
-              // Tasche/Rucksack
-              BackpackWidget(
-                inventoryItems: viewModel.inventory,
-                equippedItemIds: viewModel.equippedItemIds,
-                onEquipItem: (displayItem) async {
-                  // Öffne Dialog zur Auswahl des Slots
-                  await _showEquipDialog(context, displayItem);
-                },
-                onDeleteItem: (displayItem) async {
-                  await Future.delayed(const Duration(milliseconds: 100));
-                  if (!mounted) return;
-                  try {
-                    await _viewModel.removeInventoryItem(displayItem.inventoryItem.id);
-                    if (mounted) {
-                      SnackBarHelper.showSuccess(context, '${displayItem.item.name} gelöscht');
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      SnackBarHelper.showError(context, 'Fehler beim Löschen: $e');
-                    }
-                  }
-                },
-              ),
-            ],
-          ),
         );
       },
     );
@@ -805,6 +726,73 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
 
   // ============================================================================
 
+  Future<void> _saveWithoutNavigation() async {
+    // Keyboard dismissen
+    FocusScope.of(context).unfocus();
+    
+    // Sammle alle Validierungsfehler
+    final errors = <String>[];
+    
+    // Prüfe Name des Charakters
+    if (_viewModel.name.isEmpty) {
+      errors.add('Name des Charakters');
+    }
+    
+    // Prüfe Name des Spielers
+    if (_viewModel.playerName.isEmpty) {
+      errors.add('Name des Spielers');
+    }
+    
+    // Prüfe Klasse
+    if (_viewModel.selectedClass == null) {
+      errors.add('Klasse');
+    }
+    
+    // Prüfe Rasse
+    if (_viewModel.selectedRace == null) {
+      errors.add('Rasse');
+    }
+    
+    // Prüfe Stufe
+    if (_viewModel.level < 1) {
+      errors.add('Stufe (muss mindestens 1 sein)');
+    }
+    
+    // Prüfe Max. HP
+    if (_viewModel.maxHp < 1) {
+      errors.add('Max. HP (muss mindestens 1 sein)');
+    }
+    
+    // Prüfe Rüstungsklasse
+    if (_viewModel.armorClass < 1) {
+      errors.add('Rüstungsklasse (muss mindestens 1 sein)');
+    }
+    
+    // Zeige Fehler an, wenn welche vorhanden sind
+    if (errors.isNotEmpty) {
+      final errorMessage = 'Bitte folgende Pflichtfelder ausfüllen:\n\n${errors.map((e) => '• $e').join('\n')}';
+      if (mounted) {
+        SnackBarHelper.showError(context, errorMessage);
+      }
+      return;
+    }
+
+    try {
+      await _viewModel.saveCharacter();
+      
+      if (mounted) {
+        SnackBarHelper.showSuccess(
+          context,
+          'Charakter automatisch gespeichert',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackBarHelper.showError(context, 'Fehler beim Speichern: $e');
+      }
+    }
+  }
+
   Future<void> _saveCharacter() async {
     // Keyboard dismissen
     FocusScope.of(context).unfocus();
@@ -948,132 +936,5 @@ class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
     }
   }
   
-  /// Zeigt Dialog zur Auswahl des Equipment-Slots für ein Item
-  Future<void> _showEquipDialog(BuildContext context, DisplayInventoryItem displayItem) async {
-    final item = displayItem.item;
-    
-    await showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
-        title: Text(
-          '${item.name} ausrüsten',
-          style: DnDTheme.headline2.copyWith(
-            color: DnDTheme.ancientGold,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Wähle einen Slot für ${item.name}:',
-              style: DnDTheme.bodyText1.copyWith(
-                color: Colors.white70,
-              ),
-            ),
-            const SizedBox(height: DnDTheme.md),
-            SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: EquipmentSlot.values.map((slot) {
-                  final isEquipped = _viewModel.equipmentMap[slot] != null;
-                  final slotName = Equipment.getSlotName(slot);
-                  
-                  return ListTile(
-                    enabled: !isEquipped,
-                    leading: Icon(
-                      _getSlotIcon(slot),
-                      color: isEquipped 
-                          ? Colors.white30 
-                          : DnDTheme.ancientGold,
-                    ),
-                    title: Text(
-                      slotName,
-                      style: DnDTheme.bodyText1.copyWith(
-                        color: isEquipped 
-                            ? Colors.white30 
-                            : Colors.white,
-                      ),
-                    ),
-                    subtitle: Text(
-                      Equipment.getSlotDescription(slot),
-                      style: DnDTheme.bodyText2.copyWith(
-                        color: Colors.white60,
-                      ),
-                    ),
-                    trailing: isEquipped
-                        ? Text(
-                            'Belegt',
-                            style: DnDTheme.bodyText2.copyWith(
-                              color: DnDTheme.errorRed,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          )
-                        : const Icon(
-                            Icons.check_circle_outline,
-                            color: DnDTheme.successGreen,
-                          ),
-                    onTap: () async {
-                      if (isEquipped) return;
-                      
-                      Navigator.of(dialogContext).pop();
-                      try {
-                        await _viewModel.equipItem(slot, displayItem);
-                        if (mounted) {
-                          SnackBarHelper.showSuccess(context, '${item.name} im $slotName ausgerüstet');
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          SnackBarHelper.showError(context, e.toString());
-                        }
-                      }
-                    },
-                  );
-                }).toList(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(
-              'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(
-                color: Colors.white70,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  IconData _getSlotIcon(EquipmentSlot slot) {
-    switch (slot) {
-      case EquipmentSlot.helmet:
-        return Icons.security;
-      case EquipmentSlot.armor:
-        return Icons.shield;
-      case EquipmentSlot.shield:
-        return Icons.shield;
-      case EquipmentSlot.weaponPrimary:
-        return Icons.sports_martial_arts;
-      case EquipmentSlot.weaponSecondary:
-        return Icons.sports_martial_arts;
-      case EquipmentSlot.gloves:
-        return Icons.pan_tool;
-      case EquipmentSlot.boots:
-        return Icons.hiking;
-      case EquipmentSlot.ring1:
-      case EquipmentSlot.ring2:
-        return Icons.circle;
-      case EquipmentSlot.amulet:
-        return Icons.emoji_events;
-      case EquipmentSlot.cloak:
-        return Icons.checkroom;
-    }
-  }
 
 }
