@@ -625,18 +625,39 @@ class EditPCViewModel extends ChangeNotifier {
   }
   
   /// Konvertiert EquipSlot zu EquipmentSlot
+  /// Mapping zwischen den zwei verschiedenen Slot-Systemen
   EquipmentSlot? _convertToEquipmentSlot(EquipSlot equipSlot) {
-    try {
-      // Direkter String-Vergleich da beide Enums gleiche Namen haben
-      for (final es in EquipmentSlot.values) {
-        if (es.name == equipSlot.name) {
-          return es;
-        }
-      }
-      return null;
-    } catch (e) {
-      print('⚠️ [EditPCViewModel] Konvertierungsfehler: $e');
-      return null;
+    // Mapping-Table: EquipSlot -> EquipmentSlot
+    switch (equipSlot) {
+      case EquipSlot.head:
+        return EquipmentSlot.helmet;
+      case EquipSlot.chest:
+        return EquipmentSlot.armor;
+      case EquipSlot.offHand:
+        return EquipmentSlot.shield; // oder weaponSecondary
+      case EquipSlot.mainHand:
+        return EquipmentSlot.weaponPrimary;
+      case EquipSlot.hands:
+        return EquipmentSlot.gloves;
+      case EquipSlot.feet:
+        return EquipmentSlot.boots;
+      case EquipSlot.ring1:
+        return EquipmentSlot.ring1;
+      case EquipSlot.ring2:
+        return EquipmentSlot.ring2;
+      case EquipSlot.amulet:
+        return EquipmentSlot.amulet;
+      case EquipSlot.cloak:
+        return EquipmentSlot.cloak;
+      case EquipSlot.ranged:
+      case EquipSlot.spellActive:
+      case EquipSlot.cantripReady:
+      case EquipSlot.spellPrepared1:
+      case EquipSlot.spellPrepared2:
+      case EquipSlot.spellPrepared3:
+      case EquipSlot.spellPrepared4:
+      case EquipSlot.belt:
+        return null; // Diese Slots haben kein Äquivalent in EquipmentSlot
     }
   }
 
@@ -783,18 +804,32 @@ class EditPCViewModel extends ChangeNotifier {
   }
 
   /// Konvertiert EquipmentSlot zu EquipSlot
+  /// Mapping zwischen den zwei verschiedenen Slot-Systemen
   EquipSlot? _convertToEquipSlot(EquipmentSlot equipmentSlot) {
-    try {
-      for (final es in EquipSlot.values) {
-        if (es.name == equipmentSlot.name) {
-          return es;
-        }
-      }
-      print('⚠️ [EditPCViewModel] Kein passender EquipSlot gefunden für ${equipmentSlot.name}');
-      return null; // Fallback auf null
-    } catch (e) {
-      print('⚠️ [EditPCViewModel] Konvertierungsfehler: $e');
-      return null; // Fallback auf null
+    // Mapping-Table: EquipmentSlot -> EquipSlot
+    switch (equipmentSlot) {
+      case EquipmentSlot.helmet:
+        return EquipSlot.head;
+      case EquipmentSlot.armor:
+        return EquipSlot.chest;
+      case EquipmentSlot.shield:
+        return EquipSlot.offHand;
+      case EquipmentSlot.weaponPrimary:
+        return EquipSlot.mainHand;
+      case EquipmentSlot.weaponSecondary:
+        return EquipSlot.offHand;
+      case EquipmentSlot.gloves:
+        return EquipSlot.hands;
+      case EquipmentSlot.boots:
+        return EquipSlot.feet;
+      case EquipmentSlot.ring1:
+        return EquipSlot.ring1;
+      case EquipmentSlot.ring2:
+        return EquipSlot.ring2;
+      case EquipmentSlot.amulet:
+        return EquipSlot.amulet;
+      case EquipmentSlot.cloak:
+        return EquipSlot.cloak;
     }
   }
 
