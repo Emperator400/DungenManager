@@ -271,6 +271,15 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
       itemBuilder: (context, index) {
         final slot = EquipmentSlot.values[index];
         final equippedItem = widget.equipmentMap[slot];
+        
+        // DEBUG: Prüfe ob das Item gefunden wird
+        if (equippedItem != null) {
+          print('📦 [EquipmentGrid] Slot $slot belegt mit: ${equippedItem.item.name}');
+          print('  - InventoryItem ID: ${equippedItem.inventoryItem.id}');
+          print('  - isEquipped: ${equippedItem.inventoryItem.isEquipped}');
+          print('  - equipSlot: ${equippedItem.inventoryItem.equipSlot}');
+        }
+        
         return _buildEquipmentSlot(slot, equippedItem);
       },
     );
