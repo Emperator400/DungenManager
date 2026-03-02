@@ -262,10 +262,10 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 6,
-        childAspectRatio: 0.9,
-        crossAxisSpacing: 4,
-        mainAxisSpacing: 4,
+        crossAxisCount: 4,
+        childAspectRatio: 0.85,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
       ),
       itemCount: EquipmentSlot.values.length,
       itemBuilder: (context, index) {
@@ -291,40 +291,96 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
     final isEquipped = equippedItem != null;
 
     return GestureDetector(
-      onTap: () => _showEquipmentDialog(slot),
+      onTap: isEquipped ? () => _showItemDetails(equippedItem!) : () => _showEquipmentDialog(slot),
+      onLongPress: isEquipped ? () => _showUnequipConfirmation(slot, equippedItem!) : null,
       child: Container(
         decoration: BoxDecoration(
           color: DnDTheme.stoneGrey,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isEquipped ? DnDTheme.ancientGold : DnDTheme.slateGrey,
             width: isEquipped ? 2 : 1,
           ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(4),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                isEquipped ? _getItemIcon(equippedItem!.item.itemType) : slotIcon,
-                color: isEquipped ? DnDTheme.ancientGold : DnDTheme.mysticalPurple.withValues(alpha: 0.6),
-                size: 16,
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(6),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (isEquipped) ...[
+                    // Item-Icon und Name wenn ausgerüstet
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: ItemColorHelper.getItemTypeColor(equippedItem!.item.itemType),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Icon(
+                        ItemColorHelper.getItemTypeIcon(equippedItem.item.itemType),
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      equippedItem.item.name,
+                      style: DnDTheme.bodyText2.copyWith(
+                        color: DnDTheme.ancientGold,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ] else ...[
+                    // Slot-Icon wenn leer
+                    Icon(
+                      slotIcon,
+                      color: DnDTheme.mysticalPurple.withValues(alpha: 0.6),
+                      size: 24,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      slotName,
+                      style: DnDTheme.bodyText2.copyWith(
+                        color: Colors.white60,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
               ),
-              const SizedBox(height: 2),
-              Text(
-                slotName,
-                style: DnDTheme.bodyText2.copyWith(
-                  color: Colors.white60,
-                  fontSize: 8,
-                  fontWeight: FontWeight.w500,
+            ),
+            // Ablegen-Button oben rechts
+            if (isEquipped && widget.onUnequipItem != null)
+              Positioned(
+                top: 2,
+                right: 2,
+                child: GestureDetector(
+                  onTap: () => _showUnequipConfirmation(slot, equippedItem!),
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: DnDTheme.errorRed,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 12,
+                    ),
+                  ),
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
-            ],
-          ),
+          ],
         ),
       ),
     );
@@ -1027,6 +1083,49 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
         });
       });
     });
+  }
+
+  void _showUnequipConfirmation(EquipmentSlot slot, DisplayInventoryItem displayItem) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: DnDTheme.stoneGrey,
+        title: Text(
+          '${displayItem.item.name} ablegen?',
+          style: DnDTheme.headline2.copyWith(
+            color: DnDTheme.ancientGold,
+          ),
+        ),
+        content: Text(
+          'Möchtest du "${displayItem.item.name}" wirklich ablegen?',
+          style: DnDTheme.bodyText1.copyWith(
+            color: Colors.white70,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(
+              'Abbrechen',
+              style: DnDTheme.bodyText1.copyWith(
+                color: Colors.white70,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              widget.onUnequipItem!(slot);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DnDTheme.errorRed,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Ablegen'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showEquipmentDialog(EquipmentSlot slot) {
