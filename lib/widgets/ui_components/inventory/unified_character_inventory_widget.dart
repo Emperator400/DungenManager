@@ -262,10 +262,10 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        childAspectRatio: 0.85,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
+        crossAxisCount: 6,
+        childAspectRatio: 0.9,
+        crossAxisSpacing: 4,
+        mainAxisSpacing: 4,
       ),
       itemCount: EquipmentSlot.values.length,
       itemBuilder: (context, index) {
@@ -296,7 +296,7 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
       child: Container(
         decoration: BoxDecoration(
           color: DnDTheme.stoneGrey,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(4),
           border: Border.all(
             color: isEquipped ? DnDTheme.ancientGold : DnDTheme.slateGrey,
             width: isEquipped ? 2 : 1,
@@ -305,35 +305,35 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
         child: Stack(
           children: [
             Padding(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(4),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (isEquipped) ...[
-                    // Item-Icon und Name wenn ausgerüstet
+                    // Item-Icon wenn ausgerüstet
                     Container(
-                      width: 32,
-                      height: 32,
+                      width: 24,
+                      height: 24,
                       decoration: BoxDecoration(
                         color: ItemColorHelper.getItemTypeColor(equippedItem!.item.itemType),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       child: Icon(
                         ItemColorHelper.getItemTypeIcon(equippedItem.item.itemType),
                         color: Colors.white,
-                        size: 18,
+                        size: 14,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       equippedItem.item.name,
                       style: DnDTheme.bodyText2.copyWith(
                         color: DnDTheme.ancientGold,
-                        fontSize: 10,
+                        fontSize: 8,
                         fontWeight: FontWeight.bold,
                       ),
                       textAlign: TextAlign.center,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ] else ...[
@@ -341,18 +341,18 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
                     Icon(
                       slotIcon,
                       color: DnDTheme.mysticalPurple.withValues(alpha: 0.6),
-                      size: 24,
+                      size: 18,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       slotName,
                       style: DnDTheme.bodyText2.copyWith(
                         color: Colors.white60,
-                        fontSize: 10,
+                        fontSize: 8,
                         fontWeight: FontWeight.w500,
                       ),
                       textAlign: TextAlign.center,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
@@ -362,12 +362,12 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
             // Ablegen-Button oben rechts
             if (isEquipped && widget.onUnequipItem != null)
               Positioned(
-                top: 2,
-                right: 2,
+                top: 1,
+                right: 1,
                 child: GestureDetector(
                   onTap: () => _showUnequipConfirmation(slot, equippedItem!),
                   child: Container(
-                    padding: const EdgeInsets.all(2),
+                    padding: const EdgeInsets.all(1),
                     decoration: BoxDecoration(
                       color: DnDTheme.errorRed,
                       shape: BoxShape.circle,
@@ -375,7 +375,7 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
                     child: const Icon(
                       Icons.close,
                       color: Colors.white,
-                      size: 12,
+                      size: 10,
                     ),
                   ),
                 ),
@@ -549,10 +549,10 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        childAspectRatio: 0.9,
-        crossAxisSpacing: DnDTheme.sm,
-        mainAxisSpacing: DnDTheme.sm,
+        crossAxisCount: 6,
+        childAspectRatio: 0.85,
+        crossAxisSpacing: 4,
+        mainAxisSpacing: 4,
       ),
       itemCount: items.length,
       itemBuilder: (context, index) {
@@ -677,7 +677,7 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
 
   Widget _buildGridItem(DisplayInventoryItem displayItem, Item item, InventoryItem invItem) {
     return Padding(
-      padding: const EdgeInsets.all(DnDTheme.sm),
+      padding: const EdgeInsets.all(4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -685,20 +685,20 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
           // Icon
           Center(
             child: Container(
-              width: 40,
-              height: 40,
+              width: 28,
+              height: 28,
               decoration: BoxDecoration(
                 color: ItemColorHelper.getItemTypeColor(item.itemType),
-                borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                borderRadius: BorderRadius.circular(4),
               ),
               child: Icon(
                 ItemColorHelper.getItemTypeIcon(item.itemType),
                 color: Colors.white,
-                size: 20,
+                size: 16,
               ),
             ),
           ),
-          const SizedBox(height: DnDTheme.xs),
+          const SizedBox(height: 2),
 
           // Name
           Text(
@@ -706,7 +706,7 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
             style: DnDTheme.bodyText2.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.bold,
-              fontSize: 11,
+              fontSize: 9,
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -715,23 +715,23 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
 
           // Quantity
           if (invItem.quantity > 1) ...[
-            const SizedBox(height: 2),
+            const SizedBox(height: 1),
             Center(
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
+                  horizontal: 4,
                   vertical: 1,
                 ),
                 decoration: BoxDecoration(
                   color: DnDTheme.ancientGold,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(3),
                 ),
                 child: Text(
                   'x${invItem.quantity}',
                   style: const TextStyle(
                     color: Colors.black,
                     fontWeight: FontWeight.bold,
-                    fontSize: 10,
+                    fontSize: 8,
                   ),
                 ),
               ),
@@ -739,39 +739,39 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
           ],
 
           // Actions
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               InkWell(
                 onTap: () => _showEquipDialog(displayItem),
                 child: Container(
-                  padding: const EdgeInsets.all(4),
+                  padding: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
                     color: DnDTheme.successGreen.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(3),
                   ),
                   child: const Icon(
                     Icons.check,
                     color: DnDTheme.successGreen,
-                    size: 14,
+                    size: 12,
                   ),
                 ),
               ),
               if (widget.allowDelete && widget.onDeleteItem != null) ...[
-                const SizedBox(width: 4),
+                const SizedBox(width: 2),
                 InkWell(
                   onTap: () => _showDeleteDialog(displayItem),
                   child: Container(
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.all(2),
                     decoration: BoxDecoration(
                       color: DnDTheme.errorRed.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(3),
                     ),
                     child: const Icon(
                       Icons.delete,
                       color: DnDTheme.errorRed,
-                      size: 14,
+                      size: 12,
                     ),
                   ),
                 ),
