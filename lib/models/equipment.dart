@@ -49,7 +49,7 @@ class Equipment {
   
   const Equipment({
     Map<EquipmentSlot, EquippedItem>? slots,
-  }) : _slots = const {
+  }) : _slots = slots ?? const {
     EquipmentSlot.helmet: EquippedItem(slot: EquipmentSlot.helmet),
     EquipmentSlot.armor: EquippedItem(slot: EquipmentSlot.armor),
     EquipmentSlot.shield: EquippedItem(slot: EquipmentSlot.shield),
