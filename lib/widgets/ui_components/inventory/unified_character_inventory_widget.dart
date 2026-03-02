@@ -263,9 +263,9 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 6,
-        childAspectRatio: 0.9,
-        crossAxisSpacing: 4,
-        mainAxisSpacing: 4,
+        childAspectRatio: 1.0,
+        crossAxisSpacing: 6,
+        mainAxisSpacing: 6,
       ),
       itemCount: EquipmentSlot.values.length,
       itemBuilder: (context, index) {
@@ -296,7 +296,7 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
       child: Container(
         decoration: BoxDecoration(
           color: DnDTheme.stoneGrey,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(6),
           border: Border.all(
             color: isEquipped ? DnDTheme.ancientGold : DnDTheme.slateGrey,
             width: isEquipped ? 2 : 1,
@@ -304,44 +304,61 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
         ),
         child: Stack(
           children: [
-            // Zentriertes Icon oder Slot-Name
-            Center(
-              child: isEquipped
-                  ? Container(
-                      width: 32,
-                      height: 32,
+            // Zentriertes Icon und Name
+            Padding(
+              padding: const EdgeInsets.all(4),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (isEquipped) ...[
+                    // Item-Icon wenn ausgerüstet
+                    Container(
+                      width: 40,
+                      height: 40,
                       decoration: BoxDecoration(
                         color: ItemColorHelper.getItemTypeColor(equippedItem!.item.itemType),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Icon(
                         ItemColorHelper.getItemTypeIcon(equippedItem.item.itemType),
                         color: Colors.white,
-                        size: 18,
+                        size: 22,
                       ),
-                    )
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          slotIcon,
-                          color: DnDTheme.mysticalPurple.withValues(alpha: 0.6),
-                          size: 20,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          slotName,
-                          style: DnDTheme.bodyText2.copyWith(
-                            color: Colors.white60,
-                            fontSize: 7,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
                     ),
+                    const SizedBox(height: 4),
+                    Text(
+                      equippedItem.item.name,
+                      style: DnDTheme.bodyText2.copyWith(
+                        color: DnDTheme.ancientGold,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ] else ...[
+                    // Slot-Icon wenn leer
+                    Icon(
+                      slotIcon,
+                      color: DnDTheme.mysticalPurple.withValues(alpha: 0.6),
+                      size: 24,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      slotName,
+                      style: DnDTheme.bodyText2.copyWith(
+                        color: Colors.white60,
+                        fontSize: 8,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
             ),
             // Ablegen-Button oben rechts
             if (isEquipped && widget.onUnequipItem != null)
@@ -351,7 +368,7 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
                 child: GestureDetector(
                   onTap: () => _showUnequipConfirmation(slot, equippedItem!),
                   child: Container(
-                    padding: const EdgeInsets.all(2),
+                    padding: const EdgeInsets.all(3),
                     decoration: BoxDecoration(
                       color: DnDTheme.errorRed,
                       shape: BoxShape.circle,
@@ -359,11 +376,11 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
                     child: const Icon(
                       Icons.close,
                       color: Colors.white,
-                      size: 12,
+                      size: 14,
                     ),
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),
