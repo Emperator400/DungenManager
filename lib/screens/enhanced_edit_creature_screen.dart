@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models/creature.dart';
+import '../models/item.dart';
 import '../theme/dnd_theme.dart';
 import '../viewmodels/edit_creature_viewmodel.dart';
 import '../widgets/ui_components/stats/attributes_section_widget.dart';
@@ -12,6 +13,7 @@ import '../widgets/ui_components/inventory/creature_inventory_widget.dart';
 import '../widgets/ui_components/forms/form_field_widget.dart';
 import '../widgets/ui_components/cards/section_card_widget.dart';
 import '../widgets/ui_components/feedback/snackbar_helper.dart';
+import '../services/inventory_service.dart';
 
 /// Enhanced Screen zur Bearbeitung von Creatures - basierend auf Hero Creation Screen
 class EnhancedEditCreatureScreen extends StatefulWidget {
@@ -35,11 +37,13 @@ class _EnhancedEditCreatureScreenState extends State<EnhancedEditCreatureScreen>
   final _formKey = GlobalKey<FormState>();
   final _scrollController = ScrollController();
   bool _isInitialized = false;
+  late InventoryService _inventoryService;
 
   @override
   void initState() {
     super.initState();
     _viewModel = EditCreatureViewModel();
+    _inventoryService = InventoryService();
     _tabController = TabController(length: _tabCount, vsync: this);
     _initializeViewModel();
   }
@@ -678,7 +682,70 @@ class _EnhancedEditCreatureScreenState extends State<EnhancedEditCreatureScreen>
     return shouldPop ?? false;
   }
 
-  Future<void> _showAddItemDialog(BuildContext context, EditCreatureViewModel viewModel) {
+  Future<void> _showAddItemDialog(BuildContext context, EditCreatureViewModel viewModel) async {
+    // Zeige Auswahl: Manuell oder aus Waffenkammer
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: DnDTheme.stoneGrey,
+        title: Text(
+          'Gegenstand hinzufügen',
+          style: DnDTheme.headline2.copyWith(
+            color: DnDTheme.ancientGold,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.edit, color: DnDTheme.arcaneBlue),
+              title: Text(
+                'Manuell eingeben',
+                style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+              ),
+              subtitle: Text(
+                'Gegenstand mit allen Details manuell erstellen',
+                style: DnDTheme.bodyText2.copyWith(color: Colors.white60),
+              ),
+              onTap: () => Navigator.of(dialogContext).pop('manual'),
+            ),
+            const Divider(color: Colors.white12),
+            ListTile(
+              leading: Icon(Icons.inventory_2, color: DnDTheme.ancientGold),
+              title: Text(
+                'Aus Waffenkammer wählen',
+                style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+              ),
+              subtitle: Text(
+                'Gegenstand aus der Item-Bibliothek auswählen',
+                style: DnDTheme.bodyText2.copyWith(color: Colors.white60),
+              ),
+              onTap: () => Navigator.of(dialogContext).pop('library'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(
+              'Abbrechen',
+              style: DnDTheme.bodyText1.copyWith(
+                color: DnDTheme.mysticalPurple,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (choice == 'manual') {
+      _showManualAddDialog(context, viewModel);
+    } else if (choice == 'library') {
+      await _showLibraryDialog(context, viewModel);
+    }
+  }
+
+  Future<void> _showManualAddDialog(BuildContext context, EditCreatureViewModel viewModel) {
     final nameController = TextEditingController();
     final descriptionController = TextEditingController();
     final typeController = TextEditingController(text: 'item');
@@ -781,6 +848,377 @@ class _EnhancedEditCreatureScreenState extends State<EnhancedEditCreatureScreen>
         ],
       ),
     );
+  }
+
+  Future<void> _showLibraryDialog(BuildContext context, EditCreatureViewModel viewModel) async {
+    final quantityController = TextEditingController(text: '1');
+    String _searchQuery = '';
+
+    return showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            backgroundColor: DnDTheme.stoneGrey,
+            title: Text(
+              'Gegenstand aus Waffenkammer',
+              style: DnDTheme.headline2.copyWith(
+                color: DnDTheme.ancientGold,
+              ),
+            ),
+            content: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.9,
+              height: MediaQuery.of(context).size.height * 0.7,
+              child: Column(
+                children: [
+                  // Suchfeld
+                  TextField(
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Gegenstände durchsuchen...',
+                      hintStyle: DnDTheme.bodyText2.copyWith(
+                        color: Colors.white60,
+                      ),
+                      prefixIcon: Icon(Icons.search, color: DnDTheme.ancientGold),
+                      filled: true,
+                      fillColor: DnDTheme.slateGrey,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.all(DnDTheme.md),
+                    ),
+                    style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                  ),
+                  const SizedBox(height: DnDTheme.md),
+                  
+                  // Item-Liste
+                  Expanded(
+                    child: FutureBuilder<List<Item>>(
+                      future: _inventoryService.getAllItems(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return Center(
+                            child: CircularProgressIndicator(
+                              color: DnDTheme.ancientGold,
+                            ),
+                          );
+                        }
+
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Text(
+                              'Fehler beim Laden: ${snapshot.error}',
+                              style: DnDTheme.bodyText1.copyWith(
+                                color: DnDTheme.errorRed,
+                              ),
+                            ),
+                          );
+                        }
+
+                        final items = snapshot.data ?? [];
+                        final filteredItems = _searchQuery.isEmpty
+                            ? items
+                            : items.where((item) =>
+                                item.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+
+                        if (filteredItems.isEmpty) {
+                          return Center(
+                            child: Text(
+                              'Keine Gegenstände gefunden',
+                              style: DnDTheme.bodyText1.copyWith(
+                                color: Colors.white60,
+                              ),
+                            ),
+                          );
+                        }
+
+                        return ListView.builder(
+                          itemCount: filteredItems.length,
+                          itemBuilder: (context, index) {
+                            final item = filteredItems[index];
+                            return _buildLibraryItemCard(item, viewModel, quantityController, setState);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text(
+                  'Abbrechen',
+                  style: DnDTheme.bodyText1.copyWith(
+                    color: DnDTheme.mysticalPurple,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildLibraryItemCard(Item item, EditCreatureViewModel viewModel, TextEditingController quantityController, StateSetter setState) {
+    Color typeColor = DnDTheme.mysticalPurple;
+    IconData typeIcon = Icons.inventory_2_outlined;
+    
+    switch (item.itemType) {
+      case ItemType.Weapon:
+        typeColor = DnDTheme.errorRed;
+        typeIcon = Icons.gavel;
+        break;
+      case ItemType.Armor:
+        typeColor = DnDTheme.arcaneBlue;
+        typeIcon = Icons.shield;
+        break;
+      case ItemType.Shield:
+        typeColor = DnDTheme.warningOrange;
+        typeIcon = Icons.shield_outlined;
+        break;
+      case ItemType.Consumable:
+        typeColor = DnDTheme.emeraldGreen;
+        typeIcon = Icons.restaurant;
+        break;
+      case ItemType.Tool:
+        typeColor = DnDTheme.warningOrange;
+        typeIcon = Icons.build;
+        break;
+      case ItemType.MagicItem:
+        typeColor = DnDTheme.ancientGold;
+        typeIcon = Icons.auto_awesome;
+        break;
+      case ItemType.Potion:
+        typeColor = DnDTheme.emeraldGreen;
+        typeIcon = Icons.local_drink;
+        break;
+      case ItemType.Scroll:
+        typeColor = DnDTheme.mysticalPurple;
+        typeIcon = Icons.description;
+        break;
+      case ItemType.Treasure:
+        typeColor = DnDTheme.ancientGold;
+        typeIcon = Icons.diamond;
+        break;
+      case ItemType.Currency:
+        typeColor = DnDTheme.successGreen;
+        typeIcon = Icons.monetization_on;
+        break;
+      case ItemType.Material:
+        typeColor = DnDTheme.warningOrange;
+        typeIcon = Icons.science;
+        break;
+      case ItemType.Component:
+        typeColor = DnDTheme.warningOrange;
+        typeIcon = Icons.category;
+        break;
+      default:
+        typeIcon = Icons.inventory_2_outlined;
+    }
+
+    return ListTile(
+      contentPadding: const EdgeInsets.all(DnDTheme.md),
+      leading: Container(
+        width: 48,
+        height: 48,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: typeColor.withValues(alpha: 0.2),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: typeColor,
+            width: 2,
+          ),
+        ),
+        child: Icon(typeIcon, color: typeColor, size: 24),
+      ),
+      title: Text(
+        item.name,
+        style: DnDTheme.bodyText1.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _getItemTypeDisplayName(item.itemType),
+            style: DnDTheme.bodyText2.copyWith(
+              color: typeColor,
+            ),
+          ),
+          if (item.description.isNotEmpty)
+            Text(
+              item.description,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: DnDTheme.bodyText2.copyWith(
+                color: Colors.white60,
+              ),
+            ),
+          if (item.cost > 0)
+            Text(
+              '${item.cost.toStringAsFixed(2)} Gold',
+              style: DnDTheme.bodyText2.copyWith(
+                color: DnDTheme.ancientGold,
+              ),
+            ),
+        ],
+      ),
+      trailing: Icon(
+        Icons.add_circle,
+        color: DnDTheme.successGreen,
+        size: 32,
+      ),
+      onTap: () async {
+        final quantity = await showDialog<int>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: DnDTheme.stoneGrey,
+            title: Text(
+              'Menge für "${item.name}"',
+              style: DnDTheme.headline3.copyWith(
+                color: DnDTheme.ancientGold,
+              ),
+            ),
+            content: TextField(
+              controller: quantityController,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              autofocus: true,
+              style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: DnDTheme.slateGrey,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                  borderSide: const BorderSide(color: DnDTheme.mysticalPurple),
+                ),
+                hintText: 'Menge',
+                hintStyle: DnDTheme.bodyText2.copyWith(
+                  color: Colors.white60,
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: Text(
+                  'Abbrechen',
+                  style: DnDTheme.bodyText1.copyWith(
+                    color: DnDTheme.mysticalPurple,
+                  ),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  final amount = int.tryParse(quantityController.text) ?? 0;
+                  Navigator.of(ctx).pop(amount > 0 ? amount : null);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: DnDTheme.successGreen,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Hinzufügen'),
+              ),
+            ],
+          ),
+        );
+
+        if (quantity != null && quantity > 0 && mounted) {
+          final newItem = {
+            'name': item.name,
+            'description': item.description,
+            'type': _getItemTypeString(item.itemType),
+            'quantity': quantity,
+            'value': item.cost,
+          };
+          viewModel.addInventoryItem(newItem);
+          if (mounted) {
+            Navigator.of(context).pop();
+            SnackBarHelper.showSuccess(
+              context,
+              '$quantity× ${item.name} zum Inventar hinzugefügt',
+            );
+          }
+        }
+      },
+    );
+  }
+
+  String _getItemTypeDisplayName(ItemType type) {
+    switch (type) {
+      case ItemType.Weapon:
+        return 'Waffe';
+      case ItemType.Armor:
+        return 'Rüstung';
+      case ItemType.Shield:
+        return 'Schild';
+      case ItemType.Consumable:
+        return 'Verbrauchsgegenstand';
+      case ItemType.Tool:
+        return 'Werkzeug';
+      case ItemType.Material:
+        return 'Material';
+      case ItemType.Component:
+        return 'Komponente';
+      case ItemType.MagicItem:
+        return 'Magischer Gegenstand';
+      case ItemType.Scroll:
+        return 'Schriftrolle';
+      case ItemType.Potion:
+        return 'Trank';
+      case ItemType.Treasure:
+        return 'Schatz';
+      case ItemType.Currency:
+        return 'Währung';
+      case ItemType.AdventuringGear:
+        return 'Ausrüstung';
+      case ItemType.SPELL_WEAPON:
+        return 'Zauberwaffe';
+    }
+  }
+
+  String _getItemTypeString(ItemType type) {
+    switch (type) {
+      case ItemType.Weapon:
+        return 'weapon';
+      case ItemType.Armor:
+        return 'armor';
+      case ItemType.Shield:
+        return 'shield';
+      case ItemType.Consumable:
+        return 'consumable';
+      case ItemType.Tool:
+        return 'tool';
+      case ItemType.Material:
+        return 'material';
+      case ItemType.Component:
+        return 'component';
+      case ItemType.MagicItem:
+        return 'magic';
+      case ItemType.Scroll:
+        return 'scroll';
+      case ItemType.Potion:
+        return 'potion';
+      case ItemType.Treasure:
+        return 'treasure';
+      case ItemType.Currency:
+        return 'currency';
+      case ItemType.AdventuringGear:
+        return 'gear';
+      case ItemType.SPELL_WEAPON:
+        return 'spell_weapon';
+    }
   }
 
   Future<void> _showEditItemDialog(BuildContext context, EditCreatureViewModel viewModel, int index) {
