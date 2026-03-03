@@ -1,563 +1,893 @@
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../models/creature.dart';
-import '../viewmodels/edit_creature_viewmodel.dart';
-import '../theme/dnd_theme.dart';
+import 'dart:async';
 
-/// Enhanced Screen zur Bearbeitung von Creatures mit modernem Design
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+
+import '../models/creature.dart';
+import '../theme/dnd_theme.dart';
+import '../viewmodels/edit_creature_viewmodel.dart';
+import '../widgets/ui_components/stats/attributes_section_widget.dart';
+import '../widgets/ui_components/inventory/creature_inventory_widget.dart';
+import '../widgets/ui_components/forms/form_field_widget.dart';
+import '../widgets/ui_components/cards/section_card_widget.dart';
+import '../widgets/ui_components/feedback/snackbar_helper.dart';
+
+/// Enhanced Screen zur Bearbeitung von Creatures - basierend auf Hero Creation Screen
 class EnhancedEditCreatureScreen extends StatefulWidget {
   final Creature? creature;
 
   const EnhancedEditCreatureScreen({
-    Key? key,
+    super.key,
     this.creature,
-  }) : super(key: key);
+  });
 
   @override
   State<EnhancedEditCreatureScreen> createState() => _EnhancedEditCreatureScreenState();
 }
 
-class _EnhancedEditCreatureScreenState extends State<EnhancedEditCreatureScreen> {
+class _EnhancedEditCreatureScreenState extends State<EnhancedEditCreatureScreen>
+    with SingleTickerProviderStateMixin {
+  static const int _tabCount = 4;
+  
+  late EditCreatureViewModel _viewModel;
+  late TabController _tabController;
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _typeController = TextEditingController();
-  final _subtypeController = TextEditingController();
-  final _alignmentController = TextEditingController();
-  final _specialAbilitiesController = TextEditingController();
-  final _legendaryActionsController = TextEditingController();
-  final _attacksController = TextEditingController();
-  final _speedController = TextEditingController();
+  final _scrollController = ScrollController();
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    // ViewModel initialisieren
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<EditCreatureViewModel>().initialize(widget.creature);
-      _controllersFromViewModel();
-    });
+    _viewModel = EditCreatureViewModel();
+    _tabController = TabController(length: _tabCount, vsync: this);
+    _initializeViewModel();
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _descriptionController.dispose();
-    _typeController.dispose();
-    _subtypeController.dispose();
-    _alignmentController.dispose();
-    _specialAbilitiesController.dispose();
-    _legendaryActionsController.dispose();
-    _attacksController.dispose();
-    _speedController.dispose();
+    _tabController.dispose();
+    _scrollController.dispose();
+    _viewModel.dispose();
     super.dispose();
   }
 
-  void _controllersFromViewModel() {
-    final viewModel = context.read<EditCreatureViewModel>();
-    final creature = viewModel.creature;
-    
-    if (creature != null) {
-      _nameController.text = creature!.name;
-      _descriptionController.text = creature!.description ?? '';
-      _typeController.text = creature!.type ?? '';
-      _subtypeController.text = creature!.subtype ?? '';
-      _alignmentController.text = creature!.alignment ?? '';
-      _specialAbilitiesController.text = creature!.specialAbilities ?? '';
-      _legendaryActionsController.text = creature!.legendaryActions ?? '';
-      _attacksController.text = creature!.attacks;
-      _speedController.text = creature!.speed;
+  Future<void> _initializeViewModel() async {
+    try {
+      await _viewModel.initialize(widget.creature);
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackBarHelper.showError(context, 'Fehler beim Initialisieren: $e');
+      }
     }
-  }
-
-  void _updateViewModel() {
-    final viewModel = context.read<EditCreatureViewModel>();
-    
-    viewModel.updateName(_nameController.text);
-    viewModel.updateDescription(_descriptionController.text);
-    viewModel.updateType(_typeController.text.isEmpty ? null : _typeController.text);
-    viewModel.updateSubtype(_subtypeController.text.isEmpty ? null : _subtypeController.text);
-    viewModel.updateAlignment(_alignmentController.text.isEmpty ? null : _alignmentController.text);
-    viewModel.updateSpecialAbilities(_specialAbilitiesController.text.isEmpty ? null : _specialAbilitiesController.text);
-    viewModel.updateLegendaryActions(_legendaryActionsController.text.isEmpty ? null : _legendaryActionsController.text);
-    viewModel.updateAttacks(_attacksController.text);
-    viewModel.updateSpeed(_speedController.text);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.creature == null ? 'Neue Creature' : 'Creature bearbeiten',
-          style: TextStyle(color: Colors.white),
+    return ChangeNotifierProvider<EditCreatureViewModel>.value(
+      value: _viewModel,
+      child: WillPopScope(
+        onWillPop: _onWillPop,
+        child: Scaffold(
+          backgroundColor: DnDTheme.dungeonBlack,
+          appBar: _buildAppBar(),
+          body: _buildBody(),
+          floatingActionButton: _buildFloatingActionButton(),
         ),
-        backgroundColor: DnDTheme.mysticalPurple,
-        iconTheme: IconThemeData(color: Colors.white),
-        actions: [
-          Consumer<EditCreatureViewModel>(
-            builder: (context, viewModel, child) {
-              return IconButton(
-                icon: Icon(Icons.save, color: Colors.white),
-                onPressed: viewModel.canSave ? _saveCreature : null,
-                tooltip: 'Speichern',
-              );
-            },
-          ),
-        ],
-      ),
-      body: Consumer<EditCreatureViewModel>(
-        builder: (context, viewModel, child) {
-          if (viewModel.isLoading) {
-            return Center(child: CircularProgressIndicator(color: DnDTheme.mysticalPurple));
-          }
-
-          return Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Fehlermeldung
-                  if (viewModel.errorMessage != null)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 16.0),
-                      padding: const EdgeInsets.all(12.0),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        border: Border.all(color: Colors.red.shade200),
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.error, color: Colors.red.shade600, size: 20),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              viewModel.errorMessage!,
-                              style: TextStyle(color: Colors.red.shade800),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close, size: 16),
-                            onPressed: viewModel.clearError,
-                            color: Colors.red.shade600,
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  // Grundinformationen
-                  _buildSectionCard(
-                    title: 'Grundinformationen',
-                    icon: Icons.info_outline,
-                    child: Column(
-                      children: [
-                        TextFormField(
-                          controller: _nameController,
-                          decoration: _buildInputDecoration('Name', Icons.person),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Name ist erforderlich';
-                            }
-                            return null;
-                          },
-                          onChanged: (_) => _updateViewModel(),
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _descriptionController,
-                          decoration: _buildInputDecoration('Beschreibung', Icons.description),
-                          maxLines: 3,
-                          onChanged: (_) => _updateViewModel(),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Kreatureigenschaften
-                  _buildSectionCard(
-                    title: 'Kreatureigenschaften',
-                    icon: Icons.category,
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: _typeController,
-                                decoration: _buildInputDecoration('Typ', Icons.label),
-                                onChanged: (_) => _updateViewModel(),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: TextFormField(
-                                controller: _subtypeController,
-                                decoration: _buildInputDecoration('Subtyp', Icons.subdirectory_arrow_right),
-                                onChanged: (_) => _updateViewModel(),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _alignmentController,
-                          decoration: _buildInputDecoration('Ausrichtung', Icons.balance),
-                          onChanged: (_) => _updateViewModel(),
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _speedController,
-                          decoration: _buildInputDecoration('Bewegungsrate', Icons.speed),
-                          onChanged: (_) => _updateViewModel(),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Kampfwerte
-                  _buildSectionCard(
-                    title: 'Kampfwerte',
-                    icon: Icons.security,
-                    child: Consumer<EditCreatureViewModel>(
-                      builder: (context, viewModel, child) {
-                        return Column(
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextFormField(
-                                    initialValue: viewModel.creature?.maxHp.toString(),
-                                    decoration: _buildInputDecoration('Max. LP', Icons.favorite),
-                                    keyboardType: TextInputType.number,
-                                    validator: (value) {
-                                      if (value == null || value.isEmpty) return 'Max. LP ist erforderlich';
-                                      final hp = int.tryParse(value);
-                                      if (hp == null || hp <= 0) return 'Ungültiger Wert';
-                                      return null;
-                                    },
-                                    onChanged: (value) {
-                                      final hp = int.tryParse(value) ?? 0;
-                                      viewModel.updateMaxHp(hp);
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: TextFormField(
-                                    initialValue: viewModel.creature?.currentHp.toString(),
-                                    decoration: _buildInputDecoration('Aktuelle LP', Icons.favorite_border),
-                                    keyboardType: TextInputType.number,
-                                    onChanged: (value) {
-                                      final hp = int.tryParse(value) ?? 0;
-                                      viewModel.updateCurrentHp(hp);
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              initialValue: viewModel.creature?.armorClass.toString(),
-                              decoration: _buildInputDecoration('Rüstungsklasse', Icons.shield),
-                              keyboardType: TextInputType.number,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) return 'Rüstungsklasse ist erforderlich';
-                                final ac = int.tryParse(value);
-                                if (ac == null || ac < 0) return 'Ungültiger Wert';
-                                return null;
-                              },
-                              onChanged: (value) {
-                                final ac = int.tryParse(value) ?? 0;
-                                viewModel.updateArmorClass(ac);
-                              },
-                            ),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              initialValue: viewModel.creature?.challengeRating.toString(),
-                              decoration: _buildInputDecoration('Herausforderungsgrad', Icons.star),
-                              keyboardType: TextInputType.number,
-                              onChanged: (value) {
-                                final cr = int.tryParse(value);
-                                if (cr != null) {
-                                  viewModel.updateChallengeRating(cr);
-                                }
-                              },
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Attribute
-                  _buildAttributesSection(viewModel),
-
-                  const SizedBox(height: 16),
-
-                  // Fähigkeiten
-                  _buildSectionCard(
-                    title: 'Fähigkeiten',
-                    icon: Icons.auto_awesome,
-                    child: Column(
-                      children: [
-                        TextFormField(
-                          controller: _attacksController,
-                          decoration: _buildInputDecoration('Angriffe', Icons.gavel),
-                          maxLines: 2,
-                          onChanged: (_) => _updateViewModel(),
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _specialAbilitiesController,
-                          decoration: _buildInputDecoration('Spezielle Fähigkeiten', Icons.psychology),
-                          maxLines: 3,
-                          onChanged: (_) => _updateViewModel(),
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _legendaryActionsController,
-                          decoration: _buildInputDecoration('Legendäre Aktionen', Icons.star),
-                          maxLines: 2,
-                          onChanged: (_) => _updateViewModel(),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Aktionen
-                  _buildActionButtons(viewModel),
-                ],
-              ),
-            ),
-          );
-        },
       ),
     );
   }
 
-  Widget _buildSectionCard({
-    required String title,
-    required IconData icon,
-    required Widget child,
-  }) {
-    return Card(
+  // ============================================================================
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      title: Text(
+        _viewModel.isEditing ? 'Kreatur bearbeiten' : 'Neue Kreatur erstellen',
+        style: DnDTheme.headline2.copyWith(
+          color: DnDTheme.ancientGold,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      backgroundColor: DnDTheme.stoneGrey,
+      foregroundColor: Colors.white,
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: DnDTheme.mysticalPurple, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
+      centerTitle: true,
+      bottom: TabBar(
+        controller: _tabController,
+        indicatorColor: DnDTheme.ancientGold,
+        labelColor: DnDTheme.ancientGold,
+        unselectedLabelColor: Colors.white70,
+        labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        tabs: const [
+          Tab(icon: Icon(Icons.pets), text: ' Grunddaten'),
+          Tab(icon: Icon(Icons.fitness_center), text: ' Attribute'),
+          Tab(icon: Icon(Icons.category), text: ' Fähigkeiten'),
+          Tab(icon: Icon(Icons.inventory), text: ' Inventar'),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================================
+
+  Widget _buildBody() {
+    return Consumer<EditCreatureViewModel>(
+      builder: (context, viewModel, child) {
+        if (viewModel.isLoading) {
+          return Center(
+            child: CircularProgressIndicator(
+              color: DnDTheme.ancientGold,
             ),
-            const SizedBox(height: 16),
-            child,
+          );
+        }
+
+        if (viewModel.error != null) {
+          return _buildErrorWidget(viewModel.error!);
+        }
+
+        return TabBarView(
+          key: ValueKey<bool>(_isInitialized),
+          controller: _tabController,
+          children: [
+            _buildBasicInfoTab(),
+            _buildAttributesTab(),
+            _buildAbilitiesTab(),
+            _buildInventoryTab(),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildErrorWidget(String error) {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(DnDTheme.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.error_outline,
+              color: DnDTheme.errorRed,
+              size: 64,
+            ),
+            const SizedBox(height: DnDTheme.lg),
+            Text(
+              'Fehler',
+              style: DnDTheme.headline2.copyWith(
+                color: DnDTheme.errorRed,
+              ),
+            ),
+            const SizedBox(height: DnDTheme.sm),
+            Text(
+              error,
+              style: DnDTheme.bodyText1.copyWith(
+                color: Colors.white70,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: DnDTheme.xl),
+            ElevatedButton.icon(
+              onPressed: () {
+                _viewModel.clearError();
+                _initializeViewModel();
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text('Erneut versuchen'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: DnDTheme.arcaneBlue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: DnDTheme.lg,
+                  vertical: DnDTheme.md,
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildAttributesSection(EditCreatureViewModel viewModel) {
-    return _buildSectionCard(
-      title: 'Attribute',
-      icon: Icons.fitness_center,
-      child: Column(
-        children: [
-          Row(
+  // ============================================================================
+
+  Widget _buildBasicInfoTab() {
+    return Consumer<EditCreatureViewModel>(
+      builder: (context, viewModel, child) {
+        return Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            padding: const EdgeInsets.all(DnDTheme.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSectionTitle('Grundinformationen', Icons.pets),
+                const SizedBox(height: DnDTheme.md),
+                _buildBasicInfoSection(),
+                const SizedBox(height: DnDTheme.xl),
+                _buildSectionTitle('Kreatureigenschaften', Icons.category),
+                const SizedBox(height: DnDTheme.md),
+                _buildCreatureTypeSection(),
+                const SizedBox(height: DnDTheme.xl),
+                _buildSectionTitle('Kampfwerte', Icons.security),
+                const SizedBox(height: DnDTheme.md),
+                _buildCombatStatsSection(),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAttributesTab() {
+    return Consumer<EditCreatureViewModel>(
+      builder: (context, viewModel, child) {
+        return SingleChildScrollView(
+          controller: _scrollController,
+          padding: const EdgeInsets.all(DnDTheme.lg),
+          child: _buildAttributeSection(),
+        );
+      },
+    );
+  }
+
+  Widget _buildAbilitiesTab() {
+    return Consumer<EditCreatureViewModel>(
+      builder: (context, viewModel, child) {
+        return SingleChildScrollView(
+          controller: _scrollController,
+          padding: const EdgeInsets.all(DnDTheme.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: _buildAttributeField('Stärke', 'strength', viewModel.strength)),
-              const SizedBox(width: 8),
-              Expanded(child: _buildAttributeField('Geschicklichkeit', 'dexterity', viewModel.dexterity)),
+              _buildSectionTitle('Angriffe & Fähigkeiten', Icons.auto_awesome),
+              const SizedBox(height: DnDTheme.md),
+              _buildAbilitiesSection(),
+              const SizedBox(height: DnDTheme.xl),
+              _buildSectionTitle('Währung', Icons.monetization_on),
+              const SizedBox(height: DnDTheme.md),
+              _buildCurrencySection(),
             ],
           ),
-          const SizedBox(height: 12),
-          Row(
+        );
+      },
+    );
+  }
+
+  Widget _buildInventoryTab() {
+    return Consumer<EditCreatureViewModel>(
+      builder: (context, viewModel, child) {
+        return CreatureInventoryWidget(
+          mapItems: viewModel.inventory,
+          onAddItem: () => _showAddItemDialog(context, viewModel),
+          onRemoveItem: (index) => viewModel.removeInventoryItem(index),
+          onEditItem: (index, item) => _showEditItemDialog(context, viewModel, index),
+          showAddButton: true,
+        );
+      },
+    );
+  }
+
+  // ============================================================================
+
+  Widget _buildSectionTitle(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          color: DnDTheme.ancientGold,
+          size: 22,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          title,
+          style: DnDTheme.headline2.copyWith(
+            color: DnDTheme.ancientGold,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAttributeSection() {
+    return Consumer<EditCreatureViewModel>(
+      builder: (context, viewModel, child) {
+        return AttributesSectionWidget(
+          strength: viewModel.strength,
+          dexterity: viewModel.dexterity,
+          constitution: viewModel.constitution,
+          intelligence: viewModel.intelligence,
+          wisdom: viewModel.wisdom,
+          charisma: viewModel.charisma,
+          onStrengthChanged: viewModel.updateStrength,
+          onDexterityChanged: viewModel.updateDexterity,
+          onConstitutionChanged: viewModel.updateConstitution,
+          onIntelligenceChanged: viewModel.updateIntelligence,
+          onWisdomChanged: viewModel.updateWisdom,
+          onCharismaChanged: viewModel.updateCharisma,
+          title: 'Attribute',
+          icon: Icons.fitness_center,
+          useSectionCard: true,
+        );
+      },
+    );
+  }
+
+  Widget _buildAbilitiesSection() {
+    return Consumer<EditCreatureViewModel>(
+      builder: (context, viewModel, child) {
+        return SectionCardWidget(
+          title: 'Angriffe & Fähigkeiten',
+          icon: Icons.auto_awesome,
+          child: Column(
             children: [
-              Expanded(child: _buildAttributeField('Konstitution', 'constitution', viewModel.constitution)),
-              const SizedBox(width: 8),
-              Expanded(child: _buildAttributeField('Intelligenz', 'intelligence', viewModel.intelligence)),
+              FormFieldWidget(
+                label: 'Angriffe',
+                value: viewModel.attacks,
+                onChanged: viewModel.updateAttacks,
+                icon: Icons.gavel,
+                maxLines: 3,
+              ),
+              const SizedBox(height: DnDTheme.md),
+              FormFieldWidget(
+                label: 'Spezielle Fähigkeiten',
+                value: viewModel.specialAbilities ?? '',
+                onChanged: (value) => viewModel.updateSpecialAbilities(value.isEmpty ? null : value),
+                icon: Icons.psychology,
+                maxLines: 3,
+              ),
+              const SizedBox(height: DnDTheme.md),
+              FormFieldWidget(
+                label: 'Legendäre Aktionen',
+                value: viewModel.legendaryActions ?? '',
+                onChanged: (value) => viewModel.updateLegendaryActions(value.isEmpty ? null : value),
+                icon: Icons.star,
+                maxLines: 2,
+              ),
             ],
           ),
-          const SizedBox(height: 12),
-          Row(
+        );
+      },
+    );
+  }
+
+  Widget _buildBasicInfoSection() {
+    return Consumer<EditCreatureViewModel>(
+      builder: (context, viewModel, child) {
+        return SectionCardWidget(
+          title: 'Grundinformationen',
+          icon: Icons.info_outline,
+          child: Column(
             children: [
-              Expanded(child: _buildAttributeField('Weisheit', 'wisdom', viewModel.wisdom)),
-              const SizedBox(width: 8),
-              Expanded(child: _buildAttributeField('Charisma', 'charisma', viewModel.charisma)),
+              FormFieldWidget(
+                label: 'Name',
+                value: viewModel.name,
+                onChanged: viewModel.updateName,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Name ist erforderlich';
+                  }
+                  return null;
+                },
+                icon: Icons.pets,
+              ),
+              const SizedBox(height: DnDTheme.md),
+              FormFieldWidget(
+                label: 'Beschreibung',
+                value: viewModel.description ?? '',
+                onChanged: viewModel.updateDescription,
+                icon: Icons.description,
+                maxLines: 3,
+              ),
+              const SizedBox(height: DnDTheme.md),
+              FormFieldWidget(
+                label: 'Geschwindigkeit',
+                value: viewModel.speed,
+                onChanged: viewModel.updateSpeed,
+                icon: Icons.speed,
+              ),
             ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCreatureTypeSection() {
+    return Consumer<EditCreatureViewModel>(
+      builder: (context, viewModel, child) {
+        return SectionCardWidget(
+          title: 'Kreatureigenschaften',
+          icon: Icons.category,
+          child: Column(
+            children: [
+              FormFieldWidget(
+                label: 'Typ',
+                value: viewModel.type ?? '',
+                onChanged: (value) => viewModel.updateType(value.isEmpty ? null : value),
+                icon: Icons.category,
+              ),
+              const SizedBox(height: DnDTheme.md),
+              FormFieldWidget(
+                label: 'Subtyp',
+                value: viewModel.subtype ?? '',
+                onChanged: (value) => viewModel.updateSubtype(value.isEmpty ? null : value),
+                icon: Icons.layers,
+              ),
+              const SizedBox(height: DnDTheme.md),
+              FormFieldWidget(
+                label: 'Größe',
+                value: viewModel.size ?? '',
+                onChanged: viewModel.updateSize,
+                icon: Icons.straighten,
+              ),
+              const SizedBox(height: DnDTheme.md),
+              FormFieldWidget(
+                label: 'Ausrichtung',
+                value: viewModel.alignment ?? '',
+                onChanged: viewModel.updateAlignment,
+                icon: Icons.compass_calibration,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCombatStatsSection() {
+    return Consumer<EditCreatureViewModel>(
+      builder: (context, viewModel, child) {
+        return SectionCardWidget(
+          title: 'Kampfwerte',
+          icon: Icons.security,
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: FormFieldWidget(
+                      label: 'Max. HP',
+                      value: viewModel.maxHp.toString(),
+                      onChanged: (value) {
+                        final hp = int.tryParse(value) ?? 10;
+                        viewModel.updateMaxHp(hp);
+                      },
+                      icon: Icons.favorite,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    ),
+                  ),
+                  const SizedBox(width: DnDTheme.md),
+                  Expanded(
+                    child: FormFieldWidget(
+                      label: 'RK',
+                      value: viewModel.armorClass.toString(),
+                      onChanged: (value) {
+                        final ac = int.tryParse(value) ?? 10;
+                        viewModel.updateArmorClass(ac);
+                      },
+                      icon: Icons.security,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: DnDTheme.md),
+              FormFieldWidget(
+                label: 'Challenge Rating',
+                value: viewModel.challengeRating.toString(),
+                onChanged: (value) {
+                  final cr = int.tryParse(value) ?? 1;
+                  viewModel.updateChallengeRating(cr);
+                },
+                icon: Icons.star,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCurrencySection() {
+    return Consumer<EditCreatureViewModel>(
+      builder: (context, viewModel, child) {
+        return SectionCardWidget(
+          title: 'Währung',
+          icon: Icons.monetization_on,
+          child: Row(
+            children: [
+              Expanded(
+                child: FormFieldWidget(
+                  label: 'Gold',
+                  value: viewModel.gold.toStringAsFixed(2),
+                  onChanged: (value) {
+                    final gold = double.tryParse(value) ?? 0.0;
+                    viewModel.updateGold(gold);
+                  },
+                  icon: Icons.monetization_on,
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                ),
+              ),
+              const SizedBox(width: DnDTheme.md),
+              Expanded(
+                child: FormFieldWidget(
+                  label: 'Silber',
+                  value: viewModel.silver.toStringAsFixed(2),
+                  onChanged: (value) {
+                    final silver = double.tryParse(value) ?? 0.0;
+                    viewModel.updateSilver(silver);
+                  },
+                  icon: Icons.monetization_on,
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                ),
+              ),
+              const SizedBox(width: DnDTheme.md),
+              Expanded(
+                child: FormFieldWidget(
+                  label: 'Kupfer',
+                  value: viewModel.copper.toStringAsFixed(2),
+                  onChanged: (value) {
+                    final copper = double.tryParse(value) ?? 0.0;
+                    viewModel.updateCopper(copper);
+                  },
+                  icon: Icons.monetization_on,
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ============================================================================
+
+  Widget _buildFloatingActionButton() {
+    return Consumer<EditCreatureViewModel>(
+      builder: (context, viewModel, child) {
+        if (viewModel.isSaving) {
+          return FloatingActionButton(
+            onPressed: null,
+            backgroundColor: DnDTheme.successGreen,
+            child: const CircularProgressIndicator(
+              color: Colors.white,
+              strokeWidth: 3,
+            ),
+          );
+        }
+
+        return FloatingActionButton.extended(
+          onPressed: viewModel.canSave ? _saveCreature : null,
+          backgroundColor: DnDTheme.successGreen,
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.save),
+          label: const Text('Speichern'),
+        );
+      },
+    );
+  }
+
+  // ============================================================================
+
+  Future<void> _saveCreature() async {
+    FocusScope.of(context).unfocus();
+    
+    // Sammle alle Validierungsfehler
+    final errors = <String>[];
+    
+    // Prüfe Name
+    if (_viewModel.name.trim().isEmpty) {
+      errors.add('Name der Kreatur');
+    }
+    
+    // Prüfe Max. HP
+    if (_viewModel.maxHp < 1) {
+      errors.add('Max. HP (muss mindestens 1 sein)');
+    }
+    
+    // Prüfe Rüstungsklasse
+    if (_viewModel.armorClass < 1) {
+      errors.add('Rüstungsklasse (muss mindestens 1 sein)');
+    }
+    
+    // Zeige Fehler an, wenn welche vorhanden sind
+    if (errors.isNotEmpty) {
+      final errorMessage = 'Bitte folgende Pflichtfelder ausfüllen:\n\n${errors.map((e) => '• $e').join('\n')}';
+      if (mounted) {
+        SnackBarHelper.showError(context, errorMessage);
+      }
+      return;
+    }
+
+    try {
+      final success = await _viewModel.saveCreature();
+      
+      if (success && mounted) {
+        SnackBarHelper.showSuccess(
+          context,
+          _viewModel.isEditing 
+              ? 'Kreatur erfolgreich aktualisiert'
+              : 'Neue Kreatur erstellt',
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackBarHelper.showError(context, 'Fehler beim Speichern: $e');
+      }
+    }
+  }
+
+  Future<bool> _onWillPop() async {
+    if (!_viewModel.isEditing) {
+      return true;
+    }
+    
+    final shouldPop = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: DnDTheme.stoneGrey,
+        title: Text(
+          'Ungespeicherte Änderungen',
+          style: DnDTheme.headline2.copyWith(
+            color: DnDTheme.ancientGold,
+          ),
+        ),
+        content: Text(
+          'Möchtest du wirklich ohne Speichern gehen?',
+          style: DnDTheme.bodyText1.copyWith(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Abbrechen',
+              style: DnDTheme.bodyText1.copyWith(
+                color: DnDTheme.mysticalPurple,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DnDTheme.errorRed,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Verlassen'),
+          ),
+        ],
+      ),
+    );
+    
+    return shouldPop ?? false;
+  }
+
+  Future<void> _showAddItemDialog(BuildContext context, EditCreatureViewModel viewModel) {
+    final nameController = TextEditingController();
+    final descriptionController = TextEditingController();
+    final typeController = TextEditingController(text: 'item');
+    final quantityController = TextEditingController(text: '1');
+    final valueController = TextEditingController(text: '0.0');
+
+    return showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: DnDTheme.stoneGrey,
+        title: Text(
+          'Gegenstand hinzufügen',
+          style: DnDTheme.headline2.copyWith(
+            color: DnDTheme.ancientGold,
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FormFieldWidget(
+                label: 'Name',
+                value: '',
+                onChanged: (value) => nameController.text = value,
+                icon: Icons.inventory_2,
+              ),
+              const SizedBox(height: 12),
+              FormFieldWidget(
+                label: 'Beschreibung',
+                value: '',
+                onChanged: (value) => descriptionController.text = value,
+                icon: Icons.description,
+                maxLines: 3,
+              ),
+              const SizedBox(height: 12),
+              FormFieldWidget(
+                label: 'Typ',
+                value: 'item',
+                onChanged: (value) => typeController.text = value,
+                icon: Icons.category,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: FormFieldWidget(
+                      label: 'Menge',
+                      value: '1',
+                      onChanged: (value) => quantityController.text = value,
+                      icon: Icons.add_box,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    ),
+                  ),
+                  const SizedBox(width: DnDTheme.md),
+                  Expanded(
+                    child: FormFieldWidget(
+                      label: 'Wert (Gold)',
+                      value: '0.0',
+                      onChanged: (value) => valueController.text = value,
+                      icon: Icons.monetization_on,
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(
+              'Abbrechen',
+              style: DnDTheme.bodyText1.copyWith(
+                color: DnDTheme.mysticalPurple,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (nameController.text.trim().isNotEmpty) {
+                final newItem = {
+                  'name': nameController.text.trim(),
+                  'description': descriptionController.text.trim(),
+                  'type': typeController.text.trim(),
+                  'quantity': int.tryParse(quantityController.text) ?? 1,
+                  'value': double.tryParse(valueController.text) ?? 0.0,
+                };
+                viewModel.addInventoryItem(newItem);
+                Navigator.of(dialogContext).pop();
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DnDTheme.ancientGold,
+              foregroundColor: DnDTheme.dungeonBlack,
+            ),
+            child: const Text('Hinzufügen'),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAttributeField(String label, String attribute, int currentValue) {
-    return TextFormField(
-      initialValue: currentValue.toString(),
-      decoration: _buildInputDecoration(label, _getAttributeIcon(attribute)),
-      keyboardType: TextInputType.number,
-      validator: (value) {
-        if (value == null || value.isEmpty) return '$label ist erforderlich';
-        final val = int.tryParse(value);
-        if (val == null || val < 1 || val > 30) return 'Wert muss zwischen 1-30 liegen';
-        return null;
-      },
-      onChanged: (value) {
-        final val = int.tryParse(value) ?? 10;
-        switch (attribute) {
-          case 'strength':
-            context.read<EditCreatureViewModel>().updateStrength(val);
-            break;
-          case 'dexterity':
-            context.read<EditCreatureViewModel>().updateDexterity(val);
-            break;
-          case 'constitution':
-            context.read<EditCreatureViewModel>().updateConstitution(val);
-            break;
-          case 'intelligence':
-            context.read<EditCreatureViewModel>().updateIntelligence(val);
-            break;
-          case 'wisdom':
-            context.read<EditCreatureViewModel>().updateWisdom(val);
-            break;
-          case 'charisma':
-            context.read<EditCreatureViewModel>().updateCharisma(val);
-            break;
-        }
-      },
-    );
-  }
+  Future<void> _showEditItemDialog(BuildContext context, EditCreatureViewModel viewModel, int index) {
+    final inventory = viewModel.inventory;
+    if (index < 0 || index >= inventory.length) return Future.value();
 
-  IconData _getAttributeIcon(String attribute) {
-    switch (attribute) {
-      case 'strength':
-        return Icons.fitness_center;
-      case 'dexterity':
-        return Icons.directions_run;
-      case 'constitution':
-        return Icons.favorite;
-      case 'intelligence':
-        return Icons.psychology;
-      case 'wisdom':
-        return Icons.lightbulb;
-      case 'charisma':
-        return Icons.people;
-      default:
-        return Icons.help_outline;
-    }
-  }
+    final item = inventory[index];
+    final nameController = TextEditingController(text: item['name'] as String? ?? '');
+    final descriptionController = TextEditingController(text: item['description'] as String? ?? '');
+    final typeController = TextEditingController(text: item['type'] as String? ?? 'item');
+    final quantityController = TextEditingController(text: (item['quantity'] as int? ?? 1).toString());
+    final valueController = TextEditingController(text: (item['value'] as double? ?? 0.0).toString());
 
-  InputDecoration _buildInputDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, color: DnDTheme.mysticalPurple),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(color: DnDTheme.mysticalPurple.withOpacity(0.3)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(color: DnDTheme.mysticalPurple),
-      ),
-      filled: true,
-      fillColor: Colors.grey.shade50,
-    );
-  }
-
-  Widget _buildActionButtons(EditCreatureViewModel viewModel) {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton(
-            onPressed: () => Navigator.pop(context),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              side: BorderSide(color: Colors.grey.shade400),
-            ),
-            child: Text('Abbrechen'),
+    return showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: DnDTheme.stoneGrey,
+        title: Text(
+          'Gegenstand bearbeiten',
+          style: DnDTheme.headline2.copyWith(
+            color: DnDTheme.ancientGold,
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: ElevatedButton(
-            onPressed: viewModel.canSave ? _saveCreature : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.mysticalPurple,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FormFieldWidget(
+                label: 'Name',
+                value: item['name'] as String? ?? '',
+                onChanged: (value) => nameController.text = value,
+                icon: Icons.inventory_2,
+              ),
+              const SizedBox(height: 12),
+              FormFieldWidget(
+                label: 'Beschreibung',
+                value: item['description'] as String? ?? '',
+                onChanged: (value) => descriptionController.text = value,
+                icon: Icons.description,
+                maxLines: 3,
+              ),
+              const SizedBox(height: 12),
+              FormFieldWidget(
+                label: 'Typ',
+                value: item['type'] as String? ?? 'item',
+                onChanged: (value) => typeController.text = value,
+                icon: Icons.category,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: FormFieldWidget(
+                      label: 'Menge',
+                      value: (item['quantity'] as int? ?? 1).toString(),
+                      onChanged: (value) => quantityController.text = value,
+                      icon: Icons.add_box,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    ),
+                  ),
+                  const SizedBox(width: DnDTheme.md),
+                  Expanded(
+                    child: FormFieldWidget(
+                      label: 'Wert (Gold)',
+                      value: (item['value'] as double? ?? 0.0).toString(),
+                      onChanged: (value) => valueController.text = value,
+                      icon: Icons.monetization_on,
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: Text(
-              'Speichern',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        if (viewModel.isEditing)
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: _duplicateCreature,
-              icon: Icon(Icons.copy, color: Colors.white),
-              label: Text('Duplizieren'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+              'Abbrechen',
+              style: DnDTheme.bodyText1.copyWith(
+                color: DnDTheme.mysticalPurple,
               ),
             ),
           ),
-      ],
-    );
-  }
-
-  Future<void> _saveCreature() async {
-    final viewModel = context.read<EditCreatureViewModel>();
-    
-    if (!_formKey.currentState!.validate()) return;
-
-    final success = await viewModel.saveCreature();
-    
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Creature erfolgreich gespeichert'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      Navigator.pop(context, true);
-    }
-  }
-
-  Future<void> _duplicateCreature() async {
-    final viewModel = context.read<EditCreatureViewModel>();
-    await viewModel.duplicateCreature();
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Creature dupliziert'),
-        backgroundColor: Colors.orange,
+          ElevatedButton(
+            onPressed: () {
+              if (nameController.text.trim().isNotEmpty) {
+                final updatedItem = {
+                  'name': nameController.text.trim(),
+                  'description': descriptionController.text.trim(),
+                  'type': typeController.text.trim(),
+                  'quantity': int.tryParse(quantityController.text) ?? 1,
+                  'value': double.tryParse(valueController.text) ?? 0.0,
+                };
+                viewModel.updateInventoryItem(index, updatedItem);
+                Navigator.of(dialogContext).pop();
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DnDTheme.ancientGold,
+              foregroundColor: DnDTheme.dungeonBlack,
+            ),
+            child: const Text('Speichern'),
+          ),
+        ],
       ),
     );
   }

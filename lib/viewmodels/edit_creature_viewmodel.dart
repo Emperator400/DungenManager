@@ -1,34 +1,69 @@
 import 'package:flutter/foundation.dart';
 import '../models/creature.dart';
-import '../services/creature_data_service.dart';
 import '../services/exceptions/service_exceptions.dart';
 import '../services/creature_helper_service.dart';
+import '../database/repositories/creature_model_repository.dart';
+import '../database/core/database_connection.dart';
 
 /// ViewModel für die Creature-Bearbeitung mit Provider-Pattern
+/// Basierend auf EditPCViewModel - Wiederverwendet viele Konzepte
 class EditCreatureViewModel extends ChangeNotifier {
-  final CreatureDataService _service = CreatureDataService();
+  final CreatureModelRepository _repository;
+  
+  EditCreatureViewModel({CreatureModelRepository? repository})
+      : _repository = repository ?? CreatureModelRepository(DatabaseConnection.instance);
   
   // State Management
   Creature? _creature;
+  bool _isSaving = false;
+  String? _error;
   bool _isLoading = false;
-  String? _errorMessage;
   bool _hasUnsavedChanges = false;
 
   // Getter
   Creature? get creature => _creature;
   bool get isLoading => _isLoading;
-  String? get errorMessage => _errorMessage;
-  bool get hasUnsavedChanges => _hasUnsavedChanges;
+  bool get isSaving => _isSaving;
+  String? get error => _error;
+  String? get errorMessage => _error; // Für Kompatibilität mit Screen
   bool get isEditing => _creature != null;
   bool get canSave => _creature != null && _hasValidCreature();
 
-  // Attribute Getter für direkten Zugriff
+  // Grunddaten
+  String get name => _creature?.name ?? '';
+  String? get description => _creature?.description;
+  String get speed => _creature?.speed ?? '30ft';
+
+  // Kampfwerte
+  int get maxHp => _creature?.maxHp ?? 10;
+  int get armorClass => _creature?.armorClass ?? 10;
+  int get challengeRating => _creature?.challengeRating ?? 1;
+  int get initiativeBonus => _creature?.initiativeBonus ?? 0;
+
+  // Attribute
   int get strength => _creature?.strength ?? 10;
   int get dexterity => _creature?.dexterity ?? 10;
   int get constitution => _creature?.constitution ?? 10;
   int get intelligence => _creature?.intelligence ?? 10;
   int get wisdom => _creature?.wisdom ?? 10;
   int get charisma => _creature?.charisma ?? 10;
+
+  // D&D Details
+  String? get size => _creature?.size;
+  String? get type => _creature?.type;
+  String? get subtype => _creature?.subtype;
+  String? get alignment => _creature?.alignment;
+  String get attacks => _creature?.attacks ?? '';
+  String? get specialAbilities => _creature?.specialAbilities;
+  String? get legendaryActions => _creature?.legendaryActions;
+
+  // Währung
+  double get gold => _creature?.gold ?? 0.0;
+  double get silver => _creature?.silver ?? 0.0;
+  double get copper => _creature?.copper ?? 0.0;
+
+  // Inventar
+  List<Map<String, dynamic>> get inventory => _creature?.inventory ?? [];
 
   /// Initialisiert das ViewModel mit einer Creature oder erstellt eine neue
   Future<void> initialize(Creature? creature) async {
@@ -78,9 +113,16 @@ class EditCreatureViewModel extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       
-      // Da CreatureDataService keine spezifischen CRUD-Methoden hat, simulieren wir es hier
-      // In einer echten Implementierung würde dies über den DatabaseHelper gehen
-      await _simulateDatabaseOperation();
+      // Prüfe ob Creature bereits in DB existiert
+      final exists = await _repository.exists(_creature!.id);
+      
+      if (exists) {
+        // Update bestehende Creature
+        _creature = await _repository.update(_creature!);
+      } else {
+        // Erstelle neue Creature
+        _creature = await _repository.create(_creature!);
+      }
       
       _resetUnsavedChanges();
       return true;
@@ -107,8 +149,8 @@ class EditCreatureViewModel extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       
-      // Simuliere Datenbankoperation
-      await _simulateDatabaseOperation();
+      // Echte Datenbankoperation über Repository
+      await _repository.delete(_creature!.id);
       return true;
     } catch (e) {
       if (e is ServiceException) {
@@ -394,6 +436,160 @@ class EditCreatureViewModel extends ChangeNotifier {
     }
   }
 
+  // Inventory-Methoden für Map-basiertes Inventar
+  void addInventoryItem(Map<String, dynamic> newItem) {
+    if (_creature != null) {
+      final updatedInventory = List<Map<String, dynamic>>.from(_creature!.inventory);
+      updatedInventory.add(newItem);
+      
+      _creature = Creature(
+        id: _creature!.id,
+        name: _creature!.name,
+        maxHp: _creature!.maxHp,
+        currentHp: _creature!.currentHp,
+        armorClass: _creature!.armorClass,
+        speed: _creature!.speed,
+        attacks: _creature!.attacks,
+        initiativeBonus: _creature!.initiativeBonus,
+        isPlayer: _creature!.isPlayer,
+        strength: _creature!.strength,
+        dexterity: _creature!.dexterity,
+        constitution: _creature!.constitution,
+        intelligence: _creature!.intelligence,
+        wisdom: _creature!.wisdom,
+        charisma: _creature!.charisma,
+        inventory: updatedInventory,
+        gold: _creature!.gold,
+        silver: _creature!.silver,
+        copper: _creature!.copper,
+        officialMonsterId: _creature!.officialMonsterId,
+        officialSpellIds: _creature!.officialSpellIds,
+        officialItemIds: _creature!.officialItemIds,
+        size: _creature!.size,
+        type: _creature!.type,
+        subtype: _creature!.subtype,
+        alignment: _creature!.alignment,
+        challengeRating: _creature!.challengeRating,
+        specialAbilities: _creature!.specialAbilities,
+        legendaryActions: _creature!.legendaryActions,
+        isCustom: _creature!.isCustom,
+        description: _creature!.description,
+        attackList: _creature!.attackList,
+        sourceType: _creature!.sourceType,
+        sourceId: _creature!.sourceId,
+        isFavorite: _creature!.isFavorite,
+        version: _creature!.version,
+        conditions: _creature!.conditions,
+        initiative: _creature!.initiative,
+      );
+      
+      _markAsUnsaved();
+      notifyListeners();
+    }
+  }
+
+  void removeInventoryItem(int index) {
+    if (_creature != null && index >= 0 && index < _creature!.inventory.length) {
+      final updatedInventory = List<Map<String, dynamic>>.from(_creature!.inventory);
+      updatedInventory.removeAt(index);
+      
+      _creature = Creature(
+        id: _creature!.id,
+        name: _creature!.name,
+        maxHp: _creature!.maxHp,
+        currentHp: _creature!.currentHp,
+        armorClass: _creature!.armorClass,
+        speed: _creature!.speed,
+        attacks: _creature!.attacks,
+        initiativeBonus: _creature!.initiativeBonus,
+        isPlayer: _creature!.isPlayer,
+        strength: _creature!.strength,
+        dexterity: _creature!.dexterity,
+        constitution: _creature!.constitution,
+        intelligence: _creature!.intelligence,
+        wisdom: _creature!.wisdom,
+        charisma: _creature!.charisma,
+        inventory: updatedInventory,
+        gold: _creature!.gold,
+        silver: _creature!.silver,
+        copper: _creature!.copper,
+        officialMonsterId: _creature!.officialMonsterId,
+        officialSpellIds: _creature!.officialSpellIds,
+        officialItemIds: _creature!.officialItemIds,
+        size: _creature!.size,
+        type: _creature!.type,
+        subtype: _creature!.subtype,
+        alignment: _creature!.alignment,
+        challengeRating: _creature!.challengeRating,
+        specialAbilities: _creature!.specialAbilities,
+        legendaryActions: _creature!.legendaryActions,
+        isCustom: _creature!.isCustom,
+        description: _creature!.description,
+        attackList: _creature!.attackList,
+        sourceType: _creature!.sourceType,
+        sourceId: _creature!.sourceId,
+        isFavorite: _creature!.isFavorite,
+        version: _creature!.version,
+        conditions: _creature!.conditions,
+        initiative: _creature!.initiative,
+      );
+      
+      _markAsUnsaved();
+      notifyListeners();
+    }
+  }
+
+  void updateInventoryItem(int index, Map<String, dynamic> updatedItem) {
+    if (_creature != null && index >= 0 && index < _creature!.inventory.length) {
+      final updatedInventory = List<Map<String, dynamic>>.from(_creature!.inventory);
+      updatedInventory[index] = updatedItem;
+      
+      _creature = Creature(
+        id: _creature!.id,
+        name: _creature!.name,
+        maxHp: _creature!.maxHp,
+        currentHp: _creature!.currentHp,
+        armorClass: _creature!.armorClass,
+        speed: _creature!.speed,
+        attacks: _creature!.attacks,
+        initiativeBonus: _creature!.initiativeBonus,
+        isPlayer: _creature!.isPlayer,
+        strength: _creature!.strength,
+        dexterity: _creature!.dexterity,
+        constitution: _creature!.constitution,
+        intelligence: _creature!.intelligence,
+        wisdom: _creature!.wisdom,
+        charisma: _creature!.charisma,
+        inventory: updatedInventory,
+        gold: _creature!.gold,
+        silver: _creature!.silver,
+        copper: _creature!.copper,
+        officialMonsterId: _creature!.officialMonsterId,
+        officialSpellIds: _creature!.officialSpellIds,
+        officialItemIds: _creature!.officialItemIds,
+        size: _creature!.size,
+        type: _creature!.type,
+        subtype: _creature!.subtype,
+        alignment: _creature!.alignment,
+        challengeRating: _creature!.challengeRating,
+        specialAbilities: _creature!.specialAbilities,
+        legendaryActions: _creature!.legendaryActions,
+        isCustom: _creature!.isCustom,
+        description: _creature!.description,
+        attackList: _creature!.attackList,
+        sourceType: _creature!.sourceType,
+        sourceId: _creature!.sourceId,
+        isFavorite: _creature!.isFavorite,
+        version: _creature!.version,
+        conditions: _creature!.conditions,
+        initiative: _creature!.initiative,
+      );
+      
+      _markAsUnsaved();
+      notifyListeners();
+    }
+  }
+
   /// Setzt die Änderungen zurück
   void resetChanges() async {
     if (_creature != null && isEditing) {
@@ -419,12 +615,12 @@ class EditCreatureViewModel extends ChangeNotifier {
   }
 
   void _setError(String error) {
-    _errorMessage = error;
+    _error = error;
     notifyListeners();
   }
 
   void _clearError() {
-    _errorMessage = null;
+    _error = null;
   }
 
   void _markAsUnsaved() {
@@ -442,11 +638,5 @@ class EditCreatureViewModel extends ChangeNotifier {
     return _creature!.name.trim().isNotEmpty &&
            _creature!.maxHp > 0 &&
            _creature!.armorClass >= 0;
-  }
-
-  /// Simuliert eine Datenbankoperation
-  Future<void> _simulateDatabaseOperation() async {
-    // Simuliere Netzwerkverzögerung
-    await Future.delayed(const Duration(milliseconds: 500));
   }
 }
