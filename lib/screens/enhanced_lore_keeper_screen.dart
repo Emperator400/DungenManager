@@ -8,7 +8,7 @@ import '../widgets/lore_keeper/wiki_search_delegate.dart';
 import '../theme/dnd_theme.dart';
 import 'enhanced_edit_wiki_entry_screen.dart';
 
-/// Enhanced Lore Keeper Screen mit Provider-Pattern und modernem Design
+/// Enhanced Lore Keeper Screen mit Provider-Pattern und modernem Enhanced Design
 class EnhancedLoreKeeperScreen extends StatefulWidget {
   const EnhancedLoreKeeperScreen({super.key});
 
@@ -76,7 +76,6 @@ class _EnhancedLoreKeeperScreenState extends State<EnhancedLoreKeeperScreen>
           SnackBar(
             content: Text('${entry.title} gelöscht'),
             backgroundColor: DnDTheme.successGreen,
-            duration: const Duration(seconds: 2),
           ),
         );
       }
@@ -87,16 +86,33 @@ class _EnhancedLoreKeeperScreenState extends State<EnhancedLoreKeeperScreen>
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Löschen bestätigen'),
-        content: Text('Möchtest du "${entry.title}" wirklich löschen?'),
+        backgroundColor: DnDTheme.stoneGrey,
+        title: Text(
+          'Löschen bestätigen',
+          style: DnDTheme.headline3.copyWith(
+            color: DnDTheme.errorRed,
+          ),
+        ),
+        content: Text(
+          'Möchtest du "${entry.title}" wirklich löschen?',
+          style: DnDTheme.bodyText1.copyWith(color: Colors.white70),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Abbrechen'),
+            child: Text(
+              'Abbrechen',
+              style: DnDTheme.bodyText1.copyWith(
+                color: DnDTheme.mysticalPurple,
+              ),
+            ),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: DnDTheme.errorRed),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DnDTheme.errorRed,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Löschen'),
           ),
         ],
@@ -106,112 +122,180 @@ class _EnhancedLoreKeeperScreenState extends State<EnhancedLoreKeeperScreen>
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<WikiViewModel>(
-      create: (_) => WikiViewModel(),
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('Lore Keeper', style: TextStyle(color: DnDTheme.ancientGold)),
-          backgroundColor: DnDTheme.stoneGrey,
-          foregroundColor: Colors.white,
-          elevation: 4,
-          bottom: TabBar(
-            controller: _tabController,
-            indicatorColor: DnDTheme.ancientGold,
-            labelColor: DnDTheme.ancientGold,
-            unselectedLabelColor: Colors.white70,
-            isScrollable: true,
-            tabs: const [
-              Tab(text: 'Alle', icon: Icon(Icons.library_books)),
-              Tab(text: 'NPCs', icon: Icon(Icons.people)),
-              Tab(text: 'Orte', icon: Icon(Icons.location_on)),
-              Tab(text: 'Gegenstände', icon: Icon(Icons.inventory)),
-              Tab(text: 'Lore', icon: Icon(Icons.auto_stories)),
+    return Scaffold(
+      backgroundColor: DnDTheme.dungeonBlack,
+      appBar: AppBar(
+        title: Text(
+          'Lore Keeper',
+          style: DnDTheme.headline2.copyWith(
+            color: DnDTheme.ancientGold,
+          ),
+        ),
+        backgroundColor: DnDTheme.stoneGrey,
+        foregroundColor: Colors.white,
+        elevation: 4,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(140),
+          child: Column(
+            children: [
+              TabBar(
+                controller: _tabController,
+                indicatorColor: DnDTheme.ancientGold,
+                labelColor: DnDTheme.ancientGold,
+                unselectedLabelColor: Colors.white70,
+                isScrollable: true,
+                tabs: const [
+                  Tab(text: 'Alle', icon: Icon(Icons.library_books)),
+                  Tab(text: 'NPCs', icon: Icon(Icons.people)),
+                  Tab(text: 'Orte', icon: Icon(Icons.location_on)),
+                  Tab(text: 'Gegenstände', icon: Icon(Icons.inventory)),
+                  Tab(text: 'Lore', icon: Icon(Icons.auto_stories)),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.all(DnDTheme.md),
+                decoration: BoxDecoration(
+                  gradient: DnDTheme.getMysticalGradient(
+                    startColor: DnDTheme.stoneGrey,
+                    endColor: DnDTheme.slateGrey,
+                  ),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: Consumer<WikiViewModel>(
+                  builder: (context, viewModel, child) {
+                    return Column(
+                      children: [
+                        // Suchfeld
+                        TextField(
+                          onChanged: viewModel.searchEntries,
+                          decoration: InputDecoration(
+                            hintText: 'Wiki-Einträge durchsuchen...',
+                            hintStyle: DnDTheme.bodyText2.copyWith(
+                              color: Colors.white54,
+                            ),
+                            prefixIcon: Icon(Icons.search, color: DnDTheme.ancientGold),
+                            suffixIcon: viewModel.searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: Icon(Icons.clear, color: DnDTheme.errorRed),
+                                    onPressed: () => viewModel.searchEntries(''),
+                                  )
+                                : null,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                              borderSide: BorderSide(color: DnDTheme.mysticalPurple),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                              borderSide: BorderSide(
+                                color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                              borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
+                            ),
+                            filled: true,
+                            fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
+                          ),
+                          style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
             ],
           ),
-          actions: [
-            Consumer<WikiViewModel>(
-              builder: (context, viewModel, child) {
-                return IconButton(
-                  icon: const Icon(Icons.search, color: Colors.white),
-                  onPressed: _showSearch,
-                  tooltip: 'Suchen',
-                );
-              },
-            ),
-            Consumer<WikiViewModel>(
-              builder: (context, viewModel, child) {
-                return PopupMenuButton<WikiSortOption>(
-                  icon: const Icon(Icons.sort, color: Colors.white),
+        ),
+        actions: [
+          Consumer<WikiViewModel>(
+            builder: (context, viewModel, child) {
+              return Container(
+                margin: const EdgeInsets.only(right: DnDTheme.sm),
+                decoration: DnDTheme.getMysticalBorder(
+                  borderColor: DnDTheme.arcaneBlue,
+                  width: 2,
+                ),
+                child: PopupMenuButton<WikiSortOption>(
+                  icon: Icon(Icons.sort, color: DnDTheme.arcaneBlue),
                   tooltip: 'Sortieren',
                   onSelected: (option) => viewModel.setSortOption(option),
                   itemBuilder: (context) => [
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: WikiSortOption.title,
                       child: Row(
                         children: [
-                          Icon(Icons.sort_by_alpha, color: DnDTheme.stoneGrey),
-                          SizedBox(width: 8),
-                          Text('Alphabetisch'),
+                          Icon(Icons.sort_by_alpha, size: 16, color: DnDTheme.arcaneBlue),
+                          const SizedBox(width: 8),
+                          Text('Alphabetisch', style: DnDTheme.bodyText2.copyWith(color: Colors.white)),
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: WikiSortOption.createdAt,
                       child: Row(
                         children: [
-                          Icon(Icons.add_circle, color: DnDTheme.stoneGrey),
-                          SizedBox(width: 8),
-                          Text('Erstellt'),
+                          Icon(Icons.add_circle, size: 16, color: DnDTheme.arcaneBlue),
+                          const SizedBox(width: 8),
+                          Text('Erstellt', style: DnDTheme.bodyText2.copyWith(color: Colors.white)),
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: WikiSortOption.updatedAt,
                       child: Row(
                         children: [
-                          Icon(Icons.update, color: DnDTheme.stoneGrey),
-                          SizedBox(width: 8),
-                          Text('Aktualisiert'),
+                          Icon(Icons.update, size: 16, color: DnDTheme.arcaneBlue),
+                          const SizedBox(width: 8),
+                          Text('Aktualisiert', style: DnDTheme.bodyText2.copyWith(color: Colors.white)),
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: WikiSortOption.type,
                       child: Row(
                         children: [
-                          Icon(Icons.category, color: DnDTheme.stoneGrey),
-                          SizedBox(width: 8),
-                          Text('Typ'),
+                          Icon(Icons.category, size: 16, color: DnDTheme.arcaneBlue),
+                          const SizedBox(width: 8),
+                          Text('Typ', style: DnDTheme.bodyText2.copyWith(color: Colors.white)),
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: WikiSortOption.tagCount,
                       child: Row(
                         children: [
-                          Icon(Icons.local_offer, color: DnDTheme.stoneGrey),
-                          SizedBox(width: 8),
-                          Text('Anzahl Tags'),
+                          Icon(Icons.local_offer, size: 16, color: DnDTheme.arcaneBlue),
+                          const SizedBox(width: 8),
+                          Text('Anzahl Tags', style: DnDTheme.bodyText2.copyWith(color: Colors.white)),
                         ],
                       ),
                     ),
                   ],
-                );
-              },
-            ),
-          ],
-        ),
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            _buildWikiList(), // Alle
-            _buildWikiList(WikiEntryType.Person), // NPCs
-            _buildWikiList(WikiEntryType.Place), // Orte
-            _buildWikiList(WikiEntryType.Item), // Gegenstände
-            _buildWikiList(WikiEntryType.Lore), // Lore
-          ],
-        ),
-        floatingActionButton: FloatingActionButton.extended(
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildWikiList(), // Alle
+          _buildWikiList(WikiEntryType.Person), // NPCs
+          _buildWikiList(WikiEntryType.Place), // Orte
+          _buildWikiList(WikiEntryType.Item), // Gegenstände
+          _buildWikiList(WikiEntryType.Lore), // Lore
+        ],
+      ),
+      floatingActionButton: Container(
+        margin: const EdgeInsets.only(bottom: 100, right: 16),
+        child: FloatingActionButton.extended(
           onPressed: () => _navigateToEditScreen(),
           icon: const Icon(Icons.add),
           label: const Text('Neuer Eintrag'),
@@ -233,55 +317,68 @@ class _EnhancedLoreKeeperScreenState extends State<EnhancedLoreKeeperScreen>
         }
 
         if (viewModel.isLoading) {
-          return const Center(
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(DnDTheme.mysticalPurple),
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(
+                  color: DnDTheme.ancientGold,
+                ),
+                const SizedBox(height: DnDTheme.md),
+                Text(
+                  'Lade Wiki-Einträge...',
+                  style: DnDTheme.bodyText1.copyWith(
+                    color: DnDTheme.ancientGold,
+                  ),
+                ),
+              ],
             ),
           );
         }
 
         if (viewModel.error != null) {
           return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 64,
-                  color: DnDTheme.errorRed,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Fehler beim Laden',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
+            child: Container(
+              padding: const EdgeInsets.all(DnDTheme.lg),
+              decoration: DnDTheme.getDungeonWallDecoration(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.error_outline,
                     color: DnDTheme.errorRed,
+                    size: 48,
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  viewModel.error!,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
+                  const SizedBox(height: DnDTheme.md),
+                  Text(
+                    'Fehler beim Laden',
+                    style: DnDTheme.headline3.copyWith(
+                      color: DnDTheme.errorRed,
+                    ),
                   ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    viewModel.clearError();
-                    viewModel.refresh();
-                  },
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Erneut versuchen'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: DnDTheme.mysticalPurple,
-                    foregroundColor: Colors.white,
+                  const SizedBox(height: DnDTheme.sm),
+                  Text(
+                    viewModel.error!,
+                    style: DnDTheme.bodyText2.copyWith(
+                      color: Colors.white70,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                ),
-              ],
+                  const SizedBox(height: DnDTheme.md),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      viewModel.clearError();
+                      viewModel.refresh();
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Erneut versuchen'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: DnDTheme.errorRed,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         }
@@ -294,63 +391,50 @@ class _EnhancedLoreKeeperScreenState extends State<EnhancedLoreKeeperScreen>
           children: [
             // Filter-Chips
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(DnDTheme.md),
               decoration: BoxDecoration(
-                color: Colors.grey[50],
-                border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
+                gradient: DnDTheme.getMysticalGradient(
+                  startColor: DnDTheme.stoneGrey,
+                  endColor: DnDTheme.slateGrey,
+                ),
+                border: Border(
+                  bottom: BorderSide(
+                    color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Suchfeld
-                  TextField(
-                    onChanged: viewModel.searchEntries,
-                    decoration: InputDecoration(
-                      hintText: 'Wiki-Einträge durchsuchen...',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: viewModel.searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () => viewModel.searchEntries(''),
-                            )
-                          : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: DnDTheme.stoneGrey.withOpacity(0.3)),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: DnDTheme.ancientGold),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Filter-Chips
-                  EnhancedWikiFilterChipsWidget(
-                    viewModel: viewModel,
-                    onSearchChanged: viewModel.searchEntries,
-                  ),
-                ],
+              child: EnhancedWikiFilterChipsWidget(
+                viewModel: viewModel,
+                onSearchChanged: viewModel.searchEntries,
               ),
             ),
             
             // Ergebnisse Liste
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: viewModel.filteredEntries.length,
-                itemBuilder: (context, index) {
-                  final entry = viewModel.filteredEntries[index];
-                  return EnhancedWikiEntryCardWidget(
-                    entry: entry,
-                    viewModel: viewModel,
-                    onTap: () => _navigateToEditScreen(entry),
-                    onDelete: () => _deleteEntry(entry),
-                  );
-                },
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: DnDTheme.getMysticalGradient(
+                    startColor: DnDTheme.dungeonBlack,
+                    endColor: DnDTheme.stoneGrey,
+                  ),
+                ),
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(DnDTheme.sm),
+                  itemCount: viewModel.filteredEntries.length,
+                  itemBuilder: (context, index) {
+                    final entry = viewModel.filteredEntries[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: DnDTheme.sm),
+                      child: EnhancedWikiEntryCardWidget(
+                        entry: entry,
+                        viewModel: viewModel,
+                        onTap: () => _navigateToEditScreen(entry),
+                        onDelete: () => _deleteEntry(entry),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
           ],
@@ -363,56 +447,57 @@ class _EnhancedLoreKeeperScreenState extends State<EnhancedLoreKeeperScreen>
     return Consumer<WikiViewModel>(
       builder: (context, viewModel, child) {
         return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                hasActiveFilters ? Icons.filter_list : Icons.menu_book,
-                size: 64,
-                color: Colors.grey[400],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                hasActiveFilters ? 'Keine Ergebnisse' : 'Dein Wiki ist noch leer',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[600],
+          child: Container(
+            padding: const EdgeInsets.all(DnDTheme.lg),
+            decoration: DnDTheme.getDungeonWallDecoration(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  hasActiveFilters ? Icons.filter_list : Icons.menu_book,
+                  size: 64,
+                  color: DnDTheme.mysticalPurple.withValues(alpha: 0.6),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                hasActiveFilters
-                    ? 'Keine Wiki-Einträge entsprechen den aktuellen Filtern'
-                    : 'Erstelle deine ersten Wiki-Einträge für NPCs, Orte und Lore',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[500],
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              if (hasActiveFilters)
-                ElevatedButton.icon(
-                  onPressed: () => viewModel.clearAllFilters(),
-                  icon: const Icon(Icons.clear_all),
-                  label: const Text('Filter zurücksetzen'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: DnDTheme.mysticalPurple,
-                    foregroundColor: Colors.white,
-                  ),
-                )
-              else
-                ElevatedButton.icon(
-                  onPressed: () => _navigateToEditScreen(),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Ersten Eintrag erstellen'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: DnDTheme.mysticalPurple,
-                    foregroundColor: Colors.white,
+                const SizedBox(height: DnDTheme.md),
+                Text(
+                  hasActiveFilters ? 'Keine Ergebnisse' : 'Dein Wiki ist noch leer',
+                  style: DnDTheme.headline3.copyWith(
+                    color: Colors.white70,
                   ),
                 ),
-            ],
+                const SizedBox(height: DnDTheme.sm),
+                Text(
+                  hasActiveFilters
+                      ? 'Keine Wiki-Einträge entsprechen den aktuellen Filtern'
+                      : 'Erstelle deine ersten Wiki-Einträge für NPCs, Orte und Lore',
+                  style: DnDTheme.bodyText2.copyWith(
+                    color: Colors.white60,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: DnDTheme.md),
+                if (hasActiveFilters)
+                  ElevatedButton.icon(
+                    onPressed: () => viewModel.clearAllFilters(),
+                    icon: const Icon(Icons.clear_all),
+                    label: const Text('Filter zurücksetzen'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: DnDTheme.arcaneBlue,
+                      foregroundColor: Colors.white,
+                    ),
+                  )
+                else
+                  ElevatedButton.icon(
+                    onPressed: () => _navigateToEditScreen(),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Ersten Eintrag erstellen'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: DnDTheme.mysticalPurple,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+              ],
+            ),
           ),
         );
       },

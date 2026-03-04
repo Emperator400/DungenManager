@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../models/wiki_entry.dart';
 import '../../viewmodels/wiki_viewmodel.dart';
+import '../../theme/dnd_theme.dart';
 
-/// Enhanced Wiki Entry Card Widget mit modernem Design und ViewModel-Integration
+/// Enhanced Wiki Entry Card Widget mit Enhanced Design und ViewModel-Integration
 class EnhancedWikiEntryCardWidget extends StatelessWidget {
   final WikiEntry entry;
   final WikiViewModel viewModel;
@@ -23,29 +24,46 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 4,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: DnDTheme.xs, vertical: DnDTheme.xs),
+      decoration: BoxDecoration(
+        gradient: DnDTheme.getMysticalGradient(
+          startColor: DnDTheme.stoneGrey,
+          endColor: DnDTheme.slateGrey,
+        ),
+        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        border: Border.all(
+          color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: DnDTheme.dungeonBlack.withValues(alpha: 0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(DnDTheme.md),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeader(context),
-              const SizedBox(height: 12),
+              const SizedBox(height: DnDTheme.sm),
               _buildTitle(context),
-              const SizedBox(height: 8),
+              const SizedBox(height: DnDTheme.xs),
               _buildContentPreview(),
               if (entry.tags.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: DnDTheme.sm),
                 _buildTags(),
               ],
-              const SizedBox(height: 16),
+              const SizedBox(height: DnDTheme.sm),
               _buildMetadata(context),
-              const SizedBox(height: 12),
+              const SizedBox(height: DnDTheme.xs),
               _buildActionButtons(context),
             ],
           ),
@@ -58,10 +76,14 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(DnDTheme.sm),
           decoration: BoxDecoration(
-            color: _getTypeColor().withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            color: _getTypeColor().withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+            border: Border.all(
+              color: _getTypeColor().withValues(alpha: 0.5),
+              width: 1,
+            ),
           ),
           child: Icon(
             _getTypeIcon(),
@@ -69,15 +91,14 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
             size: 24,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: DnDTheme.sm),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 _getTypeDisplayName(),
-                style: TextStyle(
-                  fontSize: 12,
+                style: DnDTheme.bodyText2.copyWith(
                   fontWeight: FontWeight.w600,
                   color: _getTypeColor(),
                 ),
@@ -87,31 +108,35 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
                   if (entry.location != null) ...[
                     Icon(
                       Icons.location_on,
-                      color: Colors.grey[600],
+                      color: DnDTheme.arcaneBlue,
                       size: 14,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       'Standort (${entry.location!.latitude.toStringAsFixed(2)}, ${entry.location!.longitude.toStringAsFixed(2)})',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[600],
+                      style: DnDTheme.caption.copyWith(
+                        color: Colors.white70,
                       ),
                     ),
                   ],
                   const Spacer(),
                   if (entry.campaignId == null)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: DnDTheme.xs,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
+                        color: DnDTheme.arcaneBlue.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                        border: Border.all(
+                          color: DnDTheme.arcaneBlue.withValues(alpha: 0.5),
+                        ),
                       ),
                       child: Text(
                         'Global',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.blue[700],
+                        style: DnDTheme.caption.copyWith(
+                          color: DnDTheme.arcaneBlue,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -131,7 +156,7 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
       onPressed: onToggleFavorite,
       icon: Icon(
         entry.isFavorite ? Icons.favorite : Icons.favorite_border,
-        color: entry.isFavorite ? Colors.red : Colors.grey[600],
+        color: entry.isFavorite ? DnDTheme.warningOrange : Colors.white70,
         size: 20,
       ),
       tooltip: entry.isFavorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen',
@@ -141,8 +166,9 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
   Widget _buildTitle(BuildContext context) {
     return Text(
       entry.title,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+      style: DnDTheme.bodyText1.copyWith(
         fontWeight: FontWeight.bold,
+        color: Colors.white,
         height: 1.2,
       ),
       maxLines: 2,
@@ -157,10 +183,9 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
     
     return Text(
       content.length > 150 ? '${content.substring(0, 150)}...' : content,
-      style: TextStyle(
-        fontSize: 14,
+      style: DnDTheme.bodyText2.copyWith(
         height: 1.4,
-        color: Colors.grey[700],
+        color: Colors.white70,
       ),
       maxLines: 3,
       overflow: TextOverflow.ellipsis,
@@ -182,25 +207,29 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
 
   Widget _buildTags() {
     return Wrap(
-      spacing: 6,
-      runSpacing: 4,
+      spacing: DnDTheme.xs,
+      runSpacing: DnDTheme.xs,
       children: entry.tags.take(4).map((tag) => _buildTagChip(tag)).toList(),
     );
   }
 
   Widget _buildTagChip(String tag) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: DnDTheme.sm,
+        vertical: DnDTheme.xs,
+      ),
       decoration: BoxDecoration(
-        color: Colors.amber.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.amber.withOpacity(0.3)),
+        color: DnDTheme.ancientGold.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        border: Border.all(
+          color: DnDTheme.ancientGold.withValues(alpha: 0.3),
+        ),
       ),
       child: Text(
         tag,
-        style: TextStyle(
-          fontSize: 11,
-          color: Colors.amber[700],
+        style: DnDTheme.caption.copyWith(
+          color: DnDTheme.ancientGold,
           fontWeight: FontWeight.w500,
         ),
       ),
@@ -213,45 +242,42 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
         Icon(
           Icons.schedule,
           size: 14,
-          color: Colors.grey[600],
+          color: Colors.white70,
         ),
         const SizedBox(width: 4),
         Text(
           _formatDate(entry.updatedAt),
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
+          style: DnDTheme.caption.copyWith(
+            color: Colors.white70,
           ),
         ),
         if (entry.childIds.isNotEmpty) ...[
-          const SizedBox(width: 12),
+          const SizedBox(width: DnDTheme.sm),
           Icon(
             Icons.link,
             size: 14,
-            color: Colors.grey[600],
+            color: Colors.white70,
           ),
           const SizedBox(width: 4),
           Text(
             '${entry.childIds.length} Verknüpfungen',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
+            style: DnDTheme.caption.copyWith(
+              color: Colors.white70,
             ),
           ),
         ],
         if (entry.isMarkdown) ...[
-          const SizedBox(width: 12),
+          const SizedBox(width: DnDTheme.sm),
           Icon(
             Icons.code,
             size: 14,
-            color: Colors.grey[600],
+            color: Colors.white70,
           ),
           const SizedBox(width: 4),
           Text(
             'Markdown',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
+            style: DnDTheme.caption.copyWith(
+              color: Colors.white70,
             ),
           ),
         ],
@@ -266,29 +292,34 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
     String statusText;
     
     if (entry.isFavorite) {
-      chipColor = Colors.red;
+      chipColor = DnDTheme.warningOrange;
       statusText = 'Favorit';
     } else if (entry.childIds.isNotEmpty) {
-      chipColor = Colors.blue;
+      chipColor = DnDTheme.arcaneBlue;
       statusText = 'Verknüpft';
     } else if (entry.location != null) {
-      chipColor = Colors.green;
+      chipColor = DnDTheme.successGreen;
       statusText = 'Standort';
     } else {
       return const SizedBox.shrink();
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(
+        horizontal: DnDTheme.xs,
+        vertical: 2,
+      ),
       decoration: BoxDecoration(
-        color: chipColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(4),
+        color: chipColor.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+        border: Border.all(
+          color: chipColor.withValues(alpha: 0.5),
+        ),
       ),
       child: Text(
         statusText,
-        style: TextStyle(
-          fontSize: 10,
-          color: chipColor.withOpacity(0.8),
+        style: DnDTheme.caption.copyWith(
+          color: chipColor,
           fontWeight: FontWeight.w500,
         ),
       ),
@@ -305,27 +336,36 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
             icon: const Icon(Icons.edit_outlined, size: 16),
             label: const Text('Bearbeiten'),
             style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(
+                horizontal: DnDTheme.sm,
+                vertical: DnDTheme.xs,
+              ),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              foregroundColor: DnDTheme.arcaneBlue,
             ),
           ),
         if (onDelete != null) ...[
-          const SizedBox(width: 8),
+          const SizedBox(width: DnDTheme.xs),
           TextButton.icon(
             onPressed: () => _showDeleteConfirmation(context),
-            icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
-            label: const Text('Löschen', style: TextStyle(color: Colors.red)),
+            icon: const Icon(Icons.delete_outline, size: 16),
+            label: const Text('Löschen'),
             style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(
+                horizontal: DnDTheme.sm,
+                vertical: DnDTheme.xs,
+              ),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              foregroundColor: DnDTheme.errorRed,
             ),
           ),
         ],
-        const SizedBox(width: 8),
+        const SizedBox(width: DnDTheme.xs),
         PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert, size: 16),
+          iconSize: 16,
           onSelected: (value) {
             switch (value) {
               case 'duplicate':
@@ -337,13 +377,13 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
             }
           },
           itemBuilder: (context) => [
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'duplicate',
               child: Row(
                 children: [
-                  Icon(Icons.copy, size: 16),
-                  SizedBox(width: 8),
-                  Text('Duplizieren'),
+                  Icon(Icons.copy, size: 16, color: DnDTheme.arcaneBlue),
+                  const SizedBox(width: 8),
+                  Text('Duplizieren', style: DnDTheme.bodyText2.copyWith(color: Colors.white)),
                 ],
               ),
             ),
@@ -354,9 +394,13 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
                   Icon(
                     entry.campaignId == null ? Icons.campaign : Icons.public,
                     size: 16,
+                    color: DnDTheme.arcaneBlue,
                   ),
                   const SizedBox(width: 8),
-                  Text(entry.campaignId == null ? 'Zu Campaign machen' : 'Global machen'),
+                  Text(
+                    entry.campaignId == null ? 'Zu Campaign machen' : 'Global machen',
+                    style: DnDTheme.bodyText2.copyWith(color: Colors.white),
+                  ),
                 ],
               ),
             ),
@@ -370,21 +414,36 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Löschen bestätigen'),
+        backgroundColor: DnDTheme.stoneGrey,
+        title: Text(
+          'Löschen bestätigen',
+          style: DnDTheme.headline3.copyWith(
+            color: DnDTheme.errorRed,
+          ),
+        ),
         content: Text(
           'Möchtest du den Wiki-Eintrag "${entry.title}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
+          style: DnDTheme.bodyText1.copyWith(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Abbrechen'),
+            child: Text(
+              'Abbrechen',
+              style: DnDTheme.bodyText1.copyWith(
+                color: DnDTheme.mysticalPurple,
+              ),
+            ),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
               onDelete?.call();
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DnDTheme.errorRed,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Löschen'),
           ),
         ],
@@ -418,23 +477,23 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
   Color _getTypeColor() {
     switch (entry.entryType) {
       case WikiEntryType.Person:
-        return Colors.blue;
+        return DnDTheme.arcaneBlue;
       case WikiEntryType.Place:
-        return Colors.green;
+        return DnDTheme.successGreen;
       case WikiEntryType.Lore:
-        return Colors.purple;
+        return DnDTheme.mysticalPurple;
       case WikiEntryType.Faction:
-        return Colors.orange;
+        return DnDTheme.warningOrange;
       case WikiEntryType.Magic:
-        return Colors.pink;
+        return DnDTheme.infoBlue;
       case WikiEntryType.History:
-        return Colors.brown;
+        return DnDTheme.ancientGold;
       case WikiEntryType.Item:
-        return Colors.teal;
+        return DnDTheme.arcaneBlue;
       case WikiEntryType.Quest:
-        return Colors.indigo;
+        return DnDTheme.mysticalPurple;
       case WikiEntryType.Creature:
-        return Colors.red;
+        return DnDTheme.errorRed;
     }
   }
 

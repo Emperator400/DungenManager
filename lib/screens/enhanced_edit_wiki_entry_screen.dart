@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import '../services/wiki_entry_service.dart';
 import '../models/wiki_entry.dart';
 import '../models/map_location.dart';
+import '../theme/dnd_theme.dart';
 
-/// Enhanced Edit Wiki Entry Screen mit Tag-Management und Location-Unterstützung
+/// Enhanced Edit Wiki Entry Screen mit Enhanced Design, Tag-Management und Location-Unterstützung
 /// 
 /// Verwendet WikiEntryService für CRUD-Operationen mit ServiceResult Pattern.
 class EnhancedEditWikiEntryScreen extends StatefulWidget {
@@ -105,18 +106,19 @@ class _EnhancedEditWikiEntryScreenState extends State<EnhancedEditWikiEntryScree
         Navigator.of(context).pop(savedEntry);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-                content: Text(widget.entry != null ? 'Eintrag aktualisiert' : 'Eintrag erstellt'),
-                duration: const Duration(seconds: 2),
-              ),
+            content: Text(widget.entry != null ? 'Eintrag aktualisiert' : 'Eintrag erstellt'),
+            backgroundColor: DnDTheme.successGreen,
+            duration: const Duration(seconds: 2),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-                content: Text('Fehler: $e'),
-                backgroundColor: Colors.red,
-              ),
+            content: Text('Fehler: $e'),
+            backgroundColor: DnDTheme.errorRed,
+          ),
         );
       }
     } finally {
@@ -162,18 +164,32 @@ class _EnhancedEditWikiEntryScreenState extends State<EnhancedEditWikiEntryScree
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Änderungen verwerfen?'),
-        content: const Text('Möchtest du die nicht gespeicherten Änderungen wirklich verwerfen?'),
+        backgroundColor: DnDTheme.stoneGrey,
+        title: Text(
+          'Änderungen verwerfen?',
+          style: DnDTheme.headline3.copyWith(color: DnDTheme.warningOrange),
+        ),
+        content: Text(
+          'Möchtest du die nicht gespeicherten Änderungen wirklich verwerfen?',
+          style: DnDTheme.bodyText1.copyWith(color: Colors.white70),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Abbrechen'),
+            child: Text(
+              'Abbrechen',
+              style: DnDTheme.bodyText1.copyWith(
+                color: DnDTheme.mysticalPurple,
+              ),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text(
+            child: Text(
               'Verwerfen',
-              style: TextStyle(color: Colors.red),
+              style: DnDTheme.bodyText1.copyWith(
+                color: DnDTheme.warningOrange,
+              ),
             ),
           ),
         ],
@@ -221,22 +237,38 @@ class _EnhancedEditWikiEntryScreenState extends State<EnhancedEditWikiEntryScree
         }
       },
       child: Scaffold(
+        backgroundColor: DnDTheme.dungeonBlack,
         appBar: AppBar(
-          title: Text(widget.entry != null ? 'Wiki-Eintrag bearbeiten' : 'Neuer Wiki-Eintrag'),
+          title: Text(
+            widget.entry != null ? 'Wiki-Eintrag bearbeiten' : 'Neuer Wiki-Eintrag',
+            style: DnDTheme.headline2.copyWith(
+              color: DnDTheme.ancientGold,
+            ),
+          ),
+          backgroundColor: DnDTheme.stoneGrey,
+          foregroundColor: Colors.white,
           actions: [
             if (_isLoading)
               const Padding(
-                padding: EdgeInsets.all(16),
+                padding: EdgeInsets.all(DnDTheme.md),
                 child: SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: DnDTheme.ancientGold,
+                  ),
                 ),
               )
             else
-              TextButton(
+              ElevatedButton.icon(
                 onPressed: _saveEntry,
-                child: const Text('Speichern'),
+                icon: const Icon(Icons.save),
+                label: const Text('Speichern'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: DnDTheme.successGreen,
+                  foregroundColor: Colors.white,
+                ),
               ),
           ],
         ),
@@ -246,24 +278,24 @@ class _EnhancedEditWikiEntryScreenState extends State<EnhancedEditWikiEntryScree
             controller: _scrollController,
             child: SingleChildScrollView(
               controller: _scrollController,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(DnDTheme.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildBasicInfoSection(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: DnDTheme.lg),
                   _buildTypeSection(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: DnDTheme.lg),
                   _buildContentSection(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: DnDTheme.lg),
                   _buildTagsSection(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: DnDTheme.lg),
                   _buildLocationSection(),
                   if (widget.campaignId != null) ...[
-                    const SizedBox(height: 24),
+                    const SizedBox(height: DnDTheme.lg),
                     _buildCampaignSection(),
                   ],
-                  const SizedBox(height: 32),
+                  const SizedBox(height: DnDTheme.xl),
                 ],
               ),
             ),
@@ -274,192 +306,410 @@ class _EnhancedEditWikiEntryScreenState extends State<EnhancedEditWikiEntryScree
   }
 
   Widget _buildBasicInfoSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Grundinformationen',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+    return Container(
+      padding: const EdgeInsets.all(DnDTheme.lg),
+      decoration: BoxDecoration(
+        gradient: DnDTheme.getMysticalGradient(
+          startColor: DnDTheme.stoneGrey,
+          endColor: DnDTheme.slateGrey,
         ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _titleController,
-          decoration: const InputDecoration(
-            labelText: 'Titel *',
-            hintText: 'z.B. "Drache von Neverwinter"',
-            border: OutlineInputBorder(),
-          ),
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return 'Bitte gib einen Titel ein';
-            }
-            return null;
-          },
-          textInputAction: TextInputAction.next,
+        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        border: Border.all(
+          color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+          width: 1,
         ),
-      ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.info_outline, color: DnDTheme.ancientGold),
+              const SizedBox(width: DnDTheme.sm),
+              Text(
+                'Grundinformationen',
+                style: DnDTheme.headline3.copyWith(
+                  color: DnDTheme.ancientGold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: DnDTheme.md),
+          TextFormField(
+            controller: _titleController,
+            style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+            decoration: InputDecoration(
+              labelText: 'Titel *',
+              hintText: 'z.B. "Drache von Neverwinter"',
+              labelStyle: DnDTheme.bodyText2.copyWith(
+                color: DnDTheme.ancientGold,
+              ),
+              hintStyle: DnDTheme.bodyText2.copyWith(
+                color: Colors.white54,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                borderSide: BorderSide(color: DnDTheme.mysticalPurple),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                borderSide: BorderSide(
+                  color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
+              ),
+              filled: true,
+              fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Bitte gib einen Titel ein';
+              }
+              return null;
+            },
+            textInputAction: TextInputAction.next,
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildTypeSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Eintragstyp',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
+    return Container(
+      padding: const EdgeInsets.all(DnDTheme.lg),
+      decoration: BoxDecoration(
+        gradient: DnDTheme.getMysticalGradient(
+          startColor: DnDTheme.stoneGrey,
+          endColor: DnDTheme.slateGrey,
+        ),
+        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        border: Border.all(
+          color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.category, color: DnDTheme.ancientGold),
+              const SizedBox(width: DnDTheme.sm),
+              Text(
+                'Eintragstyp',
+                style: DnDTheme.headline3.copyWith(
+                  color: DnDTheme.ancientGold,
+                ),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(height: 12),
-        SegmentedButton<WikiEntryType>(
-          segments: WikiEntryType.values.map((type) => ButtonSegment(
-            value: type,
-            label: Text(_getTypeDisplayName(type)),
-            icon: Icon(_getTypeIcon(type)),
-          )).toList(),
-          selected: {_selectedType},
-          onSelectionChanged: (selection) {
-            setState(() {
-              _selectedType = selection.first;
-            });
-          },
-        ),
-      ],
+          const SizedBox(height: DnDTheme.md),
+          SegmentedButton<WikiEntryType>(
+            segments: WikiEntryType.values.map((type) => ButtonSegment(
+              value: type,
+              label: Text(_getTypeDisplayName(type), style: DnDTheme.bodyText2.copyWith(color: Colors.white)),
+              icon: Icon(_getTypeIcon(type), color: _getTypeColor(type)),
+            )).toList(),
+            selected: {_selectedType},
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.resolveWith<Color>((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return _getTypeColor(_selectedType).withValues(alpha: 0.3);
+                }
+                return DnDTheme.slateGrey.withValues(alpha: 0.3);
+              }),
+              foregroundColor: WidgetStateProperty.resolveWith<Color>((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return _getTypeColor(_selectedType);
+                }
+                return Colors.white70;
+              }),
+            ),
+            onSelectionChanged: (selection) {
+              setState(() {
+                _selectedType = selection.first;
+              });
+            },
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildContentSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Inhalt',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+    return Container(
+      padding: const EdgeInsets.all(DnDTheme.lg),
+      decoration: BoxDecoration(
+        gradient: DnDTheme.getMysticalGradient(
+          startColor: DnDTheme.stoneGrey,
+          endColor: DnDTheme.slateGrey,
         ),
-        const SizedBox(height: 12),
-        TextFormField(
-          controller: _contentController,
-          decoration: const InputDecoration(
-            labelText: 'Beschreibung *',
-            hintText: 'Gib hier alle wichtigen Informationen ein...',
-            border: OutlineInputBorder(),
-          ),
-          maxLines: 8,
-          minLines: 4,
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return 'Bitte gib einen Inhalt ein';
-            }
-            return null;
-          },
+        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        border: Border.all(
+          color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+          width: 1,
         ),
-      ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.article, color: DnDTheme.ancientGold),
+              const SizedBox(width: DnDTheme.sm),
+              Text(
+                'Inhalt',
+                style: DnDTheme.headline3.copyWith(
+                  color: DnDTheme.ancientGold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: DnDTheme.md),
+          TextFormField(
+            controller: _contentController,
+            style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+            decoration: InputDecoration(
+              labelText: 'Beschreibung *',
+              hintText: 'Gib hier alle wichtigen Informationen ein...',
+              labelStyle: DnDTheme.bodyText2.copyWith(
+                color: DnDTheme.ancientGold,
+              ),
+              hintStyle: DnDTheme.bodyText2.copyWith(
+                color: Colors.white54,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                borderSide: BorderSide(color: DnDTheme.mysticalPurple),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                borderSide: BorderSide(
+                  color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
+              ),
+              filled: true,
+              fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
+            ),
+            maxLines: 8,
+            minLines: 4,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Bitte gib einen Inhalt ein';
+              }
+              return null;
+            },
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildTagsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Tags',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+    return Container(
+      padding: const EdgeInsets.all(DnDTheme.lg),
+      decoration: BoxDecoration(
+        gradient: DnDTheme.getMysticalGradient(
+          startColor: DnDTheme.stoneGrey,
+          endColor: DnDTheme.slateGrey,
         ),
-        const SizedBox(height: 8),
-        Text(
-          'Füge Tags hinzu, um deinen Eintrag leichter zu finden und zu organisieren',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Colors.grey[600],
-          ),
+        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        border: Border.all(
+          color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+          width: 1,
         ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: TextFormField(
-                controller: _tagController,
-                decoration: const InputDecoration(
-                  labelText: 'Neuer Tag',
-                  hintText: 'z.B. "wichtig", "NPC", "Ort"',
-                  border: OutlineInputBorder(),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.local_offer, color: DnDTheme.ancientGold),
+              const SizedBox(width: DnDTheme.sm),
+              Text(
+                'Tags',
+                style: DnDTheme.headline3.copyWith(
+                  color: DnDTheme.ancientGold,
                 ),
-                onFieldSubmitted: (_) => _addTag(),
               ),
+            ],
+          ),
+          const SizedBox(height: DnDTheme.sm),
+          Text(
+            'Füge Tags hinzu, um deinen Eintrag leichter zu finden und zu organisieren',
+            style: DnDTheme.bodyText2.copyWith(
+              color: Colors.white70,
             ),
-            const SizedBox(width: 8),
-            IconButton.filled(
-              onPressed: _addTag,
-              icon: const Icon(Icons.add),
-              tooltip: 'Tag hinzufügen',
+          ),
+          const SizedBox(height: DnDTheme.md),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _tagController,
+                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Neuer Tag',
+                    hintText: 'z.B. "wichtig", "NPC", "Ort"',
+                    labelStyle: DnDTheme.bodyText2.copyWith(
+                      color: DnDTheme.ancientGold,
+                    ),
+                    hintStyle: DnDTheme.bodyText2.copyWith(
+                      color: Colors.white54,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                      borderSide: BorderSide(color: DnDTheme.mysticalPurple),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                      borderSide: BorderSide(
+                        color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                      borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
+                    ),
+                    filled: true,
+                    fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
+                  ),
+                  onFieldSubmitted: (_) => _addTag(),
+                ),
+              ),
+              const SizedBox(width: DnDTheme.sm),
+              IconButton.filled(
+                onPressed: _addTag,
+                icon: const Icon(Icons.add),
+                tooltip: 'Tag hinzufügen',
+                style: IconButton.styleFrom(
+                  backgroundColor: DnDTheme.mysticalPurple,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          if (_tags.isNotEmpty) ...[
+            const SizedBox(height: DnDTheme.md),
+            Wrap(
+              spacing: DnDTheme.xs,
+              runSpacing: DnDTheme.xs,
+              children: _tags.map((tag) => Chip(
+                label: Text(tag, style: DnDTheme.caption.copyWith(color: DnDTheme.ancientGold)),
+                backgroundColor: DnDTheme.ancientGold.withValues(alpha: 0.1),
+                side: BorderSide(color: DnDTheme.ancientGold.withValues(alpha: 0.3)),
+                onDeleted: () => _removeTag(tag),
+                deleteIcon: Icon(Icons.close, size: 16, color: DnDTheme.ancientGold),
+              )).toList(),
             ),
           ],
-        ),
-        if (_tags.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: _tags.map((tag) => Chip(
-              label: Text(tag),
-              onDeleted: () => _removeTag(tag),
-              deleteIcon: const Icon(Icons.close, size: 16),
-            )).toList(),
-          ),
         ],
-      ],
+      ),
     );
   }
 
   Widget _buildLocationSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Standort (Optional)',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+    return Container(
+      padding: const EdgeInsets.all(DnDTheme.lg),
+      decoration: BoxDecoration(
+        gradient: DnDTheme.getMysticalGradient(
+          startColor: DnDTheme.stoneGrey,
+          endColor: DnDTheme.slateGrey,
         ),
-        const SizedBox(height: 12),
-        Card(
-          child: ListTile(
-            leading: Icon(
-              Icons.location_on,
-              color: _location != null ? Theme.of(context).primaryColor : Colors.grey,
+        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        border: Border.all(
+          color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.location_on, color: DnDTheme.ancientGold),
+              const SizedBox(width: DnDTheme.sm),
+              Text(
+                'Standort (Optional)',
+                style: DnDTheme.headline3.copyWith(
+                  color: DnDTheme.ancientGold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: DnDTheme.md),
+          Container(
+            decoration: BoxDecoration(
+              color: DnDTheme.slateGrey.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+              border: Border.all(
+                color: _location != null 
+                    ? DnDTheme.arcaneBlue 
+                    : DnDTheme.mysticalPurple.withValues(alpha: 0.5),
+                width: 1,
+              ),
             ),
-            title: Text(_location != null 
-                ? 'Standort festgelegt' 
-                : 'Kein Standort'),
-            subtitle: Text(_location != null 
-                ? 'Lat: ${_location!.latitude.toStringAsFixed(4)}, Lng: ${_location!.longitude.toStringAsFixed(4)}'
-                : 'Füge einen Standort für zukünftige Karten hinzu'),
-            trailing: const Icon(Icons.edit),
-            onTap: _showLocationDialog,
+            child: ListTile(
+              leading: Icon(
+                Icons.location_on,
+                color: _location != null ? DnDTheme.arcaneBlue : Colors.white70,
+              ),
+              title: Text(
+                _location != null ? 'Standort festlegt' : 'Kein Standort',
+                style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+              ),
+              subtitle: Text(
+                _location != null 
+                    ? 'Lat: ${_location!.latitude.toStringAsFixed(4)}, Lng: ${_location!.longitude.toStringAsFixed(4)}'
+                    : 'Füge einen Standort für zukünftige Karten hinzu',
+                style: DnDTheme.bodyText2.copyWith(color: Colors.white70),
+              ),
+              trailing: Icon(Icons.edit, color: DnDTheme.arcaneBlue),
+              onTap: _showLocationDialog,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildCampaignSection() {
-    return Card(
+    return Container(
+      padding: const EdgeInsets.all(DnDTheme.lg),
+      decoration: BoxDecoration(
+        gradient: DnDTheme.getMysticalGradient(
+          startColor: DnDTheme.stoneGrey,
+          endColor: DnDTheme.slateGrey,
+        ),
+        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        border: Border.all(
+          color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
       child: SwitchListTile(
-        title: const Text('Globaler Eintrag'),
-        subtitle: const Text('Soll dieser Eintrag für alle Kampagnen sichtbar sein?'),
+        title: Text(
+          'Globaler Eintrag',
+          style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+        ),
+        subtitle: Text(
+          'Soll dieser Eintrag für alle Kampagnen sichtbar sein?',
+          style: DnDTheme.bodyText2.copyWith(color: Colors.white70),
+        ),
         value: _isGlobal,
         onChanged: (value) {
           setState(() {
             _isGlobal = value;
           });
         },
-        secondary: const Icon(Icons.public),
+        secondary: Icon(Icons.public, color: _isGlobal ? DnDTheme.arcaneBlue : Colors.white70),
       ),
     );
   }
@@ -509,9 +759,32 @@ class _EnhancedEditWikiEntryScreenState extends State<EnhancedEditWikiEntryScree
         return Icons.cruelty_free;
     }
   }
+
+  Color _getTypeColor(WikiEntryType type) {
+    switch (type) {
+      case WikiEntryType.Person:
+        return DnDTheme.arcaneBlue;
+      case WikiEntryType.Place:
+        return DnDTheme.successGreen;
+      case WikiEntryType.Lore:
+        return DnDTheme.mysticalPurple;
+      case WikiEntryType.Faction:
+        return DnDTheme.warningOrange;
+      case WikiEntryType.Magic:
+        return DnDTheme.infoBlue;
+      case WikiEntryType.History:
+        return DnDTheme.ancientGold;
+      case WikiEntryType.Item:
+        return DnDTheme.arcaneBlue;
+      case WikiEntryType.Quest:
+        return DnDTheme.mysticalPurple;
+      case WikiEntryType.Creature:
+        return DnDTheme.errorRed;
+    }
+  }
 }
 
-/// Dialog für Standort-Eingabe
+/// Enhanced Dialog für Standort-Eingabe
 class LocationDialog extends StatefulWidget {
   final MapLocation? initialLocation;
   final void Function(MapLocation) onSave;
@@ -559,7 +832,13 @@ class _LocationDialogState extends State<LocationDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Standort bearbeiten'),
+      backgroundColor: DnDTheme.stoneGrey,
+      title: Text(
+        'Standort bearbeiten',
+        style: DnDTheme.headline3.copyWith(
+          color: DnDTheme.ancientGold,
+        ),
+      ),
       content: SizedBox(
         width: double.maxFinite,
         child: Column(
@@ -570,61 +849,109 @@ class _LocationDialogState extends State<LocationDialog> {
                 Expanded(
                   child: TextFormField(
                     controller: _latController,
-                    decoration: const InputDecoration(
+                    style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                    decoration: InputDecoration(
                       labelText: 'Breitengrad',
-                      border: OutlineInputBorder(),
+                      labelStyle: DnDTheme.bodyText2.copyWith(
+                        color: DnDTheme.ancientGold,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                      ),
+                      filled: true,
+                      fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
                     ),
                     keyboardType: TextInputType.number,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: DnDTheme.sm),
                 Expanded(
                   child: TextFormField(
                     controller: _lngController,
-                    decoration: const InputDecoration(
+                    style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                    decoration: InputDecoration(
                       labelText: 'Längengrad',
-                      border: OutlineInputBorder(),
+                      labelStyle: DnDTheme.bodyText2.copyWith(
+                        color: DnDTheme.ancientGold,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                      ),
+                      filled: true,
+                      fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
                     ),
                     keyboardType: TextInputType.number,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: DnDTheme.sm),
             TextFormField(
               controller: _mapIdController,
-              decoration: const InputDecoration(
+              style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+              decoration: InputDecoration(
                 labelText: 'Karten-ID',
-                border: OutlineInputBorder(),
+                labelStyle: DnDTheme.bodyText2.copyWith(
+                  color: DnDTheme.ancientGold,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                ),
+                filled: true,
+                fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: DnDTheme.sm),
             TextFormField(
               controller: _markerTypeController,
-              decoration: const InputDecoration(
+              style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+              decoration: InputDecoration(
                 labelText: 'Marker-Typ',
                 hintText: 'city, dungeon, npc, etc.',
-                border: OutlineInputBorder(),
+                labelStyle: DnDTheme.bodyText2.copyWith(
+                  color: DnDTheme.ancientGold,
+                ),
+                hintStyle: DnDTheme.bodyText2.copyWith(
+                  color: Colors.white54,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                ),
+                filled: true,
+                fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: DnDTheme.sm),
             TextFormField(
               controller: _zoomController,
-              decoration: const InputDecoration(
+              style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+              decoration: InputDecoration(
                 labelText: 'Zoom-Level',
-                border: OutlineInputBorder(),
+                labelStyle: DnDTheme.bodyText2.copyWith(
+                  color: DnDTheme.ancientGold,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                ),
+                filled: true,
+                fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
               ),
               keyboardType: TextInputType.number,
             ),
           ],
         ),
-      ), // KORREKTUR: Schließende Klammer für SizedBox
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Abbrechen'),
+          child: Text(
+            'Abbrechen',
+            style: DnDTheme.bodyText1.copyWith(
+              color: DnDTheme.mysticalPurple,
+            ),
+          ),
         ),
-        TextButton(
+        ElevatedButton(
           onPressed: () {
             final location = MapLocation(
               latitude: double.tryParse(_latController.text) ?? 0.0,
@@ -636,6 +963,10 @@ class _LocationDialogState extends State<LocationDialog> {
             widget.onSave(location);
             Navigator.of(context).pop();
           },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: DnDTheme.successGreen,
+            foregroundColor: Colors.white,
+          ),
           child: const Text('Speichern'),
         ),
       ],
