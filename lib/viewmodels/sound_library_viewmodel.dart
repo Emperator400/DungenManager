@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/sound.dart';
 import '../database/repositories/sound_model_repository.dart';
 import '../database/core/database_connection.dart';
+import '../services/sound_service.dart';
 
 /// ViewModel für die Sound Library mit neuer Repository-Architektur
 /// Zentralisiert State Management und Business-Logik für Sounds und Szenen
@@ -190,10 +191,17 @@ class SoundLibraryViewModel extends ChangeNotifier {
   /// HINWEIS: Verwendet jetzt das neue SoundModelRepository
   Future<void> deleteSound(String soundId) async {
     await _executeWithErrorHandling(() async {
+      // Datei löschen
+      final sound = _sounds.firstWhere((s) => s.id == soundId);
+      await SoundService.deleteSoundFile(sound.filePath);
+      
+      // Aus Datenbank löschen
       if (_soundRepository != null) {
         await _soundRepository!.delete(soundId);
       }
-      _sounds.removeWhere((sound) => sound.id == soundId);
+      
+      // Aus Liste entfernen
+      _sounds.removeWhere((s) => s.id == soundId);
       _applyFiltersAndSort();
     }, isSoundOperation: true);
   }
@@ -226,12 +234,68 @@ class SoundLibraryViewModel extends ChangeNotifier {
   /// HINWEIS: Verwendet jetzt das neue SoundModelRepository
   Future<void> deleteSounds(List<String> soundIds) async {
     await _executeWithErrorHandling(() async {
+      // Alle Dateien löschen
+      for (final soundId in soundIds) {
+        final sound = _sounds.firstWhere((s) => s.id == soundId);
+        await SoundService.deleteSoundFile(sound.filePath);
+      }
+      
+      // Aus Datenbank löschen
       if (_soundRepository != null) {
         await _soundRepository!.deleteAll(soundIds);
       }
+      
+      // Aus Liste entfernen
       _sounds.removeWhere((sound) => soundIds.contains(sound.id));
       _applyFiltersAndSort();
     }, isSoundOperation: true);
+  }
+
+  /// Lädt eine Sound-Datei hoch und speichert sie in der Datenbank
+  Future<Sound?> uploadSound(
+    String filePath,
+    SoundType soundType, {
+    String? customName,
+    String description = '',
+  }) async {
+    try {
+      // Datei validieren
+      if (!SoundService.isValidAudioFile(filePath)) {
+        _soundError = 'Ungültiges Audio-Format. Unterstützte Formate: MP3, WAV, OGG, M4A, AAC';
+        notifyListeners();
+        return null;
+      }
+
+      // Sound hochladen und Datei kopieren
+      Sound? sound = await SoundService.uploadAndCreateSound(
+        filePath,
+        soundType,
+        customName: customName,
+        description: description,
+      );
+
+      if (sound != null) {
+        // In Datenbank speichern
+        Sound? savedSound;
+        if (_soundRepository != null) {
+          savedSound = await _soundRepository!.create(sound);
+        }
+        
+        if (savedSound != null) {
+          _sounds.add(savedSound);
+          _applyFiltersAndSort();
+          _soundError = null;
+          notifyListeners();
+          return savedSound;
+        }
+      }
+      
+      return null;
+    } catch (e) {
+      _soundError = 'Fehler beim Hochladen des Sounds: $e';
+      notifyListeners();
+      return null;
+    }
   }
 
   // ============================================================================
