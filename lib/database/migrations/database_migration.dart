@@ -29,6 +29,13 @@ class DatabaseMigration {
     // Erstelle Sounds-Tabelle
     await _createSoundsTable(db);
     
+    // Neue Tabellen für Session-Management
+    await _createSessionsTable(db);
+    await _createEncountersTable(db);
+    await _createEncounterParticipantsTable(db);
+    await _createSessionQuestProgressTable(db);
+    await _createSessionCharacterTrackingTable(db);
+    
     // Füge is_favorite Spalte hinzu, falls sie nicht existiert
     await _addIsFavoriteColumn(db);
     
@@ -286,6 +293,168 @@ class DatabaseMigration {
       }
     } catch (e) {
       print('Error adding equipment column: $e');
+    }
+  }
+
+  /// Erstellt die Sessions-Tabelle
+  Future<void> _createSessionsTable(Database db) async {
+    final result = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='sessions'",
+    );
+
+    if (result.isEmpty) {
+      await db.execute('''
+        CREATE TABLE sessions (
+          id TEXT PRIMARY KEY,
+          campaignId TEXT NOT NULL,
+          title TEXT NOT NULL,
+          inGameTimeInMinutes INTEGER NOT NULL DEFAULT 480,
+          liveNotes TEXT DEFAULT '',
+          sceneIds TEXT,
+          activeSceneId TEXT,
+          encounterIds TEXT,
+          questProgressIds TEXT,
+          characterTrackingIds TEXT,
+          createdAt TEXT NOT NULL,
+          startedAt TEXT,
+          completedAt TEXT,
+          FOREIGN KEY (campaignId) REFERENCES campaigns (id) ON DELETE CASCADE
+        )
+      ''');
+
+      await db.execute('CREATE INDEX idx_sessions_campaign_id ON sessions(campaignId)');
+      await db.execute('CREATE INDEX idx_sessions_created_at ON sessions(createdAt)');
+
+      print('Created sessions table with indexes');
+    } else {
+      print('Sessions table already exists');
+    }
+  }
+
+  /// Erstellt die Encounters-Tabelle
+  Future<void> _createEncountersTable(Database db) async {
+    final result = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='encounters'",
+    );
+
+    if (result.isEmpty) {
+      await db.execute('''
+        CREATE TABLE encounters (
+          id TEXT PRIMARY KEY,
+          sessionId TEXT NOT NULL,
+          title TEXT NOT NULL,
+          description TEXT,
+          status TEXT NOT NULL DEFAULT 'planning',
+          participantIds TEXT,
+          createdAt TEXT NOT NULL,
+          startedAt TEXT,
+          completedAt TEXT,
+          FOREIGN KEY (sessionId) REFERENCES sessions (id) ON DELETE CASCADE
+        )
+      ''');
+
+      await db.execute('CREATE INDEX idx_encounters_session_id ON encounters(sessionId)');
+      await db.execute('CREATE INDEX idx_encounters_status ON encounters(status)');
+
+      print('Created encounters table with indexes');
+    } else {
+      print('Encounters table already exists');
+    }
+  }
+
+  /// Erstellt die EncounterParticipants-Tabelle
+  Future<void> _createEncounterParticipantsTable(Database db) async {
+    final result = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='encounter_participants'",
+    );
+
+    if (result.isEmpty) {
+      await db.execute('''
+        CREATE TABLE encounter_participants (
+          id TEXT PRIMARY KEY,
+          encounterId TEXT NOT NULL,
+          name TEXT NOT NULL,
+          type TEXT NOT NULL DEFAULT 'enemy',
+          currentHp INTEGER NOT NULL DEFAULT 0,
+          maxHp INTEGER NOT NULL DEFAULT 0,
+          conditions TEXT,
+          notes TEXT,
+          characterId TEXT,
+          FOREIGN KEY (encounterId) REFERENCES encounters (id) ON DELETE CASCADE
+        )
+      ''');
+
+      await db.execute('CREATE INDEX idx_encounter_participants_encounter_id ON encounter_participants(encounterId)');
+      await db.execute('CREATE INDEX idx_encounter_participants_type ON encounter_participants(type)');
+
+      print('Created encounter_participants table with indexes');
+    } else {
+      print('EncounterParticipants table already exists');
+    }
+  }
+
+  /// Erstellt die SessionQuestProgress-Tabelle
+  Future<void> _createSessionQuestProgressTable(Database db) async {
+    final result = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='session_quest_progress'",
+    );
+
+    if (result.isEmpty) {
+      await db.execute('''
+        CREATE TABLE session_quest_progress (
+          id TEXT PRIMARY KEY,
+          sessionId TEXT NOT NULL,
+          questId INTEGER NOT NULL,
+          status TEXT NOT NULL DEFAULT 'active',
+          progress INTEGER NOT NULL DEFAULT 0,
+          maxProgress INTEGER NOT NULL DEFAULT 100,
+          notes TEXT DEFAULT '',
+          createdAt TEXT NOT NULL,
+          completedAt TEXT,
+          FOREIGN KEY (sessionId) REFERENCES sessions (id) ON DELETE CASCADE
+        )
+      ''');
+
+      await db.execute('CREATE INDEX idx_session_quest_progress_session_id ON session_quest_progress(sessionId)');
+      await db.execute('CREATE INDEX idx_session_quest_progress_quest_id ON session_quest_progress(questId)');
+      await db.execute('CREATE INDEX idx_session_quest_progress_status ON session_quest_progress(status)');
+
+      print('Created session_quest_progress table with indexes');
+    } else {
+      print('SessionQuestProgress table already exists');
+    }
+  }
+
+  /// Erstellt die SessionCharacterTracking-Tabelle
+  Future<void> _createSessionCharacterTrackingTable(Database db) async {
+    final result = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='session_character_tracking'",
+    );
+
+    if (result.isEmpty) {
+      await db.execute('''
+        CREATE TABLE session_character_tracking (
+          id TEXT PRIMARY KEY,
+          sessionId TEXT NOT NULL,
+          characterId TEXT NOT NULL,
+          characterName TEXT NOT NULL,
+          isPresent INTEGER NOT NULL DEFAULT 1,
+          currentHp INTEGER NOT NULL DEFAULT 0,
+          maxHp INTEGER NOT NULL DEFAULT 0,
+          tempHp INTEGER NOT NULL DEFAULT 0,
+          conditions TEXT,
+          notes TEXT DEFAULT '',
+          createdAt TEXT NOT NULL,
+          FOREIGN KEY (sessionId) REFERENCES sessions (id) ON DELETE CASCADE
+        )
+      ''');
+
+      await db.execute('CREATE INDEX idx_session_character_tracking_session_id ON session_character_tracking(sessionId)');
+      await db.execute('CREATE INDEX idx_session_character_tracking_character_id ON session_character_tracking(characterId)');
+
+      print('Created session_character_tracking table with indexes');
+    } else {
+      print('SessionCharacterTracking table already exists');
     }
   }
   
