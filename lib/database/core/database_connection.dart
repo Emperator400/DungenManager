@@ -70,6 +70,38 @@ class DatabaseConnection {
     await _createOfficialMonstersTable(db);
     await _createOfficialSpellsTable(db);
     await _createSoundsTable(db);
+    await _createWikiEntriesTable(db);
+  }
+  
+  /// Erstellt die wiki_entries Tabelle
+  Future<void> _createWikiEntriesTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS wiki_entries (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        entry_type TEXT NOT NULL DEFAULT 'Lore',
+        location_data TEXT,
+        tags TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        campaign_id TEXT,
+        image_url TEXT,
+        created_by TEXT,
+        parent_id TEXT,
+        child_ids TEXT NOT NULL DEFAULT '',
+        is_markdown INTEGER NOT NULL DEFAULT 0,
+        is_favorite INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+    
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_wiki_entries_title ON wiki_entries(title)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_wiki_entries_entry_type ON wiki_entries(entry_type)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_wiki_entries_campaign_id ON wiki_entries(campaign_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_wiki_entries_parent_id ON wiki_entries(parent_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_wiki_entries_is_favorite ON wiki_entries(is_favorite)');
+    
+    print('✅ wiki_entries Tabelle erstellt');
   }
   
   /// Erstellt die campaigns Tabelle

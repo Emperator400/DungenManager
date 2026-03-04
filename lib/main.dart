@@ -19,6 +19,7 @@ import 'inventory_demo_app.dart';
 import 'theme/dnd_theme.dart';
 import 'services/session_service.dart';
 import 'viewmodels/campaign_viewmodel.dart';
+import 'viewmodels/wiki_viewmodel.dart';
 import 'database/core/database_connection.dart';
 import 'database/repositories/campaign_model_repository.dart';
 import 'database/repositories/player_character_model_repository.dart';
@@ -82,12 +83,19 @@ class DmApp extends StatelessWidget {
     final sessionService = SessionService();
     final dbConnection = DatabaseConnection.instance;
 
-    return ChangeNotifierProvider(
-      create: (_) => CampaignViewModel(
-        campaignRepo: CampaignModelRepository(dbConnection),
-        characterRepo: PlayerCharacterModelRepository(dbConnection),
-        sessionService: sessionService,
-      ),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => CampaignViewModel(
+            campaignRepo: CampaignModelRepository(dbConnection),
+            characterRepo: PlayerCharacterModelRepository(dbConnection),
+            sessionService: sessionService,
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => WikiViewModel(),
+        ),
+      ],
       child: MaterialApp(
         title: 'Dungeon Manager',
         theme: DnDTheme.darkTheme,
