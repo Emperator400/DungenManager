@@ -24,6 +24,7 @@ class _EnhancedLoreKeeperScreenState extends State<EnhancedLoreKeeperScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 5, vsync: this);
+    _tabController.addListener(_onTabChanged);
     
     // Daten laden nach dem Build
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -33,8 +34,40 @@ class _EnhancedLoreKeeperScreenState extends State<EnhancedLoreKeeperScreen>
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _onTabChanged() {
+    // Nur reagieren, wenn der Tab-Wechsel abgeschlossen ist
+    if (_tabController.indexIsChanging) return;
+    
+    final viewModel = context.read<WikiViewModel>();
+    WikiEntryType? filterType;
+    
+    switch (_tabController.index) {
+      case 0: // Alle
+        filterType = null;
+        break;
+      case 1: // NPCs
+        filterType = WikiEntryType.Person;
+        break;
+      case 2: // Orte
+        filterType = WikiEntryType.Place;
+        break;
+      case 3: // Gegenstände
+        filterType = WikiEntryType.Item;
+        break;
+      case 4: // Lore
+        filterType = WikiEntryType.Lore;
+        break;
+    }
+    
+    // Nur updaten, wenn sich der Filter tatsächlich geändert hat
+    if (viewModel.selectedType != filterType) {
+      viewModel.setTypeFilter(filterType);
+    }
   }
 
   Future<void> _showSearch() async {
@@ -172,7 +205,7 @@ class _EnhancedLoreKeeperScreenState extends State<EnhancedLoreKeeperScreen>
                       children: [
                         // Suchfeld
                         TextField(
-                          onChanged: viewModel.searchEntries,
+                          onChanged: (value) => viewModel.searchEntriesLocal(value),
                           decoration: InputDecoration(
                             hintText: 'Wiki-Einträge durchsuchen...',
                             hintStyle: DnDTheme.bodyText2.copyWith(
@@ -182,7 +215,7 @@ class _EnhancedLoreKeeperScreenState extends State<EnhancedLoreKeeperScreen>
                             suffixIcon: viewModel.searchQuery.isNotEmpty
                                 ? IconButton(
                                     icon: Icon(Icons.clear, color: DnDTheme.errorRed),
-                                    onPressed: () => viewModel.searchEntries(''),
+                                    onPressed: () => viewModel.searchEntriesLocal(''),
                                   )
                                 : null,
                             border: OutlineInputBorder(
@@ -285,12 +318,12 @@ class _EnhancedLoreKeeperScreenState extends State<EnhancedLoreKeeperScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          _buildWikiList(), // Alle
-          _buildWikiList(WikiEntryType.Person), // NPCs
-          _buildWikiList(WikiEntryType.Place), // Orte
-          _buildWikiList(WikiEntryType.Item), // Gegenstände
-          _buildWikiList(WikiEntryType.Lore), // Lore
+        children: const [
+          _WikiListContent(), // Alle
+          _WikiListContent(), // NPCs
+          _WikiListContent(), // Orte
+          _WikiListContent(), // Gegenstände
+          _WikiListContent(), // Lore
         ],
       ),
       floatingActionButton: Container(
@@ -305,17 +338,16 @@ class _EnhancedLoreKeeperScreenState extends State<EnhancedLoreKeeperScreen>
       ),
     );
   }
+}
 
-  Widget _buildWikiList([WikiEntryType? filterType]) {
+/// Separater Widget für die Wiki-Liste, um unnötige Rebuilds zu vermeiden
+class _WikiListContent extends StatelessWidget {
+  const _WikiListContent();
+
+  @override
+  Widget build(BuildContext context) {
     return Consumer<WikiViewModel>(
       builder: (context, viewModel, child) {
-        // Setze den Typ-Filter wenn nötig
-        if (filterType != null && viewModel.selectedType != filterType) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            viewModel.setTypeFilter(filterType);
-          });
-        }
-
         if (viewModel.isLoading) {
           return Center(
             child: Column(
@@ -384,7 +416,7 @@ class _EnhancedLoreKeeperScreenState extends State<EnhancedLoreKeeperScreen>
         }
 
         if (viewModel.filteredEntries.isEmpty) {
-          return _buildEmptyState(viewModel.hasActiveFilters);
+          return _EmptyStateWidget();
         }
 
         return Column(
@@ -406,7 +438,7 @@ class _EnhancedLoreKeeperScreenState extends State<EnhancedLoreKeeperScreen>
               ),
               child: EnhancedWikiFilterChipsWidget(
                 viewModel: viewModel,
-                onSearchChanged: viewModel.searchEntries,
+                onSearchChanged: viewModel.searchEntriesLocal,
               ),
             ),
             
@@ -429,8 +461,8 @@ class _EnhancedLoreKeeperScreenState extends State<EnhancedLoreKeeperScreen>
                       child: EnhancedWikiEntryCardWidget(
                         entry: entry,
                         viewModel: viewModel,
-                        onTap: () => _navigateToEditScreen(entry),
-                        onDelete: () => _deleteEntry(entry),
+                        onTap: () => _navigateToEditScreen(context, entry),
+                        onDelete: () => _deleteEntry(context, entry),
                       ),
                     );
                   },
@@ -443,9 +475,80 @@ class _EnhancedLoreKeeperScreenState extends State<EnhancedLoreKeeperScreen>
     );
   }
 
-  Widget _buildEmptyState(bool hasActiveFilters) {
+  Future<void> _navigateToEditScreen(BuildContext context, WikiEntry entry) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EnhancedEditWikiEntryScreen(entry: entry),
+      ),
+    );
+    
+    // Nach dem Bearbeiten die Daten neu laden
+    context.read<WikiViewModel>().refresh();
+  }
+
+  Future<void> _deleteEntry(BuildContext context, WikiEntry entry) async {
+    final confirmed = await _showDeleteConfirmation(context, entry);
+    if (confirmed == true) {
+      await context.read<WikiViewModel>().deleteEntry(entry.id);
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${entry.title} gelöscht'),
+            backgroundColor: DnDTheme.successGreen,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<bool?> _showDeleteConfirmation(BuildContext context, WikiEntry entry) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: DnDTheme.stoneGrey,
+        title: Text(
+          'Löschen bestätigen',
+          style: DnDTheme.headline3.copyWith(
+            color: DnDTheme.errorRed,
+          ),
+        ),
+        content: Text(
+          'Möchtest du "${entry.title}" wirklich löschen?',
+          style: DnDTheme.bodyText1.copyWith(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Abbrechen',
+              style: DnDTheme.bodyText1.copyWith(
+                color: DnDTheme.mysticalPurple,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DnDTheme.errorRed,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Löschen'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Widget für den leeren Zustand
+class _EmptyStateWidget extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
     return Consumer<WikiViewModel>(
       builder: (context, viewModel, child) {
+        final hasActiveFilters = viewModel.hasActiveFilters;
+        
         return Center(
           child: Container(
             padding: const EdgeInsets.all(DnDTheme.lg),
@@ -488,7 +591,7 @@ class _EnhancedLoreKeeperScreenState extends State<EnhancedLoreKeeperScreen>
                   )
                 else
                   ElevatedButton.icon(
-                    onPressed: () => _navigateToEditScreen(),
+                    onPressed: () => _navigateToEditScreen(context, null),
                     icon: const Icon(Icons.add),
                     label: const Text('Ersten Eintrag erstellen'),
                     style: ElevatedButton.styleFrom(
@@ -502,5 +605,16 @@ class _EnhancedLoreKeeperScreenState extends State<EnhancedLoreKeeperScreen>
         );
       },
     );
+  }
+
+  Future<void> _navigateToEditScreen(BuildContext context, WikiEntry? entry) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EnhancedEditWikiEntryScreen(entry: entry),
+      ),
+    );
+    
+    // Nach dem Bearbeiten die Daten neu laden
+    context.read<WikiViewModel>().refresh();
   }
 }
