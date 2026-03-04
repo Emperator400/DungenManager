@@ -20,9 +20,11 @@ import 'theme/dnd_theme.dart';
 import 'services/session_service.dart';
 import 'viewmodels/campaign_viewmodel.dart';
 import 'viewmodels/wiki_viewmodel.dart';
+import 'viewmodels/edit_session_viewmodel.dart';
 import 'database/core/database_connection.dart';
 import 'database/repositories/campaign_model_repository.dart';
 import 'database/repositories/player_character_model_repository.dart';
+import 'database/repositories/session_model_repository.dart';
 
 /// Hauptfunktion der App
 void main() async {
@@ -94,6 +96,11 @@ class DmApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => WikiViewModel(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => EditSessionViewModel(
+            sessionRepository: SessionModelRepository(dbConnection),
+          ),
         ),
       ],
       child: MaterialApp(

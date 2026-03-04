@@ -11,8 +11,14 @@ class SessionEntity extends BaseEntity implements DatabaseEntity<SessionEntity> 
   final String title;
   final int inGameTimeInMinutes;
   final String liveNotes;
-  DateTime createdAt;
-  DateTime updatedAt;
+  final String? sceneIds;
+  final String? activeSceneId;
+  final String? encounterIds;
+  final String? questProgressIds;
+  final String? characterTrackingIds;
+  final DateTime createdAt;
+  final DateTime? startedAt;
+  final DateTime? completedAt;
 
   // Konstruktor
   SessionEntity({
@@ -21,11 +27,16 @@ class SessionEntity extends BaseEntity implements DatabaseEntity<SessionEntity> 
     required this.title,
     required this.inGameTimeInMinutes,
     required this.liveNotes,
+    this.sceneIds,
+    this.activeSceneId,
+    this.encounterIds,
+    this.questProgressIds,
+    this.characterTrackingIds,
     DateTime? createdAt,
-    DateTime? updatedAt,
+    this.startedAt,
+    this.completedAt,
   })  : _id = id,
-        createdAt = createdAt ?? DateTime.now(),
-        updatedAt = updatedAt ?? DateTime.now();
+        createdAt = createdAt ?? DateTime.now();
 
   /// Factory für Datenbank-Erstellung
   factory SessionEntity.fromMap(Map<String, dynamic> map) {
@@ -35,8 +46,14 @@ class SessionEntity extends BaseEntity implements DatabaseEntity<SessionEntity> 
       title: map['title'] as String,
       inGameTimeInMinutes: map['inGameTimeInMinutes'] as int,
       liveNotes: map['liveNotes'] as String,
+      sceneIds: map['sceneIds'] as String?,
+      activeSceneId: map['activeSceneId'] as String?,
+      encounterIds: map['encounterIds'] as String?,
+      questProgressIds: map['questProgressIds'] as String?,
+      characterTrackingIds: map['characterTrackingIds'] as String?,
       createdAt: map['createdAt'] != null ? DateTime.parse(map['createdAt'] as String) : DateTime.now(),
-      updatedAt: map['updatedAt'] != null ? DateTime.parse(map['updatedAt'] as String) : DateTime.now(),
+      startedAt: map['startedAt'] != null ? DateTime.parse(map['startedAt'] as String) : null,
+      completedAt: map['completedAt'] != null ? DateTime.parse(map['completedAt'] as String) : null,
     );
   }
 
@@ -48,8 +65,14 @@ class SessionEntity extends BaseEntity implements DatabaseEntity<SessionEntity> 
       title: session.title,
       inGameTimeInMinutes: session.inGameTimeInMinutes,
       liveNotes: session.liveNotes,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
+      sceneIds: session.sceneIds?.join(','),
+      activeSceneId: session.activeSceneId,
+      encounterIds: session.encounterIds?.join(','),
+      questProgressIds: session.questProgressIds?.join(','),
+      characterTrackingIds: session.characterTrackingIds?.join(','),
+      createdAt: session.createdAt,
+      startedAt: session.startedAt,
+      completedAt: session.completedAt,
     );
   }
 
@@ -68,8 +91,14 @@ class SessionEntity extends BaseEntity implements DatabaseEntity<SessionEntity> 
     'title',
     'inGameTimeInMinutes',
     'liveNotes',
+    'sceneIds',
+    'activeSceneId',
+    'encounterIds',
+    'questProgressIds',
+    'characterTrackingIds',
     'createdAt',
-    'updatedAt',
+    'startedAt',
+    'completedAt',
   ];
 
   @override
@@ -79,10 +108,17 @@ class SessionEntity extends BaseEntity implements DatabaseEntity<SessionEntity> 
       id TEXT PRIMARY KEY,
       campaignId TEXT NOT NULL,
       title TEXT NOT NULL,
-      inGameTimeInMinutes INTEGER NOT NULL DEFAULT 0,
-      liveNotes TEXT,
+      inGameTimeInMinutes INTEGER NOT NULL DEFAULT 480,
+      liveNotes TEXT DEFAULT '',
+      sceneIds TEXT,
+      activeSceneId TEXT,
+      encounterIds TEXT,
+      questProgressIds TEXT,
+      characterTrackingIds TEXT,
       createdAt TEXT NOT NULL,
-      updatedAt TEXT NOT NULL
+      startedAt TEXT,
+      completedAt TEXT,
+      FOREIGN KEY (campaignId) REFERENCES campaigns (id) ON DELETE CASCADE
     )
     ''',
   ];
@@ -102,8 +138,14 @@ class SessionEntity extends BaseEntity implements DatabaseEntity<SessionEntity> 
       'title': title,
       'inGameTimeInMinutes': inGameTimeInMinutes,
       'liveNotes': liveNotes,
+      'sceneIds': sceneIds,
+      'activeSceneId': activeSceneId,
+      'encounterIds': encounterIds,
+      'questProgressIds': questProgressIds,
+      'characterTrackingIds': characterTrackingIds,
       'createdAt': createdAt.toIso8601String(),
-      'updatedAt': updatedAt.toIso8601String(),
+      'startedAt': startedAt?.toIso8601String(),
+      'completedAt': completedAt?.toIso8601String(),
     };
   }
 
@@ -144,8 +186,14 @@ class SessionEntity extends BaseEntity implements DatabaseEntity<SessionEntity> 
     String? title,
     int? inGameTimeInMinutes,
     String? liveNotes,
+    String? sceneIds,
+    String? activeSceneId,
+    String? encounterIds,
+    String? questProgressIds,
+    String? characterTrackingIds,
     DateTime? createdAt,
-    DateTime? updatedAt,
+    DateTime? startedAt,
+    DateTime? completedAt,
   }) {
     return SessionEntity(
       id: id ?? this.id,
@@ -153,8 +201,14 @@ class SessionEntity extends BaseEntity implements DatabaseEntity<SessionEntity> 
       title: title ?? this.title,
       inGameTimeInMinutes: inGameTimeInMinutes ?? this.inGameTimeInMinutes,
       liveNotes: liveNotes ?? this.liveNotes,
+      sceneIds: sceneIds ?? this.sceneIds,
+      activeSceneId: activeSceneId ?? this.activeSceneId,
+      encounterIds: encounterIds ?? this.encounterIds,
+      questProgressIds: questProgressIds ?? this.questProgressIds,
+      characterTrackingIds: characterTrackingIds ?? this.characterTrackingIds,
       createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
+      startedAt: startedAt ?? this.startedAt,
+      completedAt: completedAt ?? this.completedAt,
     );
   }
 
@@ -245,6 +299,14 @@ class SessionEntity extends BaseEntity implements DatabaseEntity<SessionEntity> 
       title: title,
       inGameTimeInMinutes: inGameTimeInMinutes,
       liveNotes: liveNotes,
+      sceneIds: sceneIds?.split(',').where((s) => s.isNotEmpty).toList() ?? [],
+      activeSceneId: activeSceneId,
+      encounterIds: encounterIds?.split(',').where((s) => s.isNotEmpty).toList() ?? [],
+      questProgressIds: questProgressIds?.split(',').where((s) => s.isNotEmpty).toList() ?? [],
+      characterTrackingIds: characterTrackingIds?.split(',').where((s) => s.isNotEmpty).toList() ?? [],
+      createdAt: createdAt,
+      startedAt: startedAt,
+      completedAt: completedAt,
     );
   }
 
@@ -264,7 +326,6 @@ class SessionEntity extends BaseEntity implements DatabaseEntity<SessionEntity> 
       inGameTimeInMinutes: inGameTimeInMinutes,
       liveNotes: liveNotes?.trim() ?? '',
       createdAt: now,
-      updatedAt: now,
     );
   }
 
