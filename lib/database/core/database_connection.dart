@@ -38,7 +38,7 @@ class DatabaseConnection {
     
     final db = await openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       singleInstance: true,
@@ -69,6 +69,7 @@ class DatabaseConnection {
     await _createCreaturesTable(db);
     await _createOfficialMonstersTable(db);
     await _createOfficialSpellsTable(db);
+    await _createSoundsTable(db);
   }
   
   /// Erstellt die campaigns Tabelle
@@ -368,6 +369,33 @@ class DatabaseConnection {
     
     print('✅ official_spells Tabelle erstellt');
   }
+
+  /// Erstellt die sounds Tabelle
+  Future<void> _createSoundsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS sounds (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        sound_type TEXT NOT NULL,
+        description TEXT,
+        is_favorite INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        category_id TEXT,
+        duration INTEGER,
+        file_size REAL,
+        tags TEXT
+      )
+    ''');
+    
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_sounds_name ON sounds(name)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_sounds_sound_type ON sounds(sound_type)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_sounds_is_favorite ON sounds(is_favorite)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_sounds_category_id ON sounds(category_id)');
+    
+    print('✅ sounds Tabelle erstellt');
+  }
   
   /// Aktualisiert das Datenbankschema
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -398,6 +426,12 @@ class DatabaseConnection {
       } catch (e) {
         print('⚠️ Konnte equipment Spalte nicht hinzufügen: $e');
       }
+    }
+    
+    if (oldVersion < 8 && newVersion >= 8) {
+      print('🔄 Füge sounds Tabelle hinzu (v7 → v8)...');
+      await _createSoundsTable(db);
+      print('✅ sounds Tabelle erstellt (Version 8)');
     }
   }
   
