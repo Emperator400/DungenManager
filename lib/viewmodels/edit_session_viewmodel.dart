@@ -124,11 +124,9 @@ class EditSessionViewModel extends ChangeNotifier {
     if (_session == null) return;
 
     try {
-      final duplicatedSession = Session(
+      final duplicatedSession = _session!.copyWith(
         title: '${_session!.title} (Kopie)',
-        campaignId: _session!.campaignId,
-        inGameTimeInMinutes: _session!.inGameTimeInMinutes,
-        liveNotes: _session!.liveNotes,
+        id: '', // Neue ID für die Kopie
       );
       
       _session = duplicatedSession;
@@ -142,13 +140,7 @@ class EditSessionViewModel extends ChangeNotifier {
   // Update-Methoden für einzelne Felder
   void updateTitle(String title) {
     if (_session?.title != title) {
-      _session = Session(
-        id: _session!.id,
-        title: title,
-        campaignId: _session!.campaignId,
-        inGameTimeInMinutes: _session!.inGameTimeInMinutes,
-        liveNotes: _session!.liveNotes,
-      );
+      _session = _session!.copyWith(title: title);
       _markAsUnsaved();
       notifyListeners();
     }
@@ -156,13 +148,7 @@ class EditSessionViewModel extends ChangeNotifier {
 
   void updateCampaignId(String campaignId) {
     if (_session?.campaignId != campaignId) {
-      _session = Session(
-        id: _session!.id,
-        title: _session!.title,
-        campaignId: campaignId,
-        inGameTimeInMinutes: _session!.inGameTimeInMinutes,
-        liveNotes: _session!.liveNotes,
-      );
+      _session = _session!.copyWith(campaignId: campaignId);
       _markAsUnsaved();
       notifyListeners();
     }
@@ -170,13 +156,7 @@ class EditSessionViewModel extends ChangeNotifier {
 
   void updateInGameTimeInMinutes(int inGameTimeInMinutes) {
     if (_session?.inGameTimeInMinutes != inGameTimeInMinutes) {
-      _session = Session(
-        id: _session!.id,
-        title: _session!.title,
-        campaignId: _session!.campaignId,
-        inGameTimeInMinutes: inGameTimeInMinutes,
-        liveNotes: _session!.liveNotes,
-      );
+      _session = _session!.copyWith(inGameTimeInMinutes: inGameTimeInMinutes);
       _markAsUnsaved();
       notifyListeners();
     }
@@ -184,13 +164,7 @@ class EditSessionViewModel extends ChangeNotifier {
 
   void updateLiveNotes(String liveNotes) {
     if (_session?.liveNotes != liveNotes) {
-      _session = Session(
-        id: _session!.id,
-        title: _session!.title,
-        campaignId: _session!.campaignId,
-        inGameTimeInMinutes: _session!.inGameTimeInMinutes,
-        liveNotes: liveNotes,
-      );
+      _session = _session!.copyWith(liveNotes: liveNotes);
       _markAsUnsaved();
       notifyListeners();
     }

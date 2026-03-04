@@ -57,12 +57,8 @@ class ActiveSessionViewModel extends ChangeNotifier {
   /// HINWEIS: Verwendet jetzt das neue SessionModelRepository
   Future<void> addInGameTime(int minutesToAdd) async {
     await _executeWithErrorHandling(() async {
-      _currentSession = Session(
-        id: _currentSession.id,
-        campaignId: _currentSession.campaignId,
-        title: _currentSession.title,
+      _currentSession = _currentSession.copyWith(
         inGameTimeInMinutes: _currentSession.inGameTimeInMinutes + minutesToAdd,
-        liveNotes: _currentSession.liveNotes,
       );
       
       await _sessionRepository.update(_currentSession);
@@ -75,12 +71,8 @@ class ActiveSessionViewModel extends ChangeNotifier {
   /// HINWEIS: Verwendet jetzt das neue SessionModelRepository
   Future<void> updateSessionTitle(String newTitle) async {
     await _executeWithErrorHandling(() async {
-      _currentSession = Session(
-        id: _currentSession.id,
-        campaignId: _currentSession.campaignId,
+      _currentSession = _currentSession.copyWith(
         title: newTitle,
-        inGameTimeInMinutes: _currentSession.inGameTimeInMinutes,
-        liveNotes: _currentSession.liveNotes,
       );
       
       await _sessionRepository.update(_currentSession);
@@ -93,11 +85,7 @@ class ActiveSessionViewModel extends ChangeNotifier {
   /// HINWEIS: Verwendet jetzt das neue SessionModelRepository
   Future<void> updateLiveNotes(String newNotes) async {
     await _executeWithErrorHandling(() async {
-      _currentSession = Session(
-        id: _currentSession.id,
-        campaignId: _currentSession.campaignId,
-        title: _currentSession.title,
-        inGameTimeInMinutes: _currentSession.inGameTimeInMinutes,
+      _currentSession = _currentSession.copyWith(
         liveNotes: newNotes,
       );
       
