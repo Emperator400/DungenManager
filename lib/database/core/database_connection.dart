@@ -38,7 +38,7 @@ class DatabaseConnection {
     
     final db = await openDatabase(
       path,
-      version: 8,
+      version: 9,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       singleInstance: true,
@@ -71,6 +71,12 @@ class DatabaseConnection {
     await _createOfficialSpellsTable(db);
     await _createSoundsTable(db);
     await _createWikiEntriesTable(db);
+    // Session-Management Tabellen
+    await _createSessionsTable(db);
+    await _createEncountersTable(db);
+    await _createEncounterParticipantsTable(db);
+    await _createSessionQuestProgressTable(db);
+    await _createSessionCharacterTrackingTable(db);
   }
   
   /// Erstellt die wiki_entries Tabelle
@@ -428,6 +434,128 @@ class DatabaseConnection {
     
     print('✅ sounds Tabelle erstellt');
   }
+
+  /// Erstellt die sessions Tabelle
+  Future<void> _createSessionsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY,
+        campaignId TEXT NOT NULL,
+        title TEXT NOT NULL,
+        inGameTimeInMinutes INTEGER NOT NULL DEFAULT 480,
+        liveNotes TEXT DEFAULT '',
+        sceneIds TEXT,
+        activeSceneId TEXT,
+        encounterIds TEXT,
+        questProgressIds TEXT,
+        characterTrackingIds TEXT,
+        createdAt TEXT NOT NULL,
+        startedAt TEXT,
+        completedAt TEXT,
+        FOREIGN KEY (campaignId) REFERENCES campaigns (id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_sessions_campaign_id ON sessions(campaignId)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(createdAt)');
+
+    print('✅ sessions Tabelle erstellt');
+  }
+
+  /// Erstellt die encounters Tabelle
+  Future<void> _createEncountersTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS encounters (
+        id TEXT PRIMARY KEY,
+        sessionId TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        status TEXT NOT NULL DEFAULT 'planning',
+        participantIds TEXT,
+        createdAt TEXT NOT NULL,
+        startedAt TEXT,
+        completedAt TEXT,
+        FOREIGN KEY (sessionId) REFERENCES sessions (id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_encounters_session_id ON encounters(sessionId)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_encounters_status ON encounters(status)');
+
+    print('✅ encounters Tabelle erstellt');
+  }
+
+  /// Erstellt die encounter_participants Tabelle
+  Future<void> _createEncounterParticipantsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS encounter_participants (
+        id TEXT PRIMARY KEY,
+        encounterId TEXT NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'enemy',
+        currentHp INTEGER NOT NULL DEFAULT 0,
+        maxHp INTEGER NOT NULL DEFAULT 0,
+        conditions TEXT,
+        notes TEXT,
+        characterId TEXT,
+        FOREIGN KEY (encounterId) REFERENCES encounters (id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_encounter_participants_encounter_id ON encounter_participants(encounterId)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_encounter_participants_type ON encounter_participants(type)');
+
+    print('✅ encounter_participants Tabelle erstellt');
+  }
+
+  /// Erstellt die session_quest_progress Tabelle
+  Future<void> _createSessionQuestProgressTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS session_quest_progress (
+        id TEXT PRIMARY KEY,
+        sessionId TEXT NOT NULL,
+        questId INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'active',
+        progress INTEGER NOT NULL DEFAULT 0,
+        maxProgress INTEGER NOT NULL DEFAULT 100,
+        notes TEXT DEFAULT '',
+        createdAt TEXT NOT NULL,
+        completedAt TEXT,
+        FOREIGN KEY (sessionId) REFERENCES sessions (id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_session_quest_progress_session_id ON session_quest_progress(sessionId)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_session_quest_progress_quest_id ON session_quest_progress(questId)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_session_quest_progress_status ON session_quest_progress(status)');
+
+    print('✅ session_quest_progress Tabelle erstellt');
+  }
+
+  /// Erstellt die session_character_tracking Tabelle
+  Future<void> _createSessionCharacterTrackingTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS session_character_tracking (
+        id TEXT PRIMARY KEY,
+        sessionId TEXT NOT NULL,
+        characterId TEXT NOT NULL,
+        characterName TEXT NOT NULL,
+        isPresent INTEGER NOT NULL DEFAULT 1,
+        currentHp INTEGER NOT NULL DEFAULT 0,
+        maxHp INTEGER NOT NULL DEFAULT 0,
+        tempHp INTEGER NOT NULL DEFAULT 0,
+        conditions TEXT,
+        notes TEXT DEFAULT '',
+        createdAt TEXT NOT NULL,
+        FOREIGN KEY (sessionId) REFERENCES sessions (id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_session_character_tracking_session_id ON session_character_tracking(sessionId)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_session_character_tracking_character_id ON session_character_tracking(characterId)');
+
+    print('✅ session_character_tracking Tabelle erstellt');
+  }
   
   /// Aktualisiert das Datenbankschema
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -464,6 +592,16 @@ class DatabaseConnection {
       print('🔄 Füge sounds Tabelle hinzu (v7 → v8)...');
       await _createSoundsTable(db);
       print('✅ sounds Tabelle erstellt (Version 8)');
+    }
+    
+    if (oldVersion < 9 && newVersion >= 9) {
+      print('🔄 Füge Session-Management Tabellen hinzu (v8 → v9)...');
+      await _createSessionsTable(db);
+      await _createEncountersTable(db);
+      await _createEncounterParticipantsTable(db);
+      await _createSessionQuestProgressTable(db);
+      await _createSessionCharacterTrackingTable(db);
+      print('✅ Session-Management Tabellen erstellt (Version 9)');
     }
   }
   
