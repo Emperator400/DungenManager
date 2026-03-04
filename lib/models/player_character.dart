@@ -57,6 +57,9 @@ class PlayerCharacter {
   final bool isFavorite;
   final String version;
   
+  // Equipment als Map für Datenbank-Speicherung
+  final Map<String, String>? equipment;
+  
   // D&D 5e spezifische Felder
   final int proficiencyBonus;
   final int speed;
@@ -100,6 +103,7 @@ class PlayerCharacter {
     this.attacks,
     this.sourceId,
     this.isFavorite = false,
+    this.equipment,
     this.proficiencyBonus = 2,
     this.speed = 30,
     this.passivePerception = 10,
@@ -143,6 +147,7 @@ class PlayerCharacter {
     String version = '1.0',
     String? imagePath,
     bool isFavorite = false,
+    Map<String, String>? equipment,
     int proficiencyBonus = 2,
     int speed = 30,
     int passivePerception = 10,
@@ -185,6 +190,7 @@ class PlayerCharacter {
       version: version,
       imagePath: imagePath,
       isFavorite: isFavorite,
+      equipment: equipment,
       proficiencyBonus: proficiencyBonus,
       speed: speed,
       passivePerception: passivePerception,
@@ -227,6 +233,7 @@ class PlayerCharacter {
       'attacks': attacks,
       'attack_list': _serializeAttackList(attackList),
       'inventory': _serializeInventory(inventory),
+      'equipment': _serializeEquipment(equipment),
       
       // D&D-Klassifikation
       'size': size,
@@ -290,6 +297,7 @@ class PlayerCharacter {
       attacks: map['attacks']?.toString(),
       attackList: _deserializeAttackList(map['attack_list'] as String?),
       inventory: _deserializeInventory(map['inventory'] as String?),
+      equipment: _deserializeEquipment(map['equipment'] as String?),
       
       // D&D-Klassifikation
       size: ModelParsingHelper.safeStringOrNull(map, 'size', null),
@@ -383,6 +391,27 @@ class PlayerCharacter {
     }
   }
 
+  /// Serialisiert Equipment als JSON
+  static String _serializeEquipment(Map<String, String>? equipment) {
+    if (equipment == null || equipment.isEmpty) return '{}';
+    try {
+      return jsonEncode(equipment);
+    } catch (e) {
+      return '{}';
+    }
+  }
+
+  /// Deserialisiert Equipment aus JSON
+  static Map<String, String>? _deserializeEquipment(String? json) {
+    if (json == null || json.trim().isEmpty || json == '{}') return null;
+    try {
+      final decoded = jsonDecode(json) as Map<String, dynamic>;
+      return decoded.map((key, value) => MapEntry(key, value.toString()));
+    } catch (e) {
+      return null;
+    }
+  }
+
   /// Gibt den Tabellennamen für die Datenbank zurück
   static String get tableName => 'player_characters';
 
@@ -467,6 +496,7 @@ class PlayerCharacter {
     String? sourceId,
     bool? isFavorite,
     String? version,
+    Map<String, String>? equipment,
   }) {
     return PlayerCharacter(
       id: id ?? this.id,
@@ -503,6 +533,7 @@ class PlayerCharacter {
       sourceId: sourceId ?? this.sourceId,
       isFavorite: isFavorite ?? this.isFavorite,
       version: version ?? this.version,
+      equipment: equipment ?? this.equipment,
     );
   }
 

@@ -154,12 +154,22 @@ class CharacterEditorViewModel extends ChangeNotifier {
   Future<void> _loadCharacterData() async {
     final characterId = _isPlayerCharacter ? _playerCharacter!.id : _creature!.id;
     
+    print('🔄 [CharacterEditorViewModel] _loadCharacterData aufgerufen für Character: $characterId');
+    
     // Inventar laden mit neuem Repository
     try {
       if (_inventoryItemRepository != null) {
+        print('🔄 [CharacterEditorViewModel] Lade Inventar von Repository...');
         _inventory = await _inventoryItemRepository!.findByCharacter(characterId);
+        print('🔄 [CharacterEditorViewModel] ${_inventory.length} Items geladen');
+        
+        // Debug: Zeige Equipment-Status
+        for (final item in _inventory) {
+          print('  - ${item.name} (ID: ${item.id}): isEquipped=${item.isEquipped}, equipSlot=${item.equipSlot}');
+        }
       } else {
         // Kein Repository verfügbar - leeres Inventar
+        print('⚠️ [CharacterEditorViewModel] Kein InventoryItemRepository verfügbar');
         _inventory = [];
       }
       _displayInventory = List.from(_inventory);
@@ -170,6 +180,7 @@ class CharacterEditorViewModel extends ChangeNotifier {
     }
     
     // Item-Daten laden für schnelleren Zugriff
+    print('🔄 [CharacterEditorViewModel] Lade Item-Details...');
     _itemDetails = {};
     for (final inventoryItem in _displayInventory) {
       try {
@@ -186,6 +197,7 @@ class CharacterEditorViewModel extends ChangeNotifier {
         debugPrint('Fehler beim Laden von Item ${inventoryItem.itemId}: $e');
       }
     }
+    print('🔄 [CharacterEditorViewModel] ${_itemDetails.length} Item-Details geladen');
     
     // Gesamtgewicht berechnen
     try {
@@ -201,6 +213,7 @@ class CharacterEditorViewModel extends ChangeNotifier {
         ? _playerCharacter?.attackList ?? []
         : _creature?.attackList ?? [];
     
+    print('🔄 [CharacterEditorViewModel] notifyListeners aufgerufen - UI sollte aktualisieren');
     notifyListeners();
   }
 
@@ -314,13 +327,17 @@ class CharacterEditorViewModel extends ChangeNotifier {
   Future<void> equipItem(String inventoryItemId, EquipSlot equipSlot) async {
     final characterId = _isPlayerCharacter ? _playerCharacter!.id : _creature!.id;
     
+    print('🎯 [CharacterEditorViewModel] equipItem aufgerufen: inventoryItemId=$inventoryItemId, slot=$equipSlot');
+    
     await _executeWithErrorHandling(() async {
       await _inventoryService.equipItem(
         inventoryItemId: inventoryItemId,
         characterId: characterId,
         equipSlot: equipSlot,
       );
+      print('🎯 [CharacterEditorViewModel] Lade Character-Daten neu...');
       await _loadCharacterData(); // Daten neu laden
+      print('🎯 [CharacterEditorViewModel] Character-Daten neu geladen, notifyListeners aufgerufen');
     });
   }
 
@@ -328,9 +345,13 @@ class CharacterEditorViewModel extends ChangeNotifier {
   Future<void> unequipItem(String inventoryItemId) async {
     final characterId = _isPlayerCharacter ? _playerCharacter!.id : _creature!.id;
     
+    print('🎯 [CharacterEditorViewModel] unequipItem aufgerufen: inventoryItemId=$inventoryItemId');
+    
     await _executeWithErrorHandling(() async {
       await _inventoryService.unequipItem(inventoryItemId, characterId);
+      print('🎯 [CharacterEditorViewModel] Lade Character-Daten neu...');
       await _loadCharacterData(); // Daten neu laden
+      print('🎯 [CharacterEditorViewModel] Character-Daten neu geladen, notifyListeners aufgerufen');
     });
   }
 

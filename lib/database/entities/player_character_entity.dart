@@ -81,6 +81,7 @@ class PlayerCharacterEntity extends BaseEntity implements DatabaseEntity<PlayerC
     'campaign_id',
     'is_active',
     'character_data',
+    'equipment',
     'created_at',
     'updated_at',
   ];
@@ -106,6 +107,7 @@ class PlayerCharacterEntity extends BaseEntity implements DatabaseEntity<PlayerC
       campaign_id TEXT,
       is_active INTEGER NOT NULL DEFAULT 0,
       character_data TEXT,
+      equipment TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       FOREIGN KEY (campaign_id) REFERENCES campaigns (id) ON DELETE SET NULL

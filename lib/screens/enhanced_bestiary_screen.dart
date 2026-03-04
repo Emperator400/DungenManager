@@ -3,8 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/creature.dart';
 import '../theme/dnd_theme.dart';
 import '../viewmodels/bestiary_viewmodel.dart';
-import '../widgets/character_editor/character_editor_controller.dart' show CharacterType;
-import 'unified_character_editor_screen.dart';
+import 'enhanced_edit_creature_screen.dart';
 
 class EnhancedBestiaryScreen extends StatefulWidget {
   const EnhancedBestiaryScreen({super.key});
@@ -493,15 +492,16 @@ class _EnhancedBestiaryScreenState extends State<EnhancedBestiaryScreen>
               child: IconButton(
                 icon: Icon(Icons.edit, color: DnDTheme.arcaneBlue),
                 onPressed: () async {
-                  await Navigator.of(context).push(
+                  final result = await Navigator.of(context).push<bool>(
                     MaterialPageRoute(
-                      builder: (ctx) => UnifiedCharacterEditorScreen(
-                        characterType: creature.type == 'Humanoid' ? CharacterType.npc : CharacterType.monster,
-                        creatureToEdit: creature,
+                      builder: (ctx) => EnhancedEditCreatureScreen(
+                        creature: creature,
                       ),
                     ),
                   );
-                  _loadData();
+                  if (result == true) {
+                    _loadData();
+                  }
                 },
                 tooltip: 'Bearbeiten',
               ),
@@ -702,14 +702,14 @@ class _EnhancedBestiaryScreenState extends State<EnhancedBestiaryScreen>
           ),
           child: FloatingActionButton.extended(
             onPressed: () async {
-              await Navigator.of(context).push(
+              final result = await Navigator.of(context).push<bool>(
                 MaterialPageRoute(
-                  builder: (ctx) => const UnifiedCharacterEditorScreen(
-                    characterType: CharacterType.monster,
-                  ),
+                  builder: (ctx) => const EnhancedEditCreatureScreen(),
                 ),
               );
-              _loadData();
+              if (result == true) {
+                _loadData();
+              }
             },
             backgroundColor: DnDTheme.successGreen,
             foregroundColor: Colors.white,

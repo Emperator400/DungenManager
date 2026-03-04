@@ -96,9 +96,9 @@ void main() {
         expect(ModelParsingHelper.safeIntOrNull(testMap, 'missing', null), isNull);
       });
 
-      test('should return null for zero value', () {
+      test('should return zero value as valid integer', () {
         final mapWithZero = {'zero': 0};
-        expect(ModelParsingHelper.safeIntOrNull(mapWithZero, 'zero', null), isNull);
+        expect(ModelParsingHelper.safeIntOrNull(mapWithZero, 'zero', null), equals(0));
       });
     });
 

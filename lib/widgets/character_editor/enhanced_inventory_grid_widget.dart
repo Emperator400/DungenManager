@@ -176,70 +176,60 @@ class _EnhancedInventoryGridWidgetState extends State<EnhancedInventoryGridWidge
       ),
     );
 
-    return DragTarget<DisplayInventoryItem>(
-      onAccept: (draggedItem) {
-        if (widget.canEditItems) {
-          _handleEquipItem(draggedItem, slot);
-        }
-      },
-      builder: (context, candidateData, rejectedData) {
-        final isHighlighted = candidateData.isNotEmpty;
-        
-        return Container(
-          width: 85,
-          height: 85,
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: isHighlighted ? Colors.green : Colors.grey.shade600,
-              width: isHighlighted ? 2 : 1,
+    // Entferne DragTarget - verursacht ParentDataWidget Exception
+    return Container(
+      width: 85,
+      height: 85,
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: Colors.grey.shade600,
+          width: 1,
+        ),
+        borderRadius: BorderRadius.circular(8),
+        color: equippedItem.item.id.isNotEmpty 
+            ? Colors.amber.shade800.withOpacity(0.3)
+            : Colors.grey.shade700,
+      ),
+      child: Stack(
+        children: [
+          // Slot-Icon
+          if (equippedItem.item.id.isEmpty)
+            Center(
+              child: Icon(
+                _getEquipSlotIcon(slot),
+                size: 20,
+                color: Colors.grey.shade500,
+              ),
             ),
-            borderRadius: BorderRadius.circular(8),
-            color: equippedItem.item.id.isNotEmpty 
-                ? Colors.amber.shade800.withOpacity(0.3)
-                : Colors.grey.shade700,
-          ),
-          child: Stack(
-            children: [
-              // Slot-Icon
-              if (equippedItem.item.id.isEmpty)
-                Center(
-                  child: Icon(
-                    _getEquipSlotIcon(slot),
-                    size: 20,
-                    color: Colors.grey.shade500,
+          
+          // Ausgerüstetes Item
+          if (equippedItem.item.id.isNotEmpty)
+            _buildEquippedItemCompact(equippedItem),
+          
+          // Remove-Button (nur wenn editierbar)
+          if (equippedItem.item.id.isNotEmpty && widget.canEditItems)
+            Positioned(
+              top: 2,
+              right: 2,
+              child: GestureDetector(
+                onTap: () => widget.onUnequipItem(equippedItem),
+                child: Container(
+                  width: 18,
+                  height: 18,
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.close,
+                    color: Colors.white,
+                    size: 12,
                   ),
                 ),
-              
-              // Ausgerüstetes Item
-              if (equippedItem.item.id.isNotEmpty)
-                _buildEquippedItemCompact(equippedItem),
-              
-              // Remove-Button (nur wenn editierbar)
-              if (equippedItem.item.id.isNotEmpty && widget.canEditItems)
-                Positioned(
-                  top: 2,
-                  right: 2,
-                  child: GestureDetector(
-                    onTap: () => widget.onUnequipItem(equippedItem),
-                    child: Container(
-                      width: 18,
-                      height: 18,
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 12,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        );
-      },
+              ),
+            ),
+        ],
+      ),
     );
   }
 

@@ -26,8 +26,14 @@ class DatabaseMigration {
     // Erstelle InventoryItems-Tabelle
     await _createInventoryItemsTable(db);
     
+    // Erstelle Sounds-Tabelle
+    await _createSoundsTable(db);
+    
     // Füge is_favorite Spalte hinzu, falls sie nicht existiert
     await _addIsFavoriteColumn(db);
+    
+    // Füge equipment Spalte hinzu, falls sie nicht existiert
+    await _addEquipmentColumn(db);
     
     print('Database migration completed successfully');
   }
@@ -163,6 +169,43 @@ class DatabaseMigration {
     }
   }
 
+  /// Erstellt die Sounds-Tabelle (für die Sound-Bibliothek)
+  Future<void> _createSoundsTable(Database db) async {
+    // Prüfe ob Tabelle bereits existiert
+    final result = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='sounds'",
+    );
+
+    if (result.isEmpty) {
+      await db.execute('''
+        CREATE TABLE sounds (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          file_path TEXT NOT NULL,
+          sound_type TEXT NOT NULL,
+          description TEXT,
+          is_favorite INTEGER NOT NULL DEFAULT 0,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          category_id TEXT,
+          duration INTEGER,
+          file_size REAL,
+          tags TEXT
+        )
+      ''');
+
+      // Erstelle Indizes
+      await db.execute('CREATE INDEX idx_sounds_name ON sounds(name)');
+      await db.execute('CREATE INDEX idx_sounds_sound_type ON sounds(sound_type)');
+      await db.execute('CREATE INDEX idx_sounds_is_favorite ON sounds(is_favorite)');
+      await db.execute('CREATE INDEX idx_sounds_category_id ON sounds(category_id)');
+
+      print('Created sounds table with indexes');
+    } else {
+      print('Sounds table already exists');
+    }
+  }
+
   /// Erstellt die Campaign-Tabelle
   Future<void> _createCampaignTable(Database db) async {
     final campaignEntity = CampaignEntity(
@@ -213,6 +256,36 @@ class DatabaseMigration {
     } catch (e) {
       // Wenn die Tabelle noch nicht existiert, wird sie von _createCampaignTable erstellt
       print('Note: Could not add is_favorite column (table might not exist yet): $e');
+    }
+  }
+
+  /// Fügt die equipment Spalte zur player_characters Tabelle hinzu, falls sie nicht existiert
+  Future<void> _addEquipmentColumn(Database db) async {
+    try {
+      // Prüfe ob Tabelle existiert
+      final tableExists = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='player_characters'",
+      );
+      
+      if (tableExists.isEmpty) {
+        print('Note: player_characters table does not exist yet');
+        return;
+      }
+      
+      // Prüfe ob Spalte bereits existiert
+      final tableInfo = await db.rawQuery('PRAGMA table_info(player_characters)');
+      final hasEquipment = tableInfo.any((column) => column['name'] == 'equipment');
+      
+      if (!hasEquipment) {
+        await db.execute(
+          'ALTER TABLE player_characters ADD COLUMN equipment TEXT',
+        );
+        print('Added equipment column to player_characters table');
+      } else {
+        print('equipment column already exists in player_characters table');
+      }
+    } catch (e) {
+      print('Error adding equipment column: $e');
     }
   }
   

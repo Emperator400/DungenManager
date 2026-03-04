@@ -281,7 +281,7 @@ class _EnhancedInventoryTabWidgetState extends State<EnhancedInventoryTabWidget>
       unequippedItems: unequippedDisplayItems,
       onEquipItem: (displayItem, slot) => _handleEquipItem(displayItem, slot, viewModel),
       onUnequipItem: (displayItem) => _handleUnequipItem(displayItem, viewModel),
-      onManageItem: _handleManageItem,
+      onManageItem: (displayItem) => _handleInventoryItemTap(displayItem, viewModel),
       onUpdateQuantity: (displayItem, quantity) => _handleUpdateQuantity(displayItem, quantity, viewModel),
       onRemoveItem: (displayItem) => _handleRemoveItem(displayItem, viewModel),
       canEditItems: _canEditItems(viewModel),
@@ -634,6 +634,25 @@ class _EnhancedInventoryTabWidgetState extends State<EnhancedInventoryTabWidget>
       _showSuccessSnackBar('${displayItem.item.name} entfernt');
     } catch (e) {
       _showErrorSnackBar('Fehler beim Entfernen: $e');
+    }
+  }
+
+  /// Handelt Taps auf Inventar-Items in der Rasteransicht
+  /// - Nicht ausgerüstet: Öffnet Equip-Dialog
+  /// - Bereits ausgerüstet: Legt Item sofort ab
+  void _handleInventoryItemTap(DisplayInventoryItem displayItem, CharacterEditorViewModel viewModel) {
+    print('👆 [EnhancedInventoryTabWidget] Item angeklickt: ${displayItem.item.name}');
+    print('  - isEquipped: ${displayItem.inventoryItem.isEquipped}');
+    print('  - equipSlot: ${displayItem.inventoryItem.equipSlot}');
+    
+    if (displayItem.inventoryItem.isEquipped) {
+      // Item ist bereits ausgerüstet → Ablegen
+      print('👆 [EnhancedInventoryTabWidget] Item ist ausgerüstet → lege ab');
+      _handleUnequipItem(displayItem, viewModel);
+    } else {
+      // Item ist nicht ausgerüstet → Equip-Dialog zeigen
+      print('👆 [EnhancedInventoryTabWidget] Item ist nicht ausgerüstet → zeige Equip-Dialog');
+      _showEquipDialog(displayItem, viewModel);
     }
   }
 

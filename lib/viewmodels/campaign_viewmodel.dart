@@ -39,39 +39,49 @@ class CampaignViewModel extends ChangeNotifier {
   }) : _campaignRepo = campaignRepo,
        _characterRepo = characterRepo,
        _sessionService = sessionService {
+    debugPrint('🏗️ [CampaignViewModel] Konstruktor aufgerufen');
     _initializeCampaigns();
   }
 
   /// Initialisiert die Kampagnenliste
   Future<void> _initializeCampaigns() async {
     try {
+      debugPrint('🔄 [CampaignViewModel] _initializeCampaigns() gestartet');
       _setLoading(true);
       _setError(null);
       
-      debugPrint('CampaignViewModel: _initializeCampaigns() - Loading campaigns');
-      
       if (_campaignRepo != null) {
+        debugPrint('📊 [CampaignViewModel] Repository verfügbar, lade Kampagnen...');
         _campaigns = await _campaignRepo!.findAll();
+        debugPrint('✅ [CampaignViewModel] ${_campaigns.length} Kampagnen geladen');
+        
+        // Invalidate cache
+        _invalidateFilteredCache();
       } else {
-        debugPrint('CampaignViewModel: CampaignModelRepository nicht verfügbar');
+        debugPrint('⚠️ [CampaignViewModel] CampaignModelRepository nicht verfügbar');
         _campaigns = [];
       }
       
-      debugPrint('CampaignViewModel: _initializeCampaigns() - Result: ${_campaigns.length} campaigns');
-      debugPrint('CampaignViewModel: _initializeCampaigns() - Loaded ${_campaigns.length} campaigns');
       notifyListeners();
       
-    } catch (e) {
-      debugPrint('CampaignViewModel: _initializeCampaigns() - Exception: $e');
+    } catch (e, stackTrace) {
+      debugPrint('❌ [CampaignViewModel] Exception in _initializeCampaigns(): $e');
+      debugPrint('❌ [CampaignViewModel] StackTrace: $stackTrace');
       _setError('Ausnahme beim Laden der Kampagnen: $e');
+      
+      // Setze eine leere Liste, damit die App nicht abstürzt
+      _campaigns = [];
+      _invalidateFilteredCache();
+      notifyListeners();
     } finally {
       _setLoading(false);
+      debugPrint('🏁 [CampaignViewModel] _initializeCampaigns() abgeschlossen');
     }
   }
 
   // State
   List<Campaign> _campaigns = [];
-  List<Campaign> get campaigns => List.unmodifiable(_campaigns);
+  List<Campaign> get campaigns => _campaigns;
   
   Campaign? _selectedCampaign;
   Campaign? get selectedCampaign => _selectedCampaign;
@@ -96,55 +106,83 @@ class CampaignViewModel extends ChangeNotifier {
   
   bool get hasActiveFilters => _searchQuery.isNotEmpty;
   
-  // Filtered campaigns
+  // Cached filtered campaigns to prevent memory leaks
+  List<Campaign>? _cachedFilteredCampaigns;
+  bool _isCacheValid = false;
+  
   List<Campaign> get filteredCampaigns {
-    final filtered = _campaigns.where((campaign) {
-      // Search filter
-      if (_searchQuery.isNotEmpty) {
-        final query = _searchQuery.toLowerCase();
-        if (!(campaign.title.toLowerCase().contains(query) ||
-               campaign.description.toLowerCase().contains(query))) {
-          return false;
+    if (_isCacheValid && _cachedFilteredCampaigns != null) {
+      return _cachedFilteredCampaigns!;
+    }
+    
+    debugPrint('🔍 [CampaignViewModel] Berechne gefilterte Kampagnen (Cache-Miss)');
+    
+    final filtered = <Campaign>[];
+    
+    // Search filter
+    if (_searchQuery.isEmpty) {
+      filtered.addAll(_campaigns);
+    } else {
+      final query = _searchQuery.toLowerCase();
+      for (final campaign in _campaigns) {
+        if (campaign.title.toLowerCase().contains(query) ||
+            campaign.description.toLowerCase().contains(query)) {
+          filtered.add(campaign);
         }
       }
-      return true;
-    }).toList();
+    }
     
     // Sorting
-    filtered.sort((a, b) => _compareCampaigns(a, b));
+    if (filtered.length > 1) {
+      filtered.sort((a, b) => _compareCampaigns(a, b));
+    }
+    
+    _cachedFilteredCampaigns = filtered;
+    _isCacheValid = true;
     
     return filtered;
+  }
+  
+  void _invalidateFilteredCache() {
+    _cachedFilteredCampaigns = null;
+    _isCacheValid = false;
   }
   
   // Methods
   
   /// Loads all campaigns
   Future<void> loadCampaigns() async {
-    debugPrint('CampaignViewModel: loadCampaigns() called');
+    debugPrint('🔄 [CampaignViewModel] loadCampaigns() aufgerufen');
     _setLoading(true);
     _setError(null);
     
     try {
-      debugPrint('CampaignViewModel: Calling findAll()');
-      
       if (_campaignRepo != null) {
+        debugPrint('📊 [CampaignViewModel] Rufe findAll() auf...');
         _campaigns = await _campaignRepo!.findAll();
+        debugPrint('✅ [CampaignViewModel] ${_campaigns.length} Kampagnen geladen');
+        
+        _invalidateFilteredCache();
       } else {
+        debugPrint('⚠️ [CampaignViewModel] CampaignModelRepository nicht verfügbar');
         throw Exception('CampaignModelRepository nicht verfügbar');
       }
       
-      debugPrint('CampaignViewModel: findAll() result - campaigns: ${_campaigns.length}');
-      debugPrint('CampaignViewModel: Updated _campaigns with ${_campaigns.length} campaigns');
-      
       notifyListeners();
-      debugPrint('CampaignViewModel: notifyListeners() called');
+      debugPrint('🔔 [CampaignViewModel] notifyListeners() aufgerufen');
       
-    } catch (e) {
-      debugPrint('CampaignViewModel: Exception in loadCampaigns() - $e');
+    } catch (e, stackTrace) {
+      debugPrint('❌ [CampaignViewModel] Exception in loadCampaigns(): $e');
+      debugPrint('❌ [CampaignViewModel] StackTrace: $stackTrace');
       _setError('Fehler beim Laden der Kampagnen: $e');
+      
+      // Setze eine leere Liste, damit die App nicht abstürzt
+      _campaigns = [];
+      _invalidateFilteredCache();
+      notifyListeners();
     } finally {
       _setLoading(false);
-      debugPrint('CampaignViewModel: loadCampaigns() completed, loading: $_isLoading');
+      debugPrint('🏁 [CampaignViewModel] loadCampaigns() abgeschlossen');
     }
   }
   
@@ -158,7 +196,7 @@ class CampaignViewModel extends ChangeNotifier {
     required String title,
     required String description,
   }) async {
-    debugPrint('CampaignViewModel: createCampaign() called with title: $title');
+    debugPrint('🔄 [CampaignViewModel] createCampaign() aufgerufen: $title');
     _setLoading(true);
     _setError(null);
     
@@ -168,23 +206,20 @@ class CampaignViewModel extends ChangeNotifier {
         description: description,
       );
       
-      debugPrint('CampaignViewModel: Calling create()');
-      
       if (_campaignRepo != null) {
         final savedCampaign = await _campaignRepo!.create(campaign);
-        debugPrint('CampaignViewModel: save() result - data: ${savedCampaign.title}');
+        debugPrint('✅ [CampaignViewModel] Kampagne gespeichert: ${savedCampaign.title}');
         _campaigns.insert(0, savedCampaign);
+        _invalidateFilteredCache();
       } else {
         throw Exception('CampaignModelRepository nicht verfügbar');
       }
       
-      debugPrint('CampaignViewModel: Added campaign to list, total campaigns: ${_campaigns.length}');
-      
       notifyListeners();
-      debugPrint('CampaignViewModel: notifyListeners() called after create');
+      debugPrint('🔔 [CampaignViewModel] notifyListeners() nach createCampaign()');
       
     } catch (e) {
-      debugPrint('CampaignViewModel: Exception in createCampaign - $e');
+      debugPrint('❌ [CampaignViewModel] Exception in createCampaign(): $e');
       _setError('Fehler beim Erstellen der Kampagne: $e');
     } finally {
       _setLoading(false);
@@ -213,6 +248,8 @@ class CampaignViewModel extends ChangeNotifier {
         if (_selectedCampaign?.id == campaign.id) {
           _selectedCampaign = updatedCampaign;
         }
+        
+        _invalidateFilteredCache();
       }
       
       notifyListeners();
@@ -242,6 +279,7 @@ class CampaignViewModel extends ChangeNotifier {
         _selectedCampaign = _campaigns.isNotEmpty ? _campaigns.first : null;
       }
       
+      _invalidateFilteredCache();
       notifyListeners();
     } catch (e) {
       _setError('Fehler beim Löschen der Kampagne: $e');
@@ -277,6 +315,7 @@ class CampaignViewModel extends ChangeNotifier {
       // Select duplicated campaign
       await selectCampaign(savedCampaign);
       
+      _invalidateFilteredCache();
       notifyListeners();
     } catch (e) {
       _setError('Fehler beim Duplizieren der Kampagne: $e');
@@ -292,32 +331,36 @@ class CampaignViewModel extends ChangeNotifier {
   
   void setSortOption(CampaignSortOption option) {
     _sortOption = option;
+    _invalidateFilteredCache();
     notifyListeners();
   }
   
   void toggleSortOrder() {
     _ascendingOrder = !_ascendingOrder;
+    _invalidateFilteredCache();
     notifyListeners();
   }
   
   void setSearchQuery(String query) {
     _searchQuery = query;
+    _invalidateFilteredCache();
     notifyListeners();
   }
   
   void clearSearch() {
     _searchQuery = '';
+    _invalidateFilteredCache();
     notifyListeners();
   }
   
   // Filter methods for enhanced filter chips
   void searchCampaigns(String query) {
-    _searchQuery = query;
-    notifyListeners();
+    setSearchQuery(query);
   }
   
   void setSortAscending(bool ascending) {
     _ascendingOrder = ascending;
+    _invalidateFilteredCache();
     notifyListeners();
   }
   
@@ -331,7 +374,7 @@ class CampaignViewModel extends ChangeNotifier {
     _setError(null);
   }
   
-  /// Toggles the favorite/archive status of a campaign
+  /// Toggles favorite/archive status of a campaign
   Future<void> toggleFavorite(Campaign campaign) async {
     try {
       if (_campaignRepo != null) {
@@ -352,6 +395,8 @@ class CampaignViewModel extends ChangeNotifier {
           if (_selectedCampaign?.id == campaign.id) {
             _selectedCampaign = updatedCampaign;
           }
+          
+          _invalidateFilteredCache();
         }
       } else {
         throw Exception('CampaignModelRepository nicht verfügbar');
@@ -372,11 +417,11 @@ class CampaignViewModel extends ChangeNotifier {
         final characters = await _characterRepo!.findByCampaign(campaignId);
         return characters.length;
       } else {
-        debugPrint('CampaignViewModel: PlayerCharacterModelRepository nicht verfügbar');
+        debugPrint('⚠️ [CampaignViewModel] PlayerCharacterModelRepository nicht verfügbar');
         return 0;
       }
     } catch (e) {
-      debugPrint('CampaignViewModel: Fehler beim Ermitteln der Hero-Count: $e');
+      debugPrint('❌ [CampaignViewModel] Fehler beim Ermitteln der Hero-Count: $e');
       return 0;
     }
   }
@@ -471,6 +516,7 @@ class CampaignViewModel extends ChangeNotifier {
   
   @override
   void dispose() {
+    debugPrint('🗑️ [CampaignViewModel] dispose() aufgerufen');
     super.dispose();
   }
 }

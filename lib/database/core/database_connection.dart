@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../migrations/refactoring_migration_v2.dart';
+import '../migrations/database_migration.dart';
 
 /// Verwaltet die Datenbankverbindung und sorgt für Singleton-Pattern
 class DatabaseConnection {
@@ -18,7 +19,12 @@ class DatabaseConnection {
   
   /// Datenbank-Instanz
   Future<Database> get database async {
-    if (_database != null) return _database!;
+    print('🔌 [DatabaseConnection] database getter aufgerufen');
+    if (_database != null) {
+      print('✅ [DatabaseConnection] Datenbank bereits initialisiert');
+      return _database!;
+    }
+    print('⏳ [DatabaseConnection] Initialisiere Datenbank...');
     _database = await _initDatabase();
     return _database!;
   }
@@ -26,18 +32,21 @@ class DatabaseConnection {
   /// Initialisiert die Datenbankverbindung
   Future<Database> _initDatabase() async {
     final path = join(await getDatabasesPath(), 'dnd_helper_v2.db');
+    print('📁 [DatabaseConnection] Datenbank-Pfad: $path');
     
     _migration = RefactoringMigrationV2(this);
     
     final db = await openDatabase(
       path,
-      version: 5, // Aktualisiert auf Version 5 - character_id statt owner_id
+      version: 7,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
+      singleInstance: true,
     );
     
-    // Stelle sicher, dass die items Tabelle immer existiert
-    await _ensureItemsTableExists(db);
+    // TEMPORÄR DEAKTIVIERT - Verursacht Freeze
+    print('⚠️ [DatabaseConnection] Migrationen vorübergehend deaktiviert');
+    // await _runDatabaseMigrations(db);
     
     return db;
   }
@@ -46,7 +55,6 @@ class DatabaseConnection {
   Future<void> _onCreate(Database db, int version) async {
     print('📦 Erstelle Datenbank-Tabellen...');
     
-    // Erstelle alle Tabellen
     await _createAllTables(db);
     
     print('✅ Alle Datenbank-Tabellen erstellt');
@@ -58,6 +66,9 @@ class DatabaseConnection {
     await _createPlayerCharactersTable(db);
     await _createInventoryItemsTable(db);
     await _createItemsTable(db);
+    await _createCreaturesTable(db);
+    await _createOfficialMonstersTable(db);
+    await _createOfficialSpellsTable(db);
   }
   
   /// Erstellt die campaigns Tabelle
@@ -84,7 +95,6 @@ class DatabaseConnection {
       )
     ''');
     
-    // Indizes für campaigns
     await db.execute('CREATE INDEX IF NOT EXISTS idx_campaigns_title ON campaigns(title)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_campaigns_status ON campaigns(status)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_campaigns_dungeon_master ON campaigns(dungeon_master_id)');
@@ -119,6 +129,7 @@ class DatabaseConnection {
         attacks TEXT,
         attack_list TEXT,
         inventory TEXT,
+        equipment TEXT,
         size TEXT NOT NULL DEFAULT 'Medium',
         type TEXT NOT NULL DEFAULT 'Humanoid',
         subtype TEXT,
@@ -143,7 +154,6 @@ class DatabaseConnection {
       )
     ''');
     
-    // Indizes für player_characters
     await db.execute('CREATE INDEX IF NOT EXISTS idx_player_characters_campaign_id ON player_characters(campaign_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_player_characters_name ON player_characters(name)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_player_characters_level ON player_characters(level)');
@@ -175,7 +185,6 @@ class DatabaseConnection {
       )
     ''');
     
-    // Indizes für inventory_items
     await db.execute('CREATE INDEX IF NOT EXISTS idx_inventory_items_character_id ON inventory_items(character_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_inventory_items_name ON inventory_items(name)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_inventory_items_is_equipped ON inventory_items(is_equipped)');
@@ -183,7 +192,7 @@ class DatabaseConnection {
     print('✅ inventory_items Tabelle erstellt');
   }
   
-  /// Erstellt die items Tabelle (allgemeine Item-Bibliothek)
+  /// Erstellt die items Tabelle
   Future<void> _createItemsTable(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS items (
@@ -221,7 +230,6 @@ class DatabaseConnection {
       )
     ''');
     
-    // Indizes für items
     await db.execute('CREATE INDEX IF NOT EXISTS idx_items_name ON items(name)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_items_item_type ON items(item_type)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_items_rarity ON items(rarity)');
@@ -229,120 +237,167 @@ class DatabaseConnection {
     print('✅ items Tabelle erstellt');
   }
   
+  /// Erstellt die creatures Tabelle
+  Future<void> _createCreaturesTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS creatures (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        max_hp INTEGER NOT NULL DEFAULT 10,
+        current_hp INTEGER NOT NULL DEFAULT 10,
+        armor_class INTEGER NOT NULL DEFAULT 10,
+        speed TEXT NOT NULL DEFAULT '30ft',
+        attacks TEXT NOT NULL DEFAULT '',
+        initiative_bonus INTEGER NOT NULL DEFAULT 0,
+        strength INTEGER NOT NULL DEFAULT 10,
+        dexterity INTEGER NOT NULL DEFAULT 10,
+        constitution INTEGER NOT NULL DEFAULT 10,
+        intelligence INTEGER NOT NULL DEFAULT 10,
+        wisdom INTEGER NOT NULL DEFAULT 10,
+        charisma INTEGER NOT NULL DEFAULT 10,
+        is_player INTEGER NOT NULL DEFAULT 0,
+        inventory TEXT NOT NULL DEFAULT '[]',
+        gold REAL NOT NULL DEFAULT 0.0,
+        silver REAL NOT NULL DEFAULT 0.0,
+        copper REAL NOT NULL DEFAULT 0.0,
+        official_monster_id TEXT,
+        official_spell_ids TEXT,
+        official_item_ids TEXT,
+        size TEXT,
+        type TEXT,
+        subtype TEXT,
+        alignment TEXT,
+        challenge_rating INTEGER,
+        special_abilities TEXT,
+        legendary_actions TEXT,
+        is_custom INTEGER NOT NULL DEFAULT 1,
+        description TEXT,
+        attack_list TEXT NOT NULL DEFAULT '[]',
+        source_type TEXT NOT NULL DEFAULT 'custom',
+        source_id TEXT,
+        is_favorite INTEGER NOT NULL DEFAULT 0,
+        version TEXT NOT NULL DEFAULT '1.0',
+        initiative INTEGER,
+        conditions TEXT NOT NULL DEFAULT ''
+      )
+    ''');
+    
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_creatures_name ON creatures(name)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_creatures_type ON creatures(type)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_creatures_source_type ON creatures(source_type)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_creatures_is_favorite ON creatures(is_favorite)');
+    
+    print('✅ creatures Tabelle erstellt');
+  }
+  
+  /// Erstellt die official_monsters Tabelle
+  Future<void> _createOfficialMonstersTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS official_monsters (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        size TEXT,
+        type TEXT,
+        subtype TEXT,
+        alignment TEXT,
+        armor_class TEXT NOT NULL DEFAULT '10',
+        hit_points TEXT NOT NULL DEFAULT '1',
+        hit_dice TEXT NOT NULL DEFAULT '1d8',
+        speed TEXT NOT NULL DEFAULT '30 ft.',
+        strength INTEGER NOT NULL DEFAULT 10,
+        dexterity INTEGER NOT NULL DEFAULT 10,
+        constitution INTEGER NOT NULL DEFAULT 10,
+        intelligence INTEGER NOT NULL DEFAULT 10,
+        wisdom INTEGER NOT NULL DEFAULT 10,
+        charisma INTEGER NOT NULL DEFAULT 10,
+        strength_save INTEGER,
+        dexterity_save INTEGER,
+        constitution_save INTEGER,
+        intelligence_save INTEGER,
+        wisdom_save INTEGER,
+        charisma_save INTEGER,
+        challenge_rating TEXT NOT NULL DEFAULT '1/8',
+        experience_points INTEGER NOT NULL DEFAULT 10,
+        skills TEXT,
+        damage_vulnerabilities TEXT,
+        damage_resistances TEXT,
+        damage_immunities TEXT,
+        condition_immunities TEXT,
+        senses TEXT NOT NULL DEFAULT 'passive Perception 10',
+        languages TEXT NOT NULL DEFAULT '',
+        special_abilities TEXT,
+        actions TEXT,
+        legendary_actions TEXT,
+        description TEXT NOT NULL DEFAULT '',
+        source TEXT NOT NULL DEFAULT 'MM',
+        page INTEGER NOT NULL DEFAULT 1,
+        is_custom INTEGER NOT NULL DEFAULT 0,
+        version TEXT NOT NULL DEFAULT '1.0'
+      )
+    ''');
+    
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_monsters_name ON official_monsters(name)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_monsters_cr ON official_monsters(challenge_rating)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_monsters_type ON official_monsters(type)');
+    
+    print('✅ official_monsters Tabelle erstellt');
+  }
+  
+  /// Erstellt die official_spells Tabelle
+  Future<void> _createOfficialSpellsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS official_spells (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        level INTEGER NOT NULL DEFAULT 0,
+        school TEXT,
+        casting_time TEXT,
+        range TEXT,
+        components TEXT,
+        duration TEXT,
+        description TEXT NOT NULL DEFAULT '',
+        source TEXT NOT NULL DEFAULT 'PHB',
+        page INTEGER NOT NULL DEFAULT 1,
+        is_custom INTEGER NOT NULL DEFAULT 0,
+        version TEXT NOT NULL DEFAULT '1.0'
+      )
+    ''');
+    
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_spells_name ON official_spells(name)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_spells_level ON official_spells(level)');
+    
+    print('✅ official_spells Tabelle erstellt');
+  }
+  
   /// Aktualisiert das Datenbankschema
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     print('🔄 Datenbank-Upgrade von Version $oldVersion auf $newVersion...');
     
-    // Führt Migrationen basierend auf der Version
-    if (oldVersion < 2 && newVersion >= 2) {
-      print('🔄 Starte API Refactoring Migration (v1 → v2)...');
-      
-      // Führe die RefactoringMigrationV2 aus
-      final migration = RefactoringMigrationV2(this);
-      final result = await migration.migrate();
-      
-      print(result.toString());
-      
-      if (!result.success) {
-        throw Exception('Migration fehlgeschlagen: ${result.error}');
-      }
-      
-      // Füge is_favorite Spalte hinzu, falls sie noch nicht existiert
+    if (oldVersion < 6 && newVersion >= 6) {
+      print('🔄 Füge Bestiarum-Tabellen hinzu (v5 → v6)...');
+      await _createCreaturesTable(db);
+      await _createOfficialMonstersTable(db);
+      await _createOfficialSpellsTable(db);
+      print('✅ Bestiarum-Tabellen erstellt (Version 6)');
+    }
+    
+    if (oldVersion < 7 && newVersion >= 7) {
+      print('🔄 Füge equipment Spalte zu player_characters hinzu (v6 → v7)...');
       try {
-        final tableInfo = await db.rawQuery('PRAGMA table_info(campaigns)');
-        final hasIsFavorite = tableInfo.any((column) => column['name'] == 'is_favorite');
+        final tableInfo = await db.rawQuery('PRAGMA table_info(player_characters)');
+        final hasEquipment = tableInfo.any((column) => column['name'] == 'equipment');
         
-        if (!hasIsFavorite) {
+        if (!hasEquipment) {
           await db.execute(
-            'ALTER TABLE campaigns ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0',
+            'ALTER TABLE player_characters ADD COLUMN equipment TEXT',
           );
-          print('✅ is_favorite Spalte hinzugefügt');
+          print('✅ equipment Spalte hinzugefügt');
         } else {
-          print('ℹ️ is_favorite Spalte existiert bereits');
+          print('ℹ️ equipment Spalte existiert bereits');
         }
       } catch (e) {
-        print('⚠️ Konnte is_favorite Spalte nicht hinzufügen: $e');
+        print('⚠️ Konnte equipment Spalte nicht hinzufügen: $e');
       }
-    }
-    
-    // Erstelle items Tabelle falls sie noch nicht existiert (für bestehende Datenbanken)
-    await _ensureItemsTableExists(db);
-    
-    // Migration zu Version 5: Vollständiger Reset
-    if (oldVersion < 5 && newVersion >= 5) {
-      print('🔄 Starte vollständigen Reset (v4 → v5)...');
-      
-      // Lösche alle alten Tabellen
-      await db.execute('DROP TABLE IF EXISTS inventory_items');
-      await db.execute('DROP TABLE IF EXISTS player_characters');
-      await db.execute('DROP TABLE IF EXISTS campaigns');
-      await db.execute('DROP TABLE IF EXISTS items');
-      
-      // Erstelle alle Tabellen neu mit korrektem Schema
-      await _createAllTables(db);
-      
-      print('✅ Alle Tabellen neu erstellt mit korrektem Schema (Version 5)');
-    }
-  }
-  
-  /// Stellt sicher, dass die items Tabelle existiert
-  Future<void> _ensureItemsTableExists(Database db) async {
-    try {
-      // Prüfe ob Tabelle bereits existiert
-      final result = await db.rawQuery(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='items'",
-      );
-      
-      if (result.isEmpty) {
-        print('📦 Erstelle items Tabelle (nachträglich)...');
-        
-        await db.execute('''
-          CREATE TABLE items (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            description TEXT,
-            item_type TEXT NOT NULL,
-            weight REAL DEFAULT 0.0,
-            cost REAL DEFAULT 0.0,
-            image_url TEXT,
-            damage TEXT,
-            properties TEXT,
-            ac_formula TEXT,
-            strength_requirement INTEGER,
-            stealth_disadvantage INTEGER DEFAULT 0,
-            rarity TEXT,
-            requires_attunement INTEGER DEFAULT 0,
-            has_durability INTEGER DEFAULT 0,
-            max_durability INTEGER,
-            is_repairable INTEGER DEFAULT 0,
-            spell_id TEXT,
-            is_spell INTEGER DEFAULT 0,
-            spell_level INTEGER,
-            spell_school TEXT,
-            is_cantrip INTEGER DEFAULT 0,
-            max_casts_per_day INTEGER,
-            requires_concentration INTEGER DEFAULT 0,
-            source_type TEXT DEFAULT 'custom',
-            source_id TEXT,
-            is_custom INTEGER DEFAULT 1,
-            is_favorite INTEGER DEFAULT 0,
-            version TEXT DEFAULT '1.0',
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-          )
-        ''');
-        
-        // Indizes für items
-        await db.execute('CREATE INDEX idx_items_name ON items(name)');
-        await db.execute('CREATE INDEX idx_items_item_type ON items(item_type)');
-        await db.execute('CREATE INDEX idx_items_rarity ON items(rarity)');
-        
-        print('✅ items Tabelle erstellt');
-      } else {
-        print('ℹ️ items Tabelle existiert bereits');
-      }
-    } catch (e) {
-      print('⚠️ Fehler beim Erstellen der items Tabelle: $e');
     }
   }
   
@@ -354,7 +409,7 @@ class DatabaseConnection {
     }
   }
   
-  /// Setzt die Datenbank zurück (nur für Entwicklung)
+  /// Setzt die Datenbank zurück
   Future<void> reset() async {
     await close();
     final path = join(await getDatabasesPath(), 'dnd_helper_v2.db');
@@ -363,7 +418,18 @@ class DatabaseConnection {
     print('✅ Datenbank wurde zurückgesetzt');
   }
   
-  /// Löscht die Datenbank-Datei komplett (für Schema-Änderungen)
+  /// Führt Datenbank-Migrationen aus
+  Future<void> _runDatabaseMigrations(Database db) async {
+    try {
+      final migration = DatabaseMigration(this);
+      await migration.runMigrations();
+      print('✅ Datenbank-Migrationen erfolgreich ausgeführt');
+    } catch (e) {
+      print('⚠️ Fehler bei Datenbank-Migrationen: $e');
+    }
+  }
+  
+  /// Löscht die Datenbank-Datei
   Future<void> deleteDatabaseFile() async {
     await close();
     final path = join(await getDatabasesPath(), 'dnd_helper_v2.db');
@@ -371,7 +437,7 @@ class DatabaseConnection {
     print('✅ Datenbank-Datei wurde gelöscht');
   }
   
-  /// Führt die Refactoring-Migration manuell aus (für Entwicklung/Tests)
+  /// Führt die Refactoring-Migration manuell aus
   Future<MigrationResult> runRefactoringMigration() async {
     if (_migration == null) {
       _migration = RefactoringMigrationV2(this);

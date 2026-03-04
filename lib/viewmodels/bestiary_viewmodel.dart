@@ -89,17 +89,25 @@ class BestiaryViewModel extends ChangeNotifier {
     });
   }
 
-  /// Lädt D&D-Daten (Monster und Zauber) - Legacy Methode für Übergangszeit
+  /// Lädt D&D-Daten (Monster und Zauber) aus der Datenbank
   Future<void> loadDndData() async {
     await _executeWithErrorHandling(() async {
       _isLoadingDndData = true;
       notifyListeners();
       
       try {
-        // TODO: Migriere zu OfficialMonsterRepository wenn verfügbar
-        // Für jetzt: Dummy-Implementierung
-        _availableMonsters = [];
-        _availableSpells = [];
+        // Lade verfügbare Monster aus official_monsters Tabelle
+        final db = await _dataImporter.databaseConnection.database;
+        final monstersResult = await db.query('official_monsters');
+        _availableMonsters = monstersResult
+            .map((row) => Map<String, dynamic>.from(row as Map<dynamic, dynamic>))
+            .toList();
+        
+        // Lade verfügbare Zauber aus official_spells Tabelle
+        final spellsResult = await db.query('official_spells');
+        _availableSpells = spellsResult
+            .map((row) => Map<String, dynamic>.from(row as Map<dynamic, dynamic>))
+            .toList();
       } finally {
         _isLoadingDndData = false;
         notifyListeners();
@@ -297,16 +305,114 @@ class BestiaryViewModel extends ChangeNotifier {
     });
   }
 
-  /// Importiert alle verfügbaren Monster (Methode in Entwicklung)
+  /// Importiert alle verfügbaren Monster aus official_monsters ins Bestiarum
   Future<void> importAllMonsters() async {
-    // TODO: Implementiere mit neuem CreatureRepository
-    throw UnimplementedError('Muss mit neuem Repository implementiert werden');
+    await _executeWithErrorHandling(() async {
+      if (_availableMonsters.isEmpty) {
+        throw Exception('Keine Monster zum Import verfügbar. Bitte zuerst Daten laden.');
+      }
+      
+      int importCount = 0;
+      for (final monsterData in _availableMonsters) {
+        try {
+          // Prüfe, ob Monster bereits importiert wurde
+          final monsterId = monsterData['id']?.toString();
+          final alreadyImported = _allCreatures.any((c) => c.officialMonsterId == monsterId);
+          
+          if (!alreadyImported) {
+            await _addSingleMonsterToDatabase(monsterData);
+            importCount++;
+          }
+        } catch (e) {
+          print('Fehler beim Import von "${monsterData['name']}": $e');
+        }
+      }
+      
+      if (importCount > 0) {
+        await loadCreatures(); // Lade die importierten Monster neu
+      }
+    });
   }
 
-  /// Fügt ein einzelnes Monster zum Bestiarum hinzu (Methode in Entwicklung)
+  /// Fügt ein einzelnes Monster zum Bestiarum hinzu
   Future<void> addMonsterToBestiary(Map<String, dynamic> monsterData) async {
-    // TODO: Implementiere mit neuem CreatureRepository
-    throw UnimplementedError('Muss mit neuem Repository implementiert werden');
+    await _executeWithErrorHandling(() async {
+      await _addSingleMonsterToDatabase(monsterData);
+      await loadCreatures(); // Lade die importierten Monster neu
+    });
+  }
+  
+  /// Hilfsmethode zum Hinzufügen eines einzelnen Monsters zur Datenbank
+  Future<void> _addSingleMonsterToDatabase(Map<String, dynamic> monsterData) async {
+    final monsterId = monsterData['id']?.toString();
+    
+    // Erstelle Creature aus offiziellen Monster-Daten
+    final creature = Creature(
+      id: DateTime.now().millisecondsSinceEpoch.toString(), // Generiere neue ID
+      name: monsterData['name']?.toString() ?? 'Unbekannt',
+      maxHp: _parseHp(monsterData['hit_points']?.toString()) ?? 10,
+      armorClass: _parseArmorClass(monsterData['armor_class']?.toString()) ?? 10,
+      speed: monsterData['speed']?.toString() ?? '30ft',
+      strength: monsterData['strength'] as int? ?? 10,
+      dexterity: monsterData['dexterity'] as int? ?? 10,
+      constitution: monsterData['constitution'] as int? ?? 10,
+      intelligence: monsterData['intelligence'] as int? ?? 10,
+      wisdom: monsterData['wisdom'] as int? ?? 10,
+      charisma: monsterData['charisma'] as int? ?? 10,
+      officialMonsterId: monsterId,
+      size: monsterData['size']?.toString(),
+      type: monsterData['type']?.toString(),
+      subtype: monsterData['subtype']?.toString(),
+      alignment: monsterData['alignment']?.toString(),
+      challengeRating: _parseChallengeRating(monsterData['challenge_rating']?.toString()),
+      specialAbilities: monsterData['special_abilities']?.toString(),
+      legendaryActions: monsterData['legendary_actions']?.toString(),
+      description: monsterData['description']?.toString(),
+      isCustom: false,
+      sourceType: 'official',
+      sourceId: monsterId,
+      isFavorite: false,
+    );
+    
+    // Speichere Creature in Datenbank
+    if (_creatureRepository != null) {
+      await _creatureRepository!.create(creature);
+    }
+  }
+  
+  /// Hilfsmethode zum Parsen von HP
+  int? _parseHp(String? hpString) {
+    if (hpString == null || hpString.isEmpty) return null;
+    
+    // Parst z.B. "45 (6d8 + 18)" -> 45
+    final match = RegExp(r'^(\d+)').firstMatch(hpString);
+    return match != null ? int.tryParse(match.group(1)!) : null;
+  }
+  
+  /// Hilfsmethode zum Parsen von Armor Class
+  int? _parseArmorClass(String? acString) {
+    if (acString == null || acString.isEmpty) return null;
+    
+    // Parst z.B. "15 (natural armor)" -> 15
+    final match = RegExp(r'^(\d+)').firstMatch(acString);
+    return match != null ? int.tryParse(match.group(1)!) : null;
+  }
+  
+  /// Hilfsmethode zum Parsen von Challenge Rating
+  int? _parseChallengeRating(String? crString) {
+    if (crString == null || crString.isEmpty) return null;
+    
+    // Parst z.B. "1/8" -> 0.125, "3" -> 3
+    if (crString.contains('/')) {
+      final parts = crString.split('/');
+      if (parts.length == 2) {
+        final numerator = int.tryParse(parts[0]) ?? 0;
+        final denominator = int.tryParse(parts[1]) ?? 1;
+        return (numerator / denominator * 8).round(); // Speichere als Vielfaches von 1/8
+      }
+    }
+    
+    return int.tryParse(crString);
   }
 
   // ============================================================================

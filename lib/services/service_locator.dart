@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:dungen_manager/database/core/database_connection.dart';
 import 'package:dungen_manager/database/repositories/campaign_model_repository.dart';
 import 'package:dungen_manager/database/repositories/player_character_model_repository.dart';
+import 'package:dungen_manager/database/repositories/creature_repository.dart';
 import 'package:dungen_manager/viewmodels/campaign_viewmodel.dart';
 import 'package:dungen_manager/services/session_service.dart';
 
@@ -94,6 +95,14 @@ class ServiceLocator {
       await getService<PlayerCharacterModelRepository>();
       if (kDebugMode) {
         print('  ✅ Player Character Model Repository erstellt');
+      }
+
+      registerService<CreatureRepository>(
+        () => CreatureRepository(dbConnection),
+      );
+      await getService<CreatureRepository>();
+      if (kDebugMode) {
+        print('  ✅ Creature Repository erstellt');
       }
 
       // 3. ViewModels registrieren und initialisieren

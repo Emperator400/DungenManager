@@ -253,44 +253,43 @@ class CombatStatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: color.withOpacity(0.3),
-          ),
+    // Entferne Expanded aus CombatStatChip - verursacht verschachtelte Expanded
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: color.withOpacity(0.3),
         ),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 12, color: color),
-                const SizedBox(width: 4),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: color,
-                    fontWeight: FontWeight.w600,
-                  ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 12, color: color),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: color,
+                  fontWeight: FontWeight.w600,
                 ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 14,
-                color: color,
-                fontWeight: FontWeight.bold,
               ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              color: color,
+              fontWeight: FontWeight.bold,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -313,34 +312,43 @@ class CombatStatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Packe jeden Chip in Expanded, da CombatStatChip selbst kein Expanded mehr ist
     return Row(
       children: [
-        CombatStatChip(
-          icon: Icons.favorite,
-          label: 'HP',
-          value: '$maxHp',
-          color: Colors.red,
+        Expanded(
+          child: CombatStatChip(
+            icon: Icons.favorite,
+            label: 'HP',
+            value: '$maxHp',
+            color: Colors.red,
+          ),
         ),
         const SizedBox(width: 8),
-        CombatStatChip(
-          icon: Icons.shield,
-          label: 'AC',
-          value: '$armorClass',
-          color: Colors.blue,
+        Expanded(
+          child: CombatStatChip(
+            icon: Icons.shield,
+            label: 'AC',
+            value: '$armorClass',
+            color: Colors.blue,
+          ),
         ),
         const SizedBox(width: 8),
-        CombatStatChip(
-          icon: Icons.flash_on,
-          label: 'Init',
-          value: initiativeBonus >= 0 ? '+$initiativeBonus' : '$initiativeBonus',
-          color: Colors.orange,
+        Expanded(
+          child: CombatStatChip(
+            icon: Icons.flash_on,
+            label: 'Init',
+            value: initiativeBonus >= 0 ? '+$initiativeBonus' : '$initiativeBonus',
+            color: Colors.orange,
+          ),
         ),
         const SizedBox(width: 8),
-        CombatStatChip(
-          icon: Icons.speed,
-          label: 'Bew.',
-          value: '$speed ft',
-          color: Colors.green,
+        Expanded(
+          child: CombatStatChip(
+            icon: Icons.speed,
+            label: 'Bew.',
+            value: '$speed ft',
+            color: Colors.green,
+          ),
         ),
       ],
     );

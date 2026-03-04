@@ -11,6 +11,9 @@ class DndDataImporter {
   final DatabaseConnection _db = DatabaseConnection.instance;
   final String baseUrl = 'https://raw.githubusercontent.com/5etools-mirror-1/5etools-mirror-1.github.io/master/data/';
 
+  // Öffentliche Getter für den Zugriff auf die Datenbank
+  DatabaseConnection get databaseConnection => _db;
+
   // Hauptmethode zum Importieren aller Daten
   Future<Map<String, int>> downloadAndImportAllData() async {
     final results = <String, int>{};

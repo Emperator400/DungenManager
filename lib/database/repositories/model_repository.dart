@@ -99,16 +99,36 @@ abstract class ModelRepository<T> {
   }) async {
     print('💾 [ModelRepository] FIND ALL aufgerufen für Tabelle: $tableName');
     
-    final db = await _connection.database;
-    final maps = await db.query(
-      tableName,
-      orderBy: orderBy,
-      limit: limit,
-      offset: offset,
-    );
-    
-    print('💾 [ModelRepository] ${maps.length} Einträge gefunden');
-    return maps.map((map) => fromDatabaseMap(map)).toList();
+    try {
+      final db = await _connection.database;
+      final maps = await db.query(
+        tableName,
+        orderBy: orderBy,
+        limit: limit,
+        offset: offset,
+      );
+      
+      print('💾 [ModelRepository] ${maps.length} Einträge gefunden');
+      
+      // Parse jedes Map einzeln und fange Exceptions ab
+      final result = <T>[];
+      for (int i = 0; i < maps.length; i++) {
+        try {
+          final model = fromDatabaseMap(maps[i]);
+          result.add(model);
+        } catch (e) {
+          print('⚠️ [ModelRepository] Fehler beim Parsen von Eintrag $i: $e');
+          print('⚠️ [ModelRepository] Problematische Daten: ${maps[i]}');
+          // Überspringe fehlerhafte Einträge statt abzubrechen
+        }
+      }
+      
+      print('💾 [ModelRepository] ${result.length} erfolgreich geparste Einträge');
+      return result;
+    } catch (e) {
+      print('❌ [ModelRepository] Kritischer Fehler in findAll(): $e');
+      rethrow;
+    }
   }
   
   /// Aktualisiert eine Entität und gibt das aktualisierte Model aus der Datenbank zurück
