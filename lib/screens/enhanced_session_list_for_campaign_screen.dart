@@ -184,15 +184,19 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
       ),
       floatingActionButton: Consumer<SessionListForCampaignViewModel>(
         builder: (context, viewModel, child) {
-          return FloatingActionButton.extended(
-            onPressed: viewModel.isLoading ? null : _createNewSession,
-            backgroundColor: DnDTheme.mysticalPurple,
-            icon: Icon(Icons.add, color: Colors.white),
-            label: Text(
-              'Neue Session',
-              style: TextStyle(color: Colors.white),
+          return Hero(
+            tag: 'session_list_fab',
+            child: FloatingActionButton.extended(
+              heroTag: 'session_list_fab',
+              onPressed: viewModel.isLoading ? null : _createNewSession,
+              backgroundColor: DnDTheme.mysticalPurple,
+              icon: Icon(Icons.add, color: Colors.white),
+              label: Text(
+                'Neue Session',
+                style: TextStyle(color: Colors.white),
+              ),
+              tooltip: 'Neue Session erstellen',
             ),
-            tooltip: 'Neue Session erstellen',
           );
         },
       ),
