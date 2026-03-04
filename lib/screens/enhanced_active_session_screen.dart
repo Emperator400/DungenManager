@@ -5,8 +5,6 @@ import '../models/session.dart';
 import '../viewmodels/active_session_viewmodel.dart';
 import '../theme/dnd_theme.dart';
 import 'encounter_setup_screen.dart';
-import '../widgets/scene/enhanced_scene_flow_widget.dart';
-import '../widgets/sound/enhanced_sound_mixer_widget.dart';
 
 /// Enhanced Active Session Screen mit Provider-Pattern und modernem D&D Design
 class EnhancedActiveSessionScreen extends StatefulWidget {
@@ -191,15 +189,10 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
                       title: "Szenen-Ablauf",
                       icon: Icons.list_alt,
                       color: DnDTheme.arcaneBlue,
-                      content: EnhancedSceneFlowWidget(
-                        key: _sceneFlowKey,
-                        session: viewModel.currentSession,
-                        scenes: [], // Diese müssten vom ViewModel geladen werden
-                        soundScenes: [], // Diese müssten vom ViewModel geladen werden
-                        onSceneSelected: (scene) { /* Handle scene selection */ },
-                        onSceneEdit: (scene) { /* Handle scene edit */ },
-                        onSceneDelete: (scene) { /* Handle scene delete */ },
-                        onSceneAdd: () { /* Handle scene add */ },
+                      content: _buildPlaceholderWidget(
+                        "Szenen-Ablauf",
+                        "Diese Funktion wird in Zukunft verfügbar sein",
+                        Icons.list_alt,
                       ),
                     ),
                     _buildSessionQuadrant(
@@ -218,7 +211,11 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
                       title: "Atmosphäre",
                       icon: Icons.music_note,
                       color: DnDTheme.successGreen,
-                      content: const EnhancedSoundMixerWidget(),
+                      content: _buildPlaceholderWidget(
+                        "Sound Mixer",
+                        "Diese Funktion wird in Zukunft verfügbar sein",
+                        Icons.music_note,
+                      ),
                     ),
                   ],
                 ),
@@ -624,6 +621,38 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
           icon: const Icon(Icons.play_arrow),
           label: const Text('Kampf'),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPlaceholderWidget(String title, String description, IconData icon) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            size: 48,
+            color: Colors.white38,
+          ),
+          const SizedBox(height: DnDTheme.md),
+          Text(
+            title,
+            style: DnDTheme.bodyText1.copyWith(
+              color: Colors.white70,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: DnDTheme.sm),
+          Text(
+            description,
+            style: DnDTheme.bodyText2.copyWith(
+              color: Colors.white54,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
