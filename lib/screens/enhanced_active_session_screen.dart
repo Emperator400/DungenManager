@@ -480,12 +480,41 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
                       fontSize: 9,
                     ),
                   ),
-                  Text(
-                    scene.sceneTypeDisplayName,
-                    style: DnDTheme.bodyText2.copyWith(
-                      color: Colors.white70,
-                      fontSize: 7,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        scene.sceneTypeDisplayName,
+                        style: DnDTheme.bodyText2.copyWith(
+                          color: Colors.white70,
+                          fontSize: 7,
+                        ),
+                      ),
+                      // Encounter Link Indicator
+                      if (scene.linkedEncounterId != null) ...[
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.gavel,
+                          color: DnDTheme.errorRed,
+                          size: 8,
+                        ),
+                      ],
+                      // Character Links Indicator
+                      if (scene.linkedCharacterIds.isNotEmpty) ...[
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.people,
+                          color: DnDTheme.mysticalPurple,
+                          size: 8,
+                        ),
+                        Text(
+                          '(${scene.linkedCharacterIds.length})',
+                          style: DnDTheme.bodyText2.copyWith(
+                            color: DnDTheme.mysticalPurple,
+                            fontSize: 7,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),
