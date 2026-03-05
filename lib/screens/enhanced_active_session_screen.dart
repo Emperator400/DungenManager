@@ -182,13 +182,13 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    // Berechne optimale Größe für 2x2 Grid ohne Scrollen
-                    final aspectRatio = (constraints.maxWidth / 2) / (constraints.maxHeight / 2);
+                    // Berechne optimale Größe für 2x2 Grid ohne Scrollen (etwas kleiner für mehr Platz)
+                    final aspectRatio = (constraints.maxWidth / 2 - 2) / (constraints.maxHeight / 2 - 2);
                     return GridView.count(
                       crossAxisCount: 2,
                       crossAxisSpacing: 2,
                       mainAxisSpacing: 2,
-                      childAspectRatio: aspectRatio.clamp(0.6, 1.5),
+                      childAspectRatio: aspectRatio.clamp(0.5, 1.3),
                       children: [
                     _buildSessionQuadrant(
                       title: "Szenen-Ablauf",
@@ -355,7 +355,7 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
         children: [
           // Header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: DnDTheme.sm, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
             decoration: BoxDecoration(
               gradient: DnDTheme.getMysticalGradient(
                 startColor: color.withValues(alpha: 0.8),
@@ -376,17 +376,17 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
                   child: Icon(
                     icon,
                     color: color,
-                    size: 14,
+                    size: 10,
                   ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                   title,
                   style: DnDTheme.bodyText2.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: 11,
+                    fontSize: 9,
                   ),
                   ),
                 ),
