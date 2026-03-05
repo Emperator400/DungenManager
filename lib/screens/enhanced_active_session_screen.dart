@@ -176,15 +176,15 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
             children: [
               // Session Info Bar
               _buildSessionInfoBar(viewModel),
-              const SizedBox(height: DnDTheme.sm),
+              const SizedBox(height: 4),
               
               // Main Content Grid
               Expanded(
                 child: GridView.count(
                   crossAxisCount: 2,
-                  crossAxisSpacing: DnDTheme.sm,
-                  mainAxisSpacing: DnDTheme.sm,
-                  childAspectRatio: 1.2,
+                  crossAxisSpacing: 4,
+                  mainAxisSpacing: 4,
+                  childAspectRatio: 0.9,
                   children: [
                     _buildSessionQuadrant(
                       title: "Szenen-Ablauf",
@@ -230,7 +230,7 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
 
   Widget _buildSessionInfoBar(ActiveSessionViewModel viewModel) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: DnDTheme.md, vertical: DnDTheme.sm),
+      padding: const EdgeInsets.symmetric(horizontal: DnDTheme.sm, vertical: 4),
       decoration: BoxDecoration(
         gradient: DnDTheme.getMysticalGradient(
           startColor: DnDTheme.stoneGrey,
@@ -255,10 +255,10 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
             child: const Icon(
               Icons.play_circle_filled,
               color: DnDTheme.dungeonBlack,
-              size: 20,
+              size: 16,
             ),
           ),
-          const SizedBox(width: DnDTheme.md),
+            const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -268,14 +268,14 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
                   style: DnDTheme.bodyText2.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                    fontSize: 11,
                   ),
                 ),
                 Text(
                   'Session-Laufzeit: ${viewModel.getFormattedInGameTime()}',
                   style: DnDTheme.bodyText2.copyWith(
                     color: Colors.white70,
-                    fontSize: 11,
+                    fontSize: 9,
                   ),
                 ),
               ],
@@ -283,8 +283,8 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
           ),
           Container(
             padding: const EdgeInsets.symmetric(
-              horizontal: DnDTheme.sm,
-              vertical: 4,
+              horizontal: 6,
+              vertical: 2,
             ),
             decoration: BoxDecoration(
               gradient: DnDTheme.getMysticalGradient(
@@ -302,7 +302,7 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
                 Icon(
                   Icons.timer,
                   color: Colors.white,
-                  size: 14,
+                  size: 12,
                 ),
                 const SizedBox(width: DnDTheme.xs),
                 Text(
@@ -310,7 +310,7 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
                   style: DnDTheme.bodyText2.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: 11,
+                    fontSize: 9,
                   ),
                 ),
               ],
@@ -349,7 +349,7 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
         children: [
           // Header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: DnDTheme.md, vertical: DnDTheme.sm),
+            padding: const EdgeInsets.symmetric(horizontal: DnDTheme.sm, vertical: 4),
             decoration: BoxDecoration(
               gradient: DnDTheme.getMysticalGradient(
                 startColor: color.withValues(alpha: 0.8),
@@ -370,17 +370,17 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
                   child: Icon(
                     icon,
                     color: color,
-                    size: 16,
+                    size: 14,
                   ),
                 ),
-                const SizedBox(width: DnDTheme.sm),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                   title,
                   style: DnDTheme.bodyText2.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                    fontSize: 11,
                   ),
                   ),
                 ),
@@ -389,10 +389,7 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
           ),
           // Content
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(DnDTheme.xs),
-              child: content,
-            ),
+            child: content,
           ),
         ],
       ),
@@ -419,12 +416,12 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
               maxLines: null,
               expands: true,
               textAlignVertical: TextAlignVertical.top,
-              style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+              style: DnDTheme.bodyText1.copyWith(color: Colors.white, fontSize: 10),
               decoration: const InputDecoration(
-                hintText: 'Live-Notizen hier eintragen...',
-                hintStyle: TextStyle(color: Colors.white54),
+                hintText: 'Live-Notizen...',
+                hintStyle: TextStyle(color: Colors.white54, fontSize: 10),
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.all(DnDTheme.sm),
+                contentPadding: EdgeInsets.all(4),
               ),
               onChanged: (value) {
                 // Debounced update could be implemented here
@@ -435,7 +432,7 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
             ),
           ),
           Container(
-            padding: const EdgeInsets.all(DnDTheme.sm),
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               gradient: DnDTheme.getMysticalGradient(
                 startColor: DnDTheme.ancientGold.withValues(alpha: 0.2),
@@ -450,26 +447,27 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Automatisch gespeichert',
+                  'Auto-Save',
                   style: DnDTheme.bodyText2.copyWith(
                     color: Colors.white70,
-                    fontSize: 12,
+                    fontSize: 8,
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: DnDTheme.sm,
-                    vertical: DnDTheme.xs,
+                    horizontal: 4,
+                    vertical: 2,
                   ),
                   decoration: BoxDecoration(
                     color: DnDTheme.successGreen,
                     borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
                   ),
                   child: Text(
-                    'Speichern',
+                    'Save',
                     style: DnDTheme.bodyText2.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
+                      fontSize: 8,
                     ),
                   ),
                 ),
@@ -487,9 +485,9 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
         Expanded(
           child: GridView.count(
             crossAxisCount: 2,
-            crossAxisSpacing: DnDTheme.xs,
-            mainAxisSpacing: DnDTheme.xs,
-            childAspectRatio: 1.3,
+            crossAxisSpacing: 2,
+            mainAxisSpacing: 2,
+            childAspectRatio: 1.0,
             children: [
               _buildToolButton(
                 icon: Icons.access_time,
@@ -522,9 +520,9 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
             ],
           ),
         ),
-        const SizedBox(height: DnDTheme.sm),
+        const SizedBox(height: 2),
         Container(
-          padding: const EdgeInsets.all(DnDTheme.sm),
+          padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             gradient: DnDTheme.getMysticalGradient(
               startColor: DnDTheme.stoneGrey,
@@ -543,21 +541,23 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
                 style: DnDTheme.bodyText2.copyWith(
                   color: DnDTheme.ancientGold,
                   fontWeight: FontWeight.bold,
+                  fontSize: 9,
                 ),
               ),
-              const SizedBox(height: DnDTheme.xs),
+              const SizedBox(height: 2),
               Row(
                 children: [
                   Icon(
                     Icons.circle,
                     color: DnDTheme.successGreen,
-                    size: 12,
+                    size: 8,
                   ),
-                  const SizedBox(width: DnDTheme.xs),
+                  const SizedBox(width: 4),
                   Text(
-                    'Session läuft aktiv',
+                    'Session aktiv',
                     style: DnDTheme.bodyText2.copyWith(
                       color: Colors.white70,
+                      fontSize: 8,
                     ),
                   ),
                 ],
@@ -594,15 +594,15 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
             Icon(
               icon,
               color: Colors.white,
-              size: 20,
+              size: 16,
             ),
-            const SizedBox(height: DnDTheme.xs),
+            const SizedBox(height: 2),
             Text(
             label,
               style: DnDTheme.bodyText2.copyWith(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: 11,
+                fontSize: 9,
               ),
             ),
           ],
@@ -635,25 +635,25 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
         children: [
           Icon(
             icon,
-            size: 32,
+            size: 24,
             color: Colors.white38,
           ),
-          const SizedBox(height: DnDTheme.sm),
+          const SizedBox(height: 4),
           Text(
             title,
             style: DnDTheme.bodyText2.copyWith(
               color: Colors.white70,
               fontWeight: FontWeight.bold,
-              fontSize: 13,
+              fontSize: 10,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             description,
             style: DnDTheme.bodyText2.copyWith(
               color: Colors.white54,
-              fontSize: 10,
+              fontSize: 8,
             ),
             textAlign: TextAlign.center,
           ),
