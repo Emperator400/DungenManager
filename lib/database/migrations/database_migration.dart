@@ -31,6 +31,7 @@ class DatabaseMigration {
     
     // Neue Tabellen für Session-Management
     await _createSessionsTable(db);
+    await _createScenesTable(db); // Scenes Tabelle hinzugefügt
     await _createEncountersTable(db);
     await _createEncounterParticipantsTable(db);
     await _createSessionQuestProgressTable(db);
@@ -293,6 +294,43 @@ class DatabaseMigration {
       }
     } catch (e) {
       print('Error adding equipment column: $e');
+    }
+  }
+
+  /// Erstellt die Scenes-Tabelle
+  Future<void> _createScenesTable(Database db) async {
+    final result = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='scenes'",
+    );
+
+    if (result.isEmpty) {
+      await db.execute('''
+        CREATE TABLE scenes (
+          id TEXT PRIMARY KEY,
+          session_id TEXT NOT NULL,
+          order_index INTEGER NOT NULL DEFAULT 0,
+          name TEXT NOT NULL,
+          description TEXT DEFAULT '',
+          scene_type TEXT NOT NULL DEFAULT 'Exploration',
+          is_completed INTEGER NOT NULL DEFAULT 0,
+          estimated_duration INTEGER,
+          complexity TEXT,
+          linked_wiki_entry_ids TEXT DEFAULT '[]',
+          linked_quest_ids TEXT DEFAULT '[]',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (session_id) REFERENCES sessions (id) ON DELETE CASCADE
+        )
+      ''');
+
+      await db.execute('CREATE INDEX idx_scenes_session_id ON scenes(session_id)');
+      await db.execute('CREATE INDEX idx_scenes_order_index ON scenes(order_index)');
+      await db.execute('CREATE INDEX idx_scenes_scene_type ON scenes(scene_type)');
+      await db.execute('CREATE INDEX idx_scenes_is_completed ON scenes(is_completed)');
+
+      print('Created scenes table with indexes');
+    } else {
+      print('Scenes table already exists');
     }
   }
 

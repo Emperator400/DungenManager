@@ -38,7 +38,7 @@ class DatabaseConnection {
     
     final db = await openDatabase(
       path,
-      version: 9,
+      version: 10,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       singleInstance: true,
@@ -73,6 +73,7 @@ class DatabaseConnection {
     await _createWikiEntriesTable(db);
     // Session-Management Tabellen
     await _createSessionsTable(db);
+    await _createScenesTable(db);
     await _createEncountersTable(db);
     await _createEncounterParticipantsTable(db);
     await _createSessionQuestProgressTable(db);
@@ -462,6 +463,35 @@ class DatabaseConnection {
     print('✅ sessions Tabelle erstellt');
   }
 
+  /// Erstellt die scenes Tabelle
+  Future<void> _createScenesTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS scenes (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        order_index INTEGER NOT NULL DEFAULT 0,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        scene_type TEXT NOT NULL DEFAULT 'Exploration',
+        is_completed INTEGER NOT NULL DEFAULT 0,
+        estimated_duration INTEGER,
+        complexity TEXT,
+        linked_wiki_entry_ids TEXT DEFAULT '[]',
+        linked_quest_ids TEXT DEFAULT '[]',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (session_id) REFERENCES sessions (id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_scenes_session_id ON scenes(session_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_scenes_order_index ON scenes(order_index)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_scenes_scene_type ON scenes(scene_type)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_scenes_is_completed ON scenes(is_completed)');
+
+    print('✅ scenes Tabelle erstellt');
+  }
+
   /// Erstellt die encounters Tabelle
   Future<void> _createEncountersTable(Database db) async {
     await db.execute('''
@@ -602,6 +632,12 @@ class DatabaseConnection {
       await _createSessionQuestProgressTable(db);
       await _createSessionCharacterTrackingTable(db);
       print('✅ Session-Management Tabellen erstellt (Version 9)');
+    }
+    
+    if (oldVersion < 10 && newVersion >= 10) {
+      print('🔄 Füge scenes Tabelle hinzu (v9 → v10)...');
+      await _createScenesTable(db);
+      print('✅ scenes Tabelle erstellt (Version 10)');
     }
   }
   
