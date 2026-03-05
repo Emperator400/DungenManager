@@ -2,15 +2,18 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/campaign.dart';
 import '../models/session.dart';
+import '../models/scene.dart';
 import '../database/repositories/session_model_repository.dart';
+import '../database/repositories/scene_model_repository.dart';
 import '../database/core/database_connection.dart';
 
 /// ViewModel für aktive Sessions mit neuer Repository-Architektur
 /// Zentralisiert State Management und Business-Logik für laufende D&D-Sessions
 /// 
-/// HINWEIS: Verwendet jetzt das neue SessionModelRepository
+/// HINWEIS: Verwendet jetzt das neue SessionModelRepository und SceneModelRepository
 class ActiveSessionViewModel extends ChangeNotifier {
   final SessionModelRepository _sessionRepository;
+  final SceneModelRepository _sceneRepository;
 
   // ============================================================================
   // STATE VARIABLES
@@ -19,6 +22,7 @@ class ActiveSessionViewModel extends ChangeNotifier {
   // Session Daten
   Session _currentSession;
   Campaign _campaign;
+  List<Scene> _scenes = [];
 
   // Loading States
   bool _isLoading = false;
@@ -30,6 +34,7 @@ class ActiveSessionViewModel extends ChangeNotifier {
 
   Session get currentSession => _currentSession;
   Campaign get campaign => _campaign;
+  List<Scene> get scenes => _scenes;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -44,9 +49,109 @@ class ActiveSessionViewModel extends ChangeNotifier {
     required Session session,
     required Campaign campaign,
     SessionModelRepository? sessionRepository,
+    SceneModelRepository? sceneRepository,
   }) : _currentSession = session,
        _campaign = campaign,
-       _sessionRepository = sessionRepository ?? SessionModelRepository(DatabaseConnection.instance);
+       _sessionRepository = sessionRepository ?? SessionModelRepository(DatabaseConnection.instance),
+       _sceneRepository = sceneRepository ?? SceneModelRepository(DatabaseConnection.instance) {
+    // Lade Scenes beim Initialisieren
+    _loadScenes();
+  }
+
+  // ============================================================================
+  // SCENE OPERATIONS
+  // ============================================================================
+
+  /// Lädt alle Scenes für die aktuelle Session
+  Future<void> _loadScenes() async {
+    await _executeWithErrorHandling(() async {
+      final scenes = await _sceneRepository.findBySession(_currentSession.id);
+      // Sortiere nach orderIndex
+      _scenes = scenes..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+      notifyListeners();
+    });
+  }
+
+  /// Lädt Scenes neu
+  Future<void> reloadScenes() async {
+    await _loadScenes();
+  }
+
+  /// Erstellt eine neue Scene
+  Future<void> createScene({
+    required String name,
+    String description = '',
+    SceneType sceneType = SceneType.Exploration,
+    Duration? estimatedDuration,
+    Complexity? complexity,
+  }) async {
+    await _executeWithErrorHandling(() async {
+      // Bestimme nächsten orderIndex
+      final nextOrderIndex = _scenes.isEmpty ? 0 : _scenes.last.orderIndex + 1;
+
+      final newScene = Scene(
+        sessionId: _currentSession.id,
+        orderIndex: nextOrderIndex,
+        name: name,
+        description: description,
+        sceneType: sceneType,
+        estimatedDuration: estimatedDuration,
+        complexity: complexity,
+      );
+
+      await _sceneRepository.create(newScene);
+      await _loadScenes();
+    });
+  }
+
+  /// Aktualisiert eine Scene
+  Future<void> updateScene(Scene updatedScene) async {
+    await _executeWithErrorHandling(() async {
+      await _sceneRepository.update(updatedScene);
+      await _loadScenes();
+    });
+  }
+
+  /// Löscht eine Scene
+  Future<void> deleteScene(String sceneId) async {
+    await _executeWithErrorHandling(() async {
+      await _sceneRepository.delete(sceneId);
+      await _loadScenes();
+    });
+  }
+
+  /// Aktualisiert die Reihenfolge von Scenes
+  Future<void> reorderScenes(List<Scene> newOrder) async {
+    await _executeWithErrorHandling(() async {
+      // Aktualisiere orderIndex für alle Scenes
+      for (int i = 0; i < newOrder.length; i++) {
+        final scene = newOrder[i];
+        if (scene.orderIndex != i) {
+          await _sceneRepository.updateOrderIndex(scene.id, i);
+        }
+      }
+      await _loadScenes();
+    });
+  }
+
+  /// Markiert eine Scene als abgeschlossen
+  Future<void> markSceneCompleted(String sceneId, bool isCompleted) async {
+    await _executeWithErrorHandling(() async {
+      await _sceneRepository.updateCompletionStatus(sceneId, isCompleted);
+      await _loadScenes();
+    });
+  }
+
+  /// Setzt die aktive Scene
+  Future<void> setActiveScene(String? sceneId) async {
+    await _executeWithErrorHandling(() async {
+      _currentSession = _currentSession.copyWith(
+        activeSceneId: sceneId,
+      );
+      await _sessionRepository.update(_currentSession);
+      notifyListeners();
+    });
+  }
 
   // ============================================================================
   // SESSION OPERATIONS
