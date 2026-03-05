@@ -520,8 +520,6 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
   }
 
   void _showSceneOptions(Scene scene) {
-    final viewModel = Provider.of<ActiveSessionViewModel>(context, listen: false);
-    
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -559,7 +557,7 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
                 ),
                 onTap: () {
                   Navigator.pop(context);
-                  viewModel.setActiveScene(scene.id);
+                  _viewModel.setActiveScene(scene.id);
                 },
               ),
               ListTile(
@@ -574,7 +572,7 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
                 ),
                 onTap: () {
                   Navigator.pop(context);
-                  viewModel.markSceneCompleted(scene.id, !scene.isCompleted);
+                  _viewModel.markSceneCompleted(scene.id, !scene.isCompleted);
                 },
               ),
               ListTile(
@@ -596,11 +594,9 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
   }
 
   void _showCreateSceneDialog() {
-    final viewModel = Provider.of<ActiveSessionViewModel>(context, listen: false);
-    
     final newScene = Scene(
       sessionId: widget.session.id,
-      orderIndex: viewModel.scenes.length,
+      orderIndex: _viewModel.scenes.length,
       name: 'Neue Szene',
       description: '',
       sceneType: SceneType.Exploration,
@@ -611,15 +607,13 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
   }
 
   void _showEditSceneDialog(Scene scene, {bool isCreate = false}) {
-    final viewModel = Provider.of<ActiveSessionViewModel>(context, listen: false);
-    
     showDialog(
       context: context,
       builder: (context) => _SceneEditDialog(
         scene: scene,
         onSave: (updatedScene) async {
           if (isCreate) {
-            await viewModel.createScene(
+            await _viewModel.createScene(
               name: updatedScene.name,
               description: updatedScene.description,
               sceneType: updatedScene.sceneType,
@@ -627,7 +621,7 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
               complexity: updatedScene.complexity,
             );
           } else {
-            viewModel.updateScene(updatedScene);
+            _viewModel.updateScene(updatedScene);
           }
         },
       ),
@@ -635,8 +629,6 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
   }
 
   void _showDeleteSceneConfirm(Scene scene) {
-    final viewModel = Provider.of<ActiveSessionViewModel>(context, listen: false);
-    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -664,7 +656,7 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
-              await viewModel.deleteScene(scene.id);
+              await _viewModel.deleteScene(scene.id);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: DnDTheme.errorRed,
