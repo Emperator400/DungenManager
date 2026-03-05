@@ -24,6 +24,7 @@ class EnhancedActiveSessionScreen extends StatefulWidget {
 class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScreen> {
   late ActiveSessionViewModel _viewModel;
   final GlobalKey<State> _sceneFlowKey = GlobalKey();
+  double _quadrantScale = 0.9; // 50% - 100% der verfügbaren Größe
 
   @override
   void initState() {
@@ -182,13 +183,15 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    // Berechne optimale Größe für 2x2 Grid ohne Scrollen (etwas kleiner für mehr Platz)
-                    final aspectRatio = (constraints.maxWidth / 2 - 2) / (constraints.maxHeight / 2 - 2);
+                    // Berechne optimale Größe für 2x2 Grid mit Scale-Faktor
+                    final availableWidth = (constraints.maxWidth / 2 - 2) * _quadrantScale;
+                    final availableHeight = (constraints.maxHeight / 2 - 2) * _quadrantScale;
+                    final aspectRatio = availableWidth / availableHeight;
                     return GridView.count(
                       crossAxisCount: 2,
                       crossAxisSpacing: 2,
                       mainAxisSpacing: 2,
-                      childAspectRatio: aspectRatio.clamp(0.5, 1.3),
+                      childAspectRatio: aspectRatio.clamp(0.3, 3.0),
                       children: [
                     _buildSessionQuadrant(
                       title: "Szenen-Ablauf",
@@ -567,6 +570,49 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 4),
+              // Scale Slider
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Größe',
+                    style: DnDTheme.bodyText2.copyWith(
+                      color: DnDTheme.arcaneBlue,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 8,
+                    ),
+                  ),
+                  Text(
+                    '${(_quadrantScale * 100).toInt()}%',
+                    style: DnDTheme.bodyText2.copyWith(
+                      color: Colors.white70,
+                      fontSize: 8,
+                    ),
+                  ),
+                ],
+              ),
+              SliderTheme(
+                data: SliderThemeData(
+                  trackHeight: 2,
+                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 4),
+                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 8),
+                  activeTrackColor: DnDTheme.arcaneBlue,
+                  inactiveTrackColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
+                  thumbColor: DnDTheme.ancientGold,
+                ),
+                child: Slider(
+                  value: _quadrantScale,
+                  min: 0.5,
+                  max: 1.0,
+                  divisions: 10,
+                  onChanged: (value) {
+                    setState(() {
+                      _quadrantScale = value;
+                    });
+                  },
+                ),
               ),
             ],
           ),
