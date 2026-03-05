@@ -606,21 +606,18 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
   }
 
   Widget _buildFloatingActionButton() {
-    return Hero(
-      tag: 'active_session_fab',
-      child: Container(
-        decoration: DnDTheme.getMysticalBorder(
-          borderColor: DnDTheme.errorRed,
-          width: 3,
-        ),
-        child: FloatingActionButton.extended(
-          heroTag: 'active_session_fab',
-          onPressed: _startEncounter,
-          backgroundColor: DnDTheme.errorRed,
-          foregroundColor: Colors.white,
-          icon: const Icon(Icons.play_arrow),
-          label: const Text('Kampf'),
-        ),
+    return Container(
+      decoration: DnDTheme.getMysticalBorder(
+        borderColor: DnDTheme.errorRed,
+        width: 3,
+      ),
+      child: FloatingActionButton.extended(
+        heroTag: 'active_session_fab',
+        onPressed: _startEncounter,
+        backgroundColor: DnDTheme.errorRed,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.play_arrow),
+        label: const Text('Kampf'),
       ),
     );
   }
