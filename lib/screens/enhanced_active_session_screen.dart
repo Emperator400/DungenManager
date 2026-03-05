@@ -180,12 +180,16 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
               
               // Main Content Grid
               Expanded(
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 4,
-                  mainAxisSpacing: 4,
-                  childAspectRatio: 0.9,
-                  children: [
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Berechne optimale Größe für 2x2 Grid ohne Scrollen
+                    final aspectRatio = (constraints.maxWidth / 2) / (constraints.maxHeight / 2);
+                    return GridView.count(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 2,
+                      mainAxisSpacing: 2,
+                      childAspectRatio: aspectRatio.clamp(0.6, 1.5),
+                      children: [
                     _buildSessionQuadrant(
                       title: "Szenen-Ablauf",
                       icon: Icons.list_alt,
@@ -218,7 +222,9 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
                         Icons.music_note,
                       ),
                     ),
-                  ],
+                      ],
+                    );
+                  },
                 ),
               ),
             ],
