@@ -37,6 +37,9 @@ class DatabaseMigration {
     await _createSessionQuestProgressTable(db);
     await _createSessionCharacterTrackingTable(db);
     
+    // Migration v10 -> v11: Scene als Hauptsäule
+    await _migrateToV11(db);
+    
     // Füge is_favorite Spalte hinzu, falls sie nicht existiert
     await _addIsFavoriteColumn(db);
     
@@ -493,6 +496,177 @@ class DatabaseMigration {
       print('Created session_character_tracking table with indexes');
     } else {
       print('SessionCharacterTracking table already exists');
+    }
+  }
+
+  /// Migration v10 -> v11: Scene als Hauptsäule
+  Future<void> _migrateToV11(Database db) async {
+    print('Running migration v10 -> v11: Scene as central hub');
+    
+    try {
+      // 1. Scenes Tabelle erweitern
+      await _addSceneFields(db);
+      
+      // 2. Encounters Tabelle umstrukturieren (sessionId -> sceneId)
+      await _restructureEncountersTable(db);
+      
+      // 3. SceneQuestStatus Tabelle erstellen
+      await _createSceneQuestStatusTable(db);
+      
+      print('Migration v10 -> v11 completed successfully');
+    } catch (e) {
+      print('Migration v10 -> v11 failed: $e');
+      // Kein Abbruch bei Fehlern, da die Tabelle vielleicht noch nicht existiert
+    }
+  }
+
+  /// Fügt neue Felder zur Scenes Tabelle hinzu
+  Future<void> _addSceneFields(Database db) async {
+    try {
+      // Prüfe ob Tabelle existiert
+      final tableExists = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='scenes'",
+      );
+      
+      if (tableExists.isEmpty) {
+        print('Note: scenes table does not exist yet');
+        return;
+      }
+      
+      final tableInfo = await db.rawQuery('PRAGMA table_info(scenes)');
+      
+      // linked_encounter_id hinzufügen
+      if (!tableInfo.any((column) => column['name'] == 'linked_encounter_id')) {
+        await db.execute('ALTER TABLE scenes ADD COLUMN linked_encounter_id TEXT');
+        print('Added linked_encounter_id column to scenes table');
+      }
+      
+      // linked_character_ids hinzufügen
+      if (!tableInfo.any((column) => column['name'] == 'linked_character_ids')) {
+        await db.execute('ALTER TABLE scenes ADD COLUMN linked_character_ids TEXT DEFAULT "[]"');
+        print('Added linked_character_ids column to scenes table');
+      }
+      
+      // scene_data hinzufügen
+      if (!tableInfo.any((column) => column['name'] == 'scene_data')) {
+        await db.execute('ALTER TABLE scenes ADD COLUMN scene_data TEXT DEFAULT "{}"');
+        print('Added scene_data column to scenes table');
+      }
+      
+      // Index für linked_encounter_id erstellen
+      try {
+        await db.execute('CREATE INDEX idx_scenes_linked_encounter_id ON scenes(linked_encounter_id)');
+      } catch (e) {
+        // Index existiert vielleicht schon
+      }
+      
+    } catch (e) {
+      print('Error adding scene fields: $e');
+    }
+  }
+
+  /// Strukturiert die Encounters Tabelle um (sessionId -> sceneId)
+  Future<void> _restructureEncountersTable(Database db) async {
+    try {
+      // Prüfe ob Tabelle existiert
+      final tableExists = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='encounters'",
+      );
+      
+      if (tableExists.isEmpty) {
+        print('Note: encounters table does not exist yet');
+        return;
+      }
+      
+      final tableInfo = await db.rawQuery('PRAGMA table_info(encounters)');
+      final hasSceneId = tableInfo.any((column) => column['name'] == 'scene_id');
+      final hasSessionId = tableInfo.any((column) => column['name'] == 'session_id');
+      
+      // Wenn scene_id bereits existiert, nichts zu tun
+      if (hasSceneId) {
+        print('encounters table already has scene_id column');
+        return;
+      }
+      
+      // Wenn nur session_id existiert, müssen wir migrieren
+      if (hasSessionId) {
+        // In SQLite können wir Spalten nicht umbenennen, wir müssen:
+        // 1. Neue Tabelle mit scene_id erstellen
+        // 2. Daten kopieren
+        // 3. Alte Tabelle löschen
+        // 4. Neue Tabelle umbenennen
+        
+        print('Migrating encounters from session_id to scene_id');
+        
+        // 1. Erstelle temporäre Tabelle
+        await db.execute('''
+          CREATE TABLE encounters_new (
+            id TEXT PRIMARY KEY,
+            scene_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT,
+            status TEXT NOT NULL DEFAULT 'planning',
+            participant_ids TEXT,
+            created_at TEXT NOT NULL,
+            started_at TEXT,
+            completed_at TEXT,
+            FOREIGN KEY (scene_id) REFERENCES scenes (id) ON DELETE CASCADE
+          )
+        ''');
+        
+        // 2. Kopiere Daten (session_id wird zu scene_id)
+        await db.execute('''
+          INSERT INTO encounters_new 
+          SELECT id, session_id, title, description, status, participant_ids, 
+                 created_at, started_at, completed_at 
+          FROM encounters
+        ''');
+        
+        // 3. Lösche alte Tabelle
+        await db.execute('DROP TABLE encounters');
+        
+        // 4. Benenne neue Tabelle um
+        await db.execute('ALTER TABLE encounters_new RENAME TO encounters');
+        
+        // 5. Erstelle Indizes
+        await db.execute('CREATE INDEX idx_encounters_scene_id ON encounters(scene_id)');
+        await db.execute('CREATE INDEX idx_encounters_status ON encounters(status)');
+        
+        print('Successfully migrated encounters table to use scene_id');
+      }
+      
+    } catch (e) {
+      print('Error restructuring encounters table: $e');
+    }
+  }
+
+  /// Erstellt die SceneQuestStatus Tabelle
+  Future<void> _createSceneQuestStatusTable(Database db) async {
+    final result = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='scene_quest_status'",
+    );
+
+    if (result.isEmpty) {
+      await db.execute('''
+        CREATE TABLE scene_quest_status (
+          id TEXT PRIMARY KEY,
+          scene_id TEXT NOT NULL,
+          quest_id TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'active',
+          progress INTEGER NOT NULL DEFAULT 0,
+          notes TEXT,
+          last_updated INTEGER NOT NULL,
+          FOREIGN KEY (scene_id) REFERENCES scenes (id) ON DELETE CASCADE
+        )
+      ''');
+
+      await db.execute('CREATE INDEX idx_scene_quest_status_scene_id ON scene_quest_status(scene_id)');
+      await db.execute('CREATE INDEX idx_scene_quest_status_quest_id ON scene_quest_status(quest_id)');
+      await db.execute('CREATE INDEX idx_scene_quest_status_status ON scene_quest_status(status)');
+
+      print('Created scene_quest_status table with indexes');
+    } else {
+      print('SceneQuestStatus table already exists');
     }
   }
   
