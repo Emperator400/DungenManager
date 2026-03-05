@@ -34,6 +34,9 @@ class Scene {
   Complexity? complexity;
   List<String> linkedWikiEntryIds;
   List<String> linkedQuestIds;
+  final String? linkedEncounterId; // Optional: Ein Encounter pro Scene
+  final List<String> linkedCharacterIds; // Welche Charaktere sind beteiligt?
+  final Map<String, dynamic> sceneData; // Flexible Zusatzdaten (DM-Notizen, Ziele, etc.)
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -49,11 +52,17 @@ class Scene {
     this.complexity,
     List<String>? linkedWikiEntryIds,
     List<String>? linkedQuestIds,
+    this.linkedEncounterId,
+    List<String>? linkedCharacterIds,
+    Map<String, dynamic>? sceneData,
     DateTime? createdAt,
     DateTime? updatedAt,
   })  : id = id ?? UuidService().generateId(),
         linkedWikiEntryIds = linkedWikiEntryIds ?? [],
         linkedQuestIds = linkedQuestIds ?? [],
+        linkedEncounterId = linkedEncounterId,
+        linkedCharacterIds = linkedCharacterIds ?? [],
+        sceneData = sceneData ?? {},
         createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
@@ -70,6 +79,9 @@ class Scene {
     Complexity? complexity,
     List<String>? linkedWikiEntryIds,
     List<String>? linkedQuestIds,
+    String? linkedEncounterId,
+    List<String>? linkedCharacterIds,
+    Map<String, dynamic>? sceneData,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -85,6 +97,9 @@ class Scene {
       complexity: complexity ?? this.complexity,
       linkedWikiEntryIds: linkedWikiEntryIds ?? this.linkedWikiEntryIds,
       linkedQuestIds: linkedQuestIds ?? this.linkedQuestIds,
+      linkedEncounterId: linkedEncounterId ?? this.linkedEncounterId,
+      linkedCharacterIds: linkedCharacterIds ?? this.linkedCharacterIds,
+      sceneData: sceneData ?? this.sceneData,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
     );
@@ -241,6 +256,9 @@ class Scene {
       'complexity': complexity?.name,
       'linked_wiki_entry_ids': jsonEncode(linkedWikiEntryIds),
       'linked_quest_ids': jsonEncode(linkedQuestIds),
+      'linked_encounter_id': linkedEncounterId,
+      'linked_character_ids': jsonEncode(linkedCharacterIds),
+      'scene_data': jsonEncode(sceneData),
       'created_at': createdAt.millisecondsSinceEpoch,
       'updated_at': updatedAt.millisecondsSinceEpoch,
     };
@@ -273,6 +291,9 @@ class Scene {
             : null,
         linkedWikiEntryIds: _parseStringList(map['linked_wiki_entry_ids'] ?? map['linkedWikiEntryIds']),
         linkedQuestIds: _parseStringList(map['linked_quest_ids'] ?? map['linkedQuestIds']),
+        linkedEncounterId: ModelParsingHelper.safeStringOrNull(map, 'linked_encounter_id', ModelParsingHelper.safeStringOrNull(map, 'linkedEncounterId', null)),
+        linkedCharacterIds: _parseStringList(map['linked_character_ids'] ?? map['linkedCharacterIds']),
+        sceneData: _parseMapData(map['scene_data'] ?? map['sceneData']),
         createdAt: ModelParsingHelper.safeDateTime(map, 'created_at', ModelParsingHelper.safeDateTime(map, 'createdAt', DateTime.now())),
         updatedAt: ModelParsingHelper.safeDateTime(map, 'updated_at', ModelParsingHelper.safeDateTime(map, 'updatedAt', DateTime.now())),
       );
@@ -284,5 +305,28 @@ class Scene {
         name: ModelParsingHelper.safeString(map, 'name', "Fehlerhafte Szene"),
       );
     }
+  }
+
+  /// Hilfsmethode zum Parsen von sceneData
+  static Map<String, dynamic> _parseMapData(dynamic data) {
+    if (data == null) return {};
+    
+    if (data is Map) {
+      return Map<String, dynamic>.from(data);
+    }
+    
+    if (data is String) {
+      try {
+        final decoded = jsonDecode(data);
+        if (decoded is Map) {
+          return Map<String, dynamic>.from(decoded);
+        }
+      } catch (e) {
+        // Fallback bei JSON-Fehlern
+        return {};
+      }
+    }
+    
+    return {};
   }
 }
