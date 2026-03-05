@@ -8,7 +8,7 @@ import '../../models/encounter.dart';
 /// Entity für Encounter-Tabelle
 class EncounterEntity {
   final String id;
-  final String sessionId;
+  final String sceneId;  // ← GEÄNDERT: Encounter gehört zu Scene
   final String title;
   final String? description;
   final String status;
@@ -19,7 +19,7 @@ class EncounterEntity {
 
   EncounterEntity({
     required this.id,
-    required this.sessionId,
+    required this.sceneId,  // ← GEÄNDERT
     required this.title,
     this.description,
     required this.status,
@@ -33,7 +33,7 @@ class EncounterEntity {
   factory EncounterEntity.fromModel(Encounter encounter) {
     return EncounterEntity(
       id: encounter.id,
-      sessionId: encounter.sessionId,
+      sceneId: encounter.sceneId,  // ← GEÄNDERT
       title: encounter.title,
       description: encounter.description.isEmpty ? null : encounter.description,
       status: encounter.status.toString().split('.').last,
@@ -48,7 +48,7 @@ class EncounterEntity {
   factory EncounterEntity.fromMap(Map<String, dynamic> map) {
     return EncounterEntity(
       id: map['id'] as String,
-      sessionId: map['session_id'] as String,
+      sceneId: map['scene_id'] as String,  // ← GEÄNDERT
       title: map['title'] as String,
       description: map['description'] as String?,
       status: map['status'] as String,
@@ -63,7 +63,7 @@ class EncounterEntity {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'session_id': sessionId,
+      'scene_id': sceneId,  // ← GEÄNDERT
       'title': title,
       'description': description,
       'status': status,
@@ -78,7 +78,7 @@ class EncounterEntity {
   Encounter toModel() {
     return Encounter(
       id: id,
-      sessionId: sessionId,
+      sceneId: sceneId,  // ← GEÄNDERT
       title: title,
       description: description ?? '',
       status: EncounterStatus.values.firstWhere(

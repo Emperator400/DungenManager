@@ -18,7 +18,7 @@ enum EncounterStatus {
 /// Repräsentiert eine Kampfbegegnung
 class Encounter {
   final String id;
-  final String sessionId;
+  final String sceneId;  // ← GEÄNDERT: Encounter gehört zu Scene, nicht Session
   final String title;
   final String description;
   final EncounterStatus status;
@@ -29,7 +29,7 @@ class Encounter {
 
   Encounter({
     String? id,
-    required this.sessionId,
+    required this.sceneId,  // ← GEÄNDERT
     required this.title,
     this.description = '',
     this.status = EncounterStatus.planning,
@@ -42,12 +42,12 @@ class Encounter {
 
   /// Factory für neue Encounters
   factory Encounter.create({
-    required String sessionId,
+    required String sceneId,  // ← GEÄNDERT
     required String title,
     String description = '',
   }) {
     return Encounter(
-      sessionId: sessionId,
+      sceneId: sceneId,  // ← GEÄNDERT
       title: title,
       description: description,
       status: EncounterStatus.planning,
@@ -63,7 +63,7 @@ class Encounter {
   factory Encounter.fromDatabaseMap(Map<String, dynamic> map) {
     return Encounter(
       id: ModelParsingHelper.safeId(map, 'id'),
-      sessionId: ModelParsingHelper.safeString(map, 'session_id', ''),
+      sceneId: ModelParsingHelper.safeString(map, 'scene_id', ''),  // ← GEÄNDERT
       title: ModelParsingHelper.safeString(map, 'title', 'Unbenannter Encounter'),
       description: ModelParsingHelper.safeString(map, 'description', ''),
       status: EncounterStatus.values.firstWhere(
@@ -98,7 +98,7 @@ class Encounter {
   Map<String, dynamic> toDatabaseMap() {
     return {
       'id': id,
-      'session_id': sessionId,
+      'scene_id': sceneId,  // ← GEÄNDERT
       'title': title,
       'description': description,
       'status': status.toString().split('.').last,
@@ -112,7 +112,7 @@ class Encounter {
   /// CopyWith-Methode für unveränderliche Updates
   Encounter copyWith({
     String? id,
-    String? sessionId,
+    String? sceneId,  // ← GEÄNDERT
     String? title,
     String? description,
     EncounterStatus? status,
@@ -123,7 +123,7 @@ class Encounter {
   }) {
     return Encounter(
       id: id ?? this.id,
-      sessionId: sessionId ?? this.sessionId,
+      sceneId: sceneId ?? this.sceneId,  // ← GEÄNDERT
       title: title ?? this.title,
       description: description ?? this.description,
       status: status ?? this.status,
