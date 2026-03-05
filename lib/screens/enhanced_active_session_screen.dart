@@ -579,31 +579,59 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
                 },
               ),
               ListTile(
-                leading: Icon(Icons.play_arrow, color: DnDTheme.ancientGold, size: 20),
+                leading: Icon(Icons.play_circle_filled, color: DnDTheme.ancientGold, size: 20),
                 title: Text(
-                  'Als aktiv setzen',
+                  'Scene aktivieren',
                   style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                ),
+                subtitle: Text(
+                  'Aktiviert Scene und ihre Quests',
+                  style: DnDTheme.bodyText2.copyWith(color: Colors.white54, fontSize: 11),
                 ),
                 onTap: () {
                   Navigator.pop(context);
-                  _viewModel.setActiveScene(scene.id);
+                  _viewModel.activateScene(scene.id);
                 },
               ),
               ListTile(
-                leading: Icon(
-                  scene.isCompleted ? Icons.check_circle_outline : Icons.check_circle,
-                  color: DnDTheme.successGreen,
-                  size: 20,
-                ),
+                leading: Icon(Icons.check_circle, color: DnDTheme.successGreen, size: 20),
                 title: Text(
-                  scene.isCompleted ? 'Als offen markieren' : 'Als abgeschlossen markieren',
+                  'Scene abschließen',
+                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                ),
+                subtitle: Text(
+                  'Schließt Scene, Quests und Encounters',
+                  style: DnDTheme.bodyText2.copyWith(color: Colors.white54, fontSize: 11),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _viewModel.completeScene(scene.id);
+                },
+              ),
+              Divider(color: DnDTheme.stoneGrey),
+              ListTile(
+                leading: Icon(Icons.arrow_upward, color: DnDTheme.arcaneBlue, size: 20),
+                title: Text(
+                  'Nach oben verschieben',
                   style: DnDTheme.bodyText1.copyWith(color: Colors.white),
                 ),
                 onTap: () {
                   Navigator.pop(context);
-                  _viewModel.markSceneCompleted(scene.id, !scene.isCompleted);
+                  _viewModel.moveSceneUp(scene.id);
                 },
               ),
+              ListTile(
+                leading: Icon(Icons.arrow_downward, color: DnDTheme.arcaneBlue, size: 20),
+                title: Text(
+                  'Nach unten verschieben',
+                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _viewModel.moveSceneDown(scene.id);
+                },
+              ),
+              Divider(color: DnDTheme.stoneGrey),
               ListTile(
                 leading: Icon(Icons.delete, color: DnDTheme.errorRed, size: 20),
                 title: Text(

@@ -6,14 +6,17 @@ import '../models/scene.dart';
 import '../database/repositories/session_model_repository.dart';
 import '../database/repositories/scene_model_repository.dart';
 import '../database/core/database_connection.dart';
+import '../services/scene_service.dart';
 
 /// ViewModel für aktive Sessions mit neuer Repository-Architektur
 /// Zentralisiert State Management und Business-Logik für laufende D&D-Sessions
 /// 
 /// HINWEIS: Verwendet jetzt das neue SessionModelRepository und SceneModelRepository
+/// HINWEIS: Verwendet SceneService für Scene-Centric Workflow (Encounter/Character Links, Quest Status)
 class ActiveSessionViewModel extends ChangeNotifier {
   final SessionModelRepository _sessionRepository;
   final SceneModelRepository _sceneRepository;
+  final SceneService _sceneService;
 
   // ============================================================================
   // STATE VARIABLES
@@ -43,17 +46,19 @@ class ActiveSessionViewModel extends ChangeNotifier {
   // ============================================================================
 
   /// 
-  /// HINWEIS: Verwendet jetzt das neue SessionModelRepository
+  /// HINWEIS: Verwendet jetzt das neue SessionModelRepository und SceneService
   /// 
   ActiveSessionViewModel({
     required Session session,
     required Campaign campaign,
     SessionModelRepository? sessionRepository,
     SceneModelRepository? sceneRepository,
+    SceneService? sceneService,
   }) : _currentSession = session,
        _campaign = campaign,
        _sessionRepository = sessionRepository ?? SessionModelRepository(DatabaseConnection.instance),
-       _sceneRepository = sceneRepository ?? SceneModelRepository(DatabaseConnection.instance) {
+       _sceneRepository = sceneRepository ?? SceneModelRepository(DatabaseConnection.instance),
+       _sceneService = sceneService ?? SceneService(DatabaseConnection.instance) {
     // Lade Scenes beim Initialisieren
     _loadScenes();
   }
@@ -150,6 +155,74 @@ class ActiveSessionViewModel extends ChangeNotifier {
       );
       await _sessionRepository.update(_currentSession);
       notifyListeners();
+    });
+  }
+
+  // ============================================================================
+  // SCENE WORKFLOW OPERATIONS (über SceneService)
+  // ============================================================================
+
+  /// Aktiviert eine Scene - setzt sie als aktiv und aktiviert ihre Quests
+  Future<void> activateScene(String sceneId) async {
+    await _executeWithErrorHandling(() async {
+      await _sceneService.activateScene(sceneId);
+      await _loadScenes();
+    });
+  }
+
+  /// Schließt eine Scene ab - schließt auch alle aktiven Quests und Encounters
+  Future<void> completeScene(String sceneId) async {
+    await _executeWithErrorHandling(() async {
+      await _sceneService.completeScene(sceneId);
+      await _loadScenes();
+    });
+  }
+
+  /// Verknüpft einen Encounter mit einer Scene
+  Future<void> linkEncounter(String sceneId, String encounterId) async {
+    await _executeWithErrorHandling(() async {
+      await _sceneService.linkEncounter(sceneId, encounterId);
+      await _loadScenes();
+    });
+  }
+
+  /// Entfernt die Encounter-Verknüpfung einer Scene
+  Future<void> unlinkEncounter(String sceneId) async {
+    await _executeWithErrorHandling(() async {
+      await _sceneService.unlinkEncounter(sceneId);
+      await _loadScenes();
+    });
+  }
+
+  /// Fügt einen Charakter zu einer Scene hinzu
+  Future<void> addCharacterToScene(String sceneId, String characterId) async {
+    await _executeWithErrorHandling(() async {
+      await _sceneService.addCharacterToScene(sceneId, characterId);
+      await _loadScenes();
+    });
+  }
+
+  /// Entfernt einen Charakter aus einer Scene
+  Future<void> removeCharacterFromScene(String sceneId, String characterId) async {
+    await _executeWithErrorHandling(() async {
+      await _sceneService.removeCharacterFromScene(sceneId, characterId);
+      await _loadScenes();
+    });
+  }
+
+  /// Verschiebt eine Scene nach oben
+  Future<void> moveSceneUp(String sceneId) async {
+    await _executeWithErrorHandling(() async {
+      await _sceneService.moveSceneUp(sceneId);
+      await _loadScenes();
+    });
+  }
+
+  /// Verschiebt eine Scene nach unten
+  Future<void> moveSceneDown(String sceneId) async {
+    await _executeWithErrorHandling(() async {
+      await _sceneService.moveSceneDown(sceneId);
+      await _loadScenes();
     });
   }
 
