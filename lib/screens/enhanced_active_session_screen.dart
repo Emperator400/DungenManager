@@ -801,23 +801,18 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
   }
 
   void _showCreateSceneDialog() {
-    final newScene = Scene(
-      sessionId: widget.session.id,
-      orderIndex: _viewModel.scenes.length,
-      name: 'Neue Szene',
-      description: '',
-      sceneType: SceneType.Exploration,
-      estimatedDuration: const Duration(minutes: 30),
-    );
-    
-    _showEditSceneDialog(newScene, isCreate: true);
+    // Übergebe null und sessionId - der EditSceneViewModel erstellt die neue Scene
+    _showEditSceneDialog(null, isCreate: true);
   }
 
-  void _showEditSceneDialog(Scene scene, {bool isCreate = false}) async {
+  void _showEditSceneDialog(Scene? scene, {bool isCreate = false}) async {
     // Repositories VOR dem Navigator aus dem Context lesen
     final sceneRepository = context.read<SceneModelRepository>();
     final creatureRepository = context.read<CreatureModelRepository>();
     final playerCharacterRepository = context.read<PlayerCharacterModelRepository>();
+    
+    // Für neue Scenes: sessionId übergeben, für existierende: nicht
+    final sessionId = scene == null ? widget.session.id : null;
     
     final result = await Navigator.push<bool>(
       context,
@@ -832,7 +827,10 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
               ),
             ),
           ],
-          child: EnhancedEditSceneScreen(scene: scene),
+          child: EnhancedEditSceneScreen(
+            scene: scene,
+            sessionId: sessionId,
+          ),
         ),
       ),
     );

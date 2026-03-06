@@ -8,10 +8,12 @@ import 'select_character_for_scene_screen.dart';
 /// Enhanced Screen zur Bearbeitung von Scenes mit modernem Design
 class EnhancedEditSceneScreen extends StatefulWidget {
   final Scene? scene;
+  final String? sessionId; // Für neue Scenes
 
   const EnhancedEditSceneScreen({
     Key? key,
     this.scene,
+    this.sessionId,
   }) : super(key: key);
 
   @override
@@ -28,7 +30,10 @@ class _EnhancedEditSceneScreenState extends State<EnhancedEditSceneScreen> {
     super.initState();
     // ViewModel initialisieren
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<EditSceneViewModel>().initialize(widget.scene);
+      context.read<EditSceneViewModel>().initialize(
+        widget.scene,
+        sessionId: widget.sessionId,
+      );
       _controllersFromViewModel();
     });
   }

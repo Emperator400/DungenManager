@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/campaign.dart';
 import '../models/session.dart';
-import '../models/scene.dart';
+//import '../models/scene.dart';
 import '../viewmodels/session_list_for_campaign_viewmodel.dart';
 import '../database/repositories/scene_model_repository.dart';
 import '../database/repositories/creature_model_repository.dart';

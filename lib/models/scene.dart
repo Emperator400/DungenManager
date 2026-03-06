@@ -60,7 +60,6 @@ class Scene {
   })  : id = id ?? UuidService().generateId(),
         linkedWikiEntryIds = linkedWikiEntryIds ?? [],
         linkedQuestIds = linkedQuestIds ?? [],
-        linkedEncounterId = linkedEncounterId,
         linkedCharacterIds = linkedCharacterIds ?? [],
         sceneData = sceneData ?? {},
         createdAt = createdAt ?? DateTime.now(),
