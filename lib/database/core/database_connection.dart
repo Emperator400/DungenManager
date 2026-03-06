@@ -38,7 +38,7 @@ class DatabaseConnection {
     
     final db = await openDatabase(
       path,
-      version: 12,
+      version: 13,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       singleInstance: true,
@@ -79,6 +79,7 @@ class DatabaseConnection {
     await _createSessionQuestProgressTable(db);
     await _createSessionCharacterTrackingTable(db);
     await _createSceneQuestStatusTable(db); // SceneQuestStatus Tabelle hinzugefügt
+    await _createQuestsTable(db); // Quests Tabelle hinzugefügt
   }
   
   /// Erstellt die wiki_entries Tabelle
@@ -612,6 +613,47 @@ class DatabaseConnection {
 
     print('✅ scene_quest_status Tabelle erstellt');
   }
+
+  /// Erstellt die quests Tabelle
+  Future<void> _createQuestsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS quests (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL,
+        status TEXT NOT NULL,
+        quest_type TEXT NOT NULL,
+        difficulty TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        completed_at TEXT,
+        campaign_id TEXT,
+        location TEXT,
+        recommended_level INTEGER,
+        estimated_duration_hours REAL,
+        is_favorite INTEGER NOT NULL DEFAULT 0,
+        tags TEXT,
+        rewards TEXT,
+        involved_npcs TEXT,
+        linked_wiki_entry_ids TEXT,
+        source_type TEXT DEFAULT 'custom',
+        source_id TEXT,
+        is_custom INTEGER NOT NULL DEFAULT 1,
+        version TEXT DEFAULT '1.0',
+        priority INTEGER NOT NULL DEFAULT 0,
+        quest_giver_id TEXT,
+        image_url TEXT
+      )
+    ''');
+
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_quests_campaign_id ON quests(campaign_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_quests_status ON quests(status)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_quests_quest_type ON quests(quest_type)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_quests_difficulty ON quests(difficulty)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_quests_priority ON quests(priority)');
+
+    print('✅ quests Tabelle erstellt');
+  }
   
   /// Aktualisiert das Datenbankschema
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -706,6 +748,12 @@ class DatabaseConnection {
       print('🔄 Füge scene_quest_status Tabelle hinzu (v11 → v12)...');
       await _createSceneQuestStatusTable(db);
       print('✅ scene_quest_status Tabelle erstellt (Version 12)');
+    }
+    
+    if (oldVersion < 13 && newVersion >= 13) {
+      print('🔄 Füge quests Tabelle hinzu (v12 → v13)...');
+      await _createQuestsTable(db);
+      print('✅ quests Tabelle erstellt (Version 13)');
     }
   }
   
