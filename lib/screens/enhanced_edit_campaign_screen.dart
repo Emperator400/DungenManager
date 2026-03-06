@@ -209,6 +209,21 @@ class _EnhancedEditCampaignScreenState extends State<EnhancedEditCampaignScreen>
 
                   const SizedBox(height: 16),
 
+                  // Button zur Quest-Erstellung
+                  ElevatedButton.icon(
+                    onPressed: _createNewQuest,
+                    icon: Icon(Icons.add_task),
+                    label: Text('Quest erstellen'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: DnDTheme.ancientGold,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
                   // Kampagnen-Einstellungen
                   _buildSectionCard(
                     title: 'Kampagnen-Einstellungen',
