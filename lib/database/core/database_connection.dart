@@ -38,7 +38,7 @@ class DatabaseConnection {
     
     final db = await openDatabase(
       path,
-      version: 10,
+      version: 11,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       singleInstance: true,
@@ -478,6 +478,9 @@ class DatabaseConnection {
         complexity TEXT,
         linked_wiki_entry_ids TEXT DEFAULT '[]',
         linked_quest_ids TEXT DEFAULT '[]',
+        linked_encounter_id TEXT,
+        linked_character_ids TEXT DEFAULT '[]',
+        scene_data TEXT DEFAULT '{}',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY (session_id) REFERENCES sessions (id) ON DELETE CASCADE
@@ -638,6 +641,42 @@ class DatabaseConnection {
       print('🔄 Füge scenes Tabelle hinzu (v9 → v10)...');
       await _createScenesTable(db);
       print('✅ scenes Tabelle erstellt (Version 10)');
+    }
+    
+    if (oldVersion < 11 && newVersion >= 11) {
+      print('🔄 Füge neue Spalten zu scenes Tabelle hinzu (v10 → v11)...');
+      try {
+        final tableInfo = await db.rawQuery('PRAGMA table_info(scenes)');
+        final existingColumns = tableInfo.map((column) => column['name'] as String).toSet();
+        
+        // linked_encounter_id hinzufügen
+        if (!existingColumns.contains('linked_encounter_id')) {
+          await db.execute('ALTER TABLE scenes ADD COLUMN linked_encounter_id TEXT');
+          print('✅ linked_encounter_id Spalte hinzugefügt');
+        } else {
+          print('ℹ️ linked_encounter_id Spalte existiert bereits');
+        }
+        
+        // linked_character_ids hinzufügen
+        if (!existingColumns.contains('linked_character_ids')) {
+          await db.execute('ALTER TABLE scenes ADD COLUMN linked_character_ids TEXT DEFAULT "[]"');
+          print('✅ linked_character_ids Spalte hinzugefügt');
+        } else {
+          print('ℹ️ linked_character_ids Spalte existiert bereits');
+        }
+        
+        // scene_data hinzufügen
+        if (!existingColumns.contains('scene_data')) {
+          await db.execute('ALTER TABLE scenes ADD COLUMN scene_data TEXT DEFAULT "{}"');
+          print('✅ scene_data Spalte hinzugefügt');
+        } else {
+          print('ℹ️ scene_data Spalte existiert bereits');
+        }
+        
+        print('✅ scenes Tabelle aktualisiert (Version 11)');
+      } catch (e) {
+        print('⚠️ Konnte scenes Spalten nicht hinzufügen: $e');
+      }
     }
   }
   
