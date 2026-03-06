@@ -12,6 +12,9 @@ class EditQuestViewModel extends ChangeNotifier {
   final UuidService _uuidService = UuidService();
   final QuestModelRepository _questRepository;
 
+  /// Aktuelle Kampagnen-ID für automatische Zuweisung
+  String? _currentCampaignId;
+
   /// 
   /// HINWEIS: Verwendet jetzt das neue QuestModelRepository
   /// 
@@ -32,10 +35,12 @@ class EditQuestViewModel extends ChangeNotifier {
   bool get isValid => _quest?.title.trim().isNotEmpty == true && _quest!.title.trim().length >= 2;
 
   /// Initialisiert das ViewModel mit einem existierenden Quest oder erstellt einen neuen
-  void initialize(Quest? quest) {
+  void initialize(Quest? quest, {String? campaignId}) {
+    _currentCampaignId = campaignId;
     _quest = quest ?? Quest.create(
       title: '',
       description: '',
+      campaignId: campaignId,
     );
     _hasUnsavedChanges = false;
     _errorMessage = null;
@@ -185,6 +190,11 @@ class EditQuestViewModel extends ChangeNotifier {
     _errorMessage = null;
 
     try {
+      // Setze campaignId wenn noch nicht gesetzt
+      if (_currentCampaignId != null && _quest!.campaignId == null) {
+        _quest = _quest!.copyWith(campaignId: _currentCampaignId);
+      }
+      
       if (_quest!.id.toString().startsWith('new_')) {
         // Create new quest
         final savedQuest = await _questRepository.create(_quest!);
@@ -239,6 +249,7 @@ class EditQuestViewModel extends ChangeNotifier {
     _quest = Quest.create(
       title: '',
       description: '',
+      campaignId: _currentCampaignId,
     );
     _hasUnsavedChanges = false;
     _errorMessage = null;
@@ -247,7 +258,7 @@ class EditQuestViewModel extends ChangeNotifier {
 
   /// Setzt das Formular auf die ursprünglichen Werte zurück
   void undoChanges() {
-    initialize(null); // Reset to original or new quest
+    initialize(null, campaignId: _currentCampaignId); // Reset to original or new quest
   }
 
   /// Dupliziert den aktuellen Quest
@@ -267,6 +278,7 @@ class EditQuestViewModel extends ChangeNotifier {
         recommendedLevel: _quest!.recommendedLevel,
         estimatedDurationHours: _quest!.estimatedDurationHours,
         isFavorite: false,
+        campaignId: _currentCampaignId,
         tags: List<String>.from(_quest!.tags),
         rewards: List<QuestReward>.from(_quest!.rewards),
         involvedNpcs: List<String>.from(_quest!.involvedNpcs),

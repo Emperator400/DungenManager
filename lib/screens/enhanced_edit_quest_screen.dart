@@ -21,10 +21,12 @@ class EnhancedEditQuestScreen extends StatefulWidget {
 /// Widget das den EditQuestViewModel bereitstellt
 class EnhancedEditQuestScreenWithProvider extends StatelessWidget {
   final Quest? quest;
+  final String? campaignId;
 
   const EnhancedEditQuestScreenWithProvider({
     super.key,
     this.quest,
+    this.campaignId,
   });
 
   @override
@@ -35,7 +37,7 @@ class EnhancedEditQuestScreenWithProvider extends StatelessWidget {
         builder: (context) {
           // Initialisiere den ViewModel nach der Erstellung
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            context.read<EditQuestViewModel>().initialize(quest);
+            context.read<EditQuestViewModel>().initialize(quest, campaignId: campaignId);
           });
           
           return EnhancedEditQuestScreen(quest: quest);
