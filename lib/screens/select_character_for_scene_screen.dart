@@ -187,7 +187,7 @@ class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneS
       itemCount: _filteredPCs.length,
       itemBuilder: (context, index) {
         final pc = _filteredPCs[index];
-        final isSelected = _isSelected(pc['id']);
+        final isSelected = _isSelected(pc['id'].toString());
         return _buildCharacterTile(
           id: pc['id'].toString(),
           name: pc['name'].toString(),
