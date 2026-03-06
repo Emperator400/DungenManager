@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/campaign.dart';
 import '../models/session.dart';
+import '../models/scene.dart';
 import '../viewmodels/session_list_for_campaign_viewmodel.dart';
+import '../database/repositories/scene_model_repository.dart';
+import '../database/repositories/creature_model_repository.dart';
+import '../database/repositories/player_character_model_repository.dart';
 import '../theme/dnd_theme.dart';
 import 'enhanced_edit_session_screen.dart';
 import 'enhanced_active_session_screen.dart';
@@ -285,7 +289,7 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
                             color: Colors.black87,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height:4),
                         Row(
                           children: [
                             Icon(
@@ -377,11 +381,209 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
                   ),
                 ),
               ],
+              // Scene Character Summary
+              if (session.sceneIds.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _buildSceneCharacterSummary(session),
+              ],
             ],
           ),
         ),
       ),
     );
+  }
+
+  /// Baut eine Zusammenfassung der Charaktere in den Scenes
+  Widget _buildSceneCharacterSummary(Session session) {
+    return FutureBuilder<Set<String>>(
+      future: _loadAllSceneCharacters(session),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final characterIds = snapshot.data!;
+        return FutureBuilder<Map<String, dynamic>>(
+          future: _loadCharacterDetails(characterIds.toList()),
+          builder: (context, charSnapshot) {
+            if (!charSnapshot.hasData || charSnapshot.data!.isEmpty) {
+              return const SizedBox.shrink();
+            }
+
+            final characters = charSnapshot.data!;
+            return Container(
+              padding: const EdgeInsets.all(8.0),
+              decoration: BoxDecoration(
+                color: DnDTheme.mysticalPurple.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6.0),
+                border: Border.all(
+                  color: DnDTheme.mysticalPurple.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.people,
+                        color: DnDTheme.mysticalPurple,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Beteiligte Charaktere',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: DnDTheme.mysticalPurple,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: characters.values.map((char) {
+                      final type = char['type'] as String;
+                      final name = char['name'] as String;
+                      
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: _getCharacterTypeColor(type).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4.0),
+                          border: Border.all(
+                            color: _getCharacterTypeColor(type).withValues(alpha: 0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _getCharacterTypeIcon(type),
+                              color: _getCharacterTypeColor(type),
+                              size: 10,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              name,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Lädt alle Charakter-IDs aus allen Scenes einer Session
+  Future<Set<String>> _loadAllSceneCharacters(Session session) async {
+    final Set<String> characterIds = {};
+    
+    try {
+      final sceneRepo = context.read<SceneModelRepository>();
+      
+      for (final sceneId in session.sceneIds) {
+        try {
+          final scene = await sceneRepo.findById(sceneId);
+          if (scene != null) {
+            characterIds.addAll(scene.linkedCharacterIds);
+          }
+        } catch (e) {
+          print('Fehler beim Laden von Scene $sceneId: $e');
+        }
+      }
+    } catch (e) {
+      print('Fehler beim Laden der Scene-Charaktere: $e');
+    }
+    
+    return characterIds;
+  }
+
+  /// Lädt Details zu einer Liste von Charakter-IDs
+  Future<Map<String, dynamic>> _loadCharacterDetails(List<String> characterIds) async {
+    final Map<String, dynamic> result = {};
+    
+    try {
+      final creatureRepo = context.read<CreatureModelRepository>();
+      final pcRepo = context.read<PlayerCharacterModelRepository>();
+      
+      for (final charId in characterIds) {
+        // Versuche zuerst als Player Character zu laden
+        try {
+          final pc = await pcRepo.findById(charId);
+          if (pc != null) {
+            result[charId] = {
+              'name': pc.name,
+              'type': 'pc',
+            };
+            continue;
+          }
+        } catch (e) {
+          // Nicht gefunden, versuche als Creature
+        }
+        
+        // Versuche als Creature zu laden
+        try {
+          final creature = await creatureRepo.findById(charId);
+          if (creature != null) {
+            result[charId] = {
+              'name': creature.name,
+              'type': creature.sourceType == 'official' ? 'monster' : 'npc',
+            };
+          }
+        } catch (e) {
+          // Nicht gefunden, überspringen
+        }
+      }
+    } catch (e) {
+      print('Fehler beim Laden der Charakterdetails: $e');
+    }
+    
+    return result;
+  }
+
+  /// Gibt die Farbe für den Charaktertyp zurück
+  Color _getCharacterTypeColor(String type) {
+    switch (type) {
+      case 'pc':
+        return Colors.green.shade600;
+      case 'npc':
+        return Colors.blue.shade600;
+      case 'monster':
+        return Colors.red.shade600;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  /// Gibt das Icon für den Charaktertyp zurück
+  IconData _getCharacterTypeIcon(String type) {
+    switch (type) {
+      case 'pc':
+        return Icons.person;
+      case 'npc':
+        return Icons.person_outline;
+      case 'monster':
+        return Icons.pets;
+      default:
+        return Icons.person;
+    }
   }
 
   Future<void> _createNewSession() async {
