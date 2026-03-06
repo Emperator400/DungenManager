@@ -212,7 +212,9 @@ class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneS
       itemBuilder: (context, index) {
         final npc = npcs[index];
         final isSelected = _isSelected(npc.id);
-        final subtitle = npc.challengeRating != null ? 'CR ${npc.challengeRating}' : npc.type ?? 'NPC';
+        final subtitle = npc.challengeRating != null 
+            ? 'CR ${npc.challengeRating.toString()}' 
+            : (npc.type ?? 'NPC').toString();
         return _buildCharacterTile(
           id: npc.id,
           name: npc.name,
@@ -237,7 +239,9 @@ class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneS
       itemBuilder: (context, index) {
         final monster = monsters[index];
         final isSelected = _isSelected(monster.id);
-        final subtitle = monster.challengeRating != null ? 'CR ${monster.challengeRating}' : monster.type ?? 'Monster';
+        final subtitle = monster.challengeRating != null 
+            ? 'CR ${monster.challengeRating.toString()}' 
+            : (monster.type ?? 'Monster').toString();
         return _buildCharacterTile(
           id: monster.id,
           name: monster.name,
