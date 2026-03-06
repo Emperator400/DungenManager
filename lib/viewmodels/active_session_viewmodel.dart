@@ -69,10 +69,15 @@ class ActiveSessionViewModel extends ChangeNotifier {
 
   /// Lädt alle Scenes für die aktuelle Session
   Future<void> _loadScenes() async {
+    print('🔄 [ActiveSessionViewModel] _loadScenes() aufgerufen für Session: ${_currentSession.id}');
     await _executeWithErrorHandling(() async {
+      _setLoading(true);
+      print('📊 [ActiveSessionViewModel] Rufe findBySession auf...');
       final scenes = await _sceneRepository.findBySession(_currentSession.id);
+      print('✅ [ActiveSessionViewModel] ${scenes.length} Scenes geladen');
       // Sortiere nach orderIndex
       _scenes = scenes..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+      _setLoading(false);
       notifyListeners();
     });
   }
@@ -309,6 +314,14 @@ class ActiveSessionViewModel extends ChangeNotifier {
       _error = e.toString();
       notifyListeners();
       rethrow;
+    }
+  }
+
+  /// Setzt den Loading-Status
+  void _setLoading(bool loading) {
+    if (_isLoading != loading) {
+      _isLoading = loading;
+      notifyListeners();
     }
   }
 

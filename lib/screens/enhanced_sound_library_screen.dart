@@ -741,7 +741,6 @@ class _EnhancedSoundLibraryScreenState extends State<EnhancedSoundLibraryScreen>
                   );
                   
                   if (result != null && result.files.single.path != null) {
-                    final filePath = result.files.single.path!;
                     final fileName = result.files.single.name;
                     
                     // Name aus Dateiname extrahieren (ohne Extension)
@@ -765,16 +764,21 @@ class _EnhancedSoundLibraryScreenState extends State<EnhancedSoundLibraryScreen>
                   labelText: 'Name',
                   labelStyle: DnDTheme.bodyText2.copyWith(color: Colors.white70),
                   border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
                     borderSide: BorderSide(color: DnDTheme.mysticalPurple),
                   ),
                   enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
                     borderSide: BorderSide(
                       color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
                     borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
                   ),
+                  filled: true,
+                  fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
                 ),
               ),
               const SizedBox(height: DnDTheme.md),
@@ -785,16 +789,21 @@ class _EnhancedSoundLibraryScreenState extends State<EnhancedSoundLibraryScreen>
                   labelText: 'Typ',
                   labelStyle: DnDTheme.bodyText2.copyWith(color: Colors.white70),
                   border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
                     borderSide: BorderSide(color: DnDTheme.mysticalPurple),
                   ),
                   enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
                     borderSide: BorderSide(
                       color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
                     borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
                   ),
+                  filled: true,
+                  fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
                 ),
                 items: SoundType.values.map((type) {
                   return DropdownMenuItem<SoundType>(
@@ -820,16 +829,21 @@ class _EnhancedSoundLibraryScreenState extends State<EnhancedSoundLibraryScreen>
                   labelText: 'Beschreibung (optional)',
                   labelStyle: DnDTheme.bodyText2.copyWith(color: Colors.white70),
                   border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
                     borderSide: BorderSide(color: DnDTheme.mysticalPurple),
                   ),
                   enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
                     borderSide: BorderSide(
                       color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
                     borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
                   ),
+                  filled: true,
+                  fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
                 ),
               ),
             ],
@@ -857,11 +871,9 @@ class _EnhancedSoundLibraryScreenState extends State<EnhancedSoundLibraryScreen>
                 );
                 
                 if (result != null && result.files.single.path != null) {
-                  final filePath = result.files.single.path!;
-                  
                   // Sound hochladen
                   final uploadedSound = await _viewModel.uploadSound(
-                    filePath,
+                    result.files.single.path!,
                     selectedType,
                     customName: nameController.text.isNotEmpty ? nameController.text : null,
                     description: descriptionController.text,

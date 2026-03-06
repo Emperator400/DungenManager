@@ -429,123 +429,244 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
     required bool isActive,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 2),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        decoration: BoxDecoration(
-          gradient: DnDTheme.getMysticalGradient(
-            startColor: isActive 
-                ? DnDTheme.ancientGold.withValues(alpha: 0.3)
-                : DnDTheme.slateGrey,
-            endColor: isActive 
-                ? DnDTheme.ancientGold.withValues(alpha: 0.1)
-                : DnDTheme.stoneGrey,
+    return Theme(
+      data: ThemeData(
+        dividerColor: Colors.transparent,
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+      ),
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        leading: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: scene.isCompleted 
+                ? DnDTheme.successGreen 
+                : DnDTheme.arcaneBlue,
+            borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
           ),
-          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-          border: Border.all(
-            color: isActive 
-                ? DnDTheme.ancientGold
-                : DnDTheme.arcaneBlue.withValues(alpha: 0.3),
-            width: isActive ? 2 : 1,
+          child: Text(
+            '${scene.orderIndex + 1}',
+            style: DnDTheme.bodyText2.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 9,
+            ),
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            // Hauptzeile: Name und Status
-            Row(
-              children: [
-                // Order Index
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: scene.isCompleted 
-                        ? DnDTheme.successGreen 
-                        : DnDTheme.arcaneBlue,
-                    borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                  ),
-                  child: Text(
-                    '${scene.orderIndex + 1}',
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    scene.name,
                     style: DnDTheme.bodyText2.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 9,
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                // Scene Info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
                     children: [
                       Text(
-                        scene.name,
+                        scene.sceneTypeDisplayName,
                         style: DnDTheme.bodyText2.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 9,
+                          color: Colors.white70,
+                          fontSize: 7,
                         ),
                       ),
-                      Row(
-                        children: [
-                          Text(
-                            scene.sceneTypeDisplayName,
-                            style: DnDTheme.bodyText2.copyWith(
-                              color: Colors.white70,
-                              fontSize: 7,
-                            ),
-                          ),
-                          // Encounter Link Indicator
-                          if (scene.linkedEncounterId != null) ...[
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.gavel,
-                              color: DnDTheme.errorRed,
-                              size: 8,
-                            ),
-                          ],
-                        ],
-                      ),
+                      // Encounter Link Indicator
+                      if (scene.linkedEncounterId != null) ...[
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.gavel,
+                          color: DnDTheme.errorRed,
+                          size: 8,
+                        ),
+                      ],
                     ],
                   ),
+                ],
+              ),
+            ),
+            // Status Icons
+            Row(
+              children: [
+                if (scene.isCompleted)
+                  Icon(
+                    Icons.check_circle,
+                    color: DnDTheme.successGreen,
+                    size: 12,
+                  ),
+                if (isActive)
+                  Icon(
+                    Icons.play_circle_filled,
+                    color: DnDTheme.ancientGold,
+                    size: 12,
+                  ),
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: onTap,
+                  child: Icon(
+                    Icons.more_vert,
+                    color: Colors.white70,
+                    size: 12,
+                  ),
                 ),
-                // Status Icons
+              ],
+            ),
+          ],
+        ),
+        trailing: const SizedBox.shrink(), // Wir haben unsere eigenen Icons
+        backgroundColor: Colors.transparent,
+        children: [
+          // Expanded Content
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            decoration: BoxDecoration(
+              gradient: DnDTheme.getMysticalGradient(
+                startColor: isActive 
+                    ? DnDTheme.ancientGold.withValues(alpha: 0.2)
+                    : DnDTheme.slateGrey.withValues(alpha: 0.5),
+                endColor: Colors.transparent,
+              ),
+              borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+              border: Border.all(
+                color: isActive 
+                    ? DnDTheme.ancientGold.withValues(alpha: 0.3)
+                    : DnDTheme.arcaneBlue.withValues(alpha: 0.2),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Beschreibung
+                if (scene.description.isNotEmpty) ...[
+                  Text(
+                    'Beschreibung',
+                    style: DnDTheme.bodyText2.copyWith(
+                      color: DnDTheme.ancientGold,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 8,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    scene.description,
+                    style: DnDTheme.bodyText2.copyWith(
+                      color: Colors.white,
+                      fontSize: 9,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                // Verknüpfte Charaktere
+                if (scene.linkedCharacterIds.isNotEmpty) ...[
+                  Text(
+                    'Verknüpfte Charaktere',
+                    style: DnDTheme.bodyText2.copyWith(
+                      color: DnDTheme.ancientGold,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 8,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  _buildLinkedCharactersRow(scene),
+                  const SizedBox(height: 8),
+                ],
+                // Zusätzliche Details
                 Row(
                   children: [
-                    if (scene.isCompleted)
-                      Icon(
-                        Icons.check_circle,
-                        color: DnDTheme.successGreen,
-                        size: 12,
+                    // Komplexität
+                    if (scene.complexity != null) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: DnDTheme.mysticalPurple.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                          border: Border.all(
+                            color: DnDTheme.mysticalPurple.withValues(alpha: 0.4),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.trending_up,
+                              color: DnDTheme.mysticalPurple,
+                              size: 8,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              scene.complexityDisplayName,
+                              style: DnDTheme.bodyText2.copyWith(
+                                color: Colors.white,
+                                fontSize: 7,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    if (isActive)
-                      Icon(
-                        Icons.play_circle_filled,
-                        color: DnDTheme.ancientGold,
-                        size: 12,
+                      const SizedBox(width: 4),
+                    ],
+                    // Geschätzte Dauer
+                    if (scene.estimatedDuration != null) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: DnDTheme.arcaneBlue.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                          border: Border.all(
+                            color: DnDTheme.arcaneBlue.withValues(alpha: 0.4),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.schedule,
+                              color: DnDTheme.arcaneBlue,
+                              size: 8,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              _formatDuration(scene.estimatedDuration!),
+                              style: DnDTheme.bodyText2.copyWith(
+                                color: Colors.white,
+                                fontSize: 7,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    const SizedBox(width: 4),
-                    Icon(
-                      Icons.more_vert,
-                      color: Colors.white70,
-                      size: 12,
-                    ),
+                    ],
                   ],
                 ),
               ],
             ),
-            // Zeile 2: Verknüpfte Charaktere
-            if (scene.linkedCharacterIds.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              _buildLinkedCharactersRow(scene),
-            ],
-          ],
-        ),
+          ),
+        ],
       ),
     );
+  }
+
+  /// Formatiert eine Duration für die Anzeige
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    
+    if (hours > 0 && minutes > 0) {
+      return '${hours}h ${minutes}min';
+    } else if (hours > 0) {
+      return '${hours}h';
+    } else {
+      return '${minutes}min';
+    }
   }
 
   /// Baut eine Reihe mit verknüpften Charakteren

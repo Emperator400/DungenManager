@@ -38,7 +38,7 @@ class DatabaseConnection {
     
     final db = await openDatabase(
       path,
-      version: 11,
+      version: 12,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       singleInstance: true,
@@ -78,6 +78,7 @@ class DatabaseConnection {
     await _createEncounterParticipantsTable(db);
     await _createSessionQuestProgressTable(db);
     await _createSessionCharacterTrackingTable(db);
+    await _createSceneQuestStatusTable(db); // SceneQuestStatus Tabelle hinzugefügt
   }
   
   /// Erstellt die wiki_entries Tabelle
@@ -589,6 +590,28 @@ class DatabaseConnection {
 
     print('✅ session_character_tracking Tabelle erstellt');
   }
+
+  /// Erstellt die scene_quest_status Tabelle
+  Future<void> _createSceneQuestStatusTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS scene_quest_status (
+        id TEXT PRIMARY KEY,
+        scene_id TEXT NOT NULL,
+        quest_id TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'active',
+        progress INTEGER NOT NULL DEFAULT 0,
+        notes TEXT,
+        last_updated INTEGER NOT NULL,
+        FOREIGN KEY (scene_id) REFERENCES scenes (id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_scene_quest_status_scene_id ON scene_quest_status(scene_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_scene_quest_status_quest_id ON scene_quest_status(quest_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_scene_quest_status_status ON scene_quest_status(status)');
+
+    print('✅ scene_quest_status Tabelle erstellt');
+  }
   
   /// Aktualisiert das Datenbankschema
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -677,6 +700,12 @@ class DatabaseConnection {
       } catch (e) {
         print('⚠️ Konnte scenes Spalten nicht hinzufügen: $e');
       }
+    }
+    
+    if (oldVersion < 12 && newVersion >= 12) {
+      print('🔄 Füge scene_quest_status Tabelle hinzu (v11 → v12)...');
+      await _createSceneQuestStatusTable(db);
+      print('✅ scene_quest_status Tabelle erstellt (Version 12)');
     }
   }
   

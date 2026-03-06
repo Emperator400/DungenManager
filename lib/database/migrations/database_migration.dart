@@ -37,6 +37,9 @@ class DatabaseMigration {
     await _createSessionQuestProgressTable(db);
     await _createSessionCharacterTrackingTable(db);
     
+    // SceneQuestStatus Tabelle (wird von SceneService verwendet)
+    await _createSceneQuestStatusTable(db);
+    
     // Migration v10 -> v11: Scene als Hauptsäule
     await _migrateToV11(db);
     

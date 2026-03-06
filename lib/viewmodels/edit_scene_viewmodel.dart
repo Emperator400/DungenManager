@@ -22,13 +22,16 @@ class EditSceneViewModel extends ChangeNotifier {
   List<Creature> _availableCreatures = [];
   List<Map<String, dynamic>> _availablePlayerCharacters = [];
   List<Map<String, dynamic>> _linkedCharacters = [];
+  
+  // Trackt ob die Scene aus der Datenbank geladen wurde (bearbeiten) oder neu erstellt (erstellen)
+  bool _isEditingExistingScene = false;
 
   // Getter
   Scene? get scene => _scene;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get hasUnsavedChanges => _hasUnsavedChanges;
-  bool get isEditing => _scene != null;
+  bool get isEditing => _isEditingExistingScene;
   bool get canSave => _scene != null && _hasValidScene();
   List<Creature> get availableCreatures => _availableCreatures;
   List<Map<String, dynamic>> get availablePlayerCharacters => _availablePlayerCharacters;
@@ -49,12 +52,18 @@ class EditSceneViewModel extends ChangeNotifier {
       _clearError();
       
       if (scene != null) {
+        // Bearbeiten einer existierenden Scene
         _scene = scene;
+        _isEditingExistingScene = true;
+        print('✏️ [EditSceneViewModel] Initialisiere als BEARBEITEN (existierende Scene)');
       } else if (sessionId != null) {
+        // Erstellen einer neuen Scene
+        _isEditingExistingScene = false;
+        
         // Hole den aktuellen orderIndex für neue Szenen
         final sessionScenes = await _sceneRepository.findBySession(sessionId);
         final maxOrderIndex = sessionScenes.isEmpty 
-            ? 0 
+            ?0 
             : sessionScenes.map((s) => s.orderIndex).reduce((a, b) => a > b ? a : b) + 1;
         
         _scene = Scene(
@@ -63,13 +72,17 @@ class EditSceneViewModel extends ChangeNotifier {
           name: '',
           description: '',
         );
+        print('➕ [EditSceneViewModel] Initialisiere als NEU (neue Scene)');
       } else {
+        // Fallback: Neue Scene ohne sessionId
+        _isEditingExistingScene = false;
         _scene = Scene(
           sessionId: 'default',
           orderIndex: 0,
           name: '',
           description: '',
         );
+        print('➕ [EditSceneViewModel] Initialisiere als NEU (Fallback ohne sessionId)');
       }
       
       _resetUnsavedChanges();
@@ -83,7 +96,13 @@ class EditSceneViewModel extends ChangeNotifier {
 
   /// Speichert die aktuelle Scene
   Future<bool> saveScene() async {
+    print('💾 [EditSceneViewModel] saveScene() aufgerufen');
+    print('💾 [EditSceneViewModel] Scene: $_scene');
+    print('💾 [EditSceneViewModel] isEditing: $isEditing');
+    print('💾 [EditSceneViewModel] hasValidScene: ${_hasValidScene()}');
+    
     if (_scene == null || !_hasValidScene()) {
+      print('❌ [EditSceneViewModel] Ungültige Scene-Daten');
       _setError('Ungültige Scene-Daten');
       return false;
     }
@@ -91,26 +110,33 @@ class EditSceneViewModel extends ChangeNotifier {
     try {
       _setLoading(true);
       _clearError();
+      print('✅ [EditSceneViewModel] Starte Speichern...');
       
       // Aktualisiere updatedAt
       _scene = _scene!.copyWith(updatedAt: DateTime.now());
       
       // Speichern in der Datenbank
       if (isEditing) {
+        print('✏️ [EditSceneViewModel] Aktualisiere existierende Scene...');
         final updatedScene = await _sceneRepository.update(_scene!);
         if (updatedScene != null) {
           _scene = updatedScene;
         }
+        print('✅ [EditSceneViewModel] Scene aktualisiert');
       } else {
+        print('➕ [EditSceneViewModel] Erstelle neue Scene...');
         final createdScene = await _sceneRepository.create(_scene!);
         if (createdScene != null) {
           _scene = createdScene;
         }
+        print('✅ [EditSceneViewModel] Scene erstellt');
       }
       
       _resetUnsavedChanges();
+      print('✅ [EditSceneViewModel] Speichern erfolgreich');
       return true;
     } catch (e) {
+      print('❌ [EditSceneViewModel] FEHLER beim Speichern: $e');
       if (e is ServiceException) {
         _setError(e.message);
       } else {
