@@ -669,6 +669,11 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
   }
 
   void _showEditSceneDialog(Scene scene, {bool isCreate = false}) async {
+    // Repositories VOR dem Navigator aus dem Context lesen
+    final sceneRepository = context.read<SceneModelRepository>();
+    final creatureRepository = context.read<CreatureModelRepository>();
+    final playerCharacterRepository = context.read<PlayerCharacterModelRepository>();
+    
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute<bool>(
@@ -676,9 +681,9 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
           providers: [
             ChangeNotifierProvider(
               create: (_) => EditSceneViewModel(
-                sceneRepository: context.read<SceneModelRepository>(),
-                creatureRepository: context.read<CreatureModelRepository>(),
-                playerCharacterRepository: context.read<PlayerCharacterModelRepository>(),
+                sceneRepository: sceneRepository,
+                creatureRepository: creatureRepository,
+                playerCharacterRepository: playerCharacterRepository,
               ),
             ),
           ],
