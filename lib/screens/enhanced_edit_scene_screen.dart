@@ -5,7 +5,7 @@ import '../viewmodels/edit_scene_viewmodel.dart';
 import '../theme/dnd_theme.dart';
 import 'select_character_for_scene_screen.dart';
 
-/// Enhanced Screen zur Bearbeitung von Scenes mit modernem Design
+/// Enhanced Screen zur Bearbeitung von Scenes mit D&D Theme
 class EnhancedEditSceneScreen extends StatefulWidget {
   final Scene? scene;
   final String? sessionId; // Für neue Scenes
@@ -66,66 +66,28 @@ class _EnhancedEditSceneScreenState extends State<EnhancedEditSceneScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.scene == null ? 'Neue Scene' : 'Scene bearbeiten',
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: DnDTheme.mysticalPurple,
-        iconTheme: IconThemeData(color: Colors.white),
-        actions: [
-          Consumer<EditSceneViewModel>(
-            builder: (context, viewModel, child) {
-              return IconButton(
-                icon: Icon(Icons.save, color: Colors.white),
-                onPressed: viewModel.canSave ? _saveScene : null,
-                tooltip: 'Speichern',
-              );
-            },
-          ),
-        ],
-      ),
+      backgroundColor: DnDTheme.dungeonBlack,
+      appBar: _buildAppBar(),
       body: Consumer<EditSceneViewModel>(
         builder: (context, viewModel, child) {
           if (viewModel.isLoading) {
-            return Center(child: CircularProgressIndicator(color: DnDTheme.mysticalPurple));
+            return Center(
+              child: CircularProgressIndicator(
+                color: DnDTheme.ancientGold,
+              ),
+            );
           }
 
           return Form(
             key: _formKey,
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(DnDTheme.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Fehlermeldung
                   if (viewModel.errorMessage != null)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 16.0),
-                      padding: const EdgeInsets.all(12.0),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        border: Border.all(color: Colors.red.shade200),
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.error, color: Colors.red.shade600, size: 20),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              viewModel.errorMessage!,
-                              style: TextStyle(color: Colors.red.shade800),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close, size: 16),
-                            onPressed: viewModel.clearError,
-                            color: Colors.red.shade600,
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildErrorWidget(viewModel.errorMessage!, viewModel),
 
                   // Grundinformationen
                   _buildSectionCard(
@@ -144,7 +106,7 @@ class _EnhancedEditSceneScreenState extends State<EnhancedEditSceneScreen> {
                           },
                           onChanged: (_) => _updateViewModel(),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: DnDTheme.md),
                         Consumer<EditSceneViewModel>(
                           builder: (context, viewModel, child) {
                             return DropdownButtonFormField<SceneType>(
@@ -153,9 +115,15 @@ class _EnhancedEditSceneScreenState extends State<EnhancedEditSceneScreen> {
                               items: SceneType.values.map((type) {
                                 return DropdownMenuItem(
                                   value: type,
-                                  child: Text(type.name),
+                                  child: Text(
+                                    type.name,
+                                    style: DnDTheme.bodyText1.copyWith(
+                                      color: Colors.white,
+                                    ),
+                                  ),
                                 );
                               }).toList(),
+                              dropdownColor: DnDTheme.stoneGrey,
                               onChanged: (SceneType? value) {
                                 if (value != null) {
                                   viewModel.updateSceneType(value);
@@ -168,7 +136,7 @@ class _EnhancedEditSceneScreenState extends State<EnhancedEditSceneScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: DnDTheme.md),
 
                   // Beschreibung
                   _buildSectionCard(
@@ -182,7 +150,7 @@ class _EnhancedEditSceneScreenState extends State<EnhancedEditSceneScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: DnDTheme.md),
 
                   // Charaktere
                   Consumer<EditSceneViewModel>(
@@ -194,38 +162,26 @@ class _EnhancedEditSceneScreenState extends State<EnhancedEditSceneScreen> {
                           children: [
                             if (viewModel.linkedCharacters.isEmpty)
                               Padding(
-                                padding: const EdgeInsets.all(16.0),
+                                padding: const EdgeInsets.all(DnDTheme.md),
                                 child: Text(
                                   'Keine Charaktere verknüpft',
-                                  style: TextStyle(color: Colors.grey),
+                                  style: DnDTheme.bodyText2.copyWith(
+                                    color: Colors.white54,
+                                  ),
                                 ),
                               )
                             else
-                              ...viewModel.linkedCharacters.map((char) => Card(
-                                margin: const EdgeInsets.only(bottom: 8.0),
-                                child: ListTile(
-                                  leading: CircleAvatar(
-                                    backgroundColor: _getCharacterColor(char['type']),
-                                    child: Icon(
-                                      _getCharacterIcon(char['type']),
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  title: Text(char['name'].toString()),
-                                  subtitle: Text(_getCharacterSubtitle(char)),
-                                  trailing: IconButton(
-                                    icon: Icon(Icons.close, color: Colors.red),
-                                    onPressed: () => _removeCharacter(char['id'].toString()),
-                                  ),
-                                ),
-                              )),
-                            const SizedBox(height: 12),
+                              ...viewModel.linkedCharacters.map((char) => 
+                                _buildCharacterCard(char)
+                              ),
+                            const SizedBox(height: DnDTheme.md),
                             ElevatedButton.icon(
                               onPressed: () => _showCharacterSelector(viewModel),
-                              icon: Icon(Icons.add),
-                              label: Text('Charakter hinzufügen'),
+                              icon: const Icon(Icons.add, size: 16),
+                              label: const Text('Charakter hinzufügen'),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: DnDTheme.mysticalPurple,
+                                backgroundColor: DnDTheme.arcaneBlue,
+                                foregroundColor: Colors.white,
                               ),
                             ),
                           ],
@@ -234,7 +190,7 @@ class _EnhancedEditSceneScreenState extends State<EnhancedEditSceneScreen> {
                     },
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: DnDTheme.lg),
 
                   // Aktionen
                   _buildActionButtons(viewModel),
@@ -247,37 +203,139 @@ class _EnhancedEditSceneScreenState extends State<EnhancedEditSceneScreen> {
     );
   }
 
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      title: Text(
+        widget.scene == null ? 'Neue Scene' : 'Scene bearbeiten',
+        style: DnDTheme.headline2.copyWith(
+          color: Colors.white,
+        ),
+      ),
+      backgroundColor: DnDTheme.stoneGrey,
+      foregroundColor: Colors.white,
+      elevation: 4,
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          gradient: DnDTheme.getMysticalGradient(
+            startColor: DnDTheme.stoneGrey,
+            endColor: DnDTheme.slateGrey,
+          ),
+        ),
+      ),
+      iconTheme: const IconThemeData(color: Colors.white),
+      actions: [
+        Consumer<EditSceneViewModel>(
+          builder: (context, viewModel, child) {
+            return Container(
+              margin: const EdgeInsets.only(right: DnDTheme.sm),
+              decoration: DnDTheme.getMysticalBorder(
+                borderColor: DnDTheme.ancientGold,
+                width: 2,
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.save, color: Colors.white),
+                onPressed: viewModel.canSave ? _saveScene : null,
+                tooltip: 'Speichern',
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildErrorWidget(String errorMessage, EditSceneViewModel viewModel) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: DnDTheme.md),
+      padding: const EdgeInsets.all(DnDTheme.md),
+      decoration: BoxDecoration(
+        gradient: DnDTheme.getMysticalGradient(
+          startColor: DnDTheme.errorRed.withValues(alpha: 0.2),
+          endColor: DnDTheme.errorRed.withValues(alpha: 0.1),
+        ),
+        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        border: Border.all(
+          color: DnDTheme.errorRed,
+          width: 2,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error, color: DnDTheme.errorRed, size: 20),
+          const SizedBox(width: DnDTheme.sm),
+          Expanded(
+            child: Text(
+              errorMessage,
+              style: DnDTheme.bodyText1.copyWith(
+                color: Colors.white,
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 16),
+            onPressed: viewModel.clearError,
+            color: DnDTheme.errorRed,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSectionCard({
     required String title,
     required IconData icon,
     required Widget child,
   }) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return Container(
+      decoration: DnDTheme.getFantasyCardDecoration(
+        borderColor: DnDTheme.arcaneBlue,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(DnDTheme.sm),
+            decoration: BoxDecoration(
+              gradient: DnDTheme.getMysticalGradient(
+                startColor: DnDTheme.arcaneBlue.withValues(alpha: 0.8),
+                endColor: DnDTheme.arcaneBlue.withValues(alpha: 0.4),
+              ),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(DnDTheme.radiusMedium),
+                topRight: Radius.circular(DnDTheme.radiusMedium),
+              ),
+            ),
+            child: Row(
               children: [
-                Icon(icon, color: DnDTheme.mysticalPurple, size: 20),
-                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    icon,
+                    color: DnDTheme.arcaneBlue,
+                    size: 16,
+                  ),
+                ),
+                const SizedBox(width: DnDTheme.sm),
                 Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                  style: DnDTheme.headline3.copyWith(
                     color: Colors.white,
+                    fontSize: 16,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            child,
-          ],
-        ),
+          ),
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(DnDTheme.md),
+            child: child,
+          ),
+        ],
       ),
     );
   }
@@ -285,17 +343,107 @@ class _EnhancedEditSceneScreenState extends State<EnhancedEditSceneScreen> {
   InputDecoration _buildInputDecoration(String label, IconData icon) {
     return InputDecoration(
       labelText: label,
-      prefixIcon: Icon(icon, color: DnDTheme.mysticalPurple),
+      labelStyle: DnDTheme.bodyText2.copyWith(
+        color: DnDTheme.ancientGold,
+      ),
+      prefixIcon: Icon(icon, color: DnDTheme.ancientGold),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(color: DnDTheme.mysticalPurple.withOpacity(0.3)),
+        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        borderSide: const BorderSide(color: DnDTheme.arcaneBlue, width: 2),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        borderSide: BorderSide(
+          color: DnDTheme.arcaneBlue.withValues(alpha: 0.5),
+        ),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(color: DnDTheme.mysticalPurple),
+        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        borderSide: const BorderSide(color: DnDTheme.ancientGold, width: 2),
       ),
       filled: true,
-      fillColor: Colors.grey.shade50,
+      fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
+    );
+  }
+
+  Widget _buildCharacterCard(Map<String, dynamic> char) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: DnDTheme.sm),
+      padding: const EdgeInsets.all(DnDTheme.sm),
+      decoration: BoxDecoration(
+        gradient: DnDTheme.getMysticalGradient(
+          startColor: DnDTheme.slateGrey,
+          endColor: DnDTheme.stoneGrey,
+        ),
+        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+        border: Border.all(
+          color: _getCharacterColor(char['type']).withValues(alpha: 0.5),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          // Character Icon
+          Container(
+            decoration: BoxDecoration(
+              color: _getCharacterColor(char['type']).withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: _getCharacterColor(char['type']),
+                width: 2,
+              ),
+            ),
+            child: Icon(
+              _getCharacterIcon(char['type']),
+              color: _getCharacterColor(char['type']),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: DnDTheme.sm),
+          // Character Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  char['name'].toString(),
+                  style: DnDTheme.bodyText1.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  _getCharacterSubtitle(char),
+                  style: DnDTheme.bodyText2.copyWith(
+                    color: Colors.white54,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Remove Button
+          GestureDetector(
+            onTap: () => _removeCharacter(char['id'].toString()),
+            child: Container(
+              padding: const EdgeInsets.all(DnDTheme.xs),
+              decoration: BoxDecoration(
+                color: DnDTheme.errorRed.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: DnDTheme.errorRed,
+                  width: 1,
+                ),
+              ),
+              child: Icon(
+                Icons.close,
+                color: DnDTheme.errorRed,
+                size: 16,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -306,36 +454,60 @@ class _EnhancedEditSceneScreenState extends State<EnhancedEditSceneScreen> {
           child: OutlinedButton(
             onPressed: () => Navigator.pop(context),
             style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              side: BorderSide(color: Colors.grey.shade400),
+              padding: const EdgeInsets.symmetric(vertical: DnDTheme.md),
+              side: const BorderSide(
+                color: DnDTheme.arcaneBlue,
+                width: 2,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+              ),
             ),
-            child: Text('Abbrechen'),
+            child: Text(
+              'Abbrechen',
+              style: DnDTheme.bodyText1.copyWith(
+                color: DnDTheme.arcaneBlue,
+              ),
+            ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: DnDTheme.md),
         Expanded(
           child: ElevatedButton(
             onPressed: viewModel.canSave ? _saveScene : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.mysticalPurple,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              backgroundColor: DnDTheme.ancientGold,
+              foregroundColor: DnDTheme.dungeonBlack,
+              padding: const EdgeInsets.symmetric(vertical: DnDTheme.md),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+              ),
+              elevation: 4,
             ),
             child: Text(
               'Speichern',
-              style: TextStyle(color: Colors.white),
+              style: DnDTheme.bodyText1.copyWith(
+                color: DnDTheme.dungeonBlack,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: DnDTheme.md),
         if (viewModel.isEditing)
           Expanded(
             child: ElevatedButton.icon(
               onPressed: _duplicateScene,
-              icon: Icon(Icons.copy, color: Colors.white),
+              icon: Icon(Icons.copy, color: DnDTheme.dungeonBlack, size: 16),
               label: Text('Duplizieren'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: DnDTheme.mysticalPurple,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: DnDTheme.md),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                ),
+                elevation: 4,
               ),
             ),
           ),
@@ -353,8 +525,23 @@ class _EnhancedEditSceneScreenState extends State<EnhancedEditSceneScreen> {
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Scene erfolgreich gespeichert'),
-          backgroundColor: Colors.green,
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: DnDTheme.sm),
+              Text(
+                'Scene erfolgreich gespeichert',
+                style: DnDTheme.bodyText1.copyWith(
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: DnDTheme.successGreen,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+          ),
         ),
       );
       Navigator.pop(context, true);
@@ -367,8 +554,23 @@ class _EnhancedEditSceneScreenState extends State<EnhancedEditSceneScreen> {
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Scene dupliziert'),
-        backgroundColor: Colors.orange,
+        content: Row(
+          children: [
+            Icon(Icons.content_copy, color: Colors.white),
+            const SizedBox(width: DnDTheme.sm),
+            Text(
+              'Scene dupliziert',
+              style: DnDTheme.bodyText1.copyWith(
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: DnDTheme.mysticalPurple,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        ),
       ),
     );
   }
@@ -378,11 +580,11 @@ class _EnhancedEditSceneScreenState extends State<EnhancedEditSceneScreen> {
     final typeStr = type.toString();
     switch (typeStr) {
       case 'PC':
-        return Colors.green;
+        return DnDTheme.successGreen;
       case 'NPC':
-        return Colors.blue;
+        return DnDTheme.arcaneBlue;
       case 'Monster':
-        return Colors.red;
+        return DnDTheme.errorRed;
       default:
         return Colors.grey;
     }
