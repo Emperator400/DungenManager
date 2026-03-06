@@ -1,17 +1,27 @@
 import 'package:flutter/foundation.dart';
 import '../models/scene.dart';
+import '../models/creature.dart';
 import '../database/repositories/scene_model_repository.dart';
+import '../database/repositories/creature_model_repository.dart';
+import '../database/repositories/player_character_model_repository.dart';
 import '../services/exceptions/service_exceptions.dart';
 
 /// ViewModel für die Scene-Bearbeitung mit Provider-Pattern
 class EditSceneViewModel extends ChangeNotifier {
   final SceneModelRepository _sceneRepository;
+  final CreatureModelRepository _creatureRepository;
+  final PlayerCharacterModelRepository _playerCharacterRepository;
   
   // State Management
   Scene? _scene;
   bool _isLoading = false;
   String? _errorMessage;
   bool _hasUnsavedChanges = false;
+
+  // Character/Creature State
+  List<Creature> _availableCreatures = [];
+  List<Map<String, dynamic>> _availablePlayerCharacters = [];
+  List<Map<String, dynamic>> _linkedCharacters = [];
 
   // Getter
   Scene? get scene => _scene;
@@ -20,9 +30,17 @@ class EditSceneViewModel extends ChangeNotifier {
   bool get hasUnsavedChanges => _hasUnsavedChanges;
   bool get isEditing => _scene != null;
   bool get canSave => _scene != null && _hasValidScene();
+  List<Creature> get availableCreatures => _availableCreatures;
+  List<Map<String, dynamic>> get availablePlayerCharacters => _availablePlayerCharacters;
+  List<Map<String, dynamic>> get linkedCharacters => _linkedCharacters;
 
-  EditSceneViewModel({required SceneModelRepository sceneRepository})
-      : _sceneRepository = sceneRepository;
+  EditSceneViewModel({
+    required SceneModelRepository sceneRepository,
+    required CreatureModelRepository creatureRepository,
+    required PlayerCharacterModelRepository playerCharacterRepository,
+  }) : _sceneRepository = sceneRepository,
+       _creatureRepository = creatureRepository,
+       _playerCharacterRepository = playerCharacterRepository;
 
   /// Initialisiert das ViewModel mit einer Scene oder erstellt eine neue
   Future<void> initialize(Scene? scene, {String? sessionId}) async {
@@ -219,6 +237,118 @@ class EditSceneViewModel extends ChangeNotifier {
       _markAsUnsaved();
       notifyListeners();
     }
+  }
+
+  void updateLinkedCharacters(List<String> characterIds) {
+    if (_scene?.linkedCharacterIds != characterIds) {
+      _scene = _scene?.copyWith(linkedCharacterIds: characterIds, updatedAt: DateTime.now());
+      _markAsUnsaved();
+      notifyListeners();
+    }
+  }
+
+  void updateLinkedEncounter(String? encounterId) {
+    if (_scene?.linkedEncounterId != encounterId) {
+      _scene = _scene?.copyWith(linkedEncounterId: encounterId, updatedAt: DateTime.now());
+      _markAsUnsaved();
+      notifyListeners();
+    }
+  }
+
+  /// Lädt alle verfügbaren Creatures (NPCs und Monster)
+  Future<void> loadAvailableCreatures() async {
+    try {
+      final creatures = await _creatureRepository.findAll();
+      _availableCreatures = creatures;
+      notifyListeners();
+    } catch (e) {
+      _setError('Laden der Creatures fehlgeschlagen: ${e.toString()}');
+    }
+  }
+
+  /// Lädt alle verfügbaren Player Characters
+  Future<void> loadAvailablePlayerCharacters() async {
+    try {
+      final pcs = await _playerCharacterRepository.findAll();
+      _availablePlayerCharacters = pcs.map((pc) => {
+        'id': pc.id,
+        'name': pc.name,
+        'type': 'PC',
+        'level': pc.level,
+      }).toList();
+      notifyListeners();
+    } catch (e) {
+      _setError('Laden der Player Characters fehlgeschlagen: ${e.toString()}');
+    }
+  }
+
+  /// Baut die Liste der verknüpften Charaktere mit Details auf
+  Future<void> buildLinkedCharactersList() async {
+    if (_scene == null) return;
+    
+    try {
+      _linkedCharacters = [];
+      
+      for (final charId in _scene!.linkedCharacterIds) {
+        // Prüfe zuerst ob es ein PC ist
+        try {
+          final pc = await _playerCharacterRepository.findById(charId);
+          if (pc != null) {
+            _linkedCharacters.add({
+              'id': pc.id,
+              'name': pc.name,
+              'type': 'PC',
+              'level': pc.level,
+            });
+            continue;
+          }
+        } catch (e) {
+          // Kein PC, versuche Creature
+        }
+        
+        // Prüfe ob es ein Creature ist
+        try {
+          final creature = await _creatureRepository.findById(charId);
+          if (creature != null) {
+            _linkedCharacters.add({
+              'id': creature.id,
+              'name': creature.name,
+              'type': creature.isPlayer ? 'PC' : 'Creature',
+              'challengeRating': creature.challengeRating,
+              'isPlayer': creature.isPlayer,
+            });
+          }
+        } catch (e) {
+          // Fehler beim Laden, überspringen
+        }
+      }
+      
+      notifyListeners();
+    } catch (e) {
+      _setError('Laden der verknüpften Charaktere fehlgeschlagen: ${e.toString()}');
+    }
+  }
+
+  /// Fügt einen einzelnen Charakter zur Szene hinzu
+  Future<void> addCharacter(String characterId) async {
+    if (_scene == null) return;
+    
+    final currentIds = List<String>.from(_scene!.linkedCharacterIds);
+    if (!currentIds.contains(characterId)) {
+      currentIds.add(characterId);
+      updateLinkedCharacters(currentIds);
+      await buildLinkedCharactersList();
+    }
+  }
+
+  /// Entfernt einen einzelnen Charakter aus der Szene
+  Future<void> removeCharacter(String characterId) async {
+    if (_scene == null) return;
+    
+    final currentIds = List<String>.from(_scene!.linkedCharacterIds);
+    currentIds.remove(characterId);
+    updateLinkedCharacters(currentIds);
+    await buildLinkedCharactersList();
   }
 
   /// Setzt die Änderungen zurück

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/scene.dart';
 import '../viewmodels/edit_scene_viewmodel.dart';
 import '../theme/dnd_theme.dart';
+import 'select_character_for_scene_screen.dart';
 
 /// Enhanced Screen zur Bearbeitung von Scenes mit modernem Design
 class EnhancedEditSceneScreen extends StatefulWidget {
@@ -176,6 +177,58 @@ class _EnhancedEditSceneScreenState extends State<EnhancedEditSceneScreen> {
                     ),
                   ),
 
+                  const SizedBox(height: 16),
+
+                  // Charaktere
+                  Consumer<EditSceneViewModel>(
+                    builder: (context, viewModel, child) {
+                      return _buildSectionCard(
+                        title: 'Charaktere (${viewModel.linkedCharacters.length})',
+                        icon: Icons.people,
+                        child: Column(
+                          children: [
+                            if (viewModel.linkedCharacters.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Text(
+                                  'Keine Charaktere verknüpft',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              )
+                            else
+                              ...viewModel.linkedCharacters.map((char) => Card(
+                                margin: const EdgeInsets.only(bottom: 8.0),
+                                child: ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: _getCharacterColor(char['type']),
+                                    child: Icon(
+                                      _getCharacterIcon(char['type']),
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  title: Text(char['name'].toString()),
+                                  subtitle: Text(_getCharacterSubtitle(char)),
+                                  trailing: IconButton(
+                                    icon: Icon(Icons.close, color: Colors.red),
+                                    onPressed: () => _removeCharacter(char['id'].toString()),
+                                  ),
+                                ),
+                              )),
+                            const SizedBox(height: 12),
+                            ElevatedButton.icon(
+                              onPressed: () => _showCharacterSelector(viewModel),
+                              icon: Icon(Icons.add),
+                              label: Text('Charakter hinzufügen'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: DnDTheme.mysticalPurple,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+
                   const SizedBox(height: 24),
 
                   // Aktionen
@@ -313,5 +366,66 @@ class _EnhancedEditSceneScreenState extends State<EnhancedEditSceneScreen> {
         backgroundColor: Colors.orange,
       ),
     );
+  }
+
+  // Hilfsmethoden für Charaktere
+  Color _getCharacterColor(dynamic type) {
+    final typeStr = type.toString();
+    switch (typeStr) {
+      case 'PC':
+        return Colors.green;
+      case 'NPC':
+        return Colors.blue;
+      case 'Monster':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getCharacterIcon(dynamic type) {
+    final typeStr = type.toString();
+    switch (typeStr) {
+      case 'PC':
+        return Icons.person;
+      case 'NPC':
+        return Icons.person_outline;
+      case 'Monster':
+        return Icons.pets;
+      default:
+        return Icons.help;
+    }
+  }
+
+  String _getCharacterSubtitle(Map<String, dynamic> char) {
+    final type = char['type']?.toString() ?? '';
+    if (type == 'PC') {
+      return 'Level ${char['level'] ?? '?'}';
+    } else if (char['challengeRating'] != null) {
+      return 'CR ${char['challengeRating']}';
+    } else {
+      return type;
+    }
+  }
+
+  Future<void> _removeCharacter(String characterId) async {
+    final viewModel = context.read<EditSceneViewModel>();
+    await viewModel.removeCharacter(characterId);
+  }
+
+  Future<void> _showCharacterSelector(EditSceneViewModel viewModel) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SelectCharacterForSceneScreen(
+          previouslySelectedIds: viewModel.scene?.linkedCharacterIds ?? [],
+        ),
+      ),
+    );
+
+    if (result != null && result is List<String>) {
+      viewModel.updateLinkedCharacters(result);
+      await viewModel.buildLinkedCharactersList();
+    }
   }
 }
