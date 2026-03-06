@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import '../core/database_connection.dart';
 import '../entities/campaign_entity.dart';
 import '../entities/player_character_entity.dart';
+import '../entities/quest_entity.dart';
 
 /// Einfache Migrations-Engine für die neue Datenbankarchitektur
 class DatabaseMigration {
@@ -40,6 +41,9 @@ class DatabaseMigration {
     // SceneQuestStatus Tabelle (wird von SceneService verwendet)
     await _createSceneQuestStatusTable(db);
     
+    // Quests Tabelle (für Quest-Management)
+    await _createQuestsTable(db);
+    
     // Migration v10 -> v11: Scene als Hauptsäule
     await _migrateToV11(db);
     
@@ -58,7 +62,7 @@ class DatabaseMigration {
       id: '',
       name: '',
       characterClass: '',
-      level: 1,
+      level:1,
       race: '',
       hitPoints: 10,
       maxHitPoints: 10,
@@ -249,6 +253,30 @@ class DatabaseMigration {
       print('Created campaigns table with indexes');
     } else {
       print('Campaigns table already exists');
+    }
+  }
+
+  /// Erstellt die Quests-Tabelle
+  Future<void> _createQuestsTable(Database db) async {
+    // Prüfe ob Tabelle bereits existiert
+    final result = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='quests'",
+    );
+
+    if (result.isEmpty) {
+      final createSql = QuestEntity.createTableSql();
+      await db.execute(createSql);
+
+      // Erstelle Indizes
+      await db.execute('CREATE INDEX idx_quests_campaign_id ON quests(campaign_id)');
+      await db.execute('CREATE INDEX idx_quests_status ON quests(status)');
+      await db.execute('CREATE INDEX idx_quests_quest_type ON quests(quest_type)');
+      await db.execute('CREATE INDEX idx_quests_difficulty ON quests(difficulty)');
+      await db.execute('CREATE INDEX idx_quests_priority ON quests(priority)');
+
+      print('Created quests table with indexes');
+    } else {
+      print('Quests table already exists');
     }
   }
   
