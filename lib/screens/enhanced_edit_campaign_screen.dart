@@ -287,9 +287,8 @@ class _EnhancedEditCampaignScreenState extends State<EnhancedEditCampaignScreen>
 
                   const SizedBox(height: 16),
 
-                  // Quest-Management (neu)
-                  if (widget.campaign != null)
-                    _buildQuestsSection(),
+                  // Quest-Management (immer sichtbar)
+                  _buildQuestsSection(),
 
                   const SizedBox(height: 16),
 
@@ -401,7 +400,45 @@ class _EnhancedEditCampaignScreenState extends State<EnhancedEditCampaignScreen>
           ),
           if (_questsExpanded) ...[
             const SizedBox(height: 12),
-            if (_quests.isEmpty)
+            if (widget.campaign?.id == null)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: Colors.orange,
+                      size: 32,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Bitte speichern Sie die Kampagne zuerst',
+                      style: TextStyle(
+                        color: Colors.orange,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Quests können erst nach dem ersten Speichern erstellt werden',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.7),
+                        fontSize: 12,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              )
+            else if (_quests.isEmpty)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -670,12 +707,10 @@ class _EnhancedEditCampaignScreenState extends State<EnhancedEditCampaignScreen>
       prefixIcon: Icon(icon, color: DnDTheme.ancientGold),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-      ),
+        borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-      ),
+        borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8.0),
         borderSide: BorderSide(color: DnDTheme.ancientGold),
@@ -953,7 +988,15 @@ class _EnhancedEditCampaignScreenState extends State<EnhancedEditCampaignScreen>
   }
 
   Future<void> _createNewQuest() async {
-    if (widget.campaign?.id == null) return;
+    if (widget.campaign?.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Bitte speichern Sie die Kampagne zuerst, bevor Sie Quests erstellen.'),
+          backgroundColor: DnDTheme.errorRed,
+        ),
+      );
+      return;
+    }
     
     final result = await Navigator.push<bool>(
       context,
