@@ -451,106 +451,251 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
             width: isActive ? 2 : 1,
           ),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Order Index
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: scene.isCompleted 
-                    ? DnDTheme.successGreen 
-                    : DnDTheme.arcaneBlue,
-                borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-              ),
-              child: Text(
-                '${scene.orderIndex + 1}',
-                style: DnDTheme.bodyText2.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 9,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Scene Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    scene.name,
+            // Hauptzeile: Name und Status
+            Row(
+              children: [
+                // Order Index
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: scene.isCompleted 
+                        ? DnDTheme.successGreen 
+                        : DnDTheme.arcaneBlue,
+                    borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                  ),
+                  child: Text(
+                    '${scene.orderIndex + 1}',
                     style: DnDTheme.bodyText2.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 9,
                     ),
                   ),
-                  Row(
+                ),
+                const SizedBox(width: 8),
+                // Scene Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        scene.sceneTypeDisplayName,
+                        scene.name,
                         style: DnDTheme.bodyText2.copyWith(
-                          color: Colors.white70,
-                          fontSize: 7,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 9,
                         ),
                       ),
-                      // Encounter Link Indicator
-                      if (scene.linkedEncounterId != null) ...[
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.gavel,
-                          color: DnDTheme.errorRed,
-                          size: 8,
-                        ),
-                      ],
-                      // Character Links Indicator
-                      if (scene.linkedCharacterIds.isNotEmpty) ...[
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.people,
-                          color: DnDTheme.mysticalPurple,
-                          size: 8,
-                        ),
-                        Text(
-                          '(${scene.linkedCharacterIds.length})',
-                          style: DnDTheme.bodyText2.copyWith(
-                            color: DnDTheme.mysticalPurple,
-                            fontSize: 7,
+                      Row(
+                        children: [
+                          Text(
+                            scene.sceneTypeDisplayName,
+                            style: DnDTheme.bodyText2.copyWith(
+                              color: Colors.white70,
+                              fontSize: 7,
+                            ),
                           ),
-                        ),
-                      ],
+                          // Encounter Link Indicator
+                          if (scene.linkedEncounterId != null) ...[
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.gavel,
+                              color: DnDTheme.errorRed,
+                              size: 8,
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
                   ),
-                ],
-              ),
-            ),
-            // Status Icons
-            Row(
-              children: [
-                if (scene.isCompleted)
-                  Icon(
-                    Icons.check_circle,
-                    color: DnDTheme.successGreen,
-                    size: 12,
-                  ),
-                if (isActive)
-                  Icon(
-                    Icons.play_circle_filled,
-                    color: DnDTheme.ancientGold,
-                    size: 12,
-                  ),
-                const SizedBox(width: 4),
-                Icon(
-                  Icons.more_vert,
-                  color: Colors.white70,
-                  size: 12,
+                ),
+                // Status Icons
+                Row(
+                  children: [
+                    if (scene.isCompleted)
+                      Icon(
+                        Icons.check_circle,
+                        color: DnDTheme.successGreen,
+                        size: 12,
+                      ),
+                    if (isActive)
+                      Icon(
+                        Icons.play_circle_filled,
+                        color: DnDTheme.ancientGold,
+                        size: 12,
+                      ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.more_vert,
+                      color: Colors.white70,
+                      size: 12,
+                    ),
+                  ],
                 ),
               ],
             ),
+            // Zeile 2: Verknüpfte Charaktere
+            if (scene.linkedCharacterIds.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              _buildLinkedCharactersRow(scene),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  /// Baut eine Reihe mit verknüpften Charakteren
+  Widget _buildLinkedCharactersRow(Scene scene) {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _loadLinkedCharacters(scene.linkedCharacterIds),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final linkedChars = snapshot.data!;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          decoration: BoxDecoration(
+            color: DnDTheme.mysticalPurple.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+            border: Border.all(
+              color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+              width: 1,
+            ),
+          ),
+          child: Wrap(
+            spacing: 4,
+            runSpacing: 2,
+            children: linkedChars.values.map((char) {
+              final type = char['type'] as String;
+              final name = char['name'] as String;
+              final level = char['level'] as String?;
+              
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: _getCharacterTypeColor(type).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                  border: Border.all(
+                    color: _getCharacterTypeColor(type).withValues(alpha: 0.4),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _getCharacterTypeIcon(type),
+                      color: _getCharacterTypeColor(type),
+                      size: 8,
+                    ),
+                    const SizedBox(width: 2),
+                    Text(
+                      name,
+                      style: DnDTheme.bodyText2.copyWith(
+                        color: Colors.white,
+                        fontSize: 7,
+                      ),
+                    ),
+                    if (level != null) ...[
+                      const SizedBox(width: 2),
+                      Text(
+                        '($level)',
+                        style: DnDTheme.bodyText2.copyWith(
+                          color: Colors.white70,
+                          fontSize: 6,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Lädt die Details der verknüpften Charaktere
+  Future<Map<String, dynamic>> _loadLinkedCharacters(List<String> characterIds) async {
+    final Map<String, dynamic> result = {};
+    
+    try {
+      final creatureRepo = context.read<CreatureModelRepository>();
+      final pcRepo = context.read<PlayerCharacterModelRepository>();
+      
+      for (final charId in characterIds) {
+        // Versuche zuerst als Player Character zu laden
+        try {
+          final pc = await pcRepo.findById(charId);
+          if (pc != null) {
+            result[charId] = {
+              'name': pc.name,
+              'type': 'pc',
+              'level': 'Lvl ${pc.level}',
+            };
+            continue;
+          }
+        } catch (e) {
+          // Nicht gefunden, versuche als Creature
+        }
+        
+        // Versuche als Creature zu laden
+        try {
+          final creature = await creatureRepo.findById(charId);
+          if (creature != null) {
+            final level = creature.challengeRating != null 
+                ? 'CR ${creature.challengeRating}' 
+                : null;
+            result[charId] = {
+              'name': creature.name,
+              'type': creature.sourceType == 'official' ? 'monster' : 'npc',
+              'level': level,
+            };
+          }
+        } catch (e) {
+          // Nicht gefunden, überspringen
+        }
+      }
+    } catch (e) {
+      print('Fehler beim Laden der Charaktere: $e');
+    }
+    
+    return result;
+  }
+
+  /// Gibt die Farbe für den Charaktertyp zurück
+  Color _getCharacterTypeColor(String type) {
+    switch (type) {
+      case 'pc':
+        return DnDTheme.successGreen;
+      case 'npc':
+        return DnDTheme.arcaneBlue;
+      case 'monster':
+        return DnDTheme.errorRed;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  /// Gibt das Icon für den Charaktertyp zurück
+  IconData _getCharacterTypeIcon(String type) {
+    switch (type) {
+      case 'pc':
+        return Icons.person;
+      case 'npc':
+        return Icons.person_outline;
+      case 'monster':
+        return Icons.pets;
+      default:
+        return Icons.person;
+    }
   }
 
   void _showSceneOptions(Scene scene) {
