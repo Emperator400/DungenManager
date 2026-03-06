@@ -322,9 +322,9 @@ class ActiveSessionViewModel extends ChangeNotifier {
   // DATA RELOAD TRIGGER
   // ============================================================================
 
-  /// Signalisiert dass Daten neu geladen werden sollen
-  void triggerDataReload() {
-    notifyListeners();
+  /// Lädt alle Daten neu (Scenes und Session)
+  Future<void> triggerDataReload() async {
+    await _loadScenes();
   }
 
   // ============================================================================

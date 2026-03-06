@@ -839,7 +839,7 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
 
     if (result == true) {
       // Scene wurde gespeichert, Daten neu laden
-      _viewModel.triggerDataReload();
+      await _viewModel.triggerDataReload();
     }
   }
 
@@ -1074,10 +1074,10 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
                 icon: Icons.refresh,
                 label: 'Neu laden',
                 color: DnDTheme.ancientGold,
-                onTap: () {
+                onTap: () async {
                   // Widget neu erstellen, da reloadScenes nicht existiert
                   setState(() {});
-                  viewModel.triggerDataReload();
+                  await viewModel.triggerDataReload();
                 },
               ),
             ],
@@ -1298,9 +1298,9 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
             ),
             const SizedBox(height: DnDTheme.md),
             ElevatedButton.icon(
-              onPressed: () {
+              onPressed: () async {
                 _viewModel.clearError();
-                _viewModel.triggerDataReload();
+                await _viewModel.triggerDataReload();
               },
               icon: const Icon(Icons.refresh),
               label: const Text('Erneut versuchen'),
