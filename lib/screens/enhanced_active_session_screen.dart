@@ -4,8 +4,13 @@ import '../models/campaign.dart';
 import '../models/session.dart';
 import '../models/scene.dart';
 import '../viewmodels/active_session_viewmodel.dart';
+import '../viewmodels/edit_scene_viewmodel.dart';
+import '../database/repositories/scene_model_repository.dart';
+import '../database/repositories/creature_model_repository.dart';
+import '../database/repositories/player_character_model_repository.dart';
 import '../theme/dnd_theme.dart';
 import 'encounter_setup_screen.dart';
+import 'enhanced_edit_scene_screen.dart';
 
 /// Enhanced Active Session Screen mit Provider-Pattern und modernem D&D Design
 class EnhancedActiveSessionScreen extends StatefulWidget {
@@ -663,26 +668,29 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
     _showEditSceneDialog(newScene, isCreate: true);
   }
 
-  void _showEditSceneDialog(Scene scene, {bool isCreate = false}) {
-    showDialog(
-      context: context,
-      builder: (context) => _SceneEditDialog(
-        scene: scene,
-        onSave: (updatedScene) async {
-          if (isCreate) {
-            await _viewModel.createScene(
-              name: updatedScene.name,
-              description: updatedScene.description,
-              sceneType: updatedScene.sceneType,
-              estimatedDuration: updatedScene.estimatedDuration,
-              complexity: updatedScene.complexity,
-            );
-          } else {
-            _viewModel.updateScene(updatedScene);
-          }
-        },
+  void _showEditSceneDialog(Scene scene, {bool isCreate = false}) async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute<bool>(
+        builder: (context) => MultiProvider(
+          providers: [
+            ChangeNotifierProvider(
+              create: (_) => EditSceneViewModel(
+                sceneRepository: context.read<SceneModelRepository>(),
+                creatureRepository: context.read<CreatureModelRepository>(),
+                playerCharacterRepository: context.read<PlayerCharacterModelRepository>(),
+              ),
+            ),
+          ],
+          child: EnhancedEditSceneScreen(scene: scene),
+        ),
       ),
     );
+
+    if (result == true) {
+      // Scene wurde gespeichert, Daten neu laden
+      _viewModel.triggerDataReload();
+    }
   }
 
   void _showDeleteSceneConfirm(Scene scene) {
@@ -1245,300 +1253,5 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
         builder: (ctx) => EncounterSetupScreen(campaign: _viewModel.campaign),
       ),
     );
-  }
-}
-
-/// Dialog zum Bearbeiten einer Scene
-class _SceneEditDialog extends StatefulWidget {
-  final Scene scene;
-  final Function(Scene) onSave;
-
-  const _SceneEditDialog({
-    required this.scene,
-    required this.onSave,
-  });
-
-  @override
-  State<_SceneEditDialog> createState() => _SceneEditDialogState();
-}
-
-class _SceneEditDialogState extends State<_SceneEditDialog> {
-  late TextEditingController _nameController;
-  late TextEditingController _descriptionController;
-  late SceneType _sceneType;
-  late Complexity? _complexity;
-  late int _durationMinutes;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController(text: widget.scene.name);
-    _descriptionController = TextEditingController(text: widget.scene.description);
-    _sceneType = widget.scene.sceneType;
-    _complexity = widget.scene.complexity;
-    _durationMinutes = widget.scene.estimatedDuration?.inMinutes ?? 30;
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: DnDTheme.stoneGrey,
-      title: Text(
-        'Szene bearbeiten',
-        style: DnDTheme.headline3.copyWith(
-          color: DnDTheme.ancientGold,
-        ),
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Name
-            TextField(
-              controller: _nameController,
-              style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: 'Name',
-                labelStyle: DnDTheme.bodyText2.copyWith(
-                  color: DnDTheme.ancientGold,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                  borderSide: const BorderSide(color: DnDTheme.mysticalPurple),
-                ),
-                filled: true,
-                fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
-              ),
-            ),
-            const SizedBox(height: DnDTheme.md),
-            
-            // Typ
-            Text(
-              'Typ',
-              style: DnDTheme.bodyText2.copyWith(
-                color: DnDTheme.ancientGold,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: DnDTheme.xs),
-            DropdownButtonFormField<SceneType>(
-              value: _sceneType,
-              dropdownColor: DnDTheme.stoneGrey,
-              style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                  borderSide: const BorderSide(color: DnDTheme.mysticalPurple),
-                ),
-              ),
-              items: SceneType.values.map((type) {
-                return DropdownMenuItem<SceneType>(
-                  value: type,
-                  child: Text(
-                    _getSceneTypeDisplayName(type),
-                    style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                  ),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _sceneType = value!;
-                });
-              },
-            ),
-            const SizedBox(height: DnDTheme.md),
-            
-            // Komplexität
-            Text(
-              'Komplexität',
-              style: DnDTheme.bodyText2.copyWith(
-                color: DnDTheme.ancientGold,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: DnDTheme.xs),
-            DropdownButtonFormField<Complexity?>(
-              value: _complexity,
-              dropdownColor: DnDTheme.stoneGrey,
-              style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                  borderSide: const BorderSide(color: DnDTheme.mysticalPurple),
-                ),
-              ),
-              items: [
-                const DropdownMenuItem<Complexity?>(
-                  value: null,
-                  child: Text(
-                    'Nicht festgelegt',
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                ),
-                ...Complexity.values.map((complexity) {
-                  return DropdownMenuItem<Complexity>(
-                    value: complexity,
-                    child: Text(
-                      _getComplexityDisplayName(complexity),
-                      style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                    ),
-                  );
-                }),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _complexity = value;
-                });
-              },
-            ),
-            const SizedBox(height: DnDTheme.md),
-            
-            // Geschätzte Dauer
-            Text(
-              'Geschätzte Dauer',
-              style: DnDTheme.bodyText2.copyWith(
-                color: DnDTheme.ancientGold,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: DnDTheme.xs),
-            Row(
-              children: [
-                Expanded(
-                  child: Slider(
-                    value: _durationMinutes.toDouble(),
-                    min: 5,
-                    max: 180,
-                    divisions: 35,
-                    label: '$_durationMinutes Min',
-                    onChanged: (value) {
-                      setState(() {
-                        _durationMinutes = value.toInt();
-                      });
-                    },
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: DnDTheme.sm,
-                    vertical: DnDTheme.xs,
-                  ),
-                  decoration: BoxDecoration(
-                    color: DnDTheme.arcaneBlue,
-                    borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                  ),
-                  child: Text(
-                    '$_durationMinutes Min',
-                    style: DnDTheme.bodyText2.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: DnDTheme.md),
-            
-            // Beschreibung
-            Text(
-              'Beschreibung',
-              style: DnDTheme.bodyText2.copyWith(
-                color: DnDTheme.ancientGold,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: DnDTheme.xs),
-            TextField(
-              controller: _descriptionController,
-              maxLines: 4,
-              style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'Beschreibe die Szene...',
-                hintStyle: DnDTheme.bodyText2.copyWith(color: Colors.white54),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                  borderSide: const BorderSide(color: DnDTheme.mysticalPurple),
-                ),
-                filled: true,
-                fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(
-            'Abbrechen',
-            style: DnDTheme.bodyText1.copyWith(
-              color: DnDTheme.mysticalPurple,
-            ),
-          ),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            final updatedScene = widget.scene.copyWith(
-              name: _nameController.text,
-              description: _descriptionController.text,
-              sceneType: _sceneType,
-              complexity: _complexity,
-              estimatedDuration: Duration(minutes: _durationMinutes),
-            );
-            widget.onSave(updatedScene);
-            Navigator.of(context).pop();
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: DnDTheme.ancientGold,
-            foregroundColor: DnDTheme.dungeonBlack,
-          ),
-          child: const Text('Speichern'),
-        ),
-      ],
-    );
-  }
-
-  String _getSceneTypeDisplayName(SceneType type) {
-    switch (type) {
-      case SceneType.Introduction:
-        return 'Einführung';
-      case SceneType.Exploration:
-        return 'Erforschung';
-      case SceneType.Combat:
-        return 'Kampf';
-      case SceneType.Social:
-        return 'Sozial';
-      case SceneType.Puzzle:
-        return 'Rätsel';
-      case SceneType.Climax:
-        return 'Höhepunkt';
-      case SceneType.Resolution:
-        return 'Auflösung';
-    }
-  }
-
-  String _getComplexityDisplayName(Complexity complexity) {
-    switch (complexity) {
-      case Complexity.Easy:
-        return 'Einfach';
-      case Complexity.Medium:
-        return 'Mittel';
-      case Complexity.Hard:
-        return 'Schwer';
-      case Complexity.Legendary:
-        return 'Legendär';
-    }
   }
 }
