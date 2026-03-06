@@ -25,6 +25,8 @@ import 'database/core/database_connection.dart';
 import 'database/repositories/campaign_model_repository.dart';
 import 'database/repositories/player_character_model_repository.dart';
 import 'database/repositories/session_model_repository.dart';
+import 'database/repositories/scene_model_repository.dart';
+import 'database/repositories/creature_model_repository.dart';
 
 /// Hauptfunktion der App
 void main() async {
@@ -101,6 +103,15 @@ class DmApp extends StatelessWidget {
           create: (_) => EditSessionViewModel(
             sessionRepository: SessionModelRepository(dbConnection),
           ),
+        ),
+        Provider<SceneModelRepository>(
+          create: (_) => SceneModelRepository(dbConnection),
+        ),
+        Provider<CreatureModelRepository>(
+          create: (_) => CreatureModelRepository(dbConnection),
+        ),
+        Provider<PlayerCharacterModelRepository>(
+          create: (_) => PlayerCharacterModelRepository(dbConnection),
         ),
       ],
       child: MaterialApp(
