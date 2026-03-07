@@ -140,288 +140,288 @@ class AllScreensScreen extends StatelessWidget {
           context: context,
           title: 'Enhanced Campaign Dashboard',
           description: 'Zentrale Verwaltung aller Kampagnen mit Filter-Chips und Quick-Actions',
-          onTap: () => _navigateToScreen(context, () => const EnhancedCampaignDashboardScreen()),
-        ),
-        _buildScreenCard(
-          context: context,
-          title: 'Enhanced Edit Campaign',
-          description: 'Erstellen und Bearbeiten von Kampagnen mit D&D 5e Einstellungen',
-          onTap: () => _navigateToScreen(context, () => _placeholderScreen('Enhanced Edit Campaign')),
+          onTap: () => _navigateToScreen(context, () => _placeholderScreen('Enhanced Campaign Dashboard')),
           needsParams: true,
-          paramWarning: '⚠️ Benötigt Campaign Parameter',
+          paramWarning: '⚠️ Screen wird noch migriert',
         ),
-        _buildScreenCard(
-          context: context,
-          title: 'Campaign Selection',
-          description: 'Auswahl einer aktiven Kampagne für den Start',
-          onTap: () => _navigateToScreen(context, () => const CampaignSelectionScreen()),
+import 'package:flutter/material.dart';
+import '../../theme/dnd_theme.dart';
+
+// Import aller Screens
+import '../campaign/campaign_selection_screen.dart';
+import '../campaign/campaign_dashboard_screen.dart';
+import 'main_navigation_screen.dart';
+// Nicht existierende Screens auskommentiert:
+// import '../bestiary/enhanced_bestiary_screen.dart'; // Datei existiert nicht noch
+// import '../items/enhanced_item_library_screen.dart'; // Datei existiert nicht noch
+// import '../lore_keeper/enhanced_lore_keeper_screen.dart'; // Datei existiert nicht noch
+// import '../bestiary/enhanced_official_monsters_screen.dart'; // Datei existiert nicht noch
+// import '../quest_library/enhanced_quest_library_screen.dart'; // Datei existiert nicht noch
+// import '../sound_library/enhanced_sound_library_screen.dart'; // Datei existiert nicht noch
+
+class AllScreensScreen extends StatelessWidget {
+  const AllScreensScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: DnDTheme.dungeonBlack,
+      appBar: AppBar(
+        title: Text(
+          'Alle Screens - UI Testing',
+          style: DnDTheme.headline2.copyWith(color: DnDTheme.ancientGold),
         ),
-      ],
+        backgroundColor: DnDTheme.stoneGrey,
+        foregroundColor: DnDTheme.ancientGold,
+        elevation: 4,
+        iconTheme: const IconThemeData(color: DnDTheme.ancientGold),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(DnDTheme.md),
+        children: [
+          _buildSectionHeader('🎯 KAMPAGNEN-MANAGEMENT'),
+          _buildCampaignScreens(context),
+          
+          _buildSectionHeader('📜 QUEST-MANAGEMENT'),
+          _buildQuestScreens(context),
+          
+          _buildSectionHeader('📚 WIKI/LORE MANAGEMENT'),
+          _buildWikiScreens(context),
+          
+          _buildSectionHeader('🧑‍🤝‍🧑 CHARACTER MANAGEMENT'),
+          _buildCharacterScreens(context),
+          
+          _buildSectionHeader('⚔️ BESTIARY & MONSTER MANAGEMENT'),
+          _buildBestiaryScreens(context),
+          
+          _buildSectionHeader('🎒 ITEM MANAGEMENT'),
+          _buildItemScreens(context),
+          
+          _buildSectionHeader('🎵 AUDIO MANAGEMENT'),
+          _buildAudioScreens(context),
+          
+          _buildSectionHeader('🎮 SESSION MANAGEMENT'),
+          _buildSessionScreens(context),
+          
+          _buildSectionHeader('🧑‍🤝‍🧑 CHARACTER MANAGEMENT TESTING'),
+          _buildCharacterTestingScreens(context),
+          
+          _buildSectionHeader('🔧 MAIN NAVIGATION'),
+          _buildMainNavigationScreens(context),
+        ],
+      ),
     );
   }
 
-  Widget _buildQuestScreens(BuildContext context) {
-    return Column(
-      children: [
-        _buildScreenCard(
-          context: context,
-          title: 'Enhanced Quest Library',
-          description: 'Zentrale Quest-Bibliothek mit Suche und Filterung',
-          onTap: () => _navigateToScreen(context, () => const EnhancedQuestLibraryScreen()),
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: DnDTheme.md),
+      child: Container(
+        padding: const EdgeInsets.all(DnDTheme.md),
+        decoration: DnDTheme.getMysticalBorder(borderColor: DnDTheme.mysticalPurple),
+        child: Text(
+          title,
+          style: DnDTheme.headline3.copyWith(
+            color: DnDTheme.mysticalPurple,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        _buildScreenCard(
-          context: context,
-          title: 'Enhanced Edit Quest',
-          description: 'Erstellen und Bearbeiten von Quests mit Belohnungs-System',
-          onTap: () => _navigateToScreen(context, () => _placeholderScreen('Enhanced Edit Quest')),
-          needsParams: true,
-          paramWarning: '⚠️ Benötigt Quest Parameter',
-        ),
-        _buildScreenCard(
-          context: context,
-          title: 'Add Quest From Library',
-          description: 'Hinzufügen von Quests aus der Bibliothek zu Kampagnen',
-          onTap: () => _navigateToScreen(context, () => _placeholderScreen('Add Quest From Library')),
-          needsParams: true,
-          paramWarning: '⚠️ Benötigt Parameter',
-        ),
-        _buildScreenCard(
-          context: context,
-          title: 'Link Quest to Scene',
-          description: 'Verknüpfung von Quests mit Spiel-Szenen',
-          onTap: () => _navigateToScreen(context, () => _placeholderScreen('Link Quest to Scene')),
-          needsParams: true,
-          paramWarning: '⚠️ Benötigt Parameter',
-        ),
-        _buildScreenCard(
-          context: context,
-          title: 'Edit Campaign Quest',
-          description: 'Bearbeiten von kampagnenspezifischen Quests',
-          onTap: () => _navigateToScreen(context, () => _placeholderScreen('Edit Campaign Quest')),
-          needsParams: true,
-          paramWarning: '⚠️ Benötigt CampaignQuest Parameter',
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _buildWikiScreens(BuildContext context) {
-    return Column(
-      children: [
-        _buildScreenCard(
-          context: context,
-          title: 'Enhanced Lore Keeper',
-          description: 'Zentrale Wissensdatenbank mit Cross-Reference System',
-          onTap: () => _navigateToScreen(context, () => const EnhancedLoreKeeperScreen()),
+  Widget _buildScreenCard({
+    required BuildContext context,
+    required String title,
+    required String description,
+    required VoidCallback onTap,
+    bool needsParams = false,
+    String? paramWarning,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: DnDTheme.sm),
+      decoration: DnDTheme.getFantasyCardDecoration(
+        borderColor: needsParams ? DnDTheme.warningOrange : DnDTheme.emeraldGreen,
+      ),
+      child: ListTile(
+        title: Text(
+          title,
+          style: DnDTheme.headline3.copyWith(
+            color: needsParams ? DnDTheme.warningOrange : DnDTheme.emeraldGreen,
+          ),
         ),
-        _buildScreenCard(
-          context: context,
-          title: 'Enhanced Edit Wiki Entry',
-          description: 'Erstellen und Bearbeiten von Wiki-Einträgen mit Rich-Text-Editor',
-          onTap: () => _navigateToScreen(context, () => _placeholderScreen('Enhanced Edit Wiki Entry')),
-          needsParams: true,
-          paramWarning: '⚠️ Benötigt WikiEntry und ParentCategory Parameter',
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              description,
+              style: DnDTheme.bodyText2,
+            ),
+            if (needsParams && paramWarning != null) ...[
+              const SizedBox(height: DnDTheme.xs),
+              Text(
+                paramWarning,
+                style: DnDTheme.bodyText2.copyWith(
+                  color: DnDTheme.warningOrange,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ],
         ),
-      ],
+        trailing: Icon(
+          needsParams ? Icons.warning : Icons.play_arrow,
+          color: needsParams ? DnDTheme.warningOrange : DnDTheme.emeraldGreen,
+          size: 28,
+        ),
+        onTap: onTap,
+      ),
     );
   }
 
-  Widget _buildCharacterScreens(BuildContext context) {
+  Widget _buildCampaignScreens(BuildContext context) {
     return Column(
       children: [
-        _buildScreenCard(
-          context: context,
-          title: 'Enhanced Unified Character Editor',
-          description: 'Unified Editor für alle Charaktertypen mit Tab-basierter Oberfläche',
-          onTap: () => _navigateToScreen(context, () => _placeholderScreen('Enhanced Unified Character Editor')),
-          needsParams: true,
-          paramWarning: '⚠️ Benötigt CharacterType Parameter',
+  ++++ REPLACE
+import 'package:flutter/material.dart';
+import '../../theme/dnd_theme.dart';
+
+// Import aller Screens
+import '../campaign/campaign_selection_screen.dart';
+import '../campaign/campaign_dashboard_screen.dart';
+import 'main_navigation_screen.dart';
+// Nicht existierende Screens auskommentiert:
+// import '../bestiary/enhanced_bestiary_screen.dart'; // Datei existiert nicht noch
+// import '../items/enhanced_item_library_screen.dart'; // Datei existiert nicht noch
+// import '../lore_keeper/enhanced_lore_keeper_screen.dart'; // Datei existiert nicht noch
+// import '../bestiary/enhanced_official_monsters_screen.dart'; // Datei existiert nicht noch
+// import '../quest_library/enhanced_quest_library_screen.dart'; // Datei existiert nicht noch
+// import '../sound_library/enhanced_sound_library_screen.dart'; // Datei existiert nicht noch
+
+class AllScreensScreen extends StatelessWidget {
+  const AllScreensScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: DnDTheme.dungeonBlack,
+      appBar: AppBar(
+        title: Text(
+          'Alle Screens - UI Testing',
+          style: DnDTheme.headline2.copyWith(color: DnDTheme.ancientGold),
         ),
-        _buildScreenCard(
-          context: context,
-          title: 'Enhanced Edit PC',
-          description: 'Spezialisierter Editor für Player Characters',
-          onTap: () => _navigateToScreen(context, () => _placeholderScreen('Enhanced Edit PC')),
-          needsParams: true,
-          paramWarning: '⚠️ Benötigt PlayerCharacter Parameter',
-        ),
-        _buildScreenCard(
-          context: context,
-          title: 'Enhanced Edit Creature',
-          description: 'Spezialisierter Editor für Monster/Creatures',
-          onTap: () => _navigateToScreen(context, () => _placeholderScreen('Enhanced Edit Creature')),
-          needsParams: true,
-          paramWarning: '⚠️ Benötigt Creature Parameter',
-        ),
-        _buildScreenCard(
-          context: context,
-          title: 'Enhanced PC List',
-          description: 'Verwaltung aller Player Characters',
-          onTap: () => _navigateToScreen(context, () => _placeholderScreen('Enhanced PC List')),
-          needsParams: true,
-          paramWarning: '⚠️ Benötigt Campaign Parameter',
-        ),
-        _buildScreenCard(
-          context: context,
-          title: 'Encounter Setup',
-          description: 'Aufbau von Kampfszenarien',
-          onTap: () => _navigateToScreen(context, () => _placeholderScreen('Encounter Setup')),
-          needsParams: true,
-          paramWarning: '⚠️ Benötigt Campaign und Creatures Parameter',
-        ),
-        _buildScreenCard(
-          context: context,
-          title: 'Initiative Tracker',
-          description: 'Kampf-Initiative-Verwaltung mit Inventory-Anzeige',
-          onTap: () => _navigateToScreen(context, () => _placeholderScreen('Initiative Tracker')),
-          needsParams: true,
-          paramWarning: '⚠️ Benötigt Parameter',
-        ),
-      ],
+        backgroundColor: DnDTheme.stoneGrey,
+        foregroundColor: DnDTheme.ancientGold,
+        elevation: 4,
+        iconTheme: const IconThemeData(color: DnDTheme.ancientGold),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(DnDTheme.md),
+        children: [
+          _buildSectionHeader('🎯 KAMPAGNEN-MANAGEMENT'),
+          _buildCampaignScreens(context),
+          
+          _buildSectionHeader('📜 QUEST-MANAGEMENT'),
+          _buildQuestScreens(context),
+          
+          _buildSectionHeader('📚 WIKI/LORE MANAGEMENT'),
+          _buildWikiScreens(context),
+          
+          _buildSectionHeader('🧑‍🤝‍🧑 CHARACTER MANAGEMENT'),
+          _buildCharacterScreens(context),
+          
+          _buildSectionHeader('⚔️ BESTIARY & MONSTER MANAGEMENT'),
+          _buildBestiaryScreens(context),
+          
+          _buildSectionHeader('🎒 ITEM MANAGEMENT'),
+          _buildItemScreens(context),
+          
+          _buildSectionHeader('🎵 AUDIO MANAGEMENT'),
+          _buildAudioScreens(context),
+          
+          _buildSectionHeader('🎮 SESSION MANAGEMENT'),
+          _buildSessionScreens(context),
+          
+          _buildSectionHeader('🧑‍🤝‍🧑 CHARACTER MANAGEMENT TESTING'),
+          _buildCharacterTestingScreens(context),
+          
+          _buildSectionHeader('🔧 MAIN NAVIGATION'),
+          _buildMainNavigationScreens(context),
+        ],
+      ),
     );
   }
 
-  Widget _buildBestiaryScreens(BuildContext context) {
-    return Column(
-      children: [
-        _buildScreenCard(
-          context: context,
-          title: 'Enhanced Bestiary',
-          description: 'Eigene Monster-Sammlung mit Stat-Blocks und Import/Export',
-          onTap: () => _navigateToScreen(context, () => const EnhancedBestiaryScreen()),
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: DnDTheme.md),
+      child: Container(
+        padding: const EdgeInsets.all(DnDTheme.md),
+        decoration: DnDTheme.getMysticalBorder(borderColor: DnDTheme.mysticalPurple),
+        child: Text(
+          title,
+          style: DnDTheme.headline3.copyWith(
+            color: DnDTheme.mysticalPurple,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        _buildScreenCard(
-          context: context,
-          title: 'Enhanced Official Monsters',
-          description: 'Zugriff auf offizielle 5e Tools Datenbank mit Import-Funktionen',
-          onTap: () => _navigateToScreen(context, () => const EnhancedOfficialMonstersScreen()),
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _buildItemScreens(BuildContext context) {
-    return Column(
-      children: [
-        _buildScreenCard(
-          context: context,
-          title: 'Enhanced Item Library',
-          description: 'Zentrale Item-Bibliothek mit Kategorien und Magic Items',
-          onTap: () => _navigateToScreen(context, () => const EnhancedItemLibraryScreen()),
+  Widget _buildScreenCard({
+    required BuildContext context,
+    required String title,
+    required String description,
+    required VoidCallback onTap,
+    bool needsParams = false,
+    String? paramWarning,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: DnDTheme.sm),
+      decoration: DnDTheme.getFantasyCardDecoration(
+        borderColor: needsParams ? DnDTheme.warningOrange : DnDTheme.emeraldGreen,
+      ),
+      child: ListTile(
+        title: Text(
+          title,
+          style: DnDTheme.headline3.copyWith(
+            color: needsParams ? DnDTheme.warningOrange : DnDTheme.emeraldGreen,
+          ),
         ),
-        _buildScreenCard(
-          context: context,
-          title: 'Enhanced Edit Item',
-          description: 'Erstellen und Bearbeiten von Items mit Stats und Effekten',
-          onTap: () => _navigateToScreen(context, () => _placeholderScreen('Enhanced Edit Item')),
-          needsParams: true,
-          paramWarning: '⚠️ Benötigt Item Parameter',
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              description,
+              style: DnDTheme.bodyText2,
+            ),
+            if (needsParams && paramWarning != null) ...[
+              const SizedBox(height: DnDTheme.xs),
+              Text(
+                paramWarning,
+                style: DnDTheme.bodyText2.copyWith(
+                  color: DnDTheme.warningOrange,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ],
         ),
-        _buildScreenCard(
-          context: context,
-          title: 'Add Item From Library',
-          description: 'Items zur Charakter-Ausrüstung hinzufügen',
-          onTap: () => _navigateToScreen(context, () => _placeholderScreen('Add Item From Library')),
-          needsParams: true,
-          paramWarning: '⚠️ Benötigt Parameter',
+        trailing: Icon(
+          needsParams ? Icons.warning : Icons.play_arrow,
+          color: needsParams ? DnDTheme.warningOrange : DnDTheme.emeraldGreen,
+          size: 28,
         ),
-      ],
+        onTap: onTap,
+      ),
     );
   }
 
-  Widget _buildAudioScreens(BuildContext context) {
+  Widget _buildCampaignScreens(BuildContext context) {
     return Column(
       children: [
-        _buildScreenCard(
-          context: context,
-          title: 'Enhanced Sound Library',
-          description: 'Audio-Bibliothek für Atmosphäre mit Mixer-Funktionen',
-          onTap: () => _navigateToScreen(context, () => const EnhancedSoundLibraryScreen()),
-        ),
-        _buildScreenCard(
-          context: context,
-          title: 'Enhanced Edit Sound',
-          description: 'Bearbeiten von Sound-Einträgen',
-          onTap: () => _navigateToScreen(context, () => _placeholderScreen('Enhanced Edit Sound')),
-          needsParams: true,
-          paramWarning: '⚠️ Benötigt Sound Parameter',
-        ),
-        _buildScreenCard(
-          context: context,
-          title: 'Add Sound to Scene',
-          description: 'Sounds zu Szenen hinzufügen',
-          onTap: () => _navigateToScreen(context, () => _placeholderScreen('Add Sound to Scene')),
-          needsParams: true,
-          paramWarning: '⚠️ Benötigt Parameter',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSessionScreens(BuildContext context) {
-    return Column(
-      children: [
-        _buildScreenCard(
-          context: context,
-          title: 'Enhanced Active Session',
-          description: 'Aktive Spiel-Sitzungen leiten mit Scene-Flow und Character-Tracker',
-          onTap: () => _navigateToScreen(context, () => _placeholderScreen('Enhanced Active Session')),
-          needsParams: true,
-          paramWarning: '⚠️ Benötigt Campaign und Session Parameter',
-        ),
-        _buildScreenCard(
-          context: context,
-          title: 'Enhanced Edit Session',
-          description: 'Session-Planung und Vorbereitung',
-          onTap: () => _navigateToScreen(context, () => _placeholderScreen('Enhanced Edit Session')),
-          needsParams: true,
-          paramWarning: '⚠️ Benötigt Session Parameter',
-        ),
-        _buildScreenCard(
-          context: context,
-          title: 'Enhanced Session List for Campaign',
-          description: 'Sessions pro Kampagne verwalten',
-          onTap: () => _navigateToScreen(context, () => _placeholderScreen('Enhanced Session List for Campaign')),
-          needsParams: true,
-          paramWarning: '⚠️ Benötigt Campaign Parameter',
-        ),
-        _buildScreenCard(
-          context: context,
-          title: 'Enhanced Edit Scene',
-          description: 'Szenen erstellen und bearbeiten',
-          onTap: () => _navigateToScreen(context, () => _placeholderScreen('Enhanced Edit Scene')),
-          needsParams: true,
-          paramWarning: '⚠️ Benötigt Scene Parameter',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCharacterTestingScreens(BuildContext context) {
-    return Column(
-      children: [
-        _buildScreenCard(
-          context: context,
-          title: '🧑 Character Editor Testing Suite',
-          description: 'Spezieller Testing-Bereich für alle Character Management Funktionen',
-          onTap: () => _navigateToScreen(context, () => _characterTestingSuite()),
-          needsParams: false,
-        ),
-        _buildScreenCard(
-          context: context,
-          title: '🔧 Character Type Selector',
-          description: 'Test-Screen zur Auswahl verschiedener Character-Typen (PC, NPC, Monster)',
-          onTap: () => _navigateToScreen(context, () => _characterTypeSelector()),
-          needsParams: false,
-        ),
-        _buildScreenCard(
-          context: context,
-          title: '📊 Character Stats Demo',
-          description: 'Demo-Screen mit verschiedenen Character-Stat-Konfigurationen und Werten',
-          onTap: () => _navigateToScreen(context, () => _characterStatsDemo()),
-          needsParams: false,
-        ),
-        _buildScreenCard(
+  -------
           context: context,
           title: '⚔️ Combat Testing Arena',
           description: 'Test-Bereich für Kampf-Mechaniken und Initiative-Systeme',

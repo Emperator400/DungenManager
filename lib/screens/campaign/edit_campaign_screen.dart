@@ -5,8 +5,9 @@ import '../../models/quest.dart';
 import '../../database/repositories/quest_model_repository.dart';
 import '../../database/core/database_connection.dart';
 import '../../viewmodels/campaign_viewmodel.dart';
+import '../../viewmodels/edit_quest_viewmodel.dart';
 import '../../theme/dnd_theme.dart';
-import '../quests/edit_quest_screen.dart' show EditQuestScreenWithProvider;
+import '../quests/edit_quest_screen.dart';
 
 /// Screen zur Bearbeitung von Campaigns mit CampaignViewModel
 class EditCampaignScreen extends StatefulWidget {
@@ -1016,9 +1017,16 @@ class _EditCampaignScreenState extends State<EditCampaignScreen> {
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (context) => EditQuestScreenWithProvider(
-          quest: null,
-          campaignId: widget.campaign!.id,
+        builder: (context) => ChangeNotifierProvider<EditQuestViewModel>(
+          create: (_) => EditQuestViewModel(),
+          child: Builder(
+            builder: (context) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                context.read<EditQuestViewModel>().initialize(null, campaignId: widget.campaign!.id);
+              });
+              return EditQuestScreen();
+            },
+          ),
         ),
       ),
     );
@@ -1043,9 +1051,16 @@ class _EditCampaignScreenState extends State<EditCampaignScreen> {
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (context) => EditQuestScreenWithProvider(
-          quest: quest,
-          campaignId: widget.campaign!.id,
+        builder: (context) => ChangeNotifierProvider<EditQuestViewModel>(
+          create: (_) => EditQuestViewModel(),
+          child: Builder(
+            builder: (context) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                context.read<EditQuestViewModel>().initialize(quest, campaignId: widget.campaign!.id);
+              });
+              return EditQuestScreen();
+            },
+          ),
         ),
       ),
     );
