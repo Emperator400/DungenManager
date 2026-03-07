@@ -2,9 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:math';
-import '../models/creature.dart';
-import '../models/condition.dart';
-import '../game_data/dnd_logic.dart';
+import '../../models/creature.dart';
+import '../../models/condition.dart';
+import '../../game_data/dnd_logic.dart';
 
 class InitiativeTrackerScreen extends StatefulWidget {
   final List<Creature> creatures;

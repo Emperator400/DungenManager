@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/campaign.dart';
-import '../models/session.dart';
-import '../models/scene.dart';
-import '../viewmodels/active_session_viewmodel.dart';
-import '../viewmodels/edit_scene_viewmodel.dart';
-import '../database/repositories/scene_model_repository.dart';
-import '../database/repositories/creature_model_repository.dart';
-import '../database/repositories/player_character_model_repository.dart';
-import '../theme/dnd_theme.dart';
+import '../../models/campaign.dart';
+import '../../models/session.dart';
+import '../../models/scene.dart';
+import '../../viewmodels/active_session_viewmodel.dart';
+import '../../viewmodels/edit_scene_viewmodel.dart';
+import '../../database/repositories/scene_model_repository.dart';
+import '../../database/repositories/creature_model_repository.dart';
+import '../../database/repositories/player_character_model_repository.dart';
+import '../../theme/dnd_theme.dart';
 import 'encounter_setup_screen.dart';
-import 'enhanced_edit_scene_screen.dart';
+import '../scenes/edit_scene_screen.dart';
 
 /// Enhanced Active Session Screen mit Provider-Pattern und modernem D&D Design
 class EnhancedActiveSessionScreen extends StatefulWidget {

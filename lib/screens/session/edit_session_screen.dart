@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/session.dart';
-import '../viewmodels/edit_session_viewmodel.dart';
-import '../theme/dnd_theme.dart';
+import '../../models/session.dart';
+import '../../viewmodels/edit_session_viewmodel.dart';
+import '../../theme/dnd_theme.dart';
 
 /// Enhanced Screen zur Bearbeitung von Sessions mit modernem Design
 class EnhancedEditSessionScreen extends StatefulWidget {

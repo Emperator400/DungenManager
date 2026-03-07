@@ -1,9 +1,9 @@
 // lib/screens/encounter_setup_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../models/campaign.dart';
-import '../models/creature.dart';
-import '../models/player_character.dart';
+import '../../models/campaign.dart';
+import '../../models/creature.dart';
+import '../../models/player_character.dart';
 
 /// Encounter Setup Screen
 /// 

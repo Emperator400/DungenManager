@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
-import '../theme/dnd_theme.dart';
+import '../../theme/dnd_theme.dart';
 
 // Import aller Screens
-import 'campaign_selection_screen.dart';
-import 'enhanced_bestiary_screen.dart';
-import 'enhanced_campaign_dashboard_screen.dart';
-import 'enhanced_item_library_screen.dart';
-import 'enhanced_lore_keeper_screen.dart';
-import 'enhanced_main_navigation_screen.dart';
-import 'enhanced_official_monsters_screen.dart';
-import 'enhanced_quest_library_screen.dart';
-import 'enhanced_sound_library_screen.dart';
+import '../campaign/campaign_selection_screen.dart';
+import '../campaign/campaign_dashboard_screen.dart';
+import 'main_navigation_screen.dart';
+// Nicht existierende Screens auskommentiert:
+// import '../bestiary/enhanced_bestiary_screen.dart'; // Datei existiert nicht noch
+// import '../items/enhanced_item_library_screen.dart'; // Datei existiert nicht noch
+// import '../lore_keeper/enhanced_lore_keeper_screen.dart'; // Datei existiert nicht noch
+// import '../bestiary/enhanced_official_monsters_screen.dart'; // Datei existiert nicht noch
+// import '../quest_library/enhanced_quest_library_screen.dart'; // Datei existiert nicht noch
+// import '../sound_library/enhanced_sound_library_screen.dart'; // Datei existiert nicht noch
 
 class AllScreensScreen extends StatelessWidget {
   const AllScreensScreen({super.key});

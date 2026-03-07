@@ -5,19 +5,19 @@ import '../models/item.dart';
 import '../theme/dnd_theme.dart';
 
 /// Enhanced Item Edit Screen mit Provider-Pattern und modernem D&D Design
-class EnhancedEditItemScreen extends StatefulWidget {
+class EditItemScreen extends StatefulWidget {
   final Item? item;
 
-  const EnhancedEditItemScreen({
+  const EditItemScreen({
     super.key,
     this.item,
   });
 
   @override
-  State<EnhancedEditItemScreen> createState() => _EnhancedEditItemScreenState();
+  State<EditItemScreen> createState() => _EditItemScreenState();
 }
 
-class _EnhancedEditItemScreenState extends State<EnhancedEditItemScreen> {
+class _EditItemScreenState extends State<EditItemScreen> {
   late EditItemViewModel _viewModel;
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
@@ -1067,7 +1067,7 @@ class _EnhancedEditItemScreenState extends State<EnhancedEditItemScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
         ),
-        elevation: 4,
+        elevation:4,
         shadowColor: color.withValues(alpha: 0.4),
       ),
       child: isLoading

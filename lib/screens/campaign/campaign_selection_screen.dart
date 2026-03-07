@@ -12,8 +12,8 @@ import '../widgets/ui_components/states/empty_state_widget.dart';
 import '../widgets/ui_components/states/error_state_widget.dart';
 import '../widgets/ui_components/states/loading_state_widget.dart';
 
-import 'enhanced_edit_campaign_screen.dart';
-import 'enhanced_main_navigation_screen.dart';
+import './edit_campaign_screen.dart';
+import '../navigation/main_navigation_screen.dart';
 
 /// Campaign Selection Screen - Startseite der Anwendung
 /// 
@@ -231,7 +231,7 @@ class _CampaignSelectionLayout extends StatelessWidget {
       MaterialPageRoute(
         builder: (context) => ChangeNotifierProvider.value(
           value: context.read<CampaignViewModel>(),
-          child: EnhancedEditCampaignScreen(campaign: campaign),
+          child: EditCampaignScreen(campaign: campaign),
         ),
       ),
     );

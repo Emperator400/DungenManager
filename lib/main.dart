@@ -12,9 +12,9 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:provider/provider.dart';
 
 // 3. Eigene Projekte (absolute Pfade von lib/)
-import 'screens/campaign_selection_screen.dart';
-import 'screens/all_screens_screen.dart';
-import 'screens/screen_graph_visualization_screen.dart';
+import 'screens/campaign/campaign_selection_screen.dart';
+import 'screens/navigation/all_screens_screen.dart';
+import 'screens/debug/screen_graph_visualization_screen.dart';
 import 'inventory_demo_app.dart';
 import 'theme/dnd_theme.dart';
 import 'services/session_service.dart';

@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/campaign.dart';
-import '../models/session.dart';
-//import '../models/scene.dart';
-import '../viewmodels/session_list_for_campaign_viewmodel.dart';
-import '../database/repositories/scene_model_repository.dart';
-import '../database/repositories/creature_model_repository.dart';
-import '../database/repositories/player_character_model_repository.dart';
-import '../theme/dnd_theme.dart';
-import 'enhanced_edit_session_screen.dart';
-import 'enhanced_active_session_screen.dart';
+import '../../models/campaign.dart';
+import '../../models/session.dart';
+//import '../../models/scene.dart';
+import '../../viewmodels/session_list_for_campaign_viewmodel.dart';
+import '../../database/repositories/scene_model_repository.dart';
+import '../../database/repositories/creature_model_repository.dart';
+import '../../database/repositories/player_character_model_repository.dart';
+import '../../theme/dnd_theme.dart';
+import 'edit_session_screen.dart';
+import 'active_session_screen.dart';
 
 /// Enhanced Screen für die Session-Liste einer Kampagne mit modernem Design
 class EnhancedSessionListForCampaignScreen extends StatefulWidget {

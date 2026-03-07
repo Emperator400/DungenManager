@@ -1,38 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../models/campaign.dart';
-import '../theme/dnd_theme.dart';
-import '../viewmodels/campaign_viewmodel.dart';
-import '../widgets/campaign/campaign_create_dialog_widget.dart';
-import '../widgets/campaign/campaign_tabs_widget.dart';
-import '../widgets/campaign/enhanced_campaign_filter_chips_widget.dart';
-import '../widgets/ui_components/cards/unified_campaign_card.dart';
-import '../widgets/ui_components/feedback/snackbar_helper.dart';
+import '../../models/campaign.dart';
+import '../../theme/dnd_theme.dart';
+import '../../viewmodels/campaign_viewmodel.dart';
+import '../../widgets/campaign/campaign_create_dialog_widget.dart';
+import '../../widgets/campaign/campaign_tabs_widget.dart';
+import '../../widgets/campaign/enhanced_campaign_filter_chips_widget.dart';
+import '../../widgets/ui_components/cards/unified_campaign_card.dart';
+import '../../widgets/ui_components/feedback/snackbar_helper.dart';
 
-import 'enhanced_edit_campaign_screen.dart';
+import 'edit_campaign_screen.dart';
 import 'session_list_for_campaign_screen.dart';
 
-/// Enhanced Campaign Dashboard mit moderner Architektur
+/// Campaign Dashboard mit moderner Architektur
 /// 
 /// Nutzt das neue ViewModel-Pattern mit Service-Layer
 /// für saubere Trennung von UI und Business Logic.
-class EnhancedCampaignDashboardScreen extends StatefulWidget {
-  const EnhancedCampaignDashboardScreen({Key? key}) : super(key: key);
+class CampaignDashboardScreen extends StatefulWidget {
+  const CampaignDashboardScreen({Key? key}) : super(key: key);
 
   /// Factory Methode die den Provider automatisch einrichtet
   static Widget withProvider({Key? key}) {
     return ChangeNotifierProvider(
       create: (context) => CampaignViewModel(),
-      child: EnhancedCampaignDashboardScreen(key: key),
+      child: CampaignDashboardScreen(key: key),
     );
   }
 
   @override
-  State<EnhancedCampaignDashboardScreen> createState() => _EnhancedCampaignDashboardScreenState();
+  State<CampaignDashboardScreen> createState() => _CampaignDashboardScreenState();
 }
 
-class _EnhancedCampaignDashboardScreenState extends State<EnhancedCampaignDashboardScreen>
+class _CampaignDashboardScreenState extends State<CampaignDashboardScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
@@ -436,7 +436,7 @@ class _EnhancedCampaignDashboardScreenState extends State<EnhancedCampaignDashbo
       MaterialPageRoute(
         builder: (context) => ChangeNotifierProvider.value(
           value: context.read<CampaignViewModel>(),
-          child: EnhancedEditCampaignScreen(campaign: campaign),
+          child: EditCampaignScreen(campaign: campaign),
         ),
       ),
     );

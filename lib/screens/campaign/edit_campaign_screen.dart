@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/campaign.dart';
-import '../models/quest.dart';
-import '../database/repositories/quest_model_repository.dart';
-import '../database/core/database_connection.dart';
-import '../viewmodels/campaign_viewmodel.dart';
-import '../theme/dnd_theme.dart';
-import 'enhanced_edit_quest_screen.dart';
+import '../../models/campaign.dart';
+import '../../models/quest.dart';
+import '../../database/repositories/quest_model_repository.dart';
+import '../../database/core/database_connection.dart';
+import '../../viewmodels/campaign_viewmodel.dart';
+import '../../theme/dnd_theme.dart';
+import '../quests/edit_quest_screen.dart' show EditQuestScreen, EditQuestScreenWithProvider;
 
-/// Enhanced Screen zur Bearbeitung von Campaigns mit CampaignViewModel
-class EnhancedEditCampaignScreen extends StatefulWidget {
+/// Screen zur Bearbeitung von Campaigns mit CampaignViewModel
+class EditCampaignScreen extends StatefulWidget {
   final Campaign? campaign;
 
-  const EnhancedEditCampaignScreen({
+  const EditCampaignScreen({
     Key? key,
     this.campaign,
   }) : super(key: key);
 
   @override
-  State<EnhancedEditCampaignScreen> createState() => _EnhancedEditCampaignScreenState();
+  State<EditCampaignScreen> createState() => _EditCampaignScreenState();
 }
 
-class _EnhancedEditCampaignScreenState extends State<EnhancedEditCampaignScreen> {
+class _EditCampaignScreenState extends State<EditCampaignScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -1016,7 +1016,7 @@ class _EnhancedEditCampaignScreenState extends State<EnhancedEditCampaignScreen>
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (context) => EnhancedEditQuestScreenWithProvider(
+        builder: (context) => EditQuestScreenWithProvider(
           quest: null,
           campaignId: widget.campaign!.id,
         ),
@@ -1043,7 +1043,7 @@ class _EnhancedEditCampaignScreenState extends State<EnhancedEditCampaignScreen>
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (context) => EnhancedEditQuestScreenWithProvider(
+        builder: (context) => EditQuestScreenWithProvider(
           quest: quest,
           campaignId: widget.campaign!.id,
         ),

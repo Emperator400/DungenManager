@@ -1,28 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../models/campaign.dart';
-import '../theme/dnd_theme.dart';
-import '../viewmodels/bestiary_viewmodel.dart';
-import '../viewmodels/campaign_viewmodel.dart';
-import '../viewmodels/character_editor_viewmodel.dart';
-import '../viewmodels/item_library_viewmodel.dart';
-import '../viewmodels/official_monsters_viewmodel.dart';
-import '../viewmodels/quest_library_viewmodel.dart';
-import '../viewmodels/session_list_for_campaign_viewmodel.dart';
-import '../viewmodels/sound_library_viewmodel.dart';
-import '../viewmodels/wiki_viewmodel.dart';
+import '../../models/campaign.dart';
+import '../../theme/dnd_theme.dart';
+import '../../viewmodels/bestiary_viewmodel.dart';
+import '../../viewmodels/campaign_viewmodel.dart';
+import '../../viewmodels/character_editor_viewmodel.dart';
+import '../../viewmodels/item_library_viewmodel.dart';
+import '../../viewmodels/official_monsters_viewmodel.dart';
+import '../../viewmodels/quest_library_viewmodel.dart';
+import '../../viewmodels/session_list_for_campaign_viewmodel.dart';
+import '../../viewmodels/sound_library_viewmodel.dart';
+import '../../viewmodels/wiki_viewmodel.dart';
 
 // Screens
-import 'enhanced_bestiary_screen.dart';
-import 'enhanced_campaign_dashboard_screen.dart';
-import 'enhanced_item_library_screen.dart';
-import 'enhanced_lore_keeper_screen.dart';
-import 'enhanced_official_monsters_screen.dart';
-import 'enhanced_pc_list_screen.dart';
-import 'enhanced_quest_library_screen.dart';
-import 'enhanced_sound_library_screen.dart';
-import 'session_list_for_campaign_screen.dart';
+import '../bestiary/bestiary_screen.dart';
+import '../campaign/campaign_dashboard_screen.dart';
+import '../items/item_library_screen.dart';
+import '../lore/lore_keeper_screen.dart';
+import '../bestiary/official_monsters_screen.dart';
+import '../characters/pc_list_screen.dart';
+import '../quests/quest_library_screen.dart';
+import '../audio/sound_library_screen.dart';
+import '../campaign/session_list_for_campaign_screen.dart';
 
 /// Enhanced Main Navigation Screen
 /// 
@@ -540,7 +540,7 @@ void _navigateToScreen(BuildContext context, ScreenType screenType, {Campaign? c
     case ScreenType.campaigns:
       screen = ChangeNotifierProvider<CampaignViewModel>(
         create: (_) => CampaignViewModel(),
-        child: const EnhancedCampaignDashboardScreen(),
+        child: const CampaignDashboardScreen(),
       );
       break;
     case ScreenType.quests:
@@ -563,7 +563,7 @@ void _navigateToScreen(BuildContext context, ScreenType screenType, {Campaign? c
       screen = const _PlaceholderScreen(title: 'Gruppe');
       break;
     case ScreenType.items:
-      screen = const EnhancedItemLibraryScreen();
+      screen = const ItemLibraryScreen();
       break;
     case ScreenType.bestiary:
       screen = const EnhancedBestiaryScreen();

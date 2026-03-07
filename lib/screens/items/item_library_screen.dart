@@ -3,21 +3,21 @@ import 'package:provider/provider.dart';
 import '../models/item.dart';
 import '../theme/dnd_theme.dart';
 import '../viewmodels/item_library_viewmodel.dart';
-import 'enhanced_edit_item_screen.dart';
+import 'edit_item_screen.dart';
 
-class EnhancedItemLibraryScreen extends StatefulWidget {
+class ItemLibraryScreen extends StatefulWidget {
   final bool selectMode; // Auswahl-Modus für Inventar
   
-  const EnhancedItemLibraryScreen({
+  const ItemLibraryScreen({
     super.key, 
     this.selectMode = false,
   });
 
   @override
-  State<EnhancedItemLibraryScreen> createState() => _EnhancedItemLibraryScreenState();
+  State<ItemLibraryScreen> createState() => _ItemLibraryScreenState();
 }
 
-class _EnhancedItemLibraryScreenState extends State<EnhancedItemLibraryScreen> 
+class _ItemLibraryScreenState extends State<ItemLibraryScreen>
     with TickerProviderStateMixin {
   late ItemLibraryViewModel _viewModel;
   late TabController _tabController;
@@ -255,7 +255,7 @@ class _EnhancedItemLibraryScreenState extends State<EnhancedItemLibraryScreen>
                 child: FloatingActionButton.extended(
                   onPressed: () async {
                     await Navigator.of(context).push(
-                      MaterialPageRoute(builder: (ctx) => const EnhancedEditItemScreen())
+                      MaterialPageRoute(builder: (ctx) => const EditItemScreen())
                     );
                     _refreshList();
                   },
@@ -520,7 +520,7 @@ class _EnhancedItemLibraryScreenState extends State<EnhancedItemLibraryScreen>
                       onPressed: () async {
                         await Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (ctx) => EnhancedEditItemScreen(item: item)
+                            builder: (ctx) => EditItemScreen(item: item)
                           )
                         );
                         _refreshList();
@@ -548,7 +548,7 @@ class _EnhancedItemLibraryScreenState extends State<EnhancedItemLibraryScreen>
           } else {
             await Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (ctx) => EnhancedEditItemScreen(item: item)
+                builder: (ctx) => EditItemScreen(item: item)
               )
             );
             _refreshList();

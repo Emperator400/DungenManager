@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/scene.dart';
-import '../viewmodels/edit_scene_viewmodel.dart';
-import '../theme/dnd_theme.dart';
-import 'select_character_for_scene_screen.dart';
+import '../../models/scene.dart';
+import '../../viewmodels/edit_scene_viewmodel.dart';
+import '../../theme/dnd_theme.dart';
+// import 'select_character_for_scene_screen.dart'; // Datei existiert nicht noch
 
 /// Enhanced Screen zur Bearbeitung von Scenes mit D&D Theme
 class EnhancedEditSceneScreen extends StatefulWidget {
@@ -621,18 +621,28 @@ class _EnhancedEditSceneScreenState extends State<EnhancedEditSceneScreen> {
   }
 
   Future<void> _showCharacterSelector(EditSceneViewModel viewModel) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => SelectCharacterForSceneScreen(
-          previouslySelectedIds: viewModel.scene?.linkedCharacterIds ?? [],
+    // TODO: SelectCharacterForSceneScreen implementieren
+    // Diese Funktion wird in Zukunft verfügbar sein
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.info, color: Colors.white),
+            const SizedBox(width: DnDTheme.sm),
+            Text(
+              'Charakterauswahl wird in Zukunft verfügbar sein',
+              style: DnDTheme.bodyText1.copyWith(
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: DnDTheme.arcaneBlue,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
         ),
       ),
     );
-
-    if (result != null && result is List<String>) {
-      viewModel.updateLinkedCharacters(result);
-      await viewModel.buildLinkedCharactersList();
-    }
   }
 }
