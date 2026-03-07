@@ -5,7 +5,7 @@ import '../../models/session.dart';
 import '../../viewmodels/session_list_for_campaign_viewmodel.dart';
 import '../session/edit_session_screen.dart' show EditSessionScreen;
 import '../session/active_session_screen.dart' show ActiveSessionScreen;
-import '../campaign/edit_campaign_screen.dart' show EditCampaignScreen;
+import 'edit_campaign_screen.dart' show EditCampaignScreen;
 import '../../widgets/ui_components/cards/unified_session_card.dart';
 import '../../theme/dnd_theme.dart';
 
