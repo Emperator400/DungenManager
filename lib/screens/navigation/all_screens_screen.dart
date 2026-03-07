@@ -5,13 +5,50 @@ import '../../theme/dnd_theme.dart';
 import '../campaign/campaign_selection_screen.dart';
 import '../campaign/campaign_dashboard_screen.dart';
 import 'main_navigation_screen.dart';
-// Nicht existierende Screens auskommentiert:
-// import '../bestiary/enhanced_bestiary_screen.dart'; // Datei existiert nicht noch
-// import '../items/enhanced_item_library_screen.dart'; // Datei existiert nicht noch
-// import '../lore_keeper/enhanced_lore_keeper_screen.dart'; // Datei existiert nicht noch
-// import '../bestiary/enhanced_official_monsters_screen.dart'; // Datei existiert nicht noch
-// import '../quest_library/enhanced_quest_library_screen.dart'; // Datei existiert nicht noch
-// import '../sound_library/enhanced_sound_library_screen.dart'; // Datei existiert nicht noch
+
+// Quest Screens
+import '../quests/quest_library_screen.dart';
+import '../quests/add_quest_screen.dart';
+import '../quests/edit_quest_screen.dart';
+import '../quests/edit_campaign_quest_screen.dart';
+import '../quests/link_quest_screen.dart';
+
+// Character Screens
+import '../characters/character_editor_screen.dart';
+import '../characters/edit_pc_screen.dart';
+import '../characters/pc_list_screen.dart';
+import '../characters/select_character_screen.dart';
+
+// Bestiary Screens
+import '../bestiary/bestiary_screen.dart';
+import '../bestiary/edit_creature_screen.dart';
+import '../bestiary/official_monsters_screen.dart';
+
+// Item Screens
+import '../items/item_library_screen.dart';
+import '../items/edit_item_screen.dart';
+import '../items/add_item_screen.dart';
+
+// Lore Screens
+import '../lore/lore_keeper_screen.dart';
+import '../lore/edit_wiki_entry_screen.dart';
+import '../lore/link_entry_screen.dart';
+import '../lore/link_wiki_entries_screen.dart';
+
+// Session Screens
+import '../session/session_list_screen.dart';
+import '../session/active_session_screen.dart';
+import '../session/edit_session_screen.dart';
+import '../session/encounter_setup_screen.dart';
+import '../session/initiative_tracker_screen.dart';
+
+// Audio Screens
+import '../audio/sound_library_screen.dart';
+import '../audio/add_sound_screen.dart';
+import '../audio/edit_sound_screen.dart';
+
+// Debug Screens
+import '../debug/screen_graph_visualization_screen.dart';
 
 class AllScreensScreen extends StatelessWidget {
   const AllScreensScreen({super.key});
@@ -62,6 +99,9 @@ class AllScreensScreen extends StatelessWidget {
           
           _buildSectionHeader('🔧 MAIN NAVIGATION'),
           _buildMainNavigationScreens(context),
+          
+          _buildSectionHeader('🔍 DEBUG TOOLS'),
+          _buildDebugScreens(context),
         ],
       ),
     );
@@ -138,290 +178,271 @@ class AllScreensScreen extends StatelessWidget {
       children: [
         _buildScreenCard(
           context: context,
-          title: 'Enhanced Campaign Dashboard',
-          description: 'Zentrale Verwaltung aller Kampagnen mit Filter-Chips und Quick-Actions',
-          onTap: () => _navigateToScreen(context, () => _placeholderScreen('Enhanced Campaign Dashboard')),
+          title: 'Campaign Selection',
+          description: 'Screen zur Auswahl einer Kampagne',
+          onTap: () => _navigateToScreen(context, () => const CampaignSelectionScreen()),
+        ),
+        _buildScreenCard(
+          context: context,
+          title: 'Campaign Dashboard',
+          description: 'Zentrale Verwaltung aller Kampagnen',
+          onTap: () => _navigateToScreen(context, () => const CampaignDashboardScreen()),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuestScreens(BuildContext context) {
+    return Column(
+      children: [
+        _buildScreenCard(
+          context: context,
+          title: 'Quest Library',
+          description: 'Verwaltung aller Quests',
+          onTap: () => _navigateToScreen(context, () => const QuestLibraryScreen()),
+        ),
+        _buildScreenCard(
+          context: context,
+          title: 'Add Quest',
+          description: 'Quest zur Kampagne hinzufügen',
+          onTap: () => _placeholderScreen('Add Quest - Needs Campaign ID'),
           needsParams: true,
-          paramWarning: '⚠️ Screen wird noch migriert',
+          paramWarning: '⚠️ Benötigt campaignId Parameter',
         ),
-import 'package:flutter/material.dart';
-import '../../theme/dnd_theme.dart';
-
-// Import aller Screens
-import '../campaign/campaign_selection_screen.dart';
-import '../campaign/campaign_dashboard_screen.dart';
-import 'main_navigation_screen.dart';
-// Nicht existierende Screens auskommentiert:
-// import '../bestiary/enhanced_bestiary_screen.dart'; // Datei existiert nicht noch
-// import '../items/enhanced_item_library_screen.dart'; // Datei existiert nicht noch
-// import '../lore_keeper/enhanced_lore_keeper_screen.dart'; // Datei existiert nicht noch
-// import '../bestiary/enhanced_official_monsters_screen.dart'; // Datei existiert nicht noch
-// import '../quest_library/enhanced_quest_library_screen.dart'; // Datei existiert nicht noch
-// import '../sound_library/enhanced_sound_library_screen.dart'; // Datei existiert nicht noch
-
-class AllScreensScreen extends StatelessWidget {
-  const AllScreensScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: DnDTheme.dungeonBlack,
-      appBar: AppBar(
-        title: Text(
-          'Alle Screens - UI Testing',
-          style: DnDTheme.headline2.copyWith(color: DnDTheme.ancientGold),
+        _buildScreenCard(
+          context: context,
+          title: 'Edit Quest',
+          description: 'Quest bearbeiten',
+          onTap: () => _placeholderScreen('Edit Quest - Needs Quest'),
+          needsParams: true,
+          paramWarning: '⚠️ Benötigt Quest Parameter',
         ),
-        backgroundColor: DnDTheme.stoneGrey,
-        foregroundColor: DnDTheme.ancientGold,
-        elevation: 4,
-        iconTheme: const IconThemeData(color: DnDTheme.ancientGold),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(DnDTheme.md),
-        children: [
-          _buildSectionHeader('🎯 KAMPAGNEN-MANAGEMENT'),
-          _buildCampaignScreens(context),
-          
-          _buildSectionHeader('📜 QUEST-MANAGEMENT'),
-          _buildQuestScreens(context),
-          
-          _buildSectionHeader('📚 WIKI/LORE MANAGEMENT'),
-          _buildWikiScreens(context),
-          
-          _buildSectionHeader('🧑‍🤝‍🧑 CHARACTER MANAGEMENT'),
-          _buildCharacterScreens(context),
-          
-          _buildSectionHeader('⚔️ BESTIARY & MONSTER MANAGEMENT'),
-          _buildBestiaryScreens(context),
-          
-          _buildSectionHeader('🎒 ITEM MANAGEMENT'),
-          _buildItemScreens(context),
-          
-          _buildSectionHeader('🎵 AUDIO MANAGEMENT'),
-          _buildAudioScreens(context),
-          
-          _buildSectionHeader('🎮 SESSION MANAGEMENT'),
-          _buildSessionScreens(context),
-          
-          _buildSectionHeader('🧑‍🤝‍🧑 CHARACTER MANAGEMENT TESTING'),
-          _buildCharacterTestingScreens(context),
-          
-          _buildSectionHeader('🔧 MAIN NAVIGATION'),
-          _buildMainNavigationScreens(context),
-        ],
-      ),
+        _buildScreenCard(
+          context: context,
+          title: 'Edit Campaign Quest',
+          description: 'Kampagnen-Quest bearbeiten',
+          onTap: () => _placeholderScreen('Edit Campaign Quest - Needs Params'),
+          needsParams: true,
+          paramWarning: '⚠️ Benötigt campaignId und questId Parameter',
+        ),
+        _buildScreenCard(
+          context: context,
+          title: 'Link Quest',
+          description: 'Quests verlinken',
+          onTap: () => _placeholderScreen('Link Quest - Needs Params'),
+          needsParams: true,
+          paramWarning: '⚠️ Benötigt Parameter',
+        ),
+      ],
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: DnDTheme.md),
-      child: Container(
-        padding: const EdgeInsets.all(DnDTheme.md),
-        decoration: DnDTheme.getMysticalBorder(borderColor: DnDTheme.mysticalPurple),
-        child: Text(
-          title,
-          style: DnDTheme.headline3.copyWith(
-            color: DnDTheme.mysticalPurple,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildScreenCard({
-    required BuildContext context,
-    required String title,
-    required String description,
-    required VoidCallback onTap,
-    bool needsParams = false,
-    String? paramWarning,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: DnDTheme.sm),
-      decoration: DnDTheme.getFantasyCardDecoration(
-        borderColor: needsParams ? DnDTheme.warningOrange : DnDTheme.emeraldGreen,
-      ),
-      child: ListTile(
-        title: Text(
-          title,
-          style: DnDTheme.headline3.copyWith(
-            color: needsParams ? DnDTheme.warningOrange : DnDTheme.emeraldGreen,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              description,
-              style: DnDTheme.bodyText2,
-            ),
-            if (needsParams && paramWarning != null) ...[
-              const SizedBox(height: DnDTheme.xs),
-              Text(
-                paramWarning,
-                style: DnDTheme.bodyText2.copyWith(
-                  color: DnDTheme.warningOrange,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ],
-        ),
-        trailing: Icon(
-          needsParams ? Icons.warning : Icons.play_arrow,
-          color: needsParams ? DnDTheme.warningOrange : DnDTheme.emeraldGreen,
-          size: 28,
-        ),
-        onTap: onTap,
-      ),
-    );
-  }
-
-  Widget _buildCampaignScreens(BuildContext context) {
+  Widget _buildWikiScreens(BuildContext context) {
     return Column(
       children: [
-  ++++ REPLACE
-import 'package:flutter/material.dart';
-import '../../theme/dnd_theme.dart';
-
-// Import aller Screens
-import '../campaign/campaign_selection_screen.dart';
-import '../campaign/campaign_dashboard_screen.dart';
-import 'main_navigation_screen.dart';
-// Nicht existierende Screens auskommentiert:
-// import '../bestiary/enhanced_bestiary_screen.dart'; // Datei existiert nicht noch
-// import '../items/enhanced_item_library_screen.dart'; // Datei existiert nicht noch
-// import '../lore_keeper/enhanced_lore_keeper_screen.dart'; // Datei existiert nicht noch
-// import '../bestiary/enhanced_official_monsters_screen.dart'; // Datei existiert nicht noch
-// import '../quest_library/enhanced_quest_library_screen.dart'; // Datei existiert nicht noch
-// import '../sound_library/enhanced_sound_library_screen.dart'; // Datei existiert nicht noch
-
-class AllScreensScreen extends StatelessWidget {
-  const AllScreensScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: DnDTheme.dungeonBlack,
-      appBar: AppBar(
-        title: Text(
-          'Alle Screens - UI Testing',
-          style: DnDTheme.headline2.copyWith(color: DnDTheme.ancientGold),
+        _buildScreenCard(
+          context: context,
+          title: 'Lore Keeper',
+          description: 'Wiki und Lore-Verwaltung',
+          onTap: () => _navigateToScreen(context, () => const LoreKeeperScreen()),
         ),
-        backgroundColor: DnDTheme.stoneGrey,
-        foregroundColor: DnDTheme.ancientGold,
-        elevation: 4,
-        iconTheme: const IconThemeData(color: DnDTheme.ancientGold),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(DnDTheme.md),
-        children: [
-          _buildSectionHeader('🎯 KAMPAGNEN-MANAGEMENT'),
-          _buildCampaignScreens(context),
-          
-          _buildSectionHeader('📜 QUEST-MANAGEMENT'),
-          _buildQuestScreens(context),
-          
-          _buildSectionHeader('📚 WIKI/LORE MANAGEMENT'),
-          _buildWikiScreens(context),
-          
-          _buildSectionHeader('🧑‍🤝‍🧑 CHARACTER MANAGEMENT'),
-          _buildCharacterScreens(context),
-          
-          _buildSectionHeader('⚔️ BESTIARY & MONSTER MANAGEMENT'),
-          _buildBestiaryScreens(context),
-          
-          _buildSectionHeader('🎒 ITEM MANAGEMENT'),
-          _buildItemScreens(context),
-          
-          _buildSectionHeader('🎵 AUDIO MANAGEMENT'),
-          _buildAudioScreens(context),
-          
-          _buildSectionHeader('🎮 SESSION MANAGEMENT'),
-          _buildSessionScreens(context),
-          
-          _buildSectionHeader('🧑‍🤝‍🧑 CHARACTER MANAGEMENT TESTING'),
-          _buildCharacterTestingScreens(context),
-          
-          _buildSectionHeader('🔧 MAIN NAVIGATION'),
-          _buildMainNavigationScreens(context),
-        ],
-      ),
+        _buildScreenCard(
+          context: context,
+          title: 'Edit Wiki Entry',
+          description: 'Wiki-Eintrag bearbeiten',
+          onTap: () => _placeholderScreen('Edit Wiki Entry - Needs Entry'),
+          needsParams: true,
+          paramWarning: '⚠️ Benötigt Entry Parameter',
+        ),
+        _buildScreenCard(
+          context: context,
+          title: 'Link Entry',
+          description: 'Wiki-Einträge verlinken',
+          onTap: () => _placeholderScreen('Link Entry - Needs Params'),
+          needsParams: true,
+          paramWarning: '⚠️ Benötigt Parameter',
+        ),
+        _buildScreenCard(
+          context: context,
+          title: 'Link Wiki Entries',
+          description: 'Mehrere Einträge verlinken',
+          onTap: () => _placeholderScreen('Link Wiki Entries - Needs Params'),
+          needsParams: true,
+          paramWarning: '⚠️ Benötigt Parameter',
+        ),
+      ],
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: DnDTheme.md),
-      child: Container(
-        padding: const EdgeInsets.all(DnDTheme.md),
-        decoration: DnDTheme.getMysticalBorder(borderColor: DnDTheme.mysticalPurple),
-        child: Text(
-          title,
-          style: DnDTheme.headline3.copyWith(
-            color: DnDTheme.mysticalPurple,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildScreenCard({
-    required BuildContext context,
-    required String title,
-    required String description,
-    required VoidCallback onTap,
-    bool needsParams = false,
-    String? paramWarning,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: DnDTheme.sm),
-      decoration: DnDTheme.getFantasyCardDecoration(
-        borderColor: needsParams ? DnDTheme.warningOrange : DnDTheme.emeraldGreen,
-      ),
-      child: ListTile(
-        title: Text(
-          title,
-          style: DnDTheme.headline3.copyWith(
-            color: needsParams ? DnDTheme.warningOrange : DnDTheme.emeraldGreen,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              description,
-              style: DnDTheme.bodyText2,
-            ),
-            if (needsParams && paramWarning != null) ...[
-              const SizedBox(height: DnDTheme.xs),
-              Text(
-                paramWarning,
-                style: DnDTheme.bodyText2.copyWith(
-                  color: DnDTheme.warningOrange,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ],
-        ),
-        trailing: Icon(
-          needsParams ? Icons.warning : Icons.play_arrow,
-          color: needsParams ? DnDTheme.warningOrange : DnDTheme.emeraldGreen,
-          size: 28,
-        ),
-        onTap: onTap,
-      ),
-    );
-  }
-
-  Widget _buildCampaignScreens(BuildContext context) {
+  Widget _buildCharacterScreens(BuildContext context) {
     return Column(
       children: [
-  -------
+        _buildScreenCard(
+          context: context,
+          title: 'Character Editor',
+          description: 'Charakter-Editor',
+          onTap: () => _placeholderScreen('Character Editor - Needs Character'),
+          needsParams: true,
+          paramWarning: '⚠️ Benötigt Character Parameter',
+        ),
+        _buildScreenCard(
+          context: context,
+          title: 'Edit PC',
+          description: 'Player Character bearbeiten',
+          onTap: () => _placeholderScreen('Edit PC - Needs Character'),
+          needsParams: true,
+          paramWarning: '⚠️ Benötigt Character Parameter',
+        ),
+        _buildScreenCard(
+          context: context,
+          title: 'PC List',
+          description: 'Liste aller Player Characters',
+          onTap: () => _placeholderScreen('PC List - Needs Campaign'),
+          needsParams: true,
+          paramWarning: '⚠️ Benötigt Campaign Parameter',
+        ),
+        _buildScreenCard(
+          context: context,
+          title: 'Select Character',
+          description: 'Charakter auswählen',
+          onTap: () => _navigateToScreen(context, () => const SelectCharacterScreen()),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBestiaryScreens(BuildContext context) {
+    return Column(
+      children: [
+        _buildScreenCard(
+          context: context,
+          title: 'Bestiary',
+          description: 'Monster-Bestiarium',
+          onTap: () => _navigateToScreen(context, () => const BestiaryScreen()),
+        ),
+        _buildScreenCard(
+          context: context,
+          title: 'Edit Creature',
+          description: 'Kreatur bearbeiten',
+          onTap: () => _placeholderScreen('Edit Creature - Needs Creature'),
+          needsParams: true,
+          paramWarning: '⚠️ Benötigt Creature Parameter',
+        ),
+        _buildScreenCard(
+          context: context,
+          title: 'Official Monsters',
+          description: 'Offizielle 5e Monster',
+          onTap: () => _navigateToScreen(context, () => const OfficialMonstersScreen()),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildItemScreens(BuildContext context) {
+    return Column(
+      children: [
+        _buildScreenCard(
+          context: context,
+          title: 'Item Library',
+          description: 'Item-Bibliothek',
+          onTap: () => _navigateToScreen(context, () => const ItemLibraryScreen()),
+        ),
+        _buildScreenCard(
+          context: context,
+          title: 'Edit Item',
+          description: 'Item bearbeiten',
+          onTap: () => _placeholderScreen('Edit Item - Needs Item'),
+          needsParams: true,
+          paramWarning: '⚠️ Benötigt Item Parameter',
+        ),
+        _buildScreenCard(
+          context: context,
+          title: 'Add Item',
+          description: 'Neues Item hinzufügen',
+          onTap: () => _placeholderScreen('Add Item - Needs Campaign'),
+          needsParams: true,
+          paramWarning: '⚠️ Benötigt Campaign Parameter',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAudioScreens(BuildContext context) {
+    return Column(
+      children: [
+        _buildScreenCard(
+          context: context,
+          title: 'Sound Library',
+          description: 'Audio-Bibliothek',
+          onTap: () => _navigateToScreen(context, () => const SoundLibraryScreen()),
+        ),
+        _buildScreenCard(
+          context: context,
+          title: 'Add Sound',
+          description: 'Neues Audio hinzufügen',
+          onTap: () => _navigateToScreen(context, () => const AddSoundScreen()),
+        ),
+        _buildScreenCard(
+          context: context,
+          title: 'Edit Sound',
+          description: 'Audio bearbeiten',
+          onTap: () => _placeholderScreen('Edit Sound - Needs Sound'),
+          needsParams: true,
+          paramWarning: '⚠️ Benötigt Sound Parameter',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSessionScreens(BuildContext context) {
+    return Column(
+      children: [
+        _buildScreenCard(
+          context: context,
+          title: 'Session List',
+          description: 'Liste aller Sessions',
+          onTap: () => _navigateToScreen(context, () => const SessionListScreen()),
+        ),
+        _buildScreenCard(
+          context: context,
+          title: 'Active Session',
+          description: 'Aktive Session',
+          onTap: () => _placeholderScreen('Active Session - Needs Session'),
+          needsParams: true,
+          paramWarning: '⚠️ Benötigt Session Parameter',
+        ),
+        _buildScreenCard(
+          context: context,
+          title: 'Edit Session',
+          description: 'Session bearbeiten',
+          onTap: () => _placeholderScreen('Edit Session - Needs Session'),
+          needsParams: true,
+          paramWarning: '⚠️ Benötigt Session Parameter',
+        ),
+        _buildScreenCard(
+          context: context,
+          title: 'Encounter Setup',
+          description: 'Begegnung einrichten',
+          onTap: () => _placeholderScreen('Encounter Setup - Needs Session'),
+          needsParams: true,
+          paramWarning: '⚠️ Benötigt Session Parameter',
+        ),
+        _buildScreenCard(
+          context: context,
+          title: 'Initiative Tracker',
+          description: 'Initiative-Tracker',
+          onTap: () => _placeholderScreen('Initiative Tracker - Needs Session'),
+          needsParams: true,
+          paramWarning: '⚠️ Benötigt Session Parameter',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCharacterTestingScreens(BuildContext context) {
+    return Column(
+      children: [
+        _buildScreenCard(
           context: context,
           title: '⚔️ Combat Testing Arena',
           description: 'Test-Bereich für Kampf-Mechaniken und Initiative-Systeme',
@@ -431,7 +452,7 @@ class AllScreensScreen extends StatelessWidget {
         _buildScreenCard(
           context: context,
           title: '🎒 Inventory Management Test',
-          description: 'Testing-Screen für Item-Management, Ausrüstung und Inventar-Systeme',
+          description: 'Testing-Screen für Item-Management',
           onTap: () => _navigateToScreen(context, () => _inventoryManagementTest()),
           needsParams: false,
         ),
@@ -445,8 +466,22 @@ class AllScreensScreen extends StatelessWidget {
         _buildScreenCard(
           context: context,
           title: 'Enhanced Main Navigation',
-          description: 'Zentrale 2x5 Grid Navigation mit allen Hauptbereichen',
+          description: 'Zentrale Navigation mit allen Hauptbereichen',
           onTap: () => _navigateToScreen(context, () => const EnhancedMainNavigationScreen()),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDebugScreens(BuildContext context) {
+    return Column(
+      children: [
+        _buildScreenCard(
+          context: context,
+          title: 'Screen Graph Visualization',
+          description: 'Visualisierung aller Screens und deren Beziehungen',
+          onTap: () => _navigateToScreen(context, () => const ScreenGraphVisualizationScreen()),
+          needsParams: false,
         ),
       ],
     );
@@ -456,107 +491,6 @@ class AllScreensScreen extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => screenBuilder(),
-      ),
-    );
-  }
-
-  Widget _characterTestingSuite() {
-    return Scaffold(
-      backgroundColor: DnDTheme.dungeonBlack,
-      appBar: AppBar(
-        title: const Text('🧑 Character Editor Testing Suite'),
-        backgroundColor: DnDTheme.emeraldGreen,
-        foregroundColor: DnDTheme.dungeonBlack,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(DnDTheme.md),
-        children: [
-          _buildTestSection('Character Creation Tests'),
-          _buildTestSection('Character Stats Tests'),
-          _buildTestSection('Combat System Tests'),
-          _buildTestSection('Inventory Management Tests'),
-          _buildTestSection('Character Development Tests'),
-        ],
-      ),
-    );
-  }
-
-  Widget _characterTypeSelector() {
-    String? selectedType;
-    
-    return StatefulBuilder(
-      builder: (context, setState) {
-        return Scaffold(
-          backgroundColor: DnDTheme.dungeonBlack,
-          appBar: AppBar(
-            title: const Text('🔧 Character Type Selector'),
-            backgroundColor: DnDTheme.emeraldGreen,
-            foregroundColor: DnDTheme.dungeonBlack,
-          ),
-          body: Column(
-            children: [
-              if (selectedType != null)
-                Container(
-                  margin: const EdgeInsets.all(DnDTheme.md),
-                  padding: const EdgeInsets.all(DnDTheme.md),
-                  decoration: DnDTheme.getFantasyCardDecoration(
-                    borderColor: DnDTheme.ancientGold,
-                  ),
-                  child: Text(
-                    'Ausgewählt: $selectedType',
-                    style: DnDTheme.headline3.copyWith(
-                      color: DnDTheme.ancientGold,
-                    ),
-                  ),
-                ),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(DnDTheme.md),
-                  children: [
-                    _buildCharacterTypeCard('Player Character', 'Held für D&D Abenteuer', () {
-                      setState(() => selectedType = 'Player Character');
-                      _showTestDialog(context, 'Player Character', 'Ein heldenhafter Abenteurer mit speziellen Fähigkeiten und Wachstumspotenzial.');
-                    }),
-                    _buildCharacterTypeCard('NPC', 'Nicht-Spieler-Charakter', () {
-                      setState(() => selectedType = 'NPC');
-                      _showTestDialog(context, 'NPC', 'Ein Charakter der von der Spielleitung kontrolliert wird, mit festgelegten Stats.');
-                    }),
-                    _buildCharacterTypeCard('Monster', 'Gegnerische Kreaturen', () {
-                      setState(() => selectedType = 'Monster');
-                      _showTestDialog(context, 'Monster', 'Ein feindliches Wesen mit speziellen Angriffen und Resistenzen.');
-                    }),
-                    _buildCharacterTypeCard('Creature', 'Neutrale Tiere/Wesen', () {
-                      setState(() => selectedType = 'Creature');
-                      _showTestDialog(context, 'Creature', 'Ein neutrales Wesen das sowohl freundlich als auch feindlich sein kann.');
-                    }),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _characterStatsDemo() {
-    return Scaffold(
-      backgroundColor: DnDTheme.dungeonBlack,
-      appBar: AppBar(
-        title: const Text('📊 Character Stats Demo'),
-        backgroundColor: DnDTheme.emeraldGreen,
-        foregroundColor: DnDTheme.dungeonBlack,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(DnDTheme.md),
-        children: [
-          _buildStatsCard('Strength (STR)', '18 (+4)', Icons.fitness_center),
-          _buildStatsCard('Dexterity (DEX)', '16 (+3)', Icons.directions_run),
-          _buildStatsCard('Constitution (CON)', '14 (+2)', Icons.favorite),
-          _buildStatsCard('Intelligence (INT)', '12 (+1)', Icons.psychology),
-          _buildStatsCard('Wisdom (WIS)', '10 (+0)', Icons.visibility),
-          _buildStatsCard('Charisma (CHA)', '8 (-1)', Icons.people),
-        ],
       ),
     );
   }
@@ -605,18 +539,6 @@ class AllScreensScreen extends StatelessWidget {
                       setState(() => lastResult = result);
                       _showTestDialog(context, 'Attack Roll Test', result);
                     }),
-                    _buildCombatTestCard('Damage Calculation', 'Teste Schadensberechnung', () {
-                      final dice = (1 + (DateTime.now().millisecond % 8)).toString();
-                      final result = 'Schaden: 2d8 = $dice + STR Bonus (4) = ${int.parse(dice) + 4}';
-                      setState(() => lastResult = result);
-                      _showTestDialog(context, 'Damage Calculation', result);
-                    }),
-                    _buildCombatTestCard('Saving Throws', 'Teste Rettungswürfe', () {
-                      final roll = (1 + (DateTime.now().millisecond % 20)).toString();
-                      final result = 'CON Rettungswurf: $roll + CON Bonus (2) = ${int.parse(roll) + 2}';
-                      setState(() => lastResult = result);
-                      _showTestDialog(context, 'Saving Throw Test', result);
-                    }),
                   ],
                 ),
               ),
@@ -630,8 +552,6 @@ class AllScreensScreen extends StatelessWidget {
   Widget _inventoryManagementTest() {
     List<String> inventory = ['Schwert', 'Rüstung', 'Trank', 'Karte'];
     String? lastResult;
-    double currentWeight = 45.5;
-    double maxWeight = 150.0;
     
     return StatefulBuilder(
       builder: (context, setState) {
@@ -658,40 +578,6 @@ class AllScreensScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-              Container(
-                margin: const EdgeInsets.all(DnDTheme.md),
-                padding: const EdgeInsets.all(DnDTheme.md),
-                decoration: DnDTheme.getFantasyCardDecoration(
-                  borderColor: DnDTheme.emeraldGreen,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Inventar (${inventory.length} Items):',
-                      style: DnDTheme.headline3.copyWith(
-                        color: DnDTheme.emeraldGreen,
-                      ),
-                    ),
-                    const SizedBox(height: DnDTheme.sm),
-                    Text(
-                      inventory.join(', '),
-                      style: DnDTheme.bodyText1.copyWith(
-                        color: DnDTheme.emeraldGreen,
-                      ),
-                    ),
-                    const SizedBox(height: DnDTheme.sm),
-                    Text(
-                      'Gewicht: ${currentWeight.toStringAsFixed(1)} / ${maxWeight.toStringAsFixed(1)} kg',
-                      style: DnDTheme.bodyText2.copyWith(
-                        color: currentWeight > maxWeight * 0.8 
-                          ? DnDTheme.warningOrange 
-                          : DnDTheme.emeraldGreen,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.all(DnDTheme.md),
@@ -700,43 +586,9 @@ class AllScreensScreen extends StatelessWidget {
                       final newItem = ['Schild', 'Helme', 'Stiefel', 'Handschuhe'][DateTime.now().millisecond % 4];
                       setState(() {
                         inventory.add(newItem);
-                        currentWeight += 5.0;
                         lastResult = '$newItem zum Inventar hinzugefügt';
                       });
                       _showTestDialog(context, 'Item Pickup', '$newItem wurde erfolgreich aufgenommen!');
-                    }),
-                    _buildInventoryTestCard('Equipment Test', 'Teste Ausrüstung', () {
-                      if (inventory.isNotEmpty) {
-                        final item = inventory.last;
-                        setState(() {
-                          lastResult = '$item ausgerüstet';
-                        });
-                        _showTestDialog(context, 'Equipment Test', '$item wurde ausgerüstet und ist bereit für den Kampf!');
-                      }
-                    }),
-                    _buildInventoryTestCard('Weight Limit', 'Teste Tragkraft', () {
-                      final percentage = (currentWeight / maxWeight * 100).toStringAsFixed(1);
-                      final status = currentWeight > maxWeight * 0.8 
-                        ? 'WARNUNG: Inventar fast voll!' 
-                        : currentWeight > maxWeight * 0.6 
-                          ? 'Achtung: Inventar zur Hälfte voll'
-                          : 'Inventar hat noch Platz';
-                      setState(() {
-                        lastResult = '$percentage% genutzt - $status';
-                      });
-                      _showTestDialog(context, 'Weight Limit', 'Aktuelle Belastung: $percentage%\n$status');
-                    }),
-                    _buildInventoryTestCard('Item Usage', 'Teste Item-Nutzung', () {
-                      if (inventory.isNotEmpty) {
-                        final item = inventory.removeAt(0);
-                        setState(() {
-                          currentWeight = (currentWeight - 3.0).clamp(0.0, maxWeight);
-                          lastResult = '$item verwendet und entfernt';
-                        });
-                        _showTestDialog(context, 'Item Usage', '$item wurde verwendet und aus dem Inventar entfernt.');
-                      } else {
-                        _showTestDialog(context, 'Item Usage', 'Keine Items im Inventar zum Verwenden!');
-                      }
                     }),
                   ],
                 ),
@@ -745,108 +597,6 @@ class AllScreensScreen extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildTestSection(String title) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: DnDTheme.md),
-      padding: const EdgeInsets.all(DnDTheme.md),
-      decoration: DnDTheme.getFantasyCardDecoration(
-        borderColor: DnDTheme.emeraldGreen,
-      ),
-      child: Text(
-        title,
-        style: DnDTheme.headline3.copyWith(
-          color: DnDTheme.emeraldGreen,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCharacterTypeCard(String type, String description, VoidCallback onTap) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: DnDTheme.sm),
-      decoration: DnDTheme.getFantasyCardDecoration(
-        borderColor: DnDTheme.emeraldGreen,
-      ),
-      child: ListTile(
-        title: Text(
-          type,
-          style: DnDTheme.headline3.copyWith(
-            color: DnDTheme.emeraldGreen,
-          ),
-        ),
-        subtitle: Text(
-          description,
-          style: DnDTheme.bodyText2,
-        ),
-        trailing: Icon(
-          Icons.play_arrow,
-          color: DnDTheme.emeraldGreen,
-        ),
-        onTap: onTap,
-      ),
-    );
-  }
-
-  void _showTestDialog(BuildContext context, String title, String description) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
-        title: Text(
-          title,
-          style: DnDTheme.headline3.copyWith(
-            color: DnDTheme.ancientGold,
-          ),
-        ),
-        content: Text(
-          description,
-          style: DnDTheme.bodyText1.copyWith(
-            color: DnDTheme.emeraldGreen,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: TextButton.styleFrom(
-              foregroundColor: DnDTheme.emeraldGreen,
-            ),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatsCard(String stat, String value, IconData icon) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: DnDTheme.sm),
-      decoration: DnDTheme.getFantasyCardDecoration(
-        borderColor: DnDTheme.emeraldGreen,
-      ),
-      child: ListTile(
-        leading: Icon(
-          icon,
-          color: DnDTheme.emeraldGreen,
-          size: 28,
-        ),
-        title: Text(
-          stat,
-          style: DnDTheme.bodyText1.copyWith(
-            color: DnDTheme.emeraldGreen,
-          ),
-        ),
-        trailing: Text(
-          value,
-          style: DnDTheme.headline3.copyWith(
-            color: DnDTheme.emeraldGreen,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
     );
   }
 
@@ -898,6 +648,36 @@ class AllScreensScreen extends StatelessWidget {
           color: DnDTheme.emeraldGreen,
         ),
         onTap: onTap,
+      ),
+    );
+  }
+
+  void _showTestDialog(BuildContext context, String title, String description) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: DnDTheme.stoneGrey,
+        title: Text(
+          title,
+          style: DnDTheme.headline3.copyWith(
+            color: DnDTheme.ancientGold,
+          ),
+        ),
+        content: Text(
+          description,
+          style: DnDTheme.bodyText1.copyWith(
+            color: DnDTheme.emeraldGreen,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: TextButton.styleFrom(
+              foregroundColor: DnDTheme.emeraldGreen,
+            ),
+            child: const Text('OK'),
+          ),
+        ],
       ),
     );
   }
