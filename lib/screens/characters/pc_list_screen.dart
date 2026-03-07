@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/campaign.dart';
-import '../models/player_character.dart';
+import '../../models/campaign.dart';
+import '../../models/player_character.dart';
 import 'edit_pc_screen.dart';
 import '../../widgets/character_list/enhanced_hero_card_widget.dart';
 import '../../widgets/character_list/character_list_helpers.dart';

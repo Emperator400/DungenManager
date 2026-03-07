@@ -1,12 +1,12 @@
-// lib/screens/add_sound_to_scene_screen.dart
+// lib/screens/audio/add_sound_screen.dart
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:provider/provider.dart';
-import '../database/core/database_connection.dart';
-import '../database/repositories/sound_model_repository.dart';
-import '../models/sound.dart';
-import '../models/scene_sound_link.dart';
-import '../viewmodels/sound_library_viewmodel.dart';
+import '../../database/core/database_connection.dart';
+import '../../database/repositories/sound_model_repository.dart';
+import '../../models/sound.dart';
+import '../../models/scene_sound_link.dart';
+import '../../viewmodels/sound_library_viewmodel.dart';
 
 class AddSoundToSceneScreen extends StatefulWidget {
   final String sceneId;
