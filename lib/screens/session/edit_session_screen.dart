@@ -5,19 +5,19 @@ import '../../viewmodels/edit_session_viewmodel.dart';
 import '../../theme/dnd_theme.dart';
 
 /// Enhanced Screen zur Bearbeitung von Sessions mit modernem Design
-class EnhancedEditSessionScreen extends StatefulWidget {
+class EditSessionScreen extends StatefulWidget {
   final Session? session;
 
-  const EnhancedEditSessionScreen({
+  const EditSessionScreen({
     Key? key,
     this.session,
   }) : super(key: key);
 
   @override
-  State<EnhancedEditSessionScreen> createState() => _EnhancedEditSessionScreenState();
+  State<EditSessionScreen> createState() => _EditSessionScreenState();
 }
 
-class _EnhancedEditSessionScreenState extends State<EnhancedEditSessionScreen> {
+class _EditSessionScreenState extends State<EditSessionScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _campaignIdController = TextEditingController();

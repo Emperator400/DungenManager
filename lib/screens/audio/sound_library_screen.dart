@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
-import '../viewmodels/sound_library_viewmodel.dart';
-import '../models/sound.dart';
-import '../theme/dnd_theme.dart';
-import '../widgets/sound_scenes_tab.dart';
+import '../../viewmodels/sound_library_viewmodel.dart';
+import '../../models/sound.dart';
+import '../../theme/dnd_theme.dart';
+import '../../widgets/sound_scenes_tab.dart';
 
 /// Enhanced Sound Library Screen mit Provider-Pattern und modernem D&D Design
-class EnhancedSoundLibraryScreen extends StatefulWidget {
-  const EnhancedSoundLibraryScreen({super.key});
+class SoundLibraryScreen extends StatefulWidget {
+  const SoundLibraryScreen({super.key});
 
   @override
-  State<EnhancedSoundLibraryScreen> createState() => _EnhancedSoundLibraryScreenState();
+  State<SoundLibraryScreen> createState() => _SoundLibraryScreenState();
 }
 
-class _EnhancedSoundLibraryScreenState extends State<EnhancedSoundLibraryScreen> 
+class _SoundLibraryScreenState extends State<SoundLibraryScreen> 
     with TickerProviderStateMixin {
   late SoundLibraryViewModel _viewModel;
   late TabController _tabController;

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../viewmodels/edit_item_viewmodel.dart';
-import '../models/item.dart';
-import '../theme/dnd_theme.dart';
+import '../../viewmodels/edit_item_viewmodel.dart';
+import '../../models/item.dart';
+import '../../theme/dnd_theme.dart';
 
 /// Enhanced Item Edit Screen mit Provider-Pattern und modernem D&D Design
 class EditItemScreen extends StatefulWidget {

@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import '../models/creature.dart';
-import '../models/player_character.dart';
-import '../widgets/character_editor/enhanced_character_editor_controller.dart'
+import '../../models/creature.dart';
+import '../../models/player_character.dart';
+import '../../widgets/character_editor/enhanced_character_editor_controller.dart'
     show EnhancedCharacterEditorController;
-import '../widgets/character_editor/character_editor_controller.dart'
+import '../../widgets/character_editor/character_editor_controller.dart'
     show CharacterType;
-import '../viewmodels/character_editor_viewmodel.dart';
-import '../widgets/character_editor/character_tab_manager.dart';
-import '../widgets/character_editor/character_inventory_handler.dart';
-import '../screens/enhanced_official_monsters_screen.dart';
-import '../models/official_monster.dart';
-import '../theme/dnd_theme.dart';
+import '../../viewmodels/character_editor_viewmodel.dart';
+import '../../widgets/character_editor/character_tab_manager.dart';
+import '../../widgets/character_editor/character_inventory_handler.dart';
+import '../bestiary/official_monsters_screen.dart';
+import '../../models/official_monster.dart';
+import '../../theme/dnd_theme.dart';
 
 class UnifiedCharacterEditorScreen extends StatefulWidget {
   final CharacterType characterType;
@@ -132,7 +132,7 @@ class _UnifiedCharacterEditorScreenState extends State<UnifiedCharacterEditorScr
   Future<void> _importFromOfficialMonster() async {
     final selectedMonster = await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (ctx) => const EnhancedOfficialMonstersScreen(),
+        builder: (ctx) => const OfficialMonstersScreen(),
       ),
     );
 

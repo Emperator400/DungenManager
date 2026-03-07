@@ -1,29 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../viewmodels/edit_quest_viewmodel.dart';
-import '../models/quest.dart';
-import '../models/quest_reward.dart';
-import '../theme/dnd_theme.dart';
+import '../../viewmodels/edit_quest_viewmodel.dart';
+import '../../models/quest.dart';
+import '../../models/quest_reward.dart';
+import '../../theme/dnd_theme.dart';
 
 /// Enhanced Quest Edit Screen mit Provider-Pattern und modernem D&D Design
-class EnhancedEditQuestScreen extends StatefulWidget {
+class EditQuestScreen extends StatefulWidget {
   final Quest? quest;
 
-  const EnhancedEditQuestScreen({
+  const EditQuestScreen({
     super.key,
     this.quest,
   });
 
   @override
-  State<EnhancedEditQuestScreen> createState() => _EnhancedEditQuestScreenState();
+  State<EditQuestScreen> createState() => _EditQuestScreenState();
 }
 
 /// Widget das den EditQuestViewModel bereitstellt
-class EnhancedEditQuestScreenWithProvider extends StatelessWidget {
+class _EditQuestScreenWithProvider extends StatelessWidget {
   final Quest? quest;
   final String? campaignId;
 
-  const EnhancedEditQuestScreenWithProvider({
+  const _EditQuestScreenWithProvider({
     super.key,
     this.quest,
     this.campaignId,
@@ -40,14 +40,14 @@ class EnhancedEditQuestScreenWithProvider extends StatelessWidget {
             context.read<EditQuestViewModel>().initialize(quest, campaignId: campaignId);
           });
           
-          return EnhancedEditQuestScreen(quest: quest);
+          return EditQuestScreen(quest: quest);
         },
       ),
     );
   }
 }
 
-class _EnhancedEditQuestScreenState extends State<EnhancedEditQuestScreen> {
+class _EnhancedEditQuestScreenState extends State<EditQuestScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();

@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/creature.dart';
-import '../theme/dnd_theme.dart';
-import '../viewmodels/bestiary_viewmodel.dart';
-import 'enhanced_edit_creature_screen.dart';
+import '../../models/creature.dart';
+import '../../theme/dnd_theme.dart';
+import '../../viewmodels/bestiary_viewmodel.dart';
+import 'edit_creature_screen.dart';
 
-class EnhancedBestiaryScreen extends StatefulWidget {
-  const EnhancedBestiaryScreen({super.key});
+class BestiaryScreen extends StatefulWidget {
+  const BestiaryScreen({super.key});
 
   @override
-  State<EnhancedBestiaryScreen> createState() => _EnhancedBestiaryScreenState();
+  State<BestiaryScreen> createState() => _BestiaryScreenState();
 }
 
-class _EnhancedBestiaryScreenState extends State<EnhancedBestiaryScreen> 
+class _BestiaryScreenState extends State<BestiaryScreen> 
     with TickerProviderStateMixin {
   late BestiaryViewModel _viewModel;
   late TabController _tabController;
@@ -494,7 +494,7 @@ class _EnhancedBestiaryScreenState extends State<EnhancedBestiaryScreen>
                 onPressed: () async {
                   final result = await Navigator.of(context).push<bool>(
                     MaterialPageRoute(
-                      builder: (ctx) => EnhancedEditCreatureScreen(
+                      builder: (ctx) => EditCreatureScreen(
                         creature: creature,
                       ),
                     ),
@@ -704,7 +704,7 @@ class _EnhancedBestiaryScreenState extends State<EnhancedBestiaryScreen>
             onPressed: () async {
               final result = await Navigator.of(context).push<bool>(
                 MaterialPageRoute(
-                  builder: (ctx) => const EnhancedEditCreatureScreen(),
+                  builder: (ctx) => const EditCreatureScreen(),
                 ),
               );
               if (result == true) {

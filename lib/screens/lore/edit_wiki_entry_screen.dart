@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
-import '../services/wiki_entry_service.dart';
-import '../models/wiki_entry.dart';
-import '../models/map_location.dart';
-import '../theme/dnd_theme.dart';
+import '../../services/wiki_entry_service.dart';
+import '../../models/wiki_entry.dart';
+import '../../models/map_location.dart';
+import '../../theme/dnd_theme.dart';
 
 /// Enhanced Edit Wiki Entry Screen mit Enhanced Design, Tag-Management und Location-Unterstützung
 /// 
 /// Verwendet WikiEntryService für CRUD-Operationen mit ServiceResult Pattern.
-class EnhancedEditWikiEntryScreen extends StatefulWidget {
+class EditWikiEntryScreen extends StatefulWidget {
   final WikiEntry? entry;
   final String? campaignId;
-
-  const EnhancedEditWikiEntryScreen({
+  
+  const EditWikiEntryScreen({
     super.key,
     this.entry,
     this.campaignId,
   });
 
   @override
-  State<EnhancedEditWikiEntryScreen> createState() => _EnhancedEditWikiEntryScreenState();
+  State<EditWikiEntryScreen> createState() => _EditWikiEntryScreenState();
 }
 
-class _EnhancedEditWikiEntryScreenState extends State<EnhancedEditWikiEntryScreen> {
+class _EditWikiEntryScreenState extends State<EditWikiEntryScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();

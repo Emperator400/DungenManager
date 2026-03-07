@@ -13,21 +13,21 @@ import 'encounter_setup_screen.dart';
 import '../scenes/edit_scene_screen.dart';
 
 /// Enhanced Active Session Screen mit Provider-Pattern und modernem D&D Design
-class EnhancedActiveSessionScreen extends StatefulWidget {
+class ActiveSessionScreen extends StatefulWidget {
   final Session session;
   final Campaign campaign;
 
-  const EnhancedActiveSessionScreen({
+  const ActiveSessionScreen({
     super.key,
     required this.session,
     required this.campaign,
   });
 
   @override
-  State<EnhancedActiveSessionScreen> createState() => _EnhancedActiveSessionScreenState();
+  State<ActiveSessionScreen> createState() => _ActiveSessionScreenState();
 }
 
-class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScreen> {
+class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   late ActiveSessionViewModel _viewModel;
   final GlobalKey<State> _sceneFlowKey = GlobalKey();
   double _quadrantScale = 0.9; // 50% - 100% der verfügbaren Größe
@@ -948,7 +948,7 @@ class _EnhancedActiveSessionScreenState extends State<EnhancedActiveSessionScree
               ),
             ),
           ],
-          child: EnhancedEditSceneScreen(
+          child: EditSceneScreen(
             scene: scene,
             sessionId: sessionId,
           ),

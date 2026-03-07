@@ -272,7 +272,7 @@ class _SessionListForCampaignScreenState extends State<SessionListForCampaignScr
   void _openSession(Session session) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (ctx) => EnhancedActiveSessionScreen(
+        builder: (ctx) => ActiveSessionScreen(
           session: session,
           campaign: widget.campaign,
         ),
@@ -283,7 +283,7 @@ class _SessionListForCampaignScreenState extends State<SessionListForCampaignScr
   void _editSession(Session session) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (ctx) => EnhancedEditSessionScreen(session: session),
+        builder: (ctx) => EditSessionScreen(session: session),
       ),
     );
     // Liste nach dem Editieren aktualisieren
@@ -337,7 +337,7 @@ class _SessionListForCampaignScreenState extends State<SessionListForCampaignScr
     if (newSession != null) {
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (ctx) => EnhancedEditSessionScreen(session: newSession),
+          builder: (ctx) => EditSessionScreen(session: newSession),
         ),
       );
     }

@@ -1,8 +1,8 @@
 // lib/screens/link_quest_to_scene_screen.dart
 import 'package:flutter/material.dart';
-import '../database/core/database_connection.dart';
-import '../database/repositories/quest_model_repository.dart';
-import '../models/quest.dart';
+import '../../database/core/database_connection.dart';
+import '../../../database/repositories/quest_model_repository.dart';
+import '../../models/quest.dart';
 
 class LinkQuestToSceneScreen extends StatefulWidget {
   final List<String> previouslyLinkedIds;

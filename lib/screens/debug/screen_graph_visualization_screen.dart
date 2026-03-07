@@ -1,8 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../theme/dnd_theme.dart';
-import '../models/screen_node.dart';
-import '../services/screen_graph_service.dart';
+import '../../theme/dnd_theme.dart';
+import '../../models/screen_node.dart';
+import '../../services/screen_graph_service.dart';
 
 /// Screen für die interaktive Visualisierung aller Screens und ihrer Navigation-Verbindungen
 class ScreenGraphVisualizationScreen extends StatefulWidget {

@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/wiki_entry.dart';
-import '../viewmodels/wiki_viewmodel.dart';
-import '../widgets/lore_keeper/enhanced_wiki_entry_card_widget.dart';
-import '../widgets/lore_keeper/enhanced_wiki_filter_chips_widget.dart';
-import '../widgets/lore_keeper/wiki_search_delegate.dart';
-import '../theme/dnd_theme.dart';
-import 'enhanced_edit_wiki_entry_screen.dart';
+import '../../models/wiki_entry.dart';
+import '../../viewmodels/wiki_viewmodel.dart';
+import '../../widgets/lore_keeper/enhanced_wiki_entry_card_widget.dart';
+import '../../widgets/lore_keeper/enhanced_wiki_filter_chips_widget.dart';
+import '../../widgets/lore_keeper/wiki_search_delegate.dart';
+import '../../theme/dnd_theme.dart';
+import 'edit_wiki_entry_screen.dart';
 
 /// Enhanced Lore Keeper Screen mit Provider-Pattern und modernem Enhanced Design
-class EnhancedLoreKeeperScreen extends StatefulWidget {
-  const EnhancedLoreKeeperScreen({super.key});
+class LoreKeeperScreen extends StatefulWidget {
+  const LoreKeeperScreen({super.key});
 
   @override
-  State<EnhancedLoreKeeperScreen> createState() => _EnhancedLoreKeeperScreenState();
+  State<LoreKeeperScreen> createState() => _LoreKeeperScreenState();
 }
 
-class _EnhancedLoreKeeperScreenState extends State<EnhancedLoreKeeperScreen>
+class _LoreKeeperScreenState extends State<LoreKeeperScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
@@ -91,7 +91,7 @@ class _EnhancedLoreKeeperScreenState extends State<EnhancedLoreKeeperScreen>
   Future<void> _navigateToEditScreen([WikiEntry? entryToEdit]) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => EnhancedEditWikiEntryScreen(entry: entryToEdit),
+        builder: (context) => EditWikiEntryScreen(entry: entryToEdit),
       ),
     );
     
@@ -478,7 +478,7 @@ class _WikiListContent extends StatelessWidget {
   Future<void> _navigateToEditScreen(BuildContext context, WikiEntry entry) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => EnhancedEditWikiEntryScreen(entry: entry),
+        builder: (context) => EditWikiEntryScreen(entry: entry),
       ),
     );
     
@@ -610,7 +610,7 @@ class _EmptyStateWidget extends StatelessWidget {
   Future<void> _navigateToEditScreen(BuildContext context, WikiEntry? entry) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => EnhancedEditWikiEntryScreen(entry: entry),
+        builder: (context) => EditWikiEntryScreen(entry: entry),
       ),
     );
     

@@ -6,7 +6,7 @@ import '../../database/repositories/quest_model_repository.dart';
 import '../../database/core/database_connection.dart';
 import '../../viewmodels/campaign_viewmodel.dart';
 import '../../theme/dnd_theme.dart';
-import '../quests/edit_quest_screen.dart' show EditQuestScreen, EditQuestScreenWithProvider;
+import '../quests/edit_quest_screen.dart' show EditQuestScreenWithProvider;
 
 /// Screen zur Bearbeitung von Campaigns mit CampaignViewModel
 class EditCampaignScreen extends StatefulWidget {

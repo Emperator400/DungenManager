@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/sound.dart';
-import '../viewmodels/edit_sound_viewmodel.dart';
-import '../theme/dnd_theme.dart';
+import '../../models/sound.dart';
+import '../../viewmodels/edit_sound_viewmodel.dart';
+import '../../theme/dnd_theme.dart';
 
 /// Enhanced Screen zur Bearbeitung von Sounds mit modernem Design
-class EnhancedEditSoundScreen extends StatefulWidget {
+class EditSoundScreen extends StatefulWidget {
   final Sound? sound;
 
-  const EnhancedEditSoundScreen({
+  const EditSoundScreen({
     Key? key,
     this.sound,
   }) : super(key: key);
 
   @override
-  State<EnhancedEditSoundScreen> createState() => _EnhancedEditSoundScreenState();
+  State<EditSoundScreen> createState() => _EditSoundScreenState();
 }
 
-class _EnhancedEditSoundScreenState extends State<EnhancedEditSoundScreen> {
+class _EditSoundScreenState extends State<EditSoundScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _filePathController = TextEditingController();

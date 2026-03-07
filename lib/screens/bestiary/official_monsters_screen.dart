@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/official_monster.dart';
-import '../viewmodels/official_monsters_viewmodel.dart';
-import '../theme/dnd_theme.dart';
+import '../../models/official_monster.dart';
+import '../../viewmodels/official_monsters_viewmodel.dart';
+import '../../theme/dnd_theme.dart';
 
 /// Enhanced Screen für offizielle Monster mit modernem Design
-class EnhancedOfficialMonstersScreen extends StatefulWidget {
-  const EnhancedOfficialMonstersScreen({Key? key}) : super(key: key);
+class OfficialMonstersScreen extends StatefulWidget {
+  const OfficialMonstersScreen({Key? key}) : super(key: key);
 
   @override
-  State<EnhancedOfficialMonstersScreen> createState() => _EnhancedOfficialMonstersScreenState();
+  State<OfficialMonstersScreen> createState() => _OfficialMonstersScreenState();
 }
 
-class _EnhancedOfficialMonstersScreenState extends State<EnhancedOfficialMonstersScreen> {
+class _OfficialMonstersScreenState extends State<OfficialMonstersScreen> {
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
   MonsterSortCriteria _sortCriteria = MonsterSortCriteria.nameAsc;

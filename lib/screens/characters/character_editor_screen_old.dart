@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/creature.dart';
-import '../models/player_character.dart';
-import '../widgets/character_editor/enhanced_character_editor_controller.dart';
-import '../widgets/character_editor/character_editor_controller.dart' show CharacterType;
-import '../widgets/character_editor/character_tab_manager.dart';
-import '../screens/enhanced_official_monsters_screen.dart';
-import '../models/official_monster.dart';
-import '../theme/dnd_theme.dart';
-import '../viewmodels/character_editor_viewmodel.dart';
+import '../../models/creature.dart';
+import '../../models/player_character.dart';
+import '../../widgets/character_editor/enhanced_character_editor_controller.dart';
+import '../../widgets/character_editor/character_editor_controller.dart' show CharacterType;
+import '../../widgets/character_editor/character_tab_manager.dart';
+import '../../screens/official_monsters_screen.dart';
+import '../../models/official_monster.dart';
+import '../../theme/dnd_theme.dart';
+import '../../viewmodels/character_editor_viewmodel.dart';
 
-class EnhancedUnifiedCharacterEditorScreen extends StatefulWidget {
+class UnifiedCharacterEditorScreen extends StatefulWidget {
   final CharacterType characterType;
   final String? campaignId; // Nur für Player Characters benötigt
   final Creature? creatureToEdit;
   final PlayerCharacter? pcToEdit;
   
-  const EnhancedUnifiedCharacterEditorScreen({
+  const UnifiedCharacterEditorScreen({
     super.key,
     required this.characterType,
     this.campaignId,
@@ -25,10 +25,10 @@ class EnhancedUnifiedCharacterEditorScreen extends StatefulWidget {
   });
 
   @override
-  State<EnhancedUnifiedCharacterEditorScreen> createState() => _EnhancedUnifiedCharacterEditorScreenState();
+  State<UnifiedCharacterEditorScreen> createState() => _UnifiedCharacterEditorScreenState();
 }
 
-class _EnhancedUnifiedCharacterEditorScreenState extends State<EnhancedUnifiedCharacterEditorScreen> 
+class _UnifiedCharacterEditorScreenState extends State<UnifiedCharacterEditorScreen> 
     with TickerProviderStateMixin {
   
   late EnhancedCharacterEditorController _controller;

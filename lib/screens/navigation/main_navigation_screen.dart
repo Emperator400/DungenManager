@@ -547,7 +547,7 @@ void _navigateToScreen(BuildContext context, ScreenType screenType, {Campaign? c
       screen = const EnhancedQuestLibraryScreen();
       break;
     case ScreenType.wiki:
-      screen = const EnhancedLoreKeeperScreen();
+      screen = const LoreKeeperScreen();
       break;
     case ScreenType.characters:
       if (campaign != null) {
@@ -566,7 +566,7 @@ void _navigateToScreen(BuildContext context, ScreenType screenType, {Campaign? c
       screen = const ItemLibraryScreen();
       break;
     case ScreenType.bestiary:
-      screen = const EnhancedBestiaryScreen();
+      screen = const BestiaryScreen();
       break;
     case ScreenType.sessions:
       if (campaign != null) {
@@ -579,10 +579,10 @@ void _navigateToScreen(BuildContext context, ScreenType screenType, {Campaign? c
       }
       break;
     case ScreenType.sounds:
-      screen = const EnhancedSoundLibraryScreen();
+      screen = const SoundLibraryScreen();
       break;
     case ScreenType.monsters:
-      screen = const EnhancedOfficialMonstersScreen();
+      screen = const OfficialMonstersScreen();
       break;
   }
 

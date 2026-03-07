@@ -1,8 +1,8 @@
 // lib/screens/edit_campaign_quest_screen.dart
 import 'package:flutter/material.dart';
-import '../database/core/database_connection.dart';
-import '../models/quest.dart';
-import '../models/campaign_quest.dart';
+import '../../database/core/database_connection.dart';
+import '../../models/quest.dart';
+import '../../models/campaign_quest.dart';
 
 class EditCampaignQuestScreen extends StatefulWidget {
   final CampaignQuest campaignQuest;

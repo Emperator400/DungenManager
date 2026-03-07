@@ -6,21 +6,21 @@ import '../../theme/dnd_theme.dart';
 // import 'select_character_for_scene_screen.dart'; // Datei existiert nicht noch
 
 /// Enhanced Screen zur Bearbeitung von Scenes mit D&D Theme
-class EnhancedEditSceneScreen extends StatefulWidget {
+class EditSceneScreen extends StatefulWidget {
   final Scene? scene;
   final String? sessionId; // Für neue Scenes
 
-  const EnhancedEditSceneScreen({
+  const EditSceneScreen({
     Key? key,
     this.scene,
     this.sessionId,
   }) : super(key: key);
 
   @override
-  State<EnhancedEditSceneScreen> createState() => _EnhancedEditSceneScreenState();
+  State<EditSceneScreen> createState() => _EditSceneScreenState();
 }
 
-class _EnhancedEditSceneScreenState extends State<EnhancedEditSceneScreen> {
+class _EditSceneScreenState extends State<EditSceneScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();

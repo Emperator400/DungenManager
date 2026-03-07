@@ -4,31 +4,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import '../models/creature.dart';
-import '../models/item.dart';
-import '../theme/dnd_theme.dart';
-import '../viewmodels/edit_creature_viewmodel.dart';
-import '../widgets/ui_components/stats/attributes_section_widget.dart';
-import '../widgets/ui_components/inventory/creature_inventory_widget.dart';
-import '../widgets/ui_components/forms/form_field_widget.dart';
-import '../widgets/ui_components/cards/section_card_widget.dart';
-import '../widgets/ui_components/feedback/snackbar_helper.dart';
-import '../services/inventory_service.dart';
+import '../../models/creature.dart';
+import '../../models/item.dart';
+import '../../theme/dnd_theme.dart';
+import '../../viewmodels/edit_creature_viewmodel.dart';
+import '../../widgets/ui_components/stats/attributes_section_widget.dart';
+import '../../widgets/ui_components/inventory/creature_inventory_widget.dart';
+import '../../widgets/ui_components/forms/form_field_widget.dart';
+import '../../widgets/ui_components/cards/section_card_widget.dart';
+import '../../widgets/ui_components/feedback/snackbar_helper.dart';
+import '../../services/inventory_service.dart';
 
 /// Enhanced Screen zur Bearbeitung von Creatures - basierend auf Hero Creation Screen
-class EnhancedEditCreatureScreen extends StatefulWidget {
+class EditCreatureScreen extends StatefulWidget {
   final Creature? creature;
 
-  const EnhancedEditCreatureScreen({
+  const EditCreatureScreen({
     super.key,
     this.creature,
   });
 
   @override
-  State<EnhancedEditCreatureScreen> createState() => _EnhancedEditCreatureScreenState();
+  State<EditCreatureScreen> createState() => _EditCreatureScreenState();
 }
 
-class _EnhancedEditCreatureScreenState extends State<EnhancedEditCreatureScreen>
+class _EditCreatureScreenState extends State<EditCreatureScreen>
     with SingleTickerProviderStateMixin {
   static const int _tabCount = 4;
   
