@@ -1,11 +1,11 @@
 // lib/screens/add_quest_from_library_screen.dart
 import 'package:flutter/material.dart';
-import '../database/core/database_connection.dart';
-import '../database/repositories/quest_model_repository.dart';
-import '../models/quest.dart';
-import '../widgets/quest_library/enhanced_quest_card_widget.dart';
-import '../screens/enhanced_quest_library_screen.dart';
-import '../theme/dnd_theme.dart';
+import '../../database/core/database_connection.dart';
+import '../../database/repositories/quest_model_repository.dart';
+import '../../models/quest.dart';
+import '../../widgets/quest_library/enhanced_quest_card_widget.dart';
+import '../../screens/quests/quest_library_screen.dart';
+import '../../theme/dnd_theme.dart';
 
 class AddQuestFromLibraryScreen extends StatefulWidget {
   final String campaignId;
@@ -70,7 +70,7 @@ class _AddQuestFromLibraryScreenState extends State<AddQuestFromLibraryScreen> {
   void _navigateToQuestLibrary() async {
     final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
-        builder: (context) => const EnhancedQuestLibraryScreen(),
+        builder: (context) => const QuestLibraryScreen(),
       ),
     );
     
