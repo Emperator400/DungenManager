@@ -4,38 +4,38 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import '../game_data/dnd_models.dart';
-import '../game_data/game_data.dart';
-import '../models/player_character.dart';
-import '../theme/dnd_theme.dart';
-import '../viewmodels/edit_pc_viewmodel.dart';
-import '../widgets/ui_components/feedback/snackbar_helper.dart';
-import '../widgets/ui_components/forms/form_field_widget.dart';
-import '../widgets/ui_components/stats/attributes_section_widget.dart';
-import '../widgets/ui_components/stats/ability_score_widget.dart';
-import '../widgets/ui_components/skills/skill_list_widget.dart';
-import '../widgets/ui_components/inventory/unified_character_inventory_widget.dart';
-import '../database/core/database_connection.dart';
-import '../database/repositories/player_character_model_repository.dart';
+import '../../game_data/dnd_models.dart';
+import '../../game_data/game_data.dart';
+import '../../models/player_character.dart';
+import '../../theme/dnd_theme.dart';
+import '../../viewmodels/edit_pc_viewmodel.dart';
+import '../../widgets/ui_components/feedback/snackbar_helper.dart';
+import '../../widgets/ui_components/forms/form_field_widget.dart';
+import '../../widgets/ui_components/stats/attributes_section_widget.dart';
+import '../../widgets/ui_components/stats/ability_score_widget.dart';
+import '../../widgets/ui_components/skills/skill_list_widget.dart';
+import '../../widgets/ui_components/inventory/unified_character_inventory_widget.dart';
+import '../../database/core/database_connection.dart';
+import '../../database/repositories/player_character_model_repository.dart';
 
 import 'add_item_from_library_screen.dart';
 
 /// Enhanced Edit PC Screen mit Provider-Pattern und modernem, uebersichtlichem D&D Design
-class EnhancedEditPCScreen extends StatefulWidget {
+class EditPCScreen extends StatefulWidget {
   final String campaignId;
   final PlayerCharacter? pcToEdit;
 
-  const EnhancedEditPCScreen({
+  const EditPCScreen({
     super.key,
     required this.campaignId,
     this.pcToEdit,
   });
 
   @override
-  State<EnhancedEditPCScreen> createState() => _EnhancedEditPCScreenState();
+  State<EditPCScreen> createState() => _EditPCScreenState();
 }
 
-class _EnhancedEditPCScreenState extends State<EnhancedEditPCScreen>
+class _EditPCScreenState extends State<EditPCScreen>
     with SingleTickerProviderStateMixin {
   static const int _tabCount = 4;
   static const int _minAbilityScore = 1;

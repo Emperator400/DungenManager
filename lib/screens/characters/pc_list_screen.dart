@@ -2,24 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/campaign.dart';
 import '../models/player_character.dart';
-import '../screens/enhanced_edit_pc_screen.dart';
-import '../widgets/character_list/enhanced_hero_card_widget.dart';
-import '../widgets/character_list/character_list_helpers.dart';
-import '../theme/dnd_theme.dart';
-import '../viewmodels/character_editor_viewmodel.dart';
-import '../database/core/database_connection.dart';
-import '../database/repositories/player_character_model_repository.dart';
+import 'edit_pc_screen.dart';
+import '../../widgets/character_list/enhanced_hero_card_widget.dart';
+import '../../widgets/character_list/character_list_helpers.dart';
+import '../../theme/dnd_theme.dart';
+import '../../viewmodels/character_editor_viewmodel.dart';
+import '../../database/core/database_connection.dart';
+import '../../database/repositories/player_character_model_repository.dart';
 
-class EnhancedPlayerCharacterListScreen extends StatefulWidget {
+class PlayerCharacterListScreen extends StatefulWidget {
   final Campaign campaign;
 
-  const EnhancedPlayerCharacterListScreen({super.key, required this.campaign});
+  const PlayerCharacterListScreen({super.key, required this.campaign});
 
   @override
-  State<EnhancedPlayerCharacterListScreen> createState() => _EnhancedPlayerCharacterListScreenState();
+  State<PlayerCharacterListScreen> createState() => _PlayerCharacterListScreenState();
 }
 
-class _EnhancedPlayerCharacterListScreenState extends State<EnhancedPlayerCharacterListScreen> 
+class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> 
     with TickerProviderStateMixin {
   late CharacterEditorViewModel _viewModel;
   late TabController _tabController;
@@ -309,7 +309,7 @@ class _EnhancedPlayerCharacterListScreenState extends State<EnhancedPlayerCharac
               try {
                 await Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (ctx) => EnhancedEditPCScreen(
+                    builder: (ctx) => EditPCScreen(
                       campaignId: widget.campaign.id,
                     ),
                   ),
@@ -605,7 +605,7 @@ class _EnhancedPlayerCharacterListScreenState extends State<EnhancedPlayerCharac
   void _editCharacter(BuildContext context, PlayerCharacter pc) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (ctx) => EnhancedEditPCScreen(
+        builder: (ctx) => EditPCScreen(
           campaignId: widget.campaign.id,
           pcToEdit: pc,
         ),

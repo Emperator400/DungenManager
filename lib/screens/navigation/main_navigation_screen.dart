@@ -553,7 +553,7 @@ void _navigateToScreen(BuildContext context, ScreenType screenType, {Campaign? c
       if (campaign != null) {
         screen = ChangeNotifierProvider(
           create: (_) => CharacterEditorViewModel(),
-          child: EnhancedPlayerCharacterListScreen(campaign: campaign),
+          child: PlayerCharacterListScreen(campaign: campaign),
         );
       } else {
         screen = const _PlaceholderScreen(title: 'Helden - Keine Kampagne ausgewählt');
