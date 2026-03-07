@@ -47,7 +47,7 @@ class _EditQuestScreenWithProvider extends StatelessWidget {
   }
 }
 
-class _EnhancedEditQuestScreenState extends State<EditQuestScreen> {
+class _EditQuestScreenState extends State<EditQuestScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
