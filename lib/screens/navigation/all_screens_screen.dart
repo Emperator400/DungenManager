@@ -8,44 +8,19 @@ import 'main_navigation_screen.dart';
 
 // Quest Screens
 import '../quests/quest_library_screen.dart';
-import '../quests/add_quest_screen.dart';
-import '../quests/edit_quest_screen.dart';
-import '../quests/edit_campaign_quest_screen.dart';
-import '../quests/link_quest_screen.dart';
-
-// Character Screens
-import '../characters/character_editor_screen.dart';
-import '../characters/edit_pc_screen.dart';
-import '../characters/pc_list_screen.dart';
-import '../characters/select_character_screen.dart';
 
 // Bestiary Screens
 import '../bestiary/bestiary_screen.dart';
-import '../bestiary/edit_creature_screen.dart';
 import '../bestiary/official_monsters_screen.dart';
 
 // Item Screens
 import '../items/item_library_screen.dart';
-import '../items/edit_item_screen.dart';
-import '../items/add_item_screen.dart';
 
 // Lore Screens
 import '../lore/lore_keeper_screen.dart';
-import '../lore/edit_wiki_entry_screen.dart';
-import '../lore/link_entry_screen.dart';
-import '../lore/link_wiki_entries_screen.dart';
-
-// Session Screens
-import '../session/session_list_screen.dart';
-import '../session/active_session_screen.dart';
-import '../session/edit_session_screen.dart';
-import '../session/encounter_setup_screen.dart';
-import '../session/initiative_tracker_screen.dart';
 
 // Audio Screens
 import '../audio/sound_library_screen.dart';
-import '../audio/add_sound_screen.dart';
-import '../audio/edit_sound_screen.dart';
 
 // Debug Screens
 import '../debug/screen_graph_visualization_screen.dart';
@@ -305,7 +280,9 @@ class AllScreensScreen extends StatelessWidget {
           context: context,
           title: 'Select Character',
           description: 'Charakter auswählen',
-          onTap: () => _navigateToScreen(context, () => const SelectCharacterScreen()),
+          onTap: () => _placeholderScreen('Select Character - Coming Soon'),
+          needsParams: true,
+          paramWarning: '⚠️ Screen wird noch migriert',
         ),
       ],
     );
@@ -380,7 +357,9 @@ class AllScreensScreen extends StatelessWidget {
           context: context,
           title: 'Add Sound',
           description: 'Neues Audio hinzufügen',
-          onTap: () => _navigateToScreen(context, () => const AddSoundScreen()),
+          onTap: () => _placeholderScreen('Add Sound - Coming Soon'),
+          needsParams: true,
+          paramWarning: '⚠️ Screen wird noch migriert',
         ),
         _buildScreenCard(
           context: context,
@@ -401,7 +380,9 @@ class AllScreensScreen extends StatelessWidget {
           context: context,
           title: 'Session List',
           description: 'Liste aller Sessions',
-          onTap: () => _navigateToScreen(context, () => const SessionListScreen()),
+          onTap: () => _placeholderScreen('Session List - Coming Soon'),
+          needsParams: true,
+          paramWarning: '⚠️ Screen wird noch migriert',
         ),
         _buildScreenCard(
           context: context,
