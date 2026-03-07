@@ -18,7 +18,7 @@ import '../../widgets/ui_components/inventory/unified_character_inventory_widget
 import '../../database/core/database_connection.dart';
 import '../../database/repositories/player_character_model_repository.dart';
 
-import 'add_item_from_library_screen.dart';
+import '../items/add_item_screen.dart';
 
 /// Enhanced Edit PC Screen mit Provider-Pattern und modernem, uebersichtlichem D&D Design
 class EditPCScreen extends StatefulWidget {

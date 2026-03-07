@@ -544,7 +544,7 @@ void _navigateToScreen(BuildContext context, ScreenType screenType, {Campaign? c
       );
       break;
     case ScreenType.quests:
-      screen = const EnhancedQuestLibraryScreen();
+      screen = const QuestLibraryScreen();
       break;
     case ScreenType.wiki:
       screen = const LoreKeeperScreen();
