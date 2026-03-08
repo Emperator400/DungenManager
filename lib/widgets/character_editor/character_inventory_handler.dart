@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../database/core/database_connection.dart';
-import '../../database/repositories/inventory_item_model_repository.dart';
+import '../../database/repositories/inventory_item_repository.dart';
+import '../../database/entities/inventory_item_entity.dart';
 import '../../models/inventory_item.dart';
-import '../../models/item.dart';
-import '../../screens/enhanced_item_library_screen.dart';
-import '../../screens/add_item_from_library_screen.dart';
-import '../../services/uuid_service.dart';
 import '../../viewmodels/character_editor_viewmodel.dart';
 import 'character_editor_controller.dart'
     show CharacterType;
@@ -17,7 +14,7 @@ class CharacterInventoryHandler {
   final EnhancedCharacterEditorController controller;
   final BuildContext context;
   final VoidCallback onInventoryChanged;
-  final InventoryItemModelRepository _inventoryRepository;
+  final InventoryItemRepository _inventoryRepository;
   final CharacterEditorViewModel? _viewModel;
 
   CharacterInventoryHandler({
@@ -25,7 +22,7 @@ class CharacterInventoryHandler {
     required this.context,
     required this.onInventoryChanged,
     CharacterEditorViewModel? viewModel,
-  }) : _inventoryRepository = InventoryItemModelRepository(DatabaseConnection.instance),
+  }) : _inventoryRepository = InventoryItemRepository(DatabaseConnection.instance),
        _viewModel = viewModel;
 
   Future<void> addItemFromLibrary() async {
@@ -44,33 +41,11 @@ class CharacterInventoryHandler {
       return;
     }
 
-    if (controller.characterType == CharacterType.player) {
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (ctx) => AddItemFromLibraryScreen(characterId: characterId!),
-        ),
-      );
-    } else {
-      final selectedItem = await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (ctx) => const EnhancedItemLibraryScreen(selectMode: true),
-        ),
-      );
-
-      if (selectedItem != null && selectedItem is Item) {
-        final uuidService = UuidService();
-        final item = selectedItem as Item;
-        final inventoryItem = InventoryItem(
-          id: uuidService.generateId(),
-          characterId: characterId!,
-          itemId: item.id,
-          name: item.name,
-          description: item.description,
-          quantity:1,
-        );
-        await _inventoryRepository.create(inventoryItem);
-      }
-    }
+    // Die Navigation zu Item-Screens wird noch migriert
+    // Platzhalter für zukünftige Implementierung
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Item-Add-Funktion wird noch migriert')),
+    );
     
     await loadInventory();
   }
@@ -117,6 +92,9 @@ class CharacterInventoryHandler {
   Future<void> showManageItemDialog(DisplayInventoryItem displayItem) async {
     final quantityController = TextEditingController(text: displayItem.inventoryItem.quantity.toString());
     
+    // Konvertiere Model zu Entity für Repository-Operationen
+    final inventoryItemEntity = InventoryItemEntity.fromModel(displayItem.inventoryItem);
+    
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -158,8 +136,8 @@ class CharacterInventoryHandler {
             onPressed: () async {
               try {
                 final newQuantity = int.tryParse(quantityController.text) ?? 1;
-                final updatedItem = displayItem.inventoryItem.copyWith(quantity: newQuantity);
-                await _inventoryRepository.update(updatedItem);
+                final updatedEntity = inventoryItemEntity.copyWith(quantity: newQuantity);
+                await _inventoryRepository.update(updatedEntity);
                 if (context.mounted) Navigator.of(ctx).pop();
                 await loadInventory();
               } catch (e) {
@@ -184,8 +162,10 @@ class CharacterInventoryHandler {
     }
 
     try {
-      final updatedItem = displayItem.inventoryItem.copyWith(quantity: newQuantity);
-      await _inventoryRepository.update(updatedItem);
+      // Konvertiere Model zu Entity für Repository-Operationen
+      final inventoryItemEntity = InventoryItemEntity.fromModel(displayItem.inventoryItem);
+      final updatedEntity = inventoryItemEntity.copyWith(quantity: newQuantity);
+      await _inventoryRepository.update(updatedEntity);
       await loadInventory();
     } catch (e) {
       if (context.mounted) {
