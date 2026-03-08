@@ -16,6 +16,7 @@ import '../../viewmodels/wiki_viewmodel.dart';
 // Screens
 import '../bestiary/bestiary_screen.dart';
 import '../campaign/campaign_dashboard_screen.dart';
+import '../campaign/campaign_quests_screen.dart';
 import '../items/item_library_screen.dart';
 import '../lore/lore_keeper_screen.dart';
 import '../bestiary/official_monsters_screen.dart';
@@ -82,47 +83,43 @@ class _MainNavigationLayout extends StatelessWidget {
 
   Widget _buildSliverAppBar(BuildContext context) {
     return SliverAppBar(
-      expandedHeight: 120,
+      expandedHeight: 60,
       floating: false,
       pinned: true,
       backgroundColor: DnDTheme.mysticalPurple,
-      flexibleSpace: FlexibleSpaceBar(
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              campaign?.title ?? 'Dungeon Manager',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-            if (campaign != null) ...[
-              const SizedBox(height: 2),
-              Text(
-                'Kampagnen-Hub',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ],
+      title: Text(
+        campaign?.title ?? 'Dungeon Manager',
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 18,
         ),
-        titlePadding: const EdgeInsets.only(left: 16, bottom: 8),
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                DnDTheme.mysticalPurple,
-                DnDTheme.mysticalPurple.withOpacity(0.8),
-              ],
-            ),
+      ),
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              DnDTheme.mysticalPurple,
+              DnDTheme.mysticalPurple.withValues(alpha: 0.9),
+              DnDTheme.arcaneBlue.withValues(alpha: 0.85),
+              DnDTheme.ancientGold.withValues(alpha: 0.3),
+            ],
+            stops: const [0.0, 0.4, 0.7, 1.0],
           ),
+          boxShadow: [
+            BoxShadow(
+              color: DnDTheme.mysticalPurple.withValues(alpha: 0.4),
+              blurRadius: 16,
+              spreadRadius: 3,
+            ),
+            BoxShadow(
+              color: DnDTheme.ancientGold.withValues(alpha: 0.2),
+              blurRadius: 20,
+              spreadRadius: 2,
+            ),
+          ],
         ),
       ),
       actions: [
@@ -160,6 +157,13 @@ class _MainNavigationLayout extends StatelessWidget {
             color: DnDTheme.ancientGold.withOpacity(0.3),
             width: 2,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: DnDTheme.ancientGold.withValues(alpha: 0.2),
+              blurRadius: 8,
+              spreadRadius: 1,
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -212,11 +216,29 @@ class _MainNavigationLayout extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Inhaltsbibliotheken',
-              style: DnDTheme.headline3.copyWith(
-                color: Colors.white,
-                fontSize: 18,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    DnDTheme.mysticalPurple.withValues(alpha: 0.1),
+                    DnDTheme.mysticalPurple.withValues(alpha: 0.05),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: Text(
+                'Inhaltsbibliotheken',
+                style: DnDTheme.headline3.copyWith(
+                  color: DnDTheme.mysticalPurple,
+                  fontSize: 18,
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -227,6 +249,13 @@ class _MainNavigationLayout extends StatelessWidget {
               icon: Icons.person,
               color: DnDTheme.emeraldGreen,
               onTap: () => _navigateToScreen(context, ScreenType.characters, campaign: campaign),
+            ),
+            if (campaign != null) _ContentListItem(
+              title: 'Quests',
+              subtitle: 'Aufgaben & Missionen',
+              icon: Icons.assignment,
+              color: DnDTheme.arcaneBlue,
+              onTap: () => _navigateToScreen(context, ScreenType.quests, campaign: campaign),
             ),
             _ContentListItem(
               title: 'Wiki',
@@ -269,11 +298,29 @@ class _MainNavigationLayout extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Tools & Referenzen',
-              style: DnDTheme.headline3.copyWith(
-                color: Colors.white,
-                fontSize: 18,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    DnDTheme.mysticalPurple.withValues(alpha: 0.1),
+                    DnDTheme.mysticalPurple.withValues(alpha: 0.05),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: Text(
+                'Tools & Referenzen',
+                style: DnDTheme.headline3.copyWith(
+                  color: DnDTheme.mysticalPurple,
+                  fontSize: 18,
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -360,9 +407,10 @@ class _CampaignActionButtons extends StatelessWidget {
             icon: const Icon(Icons.play_circle),
             label: const Text('Sessions'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.infoBlue,
+              backgroundColor: DnDTheme.mysticalPurple,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 12),
+              elevation: 4,
             ),
           ),
         ),
@@ -408,16 +456,24 @@ class _ContentListItem extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
+          colors: [color.withOpacity(0.15), color.withOpacity(0.08)],
         ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3), width: 1),
+        border: Border.all(color: color.withOpacity(0.4), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.15),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: onTap,
+          splashColor: color.withValues(alpha: 0.2),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -544,7 +600,11 @@ void _navigateToScreen(BuildContext context, ScreenType screenType, {Campaign? c
       );
       break;
     case ScreenType.quests:
-      screen = const QuestLibraryScreen();
+      if (campaign != null) {
+        screen = CampaignQuestsScreen(campaign: campaign);
+      } else {
+        screen = const QuestLibraryScreen();
+      }
       break;
     case ScreenType.wiki:
       screen = const LoreKeeperScreen();
