@@ -4,10 +4,9 @@ import '../database/core/database_connection.dart';
 import '../database/repositories/player_character_model_repository.dart';
 import '../models/campaign.dart';
 import '../models/player_character.dart';
-import '../screens/unified_character_editor_screen.dart';
+import '../screens/characters/edit_pc_screen.dart';
 import '../widgets/character_list/enhanced_hero_card_widget.dart';
 import '../widgets/character_list/character_list_helpers.dart';
-import '../widgets/character_editor/character_editor_controller.dart' show CharacterType;
 
 
 class CampaignHeroesTab extends StatefulWidget {
@@ -433,8 +432,7 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
 
   void _editCharacter(BuildContext context, PlayerCharacter pc) async {
     await Navigator.of(context).push(MaterialPageRoute(
-      builder: (ctx) => UnifiedCharacterEditorScreen(
-        characterType: CharacterType.player,
+      builder: (ctx) => EditPCScreen(
         campaignId: widget.campaign.id,
         pcToEdit: pc,
       ),
@@ -444,8 +442,7 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
 
   void _createNewCharacter(BuildContext context) async {
     await Navigator.of(context).push(MaterialPageRoute(
-      builder: (ctx) => UnifiedCharacterEditorScreen(
-        characterType: CharacterType.player,
+      builder: (ctx) => EditPCScreen(
         campaignId: widget.campaign.id,
       ),
     ));

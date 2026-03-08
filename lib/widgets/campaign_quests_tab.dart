@@ -5,8 +5,8 @@ import '../database/repositories/quest_model_repository.dart';
 import '../models/campaign.dart';
 import '../models/quest.dart';
 import '../models/campaign_quest.dart';
-import '../screens/add_quest_from_library_screen.dart';
-import '../screens/edit_campaign_quest_screen.dart';
+import '../screens/quests/add_quest_screen.dart';
+import '../screens/quests/edit_campaign_quest_screen.dart';
 
 class CampaignQuestsTab extends StatefulWidget {
   final Campaign campaign;

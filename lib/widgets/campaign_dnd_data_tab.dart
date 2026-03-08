@@ -7,7 +7,7 @@ import '../models/campaign.dart';
 import '../models/official_monster.dart';
 import '../models/official_spell.dart';
 import '../models/creature.dart';
-import '../screens/enhanced_official_monsters_screen.dart';
+import '../screens/bestiary/official_monsters_screen.dart';
 
 class CampaignDndDataTab extends StatefulWidget {
   final Campaign campaign;
@@ -163,7 +163,7 @@ class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
             onPressed: () async {
               final selectedMonster = await Navigator.of(context).push<OfficialMonster?>(
                 MaterialPageRoute(
-                  builder: (ctx) => const EnhancedOfficialMonstersScreen(),
+                  builder: (ctx) => const OfficialMonstersScreen(),
                 ),
               );
               
