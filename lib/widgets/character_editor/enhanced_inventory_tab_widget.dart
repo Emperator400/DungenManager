@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../models/inventory_item.dart';
 import '../../models/equip_slot.dart';
 import '../../models/item.dart';
-import '../../screens/add_item_from_library_screen.dart';
 import '../character_editor/character_editor_controller.dart'
     show CharacterType;
 import 'enhanced_inventory_grid_widget.dart';
@@ -713,10 +712,15 @@ class _EnhancedInventoryTabWidgetState extends State<EnhancedInventoryTabWidget>
       return;
     }
 
+    // TODO: Item-Add-Funktion wird noch migriert
+    // Platzhalter für zukünftige Implementierung
+    _showErrorSnackBar('Item-Add-Funktion wird noch migriert');
+    
+    /*
     // Zeige Item Bibliothek für Auswahl
     final result = await Navigator.of(context).push<Map<String, dynamic>>(
       MaterialPageRoute(
-        builder: (context) => AddItemFromLibraryScreen(
+        builder: (context) => AddItemScreen(
           characterId: characterId!,
         ),
       ),
@@ -726,6 +730,7 @@ class _EnhancedInventoryTabWidgetState extends State<EnhancedInventoryTabWidget>
     if (result != null) {
       // ViewModel sollte automatisch durch Listener aktualisiert werden
     }
+    */
   }
 
   void _showSuccessSnackBar(String message) {
