@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../models/campaign.dart';
-import '../theme/dnd_theme.dart';
-import '../viewmodels/campaign_viewmodel.dart';
-import '../widgets/campaign/campaign_create_dialog_widget.dart';
-import '../widgets/campaign/enhanced_campaign_filter_chips_widget.dart';
-import '../widgets/ui_components/cards/unified_campaign_card.dart';
-import '../widgets/ui_components/feedback/snackbar_helper.dart';
-import '../widgets/ui_components/states/empty_state_widget.dart';
-import '../widgets/ui_components/states/error_state_widget.dart';
-import '../widgets/ui_components/states/loading_state_widget.dart';
+import '../../models/campaign.dart';
+import '../../theme/dnd_theme.dart';
+import '../../viewmodels/campaign_viewmodel.dart';
+import '../../widgets/campaign/campaign_create_dialog_widget.dart';
+import '../../widgets/campaign/enhanced_campaign_filter_chips_widget.dart';
+import '../../widgets/ui_components/cards/unified_campaign_card.dart';
+import '../../widgets/ui_components/feedback/snackbar_helper.dart';
+import '../../widgets/ui_components/states/empty_state_widget.dart';
+import '../../widgets/ui_components/states/error_state_widget.dart';
+import '../../widgets/ui_components/states/loading_state_widget.dart';
 
 import './edit_campaign_screen.dart';
 import '../navigation/main_navigation_screen.dart';
