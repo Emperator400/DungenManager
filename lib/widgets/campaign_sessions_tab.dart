@@ -4,8 +4,8 @@ import '../database/core/database_connection.dart';
 import '../database/repositories/session_model_repository.dart';
 import '../models/campaign.dart';
 import '../models/session.dart';
-import '../screens/enhanced_edit_session_screen.dart';
-import '../screens/enhanced_active_session_screen.dart';
+import '../screens/session/edit_session_screen.dart';
+import '../screens/session/active_session_screen.dart';
 
 class CampaignSessionsTab extends StatefulWidget {
   final Campaign campaign;
@@ -102,7 +102,7 @@ class CampaignSessionsTabState extends State<CampaignSessionsTab> {
                 title: Text(session.title, style: const TextStyle(fontWeight: FontWeight.bold)),
                 onTap: () {
                   Navigator.of(context).push(MaterialPageRoute(
-                    builder: (ctx) => EnhancedActiveSessionScreen(session: session, campaign: widget.campaign),
+                  builder: (ctx) => ActiveSessionScreen(session: session, campaign: widget.campaign),
                   ));
                 },
                 // Das Trailing ist jetzt ein Pop-up-Menü für mehr Aktionen
@@ -110,7 +110,7 @@ class CampaignSessionsTabState extends State<CampaignSessionsTab> {
                   onSelected: (value) {
                     if (value == 'edit') {
                       Navigator.of(context).push(MaterialPageRoute(
-                        builder: (ctx) => EnhancedEditSessionScreen(session: session),
+                        builder: (ctx) => EditSessionScreen(session: session),
                       )).then((_) => loadSessions());
                     } else if (value == 'delete') {
                       _deleteSession(session);

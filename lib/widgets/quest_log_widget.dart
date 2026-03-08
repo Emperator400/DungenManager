@@ -5,7 +5,7 @@ import '../database/repositories/quest_model_repository.dart';
 import '../models/campaign.dart';
 import '../models/quest.dart';
 import '../models/campaign_quest.dart';
-import '../screens/edit_campaign_quest_screen.dart';
+import '../screens/quests/edit_campaign_quest_screen.dart';
 
 class QuestLogWidget extends StatefulWidget {
   final Campaign campaign;
