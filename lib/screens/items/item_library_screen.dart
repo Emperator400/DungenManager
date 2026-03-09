@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/item.dart';
-import '../theme/dnd_theme.dart';
-import '../viewmodels/item_library_viewmodel.dart';
+import '../../models/item.dart';
+import '../../theme/dnd_theme.dart';
+import '../../viewmodels/item_library_viewmodel.dart';
 import 'edit_item_screen.dart';
 
 class ItemLibraryScreen extends StatefulWidget {

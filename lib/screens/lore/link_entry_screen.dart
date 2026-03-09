@@ -1,8 +1,8 @@
 // lib/screens/link_entry_to_scene_screen.dart
 import 'package:flutter/material.dart';
-import '../database/core/database_connection.dart';
-import '../database/repositories/wiki_entry_model_repository.dart';
-import '../models/wiki_entry.dart';
+import '../../database/core/database_connection.dart';
+import '../../database/repositories/wiki_entry_model_repository.dart';
+import '../../models/wiki_entry.dart';
 
 class LinkEntryToSceneScreen extends StatefulWidget {
   final List<String> previouslyLinkedIds;

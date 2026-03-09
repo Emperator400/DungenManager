@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/creature.dart';
-import '../database/repositories/creature_model_repository.dart';
-import '../database/repositories/player_character_model_repository.dart';
-import '../theme/dnd_theme.dart';
+import '../../models/creature.dart';
+import '../../database/repositories/creature_model_repository.dart';
+import '../../database/repositories/player_character_model_repository.dart';
+import '../../theme/dnd_theme.dart';
 
 /// Screen zur Auswahl von Charakteren für eine Scene
 /// Unterstützt PCs, NPCs und Monster

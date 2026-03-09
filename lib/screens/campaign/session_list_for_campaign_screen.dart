@@ -17,13 +17,9 @@ class SessionListForCampaignScreen extends StatefulWidget {
   State<SessionListForCampaignScreen> createState() => _SessionListForCampaignScreenState();
 }
 
-class _SessionListForCampaignScreenState extends State<SessionListForCampaignScreen> 
-    with AutomaticKeepAliveClientMixin {
+class _SessionListForCampaignScreenState extends State<SessionListForCampaignScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-
-  @override
-  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -47,49 +43,20 @@ class _SessionListForCampaignScreenState extends State<SessionListForCampaignScr
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
-    
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: CustomScrollView(
-        slivers: [
-          // Custom AppBar mit Kampagnen-Info
-          _buildSliverAppBar(),
-          
-          // Search Bar
-          _buildSearchBar(),
-          
-          // Sessions Content
-          _buildSessionsContent(),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _createNewSession(),
-        icon: const Icon(Icons.add),
-        label: const Text('Neue Sitzung'),
-        backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
-      ),
-    );
-  }
-
-  Widget _buildSliverAppBar() {
-    return SliverAppBar(
-      expandedHeight: 120,
-      floating: false,
-      pinned: true,
-      backgroundColor: DnDTheme.dungeonBlack,
-      flexibleSpace: FlexibleSpaceBar(
+      appBar: AppBar(
         title: Text(
-          widget.campaign.title,
+          'Sessions: ${widget.campaign.title}',
           style: const TextStyle(
-            fontWeight: FontWeight.bold,
             color: Colors.white,
+            fontWeight: FontWeight.bold,
           ),
         ),
-        titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
-        expandedTitleScale: 1.2,
-        background: Container(
+        backgroundColor: DnDTheme.dungeonBlack,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+        flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
@@ -101,56 +68,63 @@ class _SessionListForCampaignScreenState extends State<SessionListForCampaignScr
             ),
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit, color: Colors.white),
+            onPressed: () => _editCampaign(),
+            tooltip: 'Kampagne bearbeiten',
+          ),
+        ],
       ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.edit, color: Colors.white),
-          onPressed: () => _editCampaign(),
-          tooltip: 'Kampagne bearbeiten',
-        ),
-      ],
+      body: _buildSessionsList(),
     );
   }
 
-  Widget _buildSearchBar() {
-    return SliverToBoxAdapter(
-      child: Container(
-        margin: const EdgeInsets.all(16),
-        child: TextField(
-          controller: _searchController,
-          onChanged: (value) {
-            setState(() {
-              _searchQuery = value;
-            });
-          },
-          decoration: InputDecoration(
-            hintText: 'Sitzungen durchsuchen...',
-            prefixIcon: const Icon(Icons.search),
-            suffixIcon: _searchQuery.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: () {
-                      _searchController.clear();
-                      setState(() {
-                        _searchQuery = '';
-                      });
-                    },
-                  )
-                : null,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Theme.of(context).dividerColor),
+  Widget _buildSessionsList() {
+    return Column(
+      children: [
+        // Search Bar
+        Container(
+          margin: const EdgeInsets.all(16),
+          child: TextField(
+            controller: _searchController,
+            onChanged: (value) {
+              setState(() {
+                _searchQuery = value;
+              });
+            },
+            decoration: InputDecoration(
+              hintText: 'Sitzungen durchsuchen...',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() {
+                          _searchQuery = '';
+                        });
+                      },
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Theme.of(context).dividerColor),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+              ),
+              filled: true,
+              fillColor: Theme.of(context).cardColor,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
-            ),
-            filled: true,
-            fillColor: Theme.of(context).cardColor,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           ),
         ),
-      ),
+        
+        // Sessions Content
+        Expanded(child: _buildSessionsContent()),
+      ],
     );
   }
 
@@ -159,50 +133,46 @@ class _SessionListForCampaignScreenState extends State<SessionListForCampaignScr
       builder: (context, viewModel, child) {
         // Loading state
         if (viewModel.isLoading) {
-          return const SliverFillRemaining(
-            child: Center(
-              child: CircularProgressIndicator(),
-            ),
+          return const Center(
+            child: CircularProgressIndicator(),
           );
         }
 
         // Error state
         if (viewModel.errorMessage != null) {
-          return SliverFillRemaining(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 64,
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Fehler beim Laden der Sitzungen',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.error,
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Fehler beim Laden der Sitzungen',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    viewModel.errorMessage!,
-                    style: TextStyle(color: Theme.of(context).disabledColor),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      viewModel.clearError();
-                      viewModel.refreshSessions();
-                    },
-                    child: const Text('Erneut versuchen'),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  viewModel.errorMessage!,
+                  style: TextStyle(color: Theme.of(context).disabledColor),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    viewModel.clearError();
+                    viewModel.refreshSessions();
+                  },
+                  child: const Text('Erneut versuchen'),
+                ),
+              ],
             ),
           );
         }
@@ -211,59 +181,56 @@ class _SessionListForCampaignScreenState extends State<SessionListForCampaignScr
 
         // Empty state
         if (filteredSessions.isEmpty) {
-          return SliverFillRemaining(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.event_note_outlined,
-                    size: 64,
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.event_note_outlined,
+                  size: 64,
+                  color: Theme.of(context).disabledColor,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _searchQuery.isNotEmpty 
+                      ? 'Keine Sitzungen gefunden'
+                      : 'Noch keine Sitzungen',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                     color: Theme.of(context).disabledColor,
                   ),
-                  const SizedBox(height: 16),
+                ),
+                if (_searchQuery.isEmpty) ...[
+                  const SizedBox(height: 8),
                   Text(
-                    _searchQuery.isNotEmpty 
-                        ? 'Keine Sitzungen gefunden'
-                        : 'Noch keine Sitzungen',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).disabledColor,
-                    ),
+                    'Erstelle deine erste Sitzung für diese Kampagne',
+                    style: TextStyle(color: Theme.of(context).disabledColor),
                   ),
-                  if (_searchQuery.isEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'Erstelle deine erste Sitzung für diese Kampagne',
-                      style: TextStyle(color: Theme.of(context).disabledColor),
-                    ),
-                  ],
                 ],
-              ),
+              ],
             ),
           );
         }
 
         // Content
-        return SliverPadding(
+        return ListView.builder(
           padding: const EdgeInsets.all(16),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final session = filteredSessions[index];
-                return UnifiedSessionCard(
-                  session: session,
-                  sessionNumber: index + 1,
-                  onTap: () => _openSession(session),
-                  onPlay: () => _openSession(session),
-                  onEdit: () => _editSession(session),
-                  onDelete: () => _deleteSession(session),
-                );
-              },
-              childCount: filteredSessions.length,
-            ),
-          ),
+          itemCount: filteredSessions.length,
+          itemBuilder: (context, index) {
+            final session = filteredSessions[index];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: UnifiedSessionCard(
+                session: session,
+                sessionNumber: index + 1,
+                onTap: () => _openSession(session),
+                onPlay: () => _openSession(session),
+                onEdit: () => _editSession(session),
+                onDelete: () => _deleteSession(session),
+              ),
+            );
+          },
         );
       },
     );
@@ -329,22 +296,7 @@ class _SessionListForCampaignScreenState extends State<SessionListForCampaignScr
     );
   }
 
-  void _createNewSession() async {
-    final newSession = await context.read<SessionListForCampaignViewModel>().createSession(
-      title: "Sitzung ${DateTime.now().day}.${DateTime.now().month}.${DateTime.now().year}",
-    );
-    
-    if (newSession != null) {
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (ctx) => EditSessionScreen(session: newSession),
-        ),
-      );
-    }
-  }
-
   void _editCampaign() {
-    // Hier könntest du zum Kampagnen-Edit-Screen navigieren
     Navigator.of(context).push(MaterialPageRoute(
       builder: (ctx) => EditCampaignScreen(campaign: widget.campaign),
     ));

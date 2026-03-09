@@ -1,8 +1,8 @@
 // lib/screens/link_wiki_entries_screen.dart
 import 'package:flutter/material.dart';
-import '../database/core/database_connection.dart';
-import '../database/repositories/wiki_entry_model_repository.dart';
-import '../models/wiki_entry.dart';
+import '../../database/core/database_connection.dart';
+import '../../database/repositories/wiki_entry_model_repository.dart';
+import '../../models/wiki_entry.dart';
 
 class LinkWikiEntriesScreen extends StatefulWidget {
   final List<String> previouslyLinkedIds;

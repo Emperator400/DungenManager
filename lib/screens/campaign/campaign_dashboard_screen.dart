@@ -1,3 +1,6 @@
+// campaign_dashboard_screen.dart alt - nicht verwenden
+
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 

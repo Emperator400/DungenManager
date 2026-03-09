@@ -18,35 +18,6 @@ class EditQuestScreen extends StatefulWidget {
   State<EditQuestScreen> createState() => _EditQuestScreenState();
 }
 
-/// Widget das den EditQuestViewModel bereitstellt
-class _EditQuestScreenWithProvider extends StatelessWidget {
-  final Quest? quest;
-  final String? campaignId;
-
-  const _EditQuestScreenWithProvider({
-    super.key,
-    this.quest,
-    this.campaignId,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider<EditQuestViewModel>(
-      create: (_) => EditQuestViewModel(),
-      child: Builder(
-        builder: (context) {
-          // Initialisiere den ViewModel nach der Erstellung
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            context.read<EditQuestViewModel>().initialize(quest, campaignId: campaignId);
-          });
-          
-          return EditQuestScreen(quest: quest);
-        },
-      ),
-    );
-  }
-}
-
 class _EditQuestScreenState extends State<EditQuestScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
@@ -54,14 +25,68 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
   final _locationController = TextEditingController();
   final _recommendedLevelController = TextEditingController();
   final _estimatedDurationController = TextEditingController();
+  
+  final _titleFocusNode = FocusNode();
+  final _descriptionFocusNode = FocusNode();
+  final _locationFocusNode = FocusNode();
+  final _recommendedLevelFocusNode = FocusNode();
+  final _estimatedDurationFocusNode = FocusNode();
+
+  EditQuestViewModel? _viewModel;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<EditQuestViewModel>().initialize(widget.quest);
+      _viewModel = context.read<EditQuestViewModel>();
+      _viewModel!.initialize(widget.quest);
       _populateFields();
+      
+      // Listener hinzufügen, um auf Änderungen am ViewModel zu reagieren
+      _viewModel!.addListener(_onViewModelChanged);
     });
+  }
+
+  void _onViewModelChanged() {
+    // Aktualisiere die Controller nur wenn sich der Quest tatsächlich geändert hat
+    // und der Controller gerade nicht fokussiert ist (um Probleme beim Tippen zu vermeiden)
+    final quest = _viewModel?.quest;
+    if (quest != null && mounted) {
+      // Nur aktualisieren, wenn der Controller nicht den Fokus hat
+      if (!_titleFocusNode.hasFocus && _titleController.text != quest.title) {
+        _titleController.text = quest.title;
+      }
+      if (!_descriptionFocusNode.hasFocus && _descriptionController.text != quest.description) {
+        _descriptionController.text = quest.description;
+      }
+      if (!_locationFocusNode.hasFocus && _locationController.text != (quest.location ?? '')) {
+        _locationController.text = quest.location ?? '';
+      }
+      if (!_recommendedLevelFocusNode.hasFocus && 
+          _recommendedLevelController.text != (quest.recommendedLevel?.toString() ?? '')) {
+        _recommendedLevelController.text = quest.recommendedLevel?.toString() ?? '';
+      }
+      if (!_estimatedDurationFocusNode.hasFocus && 
+          _estimatedDurationController.text != (quest.estimatedDurationHours?.toString() ?? '')) {
+        _estimatedDurationController.text = quest.estimatedDurationHours?.toString() ?? '';
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _viewModel?.removeListener(_onViewModelChanged);
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _locationController.dispose();
+    _recommendedLevelController.dispose();
+    _estimatedDurationController.dispose();
+    _titleFocusNode.dispose();
+    _descriptionFocusNode.dispose();
+    _locationFocusNode.dispose();
+    _recommendedLevelFocusNode.dispose();
+    _estimatedDurationFocusNode.dispose();
+    super.dispose();
   }
 
   void _populateFields() {
@@ -78,21 +103,19 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
   }
 
   @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    _locationController.dispose();
-    _recommendedLevelController.dispose();
-    _estimatedDurationController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: DnDTheme.dungeonBlack,
       body: Container(
         decoration: BoxDecoration(
-          gradient: DnDTheme.getMysticalGradient(),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              DnDTheme.dungeonBlack.withOpacity(0.95),
+              DnDTheme.dungeonBlack.withOpacity(0.85),
+            ],
+          ),
         ),
         child: SafeArea(
           child: Consumer<EditQuestViewModel>(
@@ -120,52 +143,89 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            DnDTheme.mysticalPurple.withOpacity(0.9),
-            DnDTheme.arcaneBlue.withOpacity(0.9),
+            DnDTheme.dungeonBlack.withOpacity(0.95),
+            DnDTheme.dungeonBlack.withOpacity(0.85),
           ],
+        ),
+        border: Border(
+          bottom: BorderSide(
+            color: DnDTheme.ancientGold.withOpacity(0.3),
+            width: 2,
+          ),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 8,
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Row(
         children: [
-          IconButton(
-            onPressed: () => _handleBackNavigation(viewModel),
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.white.withOpacity(0.2),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              onPressed: () => _handleBackNavigation(viewModel),
+              icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
             ),
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: Text(
-              viewModel.quest != null ? 'Quest bearbeiten' : 'Neuer Quest',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  viewModel.quest != null ? 'Quest bearbeiten' : 'Neuer Quest',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black26,
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  viewModel.quest != null ? 'Details ändern' : 'Erstelle eine neue Quest',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
             ),
           ),
           if (viewModel.hasUnsavedChanges)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: DnDTheme.errorRed,
-                borderRadius: BorderRadius.circular(12),
+                color: DnDTheme.ancientGold,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withOpacity(0.3)),
               ),
-              child: const Text(
-                'Nicht gespeichert',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.edit, color: Colors.black87, size: 14),
+                  const SizedBox(width: 4),
+                  const Text(
+                    'Bearbeitet',
+                    style: TextStyle(
+                      color: Colors.black87,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
             ),
         ],
@@ -182,9 +242,9 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildBasicInfoSection(context, viewModel),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             _buildQuestDetailsSection(context, viewModel),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             _buildRewardsSection(context, viewModel),
             const SizedBox(height: 32),
             _buildActionButtons(context, viewModel),
@@ -194,17 +254,52 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
     );
   }
 
+  Widget _buildSectionHeader(IconData icon, String title) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [DnDTheme.arcaneBlue, DnDTheme.mysticalPurple],
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: Colors.white, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          title,
+          style: DnDTheme.headline2.copyWith(
+            fontSize: 18,
+            color: Colors.white,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildBasicInfoSection(BuildContext context, EditQuestViewModel viewModel) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            DnDTheme.dungeonBlack.withOpacity(0.85),
+            DnDTheme.dungeonBlack.withOpacity(0.75),
+          ],
+        ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: DnDTheme.ancientGold.withOpacity(0.3)),
+        border: Border.all(
+          color: DnDTheme.arcaneBlue.withOpacity(0.5),
+          width: 2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
+            color: DnDTheme.arcaneBlue.withOpacity(0.3),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
@@ -212,30 +307,14 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Grundlegende Informationen',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
+          _buildSectionHeader(Icons.info_outline, 'Grundlegende Informationen'),
+          const SizedBox(height: 20),
+          _buildTextField(
             controller: _titleController,
-            decoration: InputDecoration(
-              labelText: 'Quest Titel *',
-              hintText: 'z.B. Die Rettung vom Drachenhort',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: DnDTheme.ancientGold.withOpacity(0.5))),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: DnDTheme.ancientGold),
-              ),
-              filled: true,
-              fillColor: Colors.white.withOpacity(0.8),
-            ),
+            focusNode: _titleFocusNode,
+            label: 'Quest Titel *',
+            hint: 'z.B. Die Rettung vom Drachenhort',
+            icon: Icons.title,
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return 'Titel ist erforderlich';
@@ -248,22 +327,13 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
             onChanged: (value) => viewModel.updateTitle(value),
           ),
           const SizedBox(height: 16),
-          TextFormField(
+          _buildTextField(
             controller: _descriptionController,
+            focusNode: _descriptionFocusNode,
+            label: 'Beschreibung *',
+            hint: 'Beschreibe den Quest und seine Ziele...',
+            icon: Icons.description,
             maxLines: 4,
-            decoration: InputDecoration(
-              labelText: 'Beschreibung *',
-              hintText: 'Beschreibe den Quest und seine Ziele...',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: DnDTheme.ancientGold.withOpacity(0.5))),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: DnDTheme.ancientGold),
-              ),
-              filled: true,
-              fillColor: Colors.white.withOpacity(0.8),
-            ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return 'Beschreibung ist erforderlich';
@@ -273,21 +343,12 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
             onChanged: (value) => viewModel.updateDescription(value),
           ),
           const SizedBox(height: 16),
-          TextFormField(
+          _buildTextField(
             controller: _locationController,
-            decoration: InputDecoration(
-              labelText: 'Ort',
-              hintText: 'Wo findet der Quest statt?',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: DnDTheme.ancientGold.withOpacity(0.5))),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: DnDTheme.ancientGold),
-              ),
-              filled: true,
-              fillColor: Colors.white.withOpacity(0.8),
-            ),
+            focusNode: _locationFocusNode,
+            label: 'Ort',
+            hint: 'Wo findet der Quest statt?',
+            icon: Icons.place,
             onChanged: (value) => viewModel.updateLocation(value),
           ),
         ],
@@ -299,13 +360,23 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            DnDTheme.dungeonBlack.withOpacity(0.85),
+            DnDTheme.dungeonBlack.withOpacity(0.75),
+          ],
+        ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: DnDTheme.ancientGold.withOpacity(0.3)),
+        border: Border.all(
+          color: DnDTheme.arcaneBlue.withOpacity(0.5),
+          width: 2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
+            color: DnDTheme.arcaneBlue.withOpacity(0.2),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
@@ -313,63 +384,32 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Quest-Details',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 16),
+          _buildSectionHeader(Icons.tune, 'Quest-Details'),
+          const SizedBox(height: 20),
           Row(
             children: [
               Expanded(
-                child: DropdownButtonFormField<QuestStatus>(
+                child: _buildDropdownField<QuestStatus>(
                   value: viewModel.quest?.status,
-                  decoration: InputDecoration(
-                    labelText: 'Status',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: DnDTheme.ancientGold.withOpacity(0.5))),
-                    filled: true,
-                    fillColor: Colors.white.withOpacity(0.8),
-                  ),
-                  items: QuestStatus.values.map((status) {
-                    return DropdownMenuItem(
-                      value: status,
-                      child: Text(_getQuestStatusDisplayName(status)),
-                    );
-                  }).toList(),
+                  label: 'Status',
+                  icon: Icons.track_changes,
+                  items: QuestStatus.values,
+                  displayName: _getQuestStatusDisplayName,
                   onChanged: (value) {
-                    if (value != null) {
-                      viewModel.updateStatus(value);
-                    }
+                    if (value != null) viewModel.updateStatus(value);
                   },
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: DropdownButtonFormField<QuestType>(
+                child: _buildDropdownField<QuestType>(
                   value: viewModel.quest?.questType,
-                  decoration: InputDecoration(
-                    labelText: 'Typ',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: DnDTheme.ancientGold.withOpacity(0.5))),
-                    filled: true,
-                    fillColor: Colors.white.withOpacity(0.8),
-                  ),
-                  items: QuestType.values.map((type) {
-                    return DropdownMenuItem(
-                      value: type,
-                      child: Text(_getQuestTypeDisplayName(type)),
-                    );
-                  }).toList(),
+                  label: 'Typ',
+                  icon: Icons.category,
+                  items: QuestType.values,
+                  displayName: _getQuestTypeDisplayName,
                   onChanged: (value) {
-                    if (value != null) {
-                      viewModel.updateQuestType(value);
-                    }
+                    if (value != null) viewModel.updateQuestType(value);
                   },
                 ),
               ),
@@ -379,79 +419,45 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
           Row(
             children: [
               Expanded(
-                child: DropdownButtonFormField<QuestDifficulty>(
+                child: _buildDropdownField<QuestDifficulty>(
                   value: viewModel.quest?.difficulty,
-                  decoration: InputDecoration(
-                    labelText: 'Schwierigkeit',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: DnDTheme.ancientGold.withOpacity(0.5))),
-                    filled: true,
-                    fillColor: Colors.white.withOpacity(0.8),
-                  ),
-                  items: QuestDifficulty.values.map((difficulty) {
-                    return DropdownMenuItem(
-                      value: difficulty,
-                      child: Text(_getQuestDifficultyDisplayName(difficulty)),
-                    );
-                  }).toList(),
+                  label: 'Schwierigkeit',
+                  icon: Icons.bar_chart,
+                  items: QuestDifficulty.values,
+                  displayName: _getQuestDifficultyDisplayName,
                   onChanged: (value) {
-                    if (value != null) {
-                      viewModel.updateDifficulty(value);
-                    }
+                    if (value != null) viewModel.updateDifficulty(value);
                   },
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: TextFormField(
+                child: _buildTextField(
                   controller: _recommendedLevelController,
+                  focusNode: _recommendedLevelFocusNode,
+                  label: 'Empfohlenes Level',
+                  hint: '1-20',
+                  icon: Icons.stars,
                   keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Empfohlenes Level',
-                    hintText: '1-20',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: DnDTheme.ancientGold.withOpacity(0.5))),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: DnDTheme.ancientGold),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white.withOpacity(0.8),
-                  ),
                   onChanged: (value) {
                     final level = int.tryParse(value);
-                    if (level != null) {
-                      viewModel.updateRecommendedLevel(level);
-                    }
+                    if (level != null) viewModel.updateRecommendedLevel(level);
                   },
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          TextFormField(
+          _buildTextField(
             controller: _estimatedDurationController,
+            focusNode: _estimatedDurationFocusNode,
+            label: 'Geschätzte Dauer (Stunden)',
+            hint: 'z.B. 2.5',
+            icon: Icons.schedule,
             keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: 'Geschätzte Dauer (Stunden)',
-              hintText: 'z.B. 2.5',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: DnDTheme.ancientGold.withOpacity(0.5))),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: DnDTheme.ancientGold),
-              ),
-              filled: true,
-              fillColor: Colors.white.withOpacity(0.8),
-            ),
             onChanged: (value) {
               final duration = double.tryParse(value);
-              if (duration != null) {
-                viewModel.updateEstimatedDuration(duration);
-              }
+              if (duration != null) viewModel.updateEstimatedDuration(duration);
             },
           ),
         ],
@@ -460,16 +466,28 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
   }
 
   Widget _buildRewardsSection(BuildContext context, EditQuestViewModel viewModel) {
+    final rewards = viewModel.quest?.rewards ?? [];
+    
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            DnDTheme.dungeonBlack.withOpacity(0.85),
+            DnDTheme.dungeonBlack.withOpacity(0.75),
+          ],
+        ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: DnDTheme.ancientGold.withOpacity(0.3)),
+        border: Border.all(
+          color: DnDTheme.arcaneBlue.withOpacity(0.5),
+          width: 2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
+            color: DnDTheme.arcaneBlue.withOpacity(0.3),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
@@ -480,45 +498,72 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Belohnungen',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              TextButton.icon(
+              _buildSectionHeader(Icons.card_giftcard, 'Belohnungen'),
+              ElevatedButton.icon(
                 onPressed: () => _showAddRewardDialog(viewModel),
-                icon: const Icon(Icons.add),
-                label: const Text('Belohnung hinzufügen'),
-                style: TextButton.styleFrom(
-                  foregroundColor: DnDTheme.ancientGold,
+                icon: const Icon(Icons.add, size: 20),
+                label: const Text('Belohnung'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: DnDTheme.ancientGold,
+                  foregroundColor: Colors.black87,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 4,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          if (viewModel.quest?.rewards.isEmpty == true)
+          const SizedBox(height: 20),
+          if (rewards.isEmpty)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.withOpacity(0.3)),
-              ),
-              child: Text(
-                'Noch keine Belohnungen hinzugefügt',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontStyle: FontStyle.italic,
+                gradient: LinearGradient(
+                  colors: [
+                    DnDTheme.dungeonBlack.withOpacity(0.1),
+                    DnDTheme.dungeonBlack.withOpacity(0.15),
+                  ],
                 ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: DnDTheme.arcaneBlue.withOpacity(0.4),
+                  width: 2,
+                  style: BorderStyle.solid,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.card_giftcard_outlined,
+                    size: 48,
+                    color: DnDTheme.arcaneBlue.withOpacity(0.7),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Noch keine Belohnungen',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[400],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Füge Belohnungen hinzu, um Spieler zu motivieren',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
               ),
             )
           else
             Column(
-              children: viewModel.quest!.rewards.map((reward) {
+              children: rewards.map((reward) {
                 return _buildRewardCard(viewModel, reward);
               }).toList(),
             ),
@@ -532,13 +577,36 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
+        gradient: LinearGradient(
+          colors: [
+            DnDTheme.dungeonBlack.withOpacity(0.03),
+            DnDTheme.dungeonBlack.withOpacity(0.06),
+          ],
+        ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: DnDTheme.ancientGold.withOpacity(0.2)),
+        border: Border.all(
+          color: DnDTheme.arcaneBlue.withOpacity(0.3),
+          width: 1.5,
+        ),
       ),
       child: Row(
         children: [
-          Expanded(
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [DnDTheme.arcaneBlue, DnDTheme.mysticalPurple],
+              ),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              _getRewardIcon(reward),
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 16),
+              Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -546,38 +614,164 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
                   reward.name,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 15,
+                    color: Colors.white,
                   ),
                 ),
-                if (reward.goldAmount != null && reward.goldAmount! > 0)
-                  Text(
-                    '${reward.goldAmount} Gold',
-                    style: TextStyle(
-                      color: DnDTheme.ancientGold,
-                      fontSize: 12,
-                    ),
-                  ),
-                if (reward.experiencePoints != null && reward.experiencePoints! > 0)
-                  Text(
-                    '${reward.experiencePoints} EP',
-                    style: TextStyle(
-                      color: DnDTheme.arcaneBlue,
-                      fontSize: 12,
-                    ),
-                  ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    if (reward.goldAmount != null && reward.goldAmount! > 0)
+                      _buildRewardChip(
+                        Icons.monetization_on,
+                        '${reward.goldAmount} Gold',
+                        DnDTheme.ancientGold,
+                      ),
+                    if (reward.experiencePoints != null && reward.experiencePoints! > 0) ...[
+                      const SizedBox(width: 8),
+                      _buildRewardChip(
+                        Icons.auto_graph,
+                        '${reward.experiencePoints} EP',
+                        DnDTheme.arcaneBlue,
+                      ),
+                    ],
+                  ],
+                ),
               ],
             ),
           ),
-          IconButton(
-            onPressed: () => _showDeleteRewardDialog(viewModel, reward),
-            icon: Icon(
-              Icons.delete_outline,
-              color: DnDTheme.errorRed,
-              size: 20,
+          Container(
+            decoration: BoxDecoration(
+              color: DnDTheme.errorRed.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: IconButton(
+              onPressed: () => _showDeleteRewardDialog(viewModel, reward),
+              icon: Icon(
+                Icons.delete_outline,
+                color: DnDTheme.errorRed,
+                size: 22,
+              ),
+              tooltip: 'Löschen',
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildRewardChip(IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getRewardIcon(QuestReward reward) {
+    if (reward.goldAmount != null && reward.goldAmount! > 0) {
+      return Icons.monetization_on;
+    }
+    if (reward.experiencePoints != null && reward.experiencePoints! > 0) {
+      return Icons.auto_graph;
+    }
+    return Icons.card_giftcard;
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    FocusNode? focusNode,
+    required String label,
+    required String hint,
+    required IconData icon,
+    int maxLines = 1,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+    void Function(String)? onChanged,
+  }) {
+    return TextFormField(
+      controller: controller,
+      focusNode: focusNode,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: DnDTheme.arcaneBlue.withOpacity(0.4)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: DnDTheme.arcaneBlue, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: DnDTheme.errorRed, width: 2),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: DnDTheme.errorRed, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.05),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        floatingLabelBehavior: FloatingLabelBehavior.auto,
+      ),
+      validator: validator,
+      onChanged: onChanged,
+    );
+  }
+
+  Widget _buildDropdownField<T>({
+    required T? value,
+    required String label,
+    required IconData icon,
+    required List<T> items,
+    required String Function(T) displayName,
+    required void Function(T?) onChanged,
+  }) {
+    return DropdownButtonFormField<T>(
+      value: value,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: DnDTheme.arcaneBlue.withOpacity(0.4)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: DnDTheme.arcaneBlue, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.05),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+      items: items.map((item) {
+        return DropdownMenuItem(
+          value: item,
+          child: Text(displayName(item)),
+        );
+      }).toList(),
+      onChanged: onChanged,
     );
   }
 
@@ -590,16 +784,29 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
             padding: const EdgeInsets.all(16),
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              color: DnDTheme.errorRed.withOpacity(0.1),
-              border: Border.all(color: DnDTheme.errorRed),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              viewModel.errorMessage!,
-              style: TextStyle(
-                color: DnDTheme.errorRed,
-                fontWeight: FontWeight.bold,
+              gradient: LinearGradient(
+                colors: [
+                  DnDTheme.errorRed.withOpacity(0.15),
+                  DnDTheme.errorRed.withOpacity(0.1),
+                ],
               ),
+              border: Border.all(color: DnDTheme.errorRed, width: 2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline, color: DnDTheme.errorRed),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    viewModel.errorMessage!,
+                    style: const TextStyle(
+                      color: DnDTheme.errorRed,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         Row(
@@ -614,16 +821,34 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  elevation: 4,
+                  shadowColor: DnDTheme.successGreen.withOpacity(0.4),
                 ),
-                child: viewModel.isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (viewModel.isLoading)
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    else ...[
+                      const Icon(Icons.save, size: 20),
+                      const SizedBox(width: 8),
+                      const Text(
                         'SPEICHERN',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+                    ],
+                  ],
+                ),
               ),
             ),
             const SizedBox(width: 16),
@@ -631,19 +856,26 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
               child: OutlinedButton(
                 onPressed: viewModel.isLoading ? null : () => _handleCancel(viewModel),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.black87,
-                  side: BorderSide(color: Colors.black54),
+                  foregroundColor: Colors.grey[300],
+                  side: BorderSide(color: Colors.grey[600]!, width: 2),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  'ABBRECHEN',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.cancel, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'ABBRECHEN',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -658,18 +890,25 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
                   onPressed: viewModel.isLoading ? null : () => _handleDuplicate(viewModel),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: DnDTheme.arcaneBlue,
-                    side: BorderSide(color: DnDTheme.arcaneBlue),
+                    side: BorderSide(color: DnDTheme.arcaneBlue, width: 2),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
-                    'DUPLIZIEREN',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.copy, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'DUPLIZIEREN',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -679,18 +918,25 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
                   onPressed: viewModel.isLoading ? null : () => _handleDelete(viewModel),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: DnDTheme.errorRed,
-                    side: BorderSide(color: DnDTheme.errorRed),
+                    side: BorderSide(color: DnDTheme.errorRed, width: 2),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
-                    'LÖSCHEN',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.delete_outline, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'LÖSCHEN',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -754,40 +1000,81 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Belohnung hinzufügen'),
+        backgroundColor: Colors.white.withOpacity(0.98),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [DnDTheme.arcaneBlue, DnDTheme.mysticalPurple],
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.card_giftcard, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Belohnung hinzufügen',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: descriptionController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Beschreibung',
                 hintText: 'z.B. Magisches Schwert',
+                prefixIcon: const Icon(Icons.description),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: goldController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Gold (optional)',
                 hintText: '0',
+                prefixIcon: const Icon(Icons.monetization_on),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: xpController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Erfahrungspunkte (optional)',
                 hintText: '0',
+                prefixIcon: const Icon(Icons.auto_graph),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ],
         ),
         actions: [
-          TextButton(
+          OutlinedButton(
             onPressed: () => Navigator.of(context).pop(),
+            style: OutlinedButton.styleFrom(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
             child: const Text('ABBRECHEN'),
           ),
           ElevatedButton(
@@ -812,6 +1099,12 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
                 Navigator.of(context).pop();
               }
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DnDTheme.ancientGold,
+              foregroundColor: Colors.black87,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
             child: const Text('HINZUFÜGEN'),
           ),
         ],
@@ -823,11 +1116,38 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Belohnung löschen'),
-        content: Text('Möchten Sie diese Belohnung wirklich löschen?\n\n${reward.name}'),
+        backgroundColor: Colors.white.withOpacity(0.98),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: DnDTheme.errorRed.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.delete_outline, color: DnDTheme.errorRed),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Belohnung löschen',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Text(
+          'Möchten Sie diese Belohnung wirklich löschen?\n\n${reward.name}',
+          style: const TextStyle(fontSize: 16),
+        ),
         actions: [
-          TextButton(
+          OutlinedButton(
             onPressed: () => Navigator.of(context).pop(),
+            style: OutlinedButton.styleFrom(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
             child: const Text('ABBRECHEN'),
           ),
           TextButton(
@@ -835,7 +1155,11 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
               viewModel.removeReward(reward);
               Navigator.of(context).pop();
             },
-            style: TextButton.styleFrom(foregroundColor: DnDTheme.errorRed),
+            style: TextButton.styleFrom(
+              foregroundColor: DnDTheme.errorRed,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
             child: const Text('LÖSCHEN'),
           ),
         ],
@@ -872,7 +1196,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
 
   void _handleDuplicate(EditQuestViewModel viewModel) {
     viewModel.duplicateQuest();
-    _populateFields(); // Populate fields with duplicated quest
+    _populateFields();
   }
 
   void _handleBackNavigation(EditQuestViewModel viewModel) {
@@ -887,17 +1211,41 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Ungespeicherte Änderungen'),
+        backgroundColor: Colors.white.withOpacity(0.98),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: DnDTheme.ancientGold, size: 28),
+            SizedBox(width: 12),
+            Text(
+              'Ungespeicherte Änderungen',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
         content: const Text(
           'Sie haben ungespeicherte Änderungen. Möchten Sie wirklich gehen?',
+          style: TextStyle(fontSize: 16),
         ),
         actions: [
-          TextButton(
+          OutlinedButton(
             onPressed: () => Navigator.of(context).pop(false),
+            style: OutlinedButton.styleFrom(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
             child: const Text('ABBRECHEN'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DnDTheme.arcaneBlue,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
             child: const Text('VERLASSEN'),
           ),
         ],
@@ -909,18 +1257,47 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Löschen bestätigen'),
+        backgroundColor: Colors.white.withOpacity(0.98),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding:  EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: DnDTheme.errorRed.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.dangerous, color: DnDTheme.errorRed),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Löschen bestätigen',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
         content: const Text(
           'Möchten Sie diesen Quest wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
+          style: TextStyle(fontSize: 16),
         ),
         actions: [
-          TextButton(
+          OutlinedButton(
             onPressed: () => Navigator.of(context).pop(false),
+            style: OutlinedButton.styleFrom(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
             child: const Text('ABBRECHEN'),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: DnDTheme.errorRed),
+            style: TextButton.styleFrom(
+              foregroundColor: DnDTheme.errorRed,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
             child: const Text('LÖSCHEN'),
           ),
         ],

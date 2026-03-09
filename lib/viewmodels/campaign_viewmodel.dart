@@ -40,7 +40,8 @@ class CampaignViewModel extends ChangeNotifier {
        _characterRepo = characterRepo,
        _sessionService = sessionService {
     debugPrint('🏗️ [CampaignViewModel] Konstruktor aufgerufen');
-    _initializeCampaigns();
+    // Nicht mehr im Konstruktor initialisieren - das führt zu Problemen bei Hot Restart
+    // _initializeCampaigns();
   }
 
   /// Initialisiert die Kampagnenliste

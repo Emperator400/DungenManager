@@ -36,33 +36,54 @@ abstract class ModelRepository<T> {
     final id = await db.insert(tableName, modelMap);
     print('💾 [ModelRepository] Insert ID: $id');
     
-    // Prüfe, ob das Model bereits eine ID hat (UUID)
-    // Falls ja, gib das unveränderte Model zurück
+    // Prüfe, ob das Model bereits eine ID hat
     if (model is dynamic) {
       try {
-        final existingId = model.id as String?;
-        print('💾 [ModelRepository] Existing ID: $existingId');
+        final modelId = model.id;
+        print('💾 [ModelRepository] Model ID: $modelId (${modelId.runtimeType})');
         
-        // Wenn bereits eine ID vorhanden ist (UUID), gib das Model zurück
-        // Die ID wurde bereits in toDatabaseMap() gesetzt
-        if (existingId != null && existingId.isNotEmpty) {
-          // Hole das Model aus der Datenbank zurück, um sicherzustellen, dass alles gespeichert wurde
-          final maps = await db.query(
-            tableName,
-            where: 'id = ?',
-            whereArgs: [existingId],
-            limit: 1,
-          );
-          print('💾 [ModelRepository] ${maps.length} Einträge aus DB zurückgeladen');
-          if (maps.isNotEmpty) {
-            print('💾 [ModelRepository] Erstelltes Model aus DB zurückgegeben');
-            return fromDatabaseMap(maps.first);
+        // Unterscheide zwischen int und String IDs
+        if (modelId is int) {
+          // Bei int IDs: Negative IDs sind temporär (neu), positive sind gespeichert
+          if (modelId < 0) {
+            print('💾 [ModelRepository] Temporäre negative ID erkannt, verwende generierte ID');
+            return model.copyWith(id: id) as T;
+          } else {
+            print('💾 [ModelRepository] Existierende positive ID, hole aus DB');
+            final maps = await db.query(
+              tableName,
+              where: 'id = ?',
+              whereArgs: [modelId],
+              limit: 1,
+            );
+            if (maps.isNotEmpty) {
+              return fromDatabaseMap(maps.first);
+            }
+            return model;
           }
-          print('💾 [ModelRepository] Kein Eintrag in DB gefunden, gib Original zurück');
-          return model;
+        } else if (modelId is String) {
+          // Bei String IDs: UUID oder 'new_' Prefix sind temporär
+          if (modelId.isEmpty || modelId.startsWith('new_')) {
+            print('💾 [ModelRepository] Temporäre String ID erkannt, verwende generierte ID');
+            return model.copyWith(id: id.toString()) as T;
+          } else {
+            print('💾 [ModelRepository] Existierende UUID, hole aus DB');
+            final maps = await db.query(
+              tableName,
+              where: 'id = ?',
+              whereArgs: [modelId],
+              limit: 1,
+            );
+            if (maps.isNotEmpty) {
+              return fromDatabaseMap(maps.first);
+            }
+            print('💾 [ModelRepository] Kein Eintrag in DB gefunden, gib Original zurück');
+            return model;
+          }
         }
-        // Falls keine ID vorhanden ist, verwende die generierte rowid
-        print('💾 [ModelRepository] Keine ID vorhanden, verwende rowid');
+        
+        // Fallback: Kein ID-Typ erkannt
+        print('💾 [ModelRepository] Unbekannter ID-Typ, verwende generierte ID');
         return model.copyWith(id: id.toString()) as T;
       } catch (e) {
         // Fallback: Modelle ohne copyWith
@@ -136,10 +157,15 @@ abstract class ModelRepository<T> {
     final db = await _connection.database;
     final modelMap = toDatabaseMap(model);
     
-    // Hole ID vom Modelle
+    // Hole ID vom Modelle (unterstütze sowohl int als auch String)
     String id = '';
     if (model is dynamic) {
-      id = model.id as String;
+      final modelId = model.id;
+      if (modelId is int) {
+        id = modelId.toString();
+      } else if (modelId is String) {
+        id = modelId;
+      }
     }
     
     await db.update(
@@ -335,7 +361,12 @@ abstract class ModelRepository<T> {
         
         String id = '';
         if (model is dynamic) {
-          id = model.id as String;
+          final modelId = model.id;
+          if (modelId is int) {
+            id = modelId.toString();
+          } else if (modelId is String) {
+            id = modelId;
+          }
         }
         
         await txn.update(

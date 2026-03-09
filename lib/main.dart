@@ -28,12 +28,12 @@ import 'database/repositories/session_model_repository.dart';
 import 'database/repositories/scene_model_repository.dart';
 import 'database/repositories/creature_model_repository.dart';
 
-/// Hauptfunktion der App
+  /// Hauptfunktion der App
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // Datenbank initialisieren
-  _initializeDatabase();
+  await _initializeDatabase();
   
   // Audio konfigurieren
   await _configureAudio();
@@ -42,12 +42,22 @@ void main() async {
   runApp(const DmApp());
 }
 
-/// Initialisiert die Datenbank
-void _initializeDatabase() {
+  /// Initialisiert die Datenbank
+Future<void> _initializeDatabase() async {
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
     print('🗄️ SQLite FFI für Desktop initialisiert');
+    
+    // Teste die Datenbank-Verbindung
+    try {
+      final dbConnection = DatabaseConnection.instance;
+      await dbConnection.database;
+      print('✅ Datenbank-Verbindung erfolgreich getestet');
+    } catch (e) {
+      print('❌ Fehler beim Testen der Datenbank-Verbindung: $e');
+      rethrow;
+    }
   }
 }
 

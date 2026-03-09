@@ -66,8 +66,11 @@ class Quest {
     List<String> linkedWikiEntryIds = const [],
   }) {
     final now = DateTime.now();
+    // Generiere eine negative ID für neue Quests (damit Repository weiß, dass es ein neuer Eintrag ist)
+    final tempId = -(UuidService().generateId().hashCode.abs() + 1);
+    print('🆔 [Quest.create] Generierte temporäre ID: $tempId');
     return Quest(
-      id: UuidService().generateId().hashCode.abs(),
+      id: tempId,
       title: title,
       description: description,
       status: status,
@@ -128,8 +131,9 @@ class Quest {
   /// Factory für Datenbank-Map mit sicherem Parsing (Neu)
   factory Quest.fromDatabaseMap(Map<String, dynamic> map) {
     try {
+      print('📋 [Quest.fromDatabaseMap] Map: $map');
       return Quest(
-        id: map['id'] as int? ?? 0,
+        id: int.tryParse(map['id']?.toString() ?? '0') ?? 0,
         title: map['title'] as String? ?? '',
         description: map['description'] as String? ?? '',
         status: QuestStatus.values.firstWhere(
@@ -149,8 +153,12 @@ class Quest {
         completedAt: (map['completed_at'] as String?) != null ? DateTime.tryParse(map['completed_at'] as String) : null,
         campaignId: map['campaign_id'] as String?,
         location: map['location'] as String?,
-        recommendedLevel: map['recommended_level'] as int?,
-        estimatedDurationHours: map['estimated_duration_hours'] as double?,
+        recommendedLevel: map['recommended_level'] is int 
+            ? map['recommended_level'] as int?
+            : int.tryParse(map['recommended_level']?.toString() ?? ''),
+        estimatedDurationHours: map['estimated_duration_hours'] is double 
+            ? map['estimated_duration_hours'] as double?
+            : double.tryParse(map['estimated_duration_hours']?.toString() ?? ''),
         isFavorite: ModelParsingHelper.safeBool(map, 'is_favorite', false),
         tags: _deserializeStringList(map['tags'] as String?),
         rewards: _deserializeRewards(map['rewards'] as String?),

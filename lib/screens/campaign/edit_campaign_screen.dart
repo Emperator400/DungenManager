@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/campaign.dart';
-import '../../models/quest.dart';
-import '../../database/repositories/quest_model_repository.dart';
-import '../../database/core/database_connection.dart';
 import '../../viewmodels/campaign_viewmodel.dart';
-import '../../viewmodels/edit_quest_viewmodel.dart';
 import '../../theme/dnd_theme.dart';
-import '../quests/edit_quest_screen.dart';
 
 /// Screen zur Bearbeitung von Campaigns mit CampaignViewModel
 class EditCampaignScreen extends StatefulWidget {
@@ -32,13 +27,6 @@ class _EditCampaignScreenState extends State<EditCampaignScreen> {
   late CampaignType _type;
   String? _dungeonMasterId;
   late CampaignSettings _settings;
-  
-  // Quest-Management
-  bool _questsExpanded = false;
-  List<Quest> _quests = [];
-  final QuestModelRepository _questRepository = QuestModelRepository(
-    DatabaseConnection.instance,
-  );
 
   @override
   void initState() {
@@ -54,8 +42,6 @@ class _EditCampaignScreenState extends State<EditCampaignScreen> {
     if (widget.campaign != null) {
       _titleController.text = widget.campaign!.title;
       _descriptionController.text = widget.campaign!.description;
-      // Quests laden
-      _loadQuests();
     }
   }
 
@@ -69,15 +55,6 @@ class _EditCampaignScreenState extends State<EditCampaignScreen> {
   bool get _canSave {
     return _titleController.text.trim().isNotEmpty && 
            _descriptionController.text.trim().isNotEmpty;
-  }
-
-  Future<void> _loadQuests() async {
-    if (widget.campaign?.id != null) {
-      final quests = await _questRepository.findByCampaign(widget.campaign!.id);
-      setState(() {
-        _quests = quests;
-      });
-    }
   }
 
   @override
@@ -210,21 +187,6 @@ class _EditCampaignScreenState extends State<EditCampaignScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Button zur Quest-Erstellung
-                  ElevatedButton.icon(
-                    onPressed: _createNewQuest,
-                    icon: Icon(Icons.add_task),
-                    label: Text('Quest erstellen'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: DnDTheme.ancientGold,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
                   // Kampagnen-Einstellungen
                   _buildSectionCard(
                     title: 'Kampagnen-Einstellungen',
@@ -303,11 +265,6 @@ class _EditCampaignScreenState extends State<EditCampaignScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Quest-Management (immer sichtbar)
-                  _buildQuestsSection(),
-
-                  const SizedBox(height: 16),
-
                   // Kampagnen-Informationen
                   _buildSectionCard(
                     title: 'Zusätzliche Informationen',
@@ -329,17 +286,6 @@ class _EditCampaignScreenState extends State<EditCampaignScreen> {
                                 icon: Icon(Icons.edit, size: 16),
                                 label: Text('Spieler verwalten'),
                               ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Icon(Icons.description, color: DnDTheme.ancientGold),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Quests: ${_quests.length}',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                            ),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -375,300 +321,6 @@ class _EditCampaignScreenState extends State<EditCampaignScreen> {
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildQuestsSection() {
-    return _buildSectionCard(
-      title: 'Quests',
-      icon: Icons.assignment,
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '${_quests.length} Quest${_quests.length != 1 ? 's' : ''}',
-                style: TextStyle(color: Colors.white.withOpacity(0.7)),
-              ),
-              Row(
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.add_circle, color: DnDTheme.ancientGold),
-                    onPressed: _createNewQuest,
-                    tooltip: 'Neue Quest erstellen',
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      _questsExpanded ? Icons.expand_less : Icons.expand_more,
-                      color: Colors.white70,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _questsExpanded = !_questsExpanded;
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ],
-          ),
-          if (_questsExpanded) ...[
-            const SizedBox(height: 12),
-            if (widget.campaign?.id == null)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
-                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: Colors.orange,
-                      size: 32,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Bitte speichern Sie die Kampagne zuerst',
-                      style: TextStyle(
-                        color: Colors.orange,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Quests können erst nach dem ersten Speichern erstellt werden',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.7),
-                        fontSize: 12,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              )
-            else if (_quests.isEmpty)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'Noch keine Quests erstellt',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.5),
-                    fontStyle: FontStyle.italic,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              )
-            else
-              ..._quests.map((quest) => _buildQuestCard(quest)),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuestCard(Quest quest) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: DnDTheme.slateGrey,
-        border: Border.all(color: DnDTheme.ancientGold.withOpacity(0.3)),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      quest.title,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        _buildQuestStatusChip(quest.status),
-                        const SizedBox(width: 8),
-                        _buildQuestTypeChip(quest.questType),
-                        const SizedBox(width: 8),
-                        _buildQuestDifficultyChip(quest.difficulty),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.edit, size: 18, color: Colors.white70),
-                    onPressed: () => _editQuest(quest),
-                    tooltip: 'Bearbeiten',
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.copy, size: 18, color: Colors.white70),
-                    onPressed: () => _duplicateQuest(quest),
-                    tooltip: 'Duplizieren',
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.delete, size: 18, color: DnDTheme.errorRed),
-                    onPressed: () => _deleteQuest(quest),
-                    tooltip: 'Löschen',
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuestStatusChip(QuestStatus status) {
-    Color bgColor;
-    String label;
-    
-    switch (status) {
-      case QuestStatus.active:
-        bgColor = DnDTheme.successGreen;
-        label = 'Aktiv';
-        break;
-      case QuestStatus.completed:
-        bgColor = Colors.blue;
-        label = 'Abgeschlossen';
-        break;
-      case QuestStatus.failed:
-        bgColor = DnDTheme.errorRed;
-        label = 'Fehlgeschlagen';
-        break;
-      case QuestStatus.abandoned:
-        bgColor = Colors.orange;
-        label = 'Aufgegeben';
-        break;
-      case QuestStatus.onHold:
-        bgColor = Colors.grey;
-        label = 'Pausiert';
-        break;
-    }
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: bgColor.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: bgColor,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuestTypeChip(QuestType type) {
-    String label;
-    
-    switch (type) {
-      case QuestType.main:
-        label = 'Haupt';
-        break;
-      case QuestType.side:
-        label = 'Neben';
-        break;
-      case QuestType.personal:
-        label = 'Persönlich';
-        break;
-      case QuestType.faction:
-        label = 'Fraktion';
-        break;
-    }
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: DnDTheme.arcaneBlue.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: DnDTheme.arcaneBlue,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuestDifficultyChip(QuestDifficulty difficulty) {
-    Color color;
-    String label;
-    
-    switch (difficulty) {
-      case QuestDifficulty.easy:
-        color = Colors.green;
-        label = 'Leicht';
-        break;
-      case QuestDifficulty.medium:
-        color = Colors.yellow;
-        label = 'Mittel';
-        break;
-      case QuestDifficulty.hard:
-        color = Colors.orange;
-        label = 'Schwer';
-        break;
-      case QuestDifficulty.deadly:
-        color = DnDTheme.errorRed;
-        label = 'Tödlich';
-        break;
-      case QuestDifficulty.epic:
-        color = Colors.purple;
-        label = 'Episch';
-        break;
-      case QuestDifficulty.legendary:
-        color = DnDTheme.ancientGold;
-        label = 'Legendär';
-        break;
-    }
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-        ),
       ),
     );
   }
@@ -1001,172 +653,6 @@ class _EditCampaignScreenState extends State<EditCampaignScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _createNewQuest() async {
-    if (widget.campaign?.id == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Bitte speichern Sie die Kampagne zuerst, bevor Sie Quests erstellen.'),
-          backgroundColor: DnDTheme.errorRed,
-        ),
-      );
-      return;
-    }
-    
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ChangeNotifierProvider<EditQuestViewModel>(
-          create: (_) => EditQuestViewModel(),
-          child: Builder(
-            builder: (context) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                context.read<EditQuestViewModel>().initialize(null, campaignId: widget.campaign!.id);
-              });
-              return EditQuestScreen();
-            },
-          ),
-        ),
-      ),
-    );
-    
-    if (result == true) {
-      // Quest wurde erfolgreich erstellt, neu laden
-      await _loadQuests();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Quest erfolgreich erstellt'),
-            backgroundColor: DnDTheme.successGreen,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _editQuest(Quest quest) async {
-    if (widget.campaign?.id == null) return;
-    
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ChangeNotifierProvider<EditQuestViewModel>(
-          create: (_) => EditQuestViewModel(),
-          child: Builder(
-            builder: (context) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                context.read<EditQuestViewModel>().initialize(quest, campaignId: widget.campaign!.id);
-              });
-              return EditQuestScreen();
-            },
-          ),
-        ),
-      ),
-    );
-    
-    if (result == true) {
-      // Quest wurde erfolgreich bearbeitet, neu laden
-      await _loadQuests();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Quest erfolgreich aktualisiert'),
-            backgroundColor: DnDTheme.successGreen,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _duplicateQuest(Quest quest) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Quest duplizieren'),
-        content: Text('Möchten Sie "${quest.title}" wirklich duplizieren?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Abbrechen'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Duplizieren'),
-          ),
-        ],
-      ),
-    );
-    
-    if (confirmed == true && widget.campaign?.id != null) {
-      final now = DateTime.now();
-      final duplicatedQuest = Quest(
-        id: now.millisecondsSinceEpoch,
-        title: '${quest.title} (Kopie)',
-        description: quest.description,
-        status: QuestStatus.active,
-        questType: quest.questType,
-        difficulty: quest.difficulty,
-        createdAt: now,
-        updatedAt: now,
-        location: quest.location,
-        recommendedLevel: quest.recommendedLevel,
-        estimatedDurationHours: quest.estimatedDurationHours,
-        isFavorite: false,
-        campaignId: widget.campaign!.id,
-        tags: List<String>.from(quest.tags),
-        rewards: List.from(quest.rewards),
-        involvedNpcs: List<String>.from(quest.involvedNpcs),
-        linkedWikiEntryIds: List<String>.from(quest.linkedWikiEntryIds),
-      );
-      
-      await _questRepository.create(duplicatedQuest);
-      await _loadQuests();
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Quest erfolgreich dupliziert'),
-            backgroundColor: DnDTheme.successGreen,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _deleteQuest(Quest quest) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Quest löschen'),
-        content: Text('Möchten Sie "${quest.title}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Abbrechen'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: DnDTheme.errorRed),
-            child: Text('Löschen'),
-          ),
-        ],
-      ),
-    );
-    
-    if (confirmed == true) {
-      await _questRepository.delete(quest.id.toString());
-      await _loadQuests();
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Quest erfolgreich gelöscht'),
-            backgroundColor: DnDTheme.successGreen,
-          ),
-        );
-      }
-    }
   }
 
   Future<void> _saveCampaign() async {

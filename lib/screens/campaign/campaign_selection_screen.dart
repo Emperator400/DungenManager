@@ -31,6 +31,10 @@ class _CampaignSelectionScreenState extends State<CampaignSelectionScreen> {
   @override
   void initState() {
     super.initState();
+    // Lade Kampagnen beim Start des Screens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<CampaignViewModel>().loadCampaigns();
+    });
   }
 
   @override
