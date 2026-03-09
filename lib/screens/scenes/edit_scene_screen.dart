@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../models/scene.dart';
-import '../../viewmodels/edit_scene_viewmodel.dart';
-import '../../theme/dnd_theme.dart';
-// import 'select_character_for_scene_screen.dart'; // Datei existiert nicht noch
+  import '../../models/scene.dart';
+  import '../../models/quest.dart';
+  import '../../viewmodels/edit_scene_viewmodel.dart';
+  import '../../theme/dnd_theme.dart';
+  import '../characters/select_character_screen.dart';
 
 /// Enhanced Screen zur Bearbeitung von Scenes mit D&D Theme
 class EditSceneScreen extends StatefulWidget {
@@ -29,12 +30,17 @@ class _EditSceneScreenState extends State<EditSceneScreen> {
   void initState() {
     super.initState();
     // ViewModel initialisieren
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<EditSceneViewModel>().initialize(
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final viewModel = context.read<EditSceneViewModel>();
+      await viewModel.initialize(
         widget.scene,
         sessionId: widget.sessionId,
       );
       _controllersFromViewModel();
+      // Lade die verknüpften Charaktere und Quests
+      await viewModel.loadAvailableQuests();
+      viewModel.buildLinkedCharactersList();
+      viewModel.buildLinkedQuestsList();
     });
   }
 
@@ -182,6 +188,46 @@ class _EditSceneScreenState extends State<EditSceneScreen> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: DnDTheme.arcaneBlue,
                                 foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: DnDTheme.md),
+
+                  // Quests
+                  Consumer<EditSceneViewModel>(
+                    builder: (context, viewModel, child) {
+                      return _buildSectionCard(
+                        title: 'Quests (${viewModel.linkedQuests.length})',
+                        icon: Icons.flag,
+                        child: Column(
+                          children: [
+                            if (viewModel.linkedQuests.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.all(DnDTheme.md),
+                                child: Text(
+                                  'Keine Quests verknüpft',
+                                  style: DnDTheme.bodyText2.copyWith(
+                                    color: Colors.white54,
+                                  ),
+                                ),
+                              )
+                            else
+                              ...viewModel.linkedQuests.map((quest) => 
+                                _buildQuestCard(quest)
+                              ),
+                            const SizedBox(height: DnDTheme.md),
+                            ElevatedButton.icon(
+                              onPressed: () => _showQuestSelector(viewModel),
+                              icon: const Icon(Icons.add, size: 16),
+                              label: const Text('Quest hinzufügen'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: DnDTheme.ancientGold,
+                                foregroundColor: DnDTheme.dungeonBlack,
                               ),
                             ),
                           ],
@@ -615,34 +661,245 @@ class _EditSceneScreenState extends State<EditSceneScreen> {
     }
   }
 
-  Future<void> _removeCharacter(String characterId) async {
+  void _removeCharacter(String characterId) {
     final viewModel = context.read<EditSceneViewModel>();
-    await viewModel.removeCharacter(characterId);
+    viewModel.removeCharacter(characterId);
   }
 
   Future<void> _showCharacterSelector(EditSceneViewModel viewModel) async {
-    // TODO: SelectCharacterForSceneScreen implementieren
-    // Diese Funktion wird in Zukunft verfügbar sein
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.info, color: Colors.white),
-            const SizedBox(width: DnDTheme.sm),
-            Text(
-              'Charakterauswahl wird in Zukunft verfügbar sein',
-              style: DnDTheme.bodyText1.copyWith(
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: DnDTheme.arcaneBlue,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+    final selectedIds = await Navigator.push<List<String>>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SelectCharacterForSceneScreen(
+          previouslySelectedIds: viewModel.scene?.linkedCharacterIds ?? [],
         ),
       ),
     );
+
+    if (selectedIds != null) {
+      viewModel.updateLinkedCharacters(selectedIds);
+      viewModel.buildLinkedCharactersList();
+      await viewModel.loadAvailableQuests();
+      viewModel.buildLinkedQuestsList();
+    }
+  }
+
+  // ===== QUEST METHODEN =====
+
+  Widget _buildQuestCard(Quest quest) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: DnDTheme.sm),
+      padding: const EdgeInsets.all(DnDTheme.sm),
+      decoration: BoxDecoration(
+        gradient: DnDTheme.getMysticalGradient(
+          startColor: DnDTheme.slateGrey,
+          endColor: DnDTheme.stoneGrey,
+        ),
+        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+        border: Border.all(
+          color: _getQuestStatusColor(quest.status).withValues(alpha: 0.5),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          // Quest Icon
+          Container(
+            decoration: BoxDecoration(
+              color: _getQuestStatusColor(quest.status).withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: _getQuestStatusColor(quest.status),
+                width: 2,
+              ),
+            ),
+            child: Icon(
+              _getQuestStatusIcon(quest.status),
+              color: _getQuestStatusColor(quest.status),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: DnDTheme.sm),
+          // Quest Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  quest.title,
+                  style: DnDTheme.bodyText1.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (quest.location != null && quest.location!.isNotEmpty)
+                  Text(
+                    'Ort: ${quest.location}',
+                    style: DnDTheme.bodyText2.copyWith(
+                      color: Colors.white54,
+                      fontSize: 12,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          // Status Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: DnDTheme.xs, vertical: 2),
+            decoration: BoxDecoration(
+              color: _getQuestStatusColor(quest.status).withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+              border: Border.all(
+                color: _getQuestStatusColor(quest.status),
+                width: 1,
+              ),
+            ),
+            child: Text(
+              _getQuestStatusText(quest.status),
+              style: DnDTheme.bodyText2.copyWith(
+                color: _getQuestStatusColor(quest.status),
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(width: DnDTheme.sm),
+          // Remove Button
+          GestureDetector(
+            onTap: () => _removeQuest(quest.id),
+            child: Container(
+              padding: const EdgeInsets.all(DnDTheme.xs),
+              decoration: BoxDecoration(
+                color: DnDTheme.errorRed.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: DnDTheme.errorRed,
+                  width: 1,
+                ),
+              ),
+              child: Icon(
+                Icons.close,
+                color: DnDTheme.errorRed,
+                size: 16,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _removeQuest(int questId) {
+    final viewModel = context.read<EditSceneViewModel>();
+    viewModel.removeQuest(questId.toString());
+  }
+
+  Future<void> _showQuestSelector(EditSceneViewModel viewModel) async {
+    // Zeige einen einfachen Dialog zur Quest-Auswahl
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: DnDTheme.stoneGrey,
+        title: Text(
+          'Quest hinzufügen',
+          style: DnDTheme.headline3.copyWith(color: DnDTheme.ancientGold),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: viewModel.availableQuests.isEmpty
+              ? Center(
+                  child: Text(
+                    'Keine Quests verfügbar',
+                    style: DnDTheme.bodyText2.copyWith(color: Colors.white54),
+                  ),
+                )
+              : ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: viewModel.availableQuests.length,
+                  itemBuilder: (context, index) {
+                    final quest = viewModel.availableQuests[index];
+                    final isLinked = viewModel.scene?.linkedQuestIds.contains(quest.id) ?? false;
+                    return ListTile(
+                      title: Text(
+                        quest.title,
+                        style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                      ),
+                      subtitle: quest.location != null && quest.location!.isNotEmpty
+                          ? Text(
+                              'Ort: ${quest.location}',
+                              style: DnDTheme.bodyText2.copyWith(color: Colors.white54),
+                            )
+                          : null,
+                      trailing: isLinked
+                          ? Icon(Icons.check_circle, color: DnDTheme.successGreen)
+                          : Icon(Icons.add_circle_outline, color: Colors.white54),
+                      onTap: isLinked
+                          ? null
+                          : () {
+                              Navigator.pop(context);
+                              viewModel.addQuest(quest.id.toString());
+                            },
+                      enabled: !isLinked,
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Schließen',
+              style: DnDTheme.bodyText1.copyWith(color: DnDTheme.mysticalPurple),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Hilfsmethoden für Quests
+  Color _getQuestStatusColor(QuestStatus status) {
+    switch (status) {
+      case QuestStatus.active:
+        return Colors.grey;
+      case QuestStatus.onHold:
+        return DnDTheme.arcaneBlue;
+      case QuestStatus.completed:
+        return DnDTheme.successGreen;
+      case QuestStatus.failed:
+        return DnDTheme.errorRed;
+      case QuestStatus.abandoned:
+        return Colors.orange;
+    }
+  }
+
+  IconData _getQuestStatusIcon(QuestStatus status) {
+    switch (status) {
+      case QuestStatus.active:
+        return Icons.flag_outlined;
+      case QuestStatus.onHold:
+        return Icons.play_arrow;
+      case QuestStatus.completed:
+        return Icons.check_circle;
+      case QuestStatus.failed:
+        return Icons.cancel;
+      case QuestStatus.abandoned:
+        return Icons.remove_circle;
+    }
+  }
+
+  String _getQuestStatusText(QuestStatus status) {
+    switch (status) {
+      case QuestStatus.active:
+        return 'Aktiv';
+      case QuestStatus.onHold:
+        return 'In Arbeit';
+      case QuestStatus.completed:
+        return 'Abgeschlossen';
+      case QuestStatus.failed:
+        return 'Fehlgeschlagen';
+      case QuestStatus.abandoned:
+        return 'Abgebrochen';
+    }
   }
 }

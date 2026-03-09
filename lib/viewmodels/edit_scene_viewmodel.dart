@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 import '../models/scene.dart';
 import '../models/creature.dart';
+import '../models/quest.dart';
 import '../database/repositories/scene_model_repository.dart';
 import '../database/repositories/creature_model_repository.dart';
 import '../database/repositories/player_character_model_repository.dart';
+import '../database/repositories/quest_model_repository.dart';
 import '../services/exceptions/service_exceptions.dart';
 
 /// ViewModel für die Scene-Bearbeitung mit Provider-Pattern
@@ -36,14 +38,24 @@ class EditSceneViewModel extends ChangeNotifier {
   List<Creature> get availableCreatures => _availableCreatures;
   List<Map<String, dynamic>> get availablePlayerCharacters => _availablePlayerCharacters;
   List<Map<String, dynamic>> get linkedCharacters => _linkedCharacters;
+  List<Quest> get availableQuests => _availableQuests;
+  List<Quest> get linkedQuests => _linkedQuests;
+
+  final QuestModelRepository _questRepository;
+  
+  // Quest State
+  List<Quest> _availableQuests = [];
+  List<Quest> _linkedQuests = [];
 
   EditSceneViewModel({
     required SceneModelRepository sceneRepository,
     required CreatureModelRepository creatureRepository,
     required PlayerCharacterModelRepository playerCharacterRepository,
+    required QuestModelRepository questRepository,
   }) : _sceneRepository = sceneRepository,
        _creatureRepository = creatureRepository,
-       _playerCharacterRepository = playerCharacterRepository;
+       _playerCharacterRepository = playerCharacterRepository,
+       _questRepository = questRepository;
 
   /// Initialisiert das ViewModel mit einer Scene oder erstellt eine neue
   Future<void> initialize(Scene? scene, {String? sessionId}) async {
@@ -375,6 +387,65 @@ class EditSceneViewModel extends ChangeNotifier {
     currentIds.remove(characterId);
     updateLinkedCharacters(currentIds);
     await buildLinkedCharactersList();
+  }
+
+  /// ===== QUEST METHODEN =====
+
+  /// Lädt alle verfügbaren Quests
+  Future<void> loadAvailableQuests() async {
+    try {
+      final quests = await _questRepository.findAll();
+      _availableQuests = quests;
+      notifyListeners();
+    } catch (e) {
+      _setError('Laden der Quests fehlgeschlagen: ${e.toString()}');
+    }
+  }
+
+  /// Baut die Liste der verknüpften Quests mit Details auf
+  Future<void> buildLinkedQuestsList() async {
+    if (_scene == null) return;
+    
+    try {
+      _linkedQuests = [];
+      
+      for (final questId in _scene!.linkedQuestIds) {
+        try {
+          final quest = await _questRepository.findById(questId);
+          if (quest != null) {
+            _linkedQuests.add(quest);
+          }
+        } catch (e) {
+          // Fehler beim Laden, überspringen
+        }
+      }
+      
+      notifyListeners();
+    } catch (e) {
+      _setError('Laden der verknüpften Quests fehlgeschlagen: ${e.toString()}');
+    }
+  }
+
+  /// Fügt einen einzelnen Quest zur Szene hinzu
+  Future<void> addQuest(String questId) async {
+    if (_scene == null) return;
+    
+    final currentIds = List<String>.from(_scene!.linkedQuestIds);
+    if (!currentIds.contains(questId)) {
+      currentIds.add(questId);
+      updateLinkedQuests(currentIds);
+      await buildLinkedQuestsList();
+    }
+  }
+
+  /// Entfernt einen einzelnen Quest aus der Szene
+  Future<void> removeQuest(String questId) async {
+    if (_scene == null) return;
+    
+    final currentIds = List<String>.from(_scene!.linkedQuestIds);
+    currentIds.remove(questId);
+    updateLinkedQuests(currentIds);
+    await buildLinkedQuestsList();
   }
 
   /// Setzt die Änderungen zurück

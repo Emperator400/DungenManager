@@ -27,6 +27,7 @@ import 'database/repositories/player_character_model_repository.dart';
 import 'database/repositories/session_model_repository.dart';
 import 'database/repositories/scene_model_repository.dart';
 import 'database/repositories/creature_model_repository.dart';
+import 'database/repositories/quest_model_repository.dart';
 
   /// Hauptfunktion der App
 void main() async {
@@ -122,6 +123,9 @@ class DmApp extends StatelessWidget {
         ),
         Provider<PlayerCharacterModelRepository>(
           create: (_) => PlayerCharacterModelRepository(dbConnection),
+        ),
+        Provider<QuestModelRepository>(
+          create: (_) => QuestModelRepository(dbConnection),
         ),
       ],
       child: MaterialApp(

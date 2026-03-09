@@ -8,6 +8,7 @@ import '../../viewmodels/edit_scene_viewmodel.dart';
 import '../../database/repositories/scene_model_repository.dart';
 import '../../database/repositories/creature_model_repository.dart';
 import '../../database/repositories/player_character_model_repository.dart';
+import '../../database/repositories/quest_model_repository.dart';
 import '../../theme/dnd_theme.dart';
 import 'encounter_setup_screen.dart';
 import '../scenes/edit_scene_screen.dart';
@@ -931,6 +932,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     final sceneRepository = context.read<SceneModelRepository>();
     final creatureRepository = context.read<CreatureModelRepository>();
     final playerCharacterRepository = context.read<PlayerCharacterModelRepository>();
+    final questRepository = context.read<QuestModelRepository>();
     
     // Für neue Scenes: sessionId übergeben, für existierende: nicht
     final sessionId = scene == null ? widget.session.id : null;
@@ -945,6 +947,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                 sceneRepository: sceneRepository,
                 creatureRepository: creatureRepository,
                 playerCharacterRepository: playerCharacterRepository,
+                questRepository: questRepository,
               ),
             ),
           ],
