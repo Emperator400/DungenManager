@@ -34,6 +34,7 @@ class Scene {
   Complexity? complexity;
   List<String> linkedWikiEntryIds;
   List<String> linkedQuestIds;
+  final List<String> linkedSoundIds; // Welche Sounds sollen abgespielt werden?
   final String? linkedEncounterId; // Optional: Ein Encounter pro Scene
   final List<String> linkedCharacterIds; // Welche Charaktere sind beteiligt?
   final Map<String, dynamic> sceneData; // Flexible Zusatzdaten (DM-Notizen, Ziele, etc.)
@@ -52,6 +53,7 @@ class Scene {
     this.complexity,
     List<String>? linkedWikiEntryIds,
     List<String>? linkedQuestIds,
+    List<String>? linkedSoundIds,
     this.linkedEncounterId,
     List<String>? linkedCharacterIds,
     Map<String, dynamic>? sceneData,
@@ -60,6 +62,7 @@ class Scene {
   })  : id = id ?? UuidService().generateId(),
         linkedWikiEntryIds = linkedWikiEntryIds ?? [],
         linkedQuestIds = linkedQuestIds ?? [],
+        linkedSoundIds = linkedSoundIds ?? [],
         linkedCharacterIds = linkedCharacterIds ?? [],
         sceneData = sceneData ?? {},
         createdAt = createdAt ?? DateTime.now(),
@@ -78,6 +81,7 @@ class Scene {
     Complexity? complexity,
     List<String>? linkedWikiEntryIds,
     List<String>? linkedQuestIds,
+    List<String>? linkedSoundIds,
     String? linkedEncounterId,
     List<String>? linkedCharacterIds,
     Map<String, dynamic>? sceneData,
@@ -94,8 +98,9 @@ class Scene {
       isCompleted: isCompleted ?? this.isCompleted,
       estimatedDuration: estimatedDuration ?? this.estimatedDuration,
       complexity: complexity ?? this.complexity,
-      linkedWikiEntryIds: linkedWikiEntryIds ?? this.linkedWikiEntryIds,
-      linkedQuestIds: linkedQuestIds ?? this.linkedQuestIds,
+      linkedWikiEntryIds: linkedWikiEntryIds ?? List<String>.from(this.linkedWikiEntryIds),
+      linkedQuestIds: linkedQuestIds ?? List<String>.from(this.linkedQuestIds),
+      linkedSoundIds: linkedSoundIds ?? List<String>.from(this.linkedSoundIds),
       linkedEncounterId: linkedEncounterId ?? this.linkedEncounterId,
       linkedCharacterIds: linkedCharacterIds ?? this.linkedCharacterIds,
       sceneData: sceneData ?? this.sceneData,
@@ -117,6 +122,7 @@ class Scene {
       'complexity': complexity?.name,
       'linkedWikiEntryIds': jsonEncode(linkedWikiEntryIds),
       'linkedQuestIds': jsonEncode(linkedQuestIds),
+      'linkedSoundIds': jsonEncode(linkedSoundIds),
       'createdAt': createdAt.millisecondsSinceEpoch,
       'updatedAt': updatedAt.millisecondsSinceEpoch,
     };
@@ -255,6 +261,7 @@ class Scene {
       'complexity': complexity?.name,
       'linked_wiki_entry_ids': jsonEncode(linkedWikiEntryIds),
       'linked_quest_ids': jsonEncode(linkedQuestIds),
+      'linked_sound_ids': jsonEncode(linkedSoundIds),
       'linked_encounter_id': linkedEncounterId,
       'linked_character_ids': jsonEncode(linkedCharacterIds),
       'scene_data': jsonEncode(sceneData),
@@ -290,6 +297,7 @@ class Scene {
             : null,
         linkedWikiEntryIds: _parseStringList(map['linked_wiki_entry_ids'] ?? map['linkedWikiEntryIds']),
         linkedQuestIds: _parseStringList(map['linked_quest_ids'] ?? map['linkedQuestIds']),
+        linkedSoundIds: _parseStringList(map['linked_sound_ids'] ?? map['linkedSoundIds']),
         linkedEncounterId: ModelParsingHelper.safeStringOrNull(map, 'linked_encounter_id', ModelParsingHelper.safeStringOrNull(map, 'linkedEncounterId', null)),
         linkedCharacterIds: _parseStringList(map['linked_character_ids'] ?? map['linkedCharacterIds']),
         sceneData: _parseMapData(map['scene_data'] ?? map['sceneData']),

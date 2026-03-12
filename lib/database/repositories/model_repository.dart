@@ -33,10 +33,11 @@ abstract class ModelRepository<T> {
     final modelMap = toDatabaseMap(model);
     print('💾 [ModelRepository] Model zu speichern: $modelMap');
     
-    final id = await db.insert(tableName, modelMap);
-    print('💾 [ModelRepository] Insert ID: $id');
+    final rowId = await db.insert(tableName, modelMap);
+    print('💾 [ModelRepository] Insert rowid: $rowId');
     
-    // Prüfe, ob das Model bereits eine ID hat
+    // Hole das eingefügte Model aus der Datenbank zurück
+    // Dies stellt sicher, dass alle Felder korrekt serialisiert wurden
     if (model is dynamic) {
       try {
         final modelId = model.id;
@@ -44,50 +45,46 @@ abstract class ModelRepository<T> {
         
         // Unterscheide zwischen int und String IDs
         if (modelId is int) {
-          // Bei int IDs: Negative IDs sind temporär (neu), positive sind gespeichert
-          if (modelId < 0) {
-            print('💾 [ModelRepository] Temporäre negative ID erkannt, verwende generierte ID');
-            return model.copyWith(id: id) as T;
-          } else {
-            print('💾 [ModelRepository] Existierende positive ID, hole aus DB');
-            final maps = await db.query(
-              tableName,
-              where: 'id = ?',
-              whereArgs: [modelId],
-              limit: 1,
-            );
-            if (maps.isNotEmpty) {
-              return fromDatabaseMap(maps.first);
-            }
-            return model;
+          // Bei int IDs: Hole das Model aus der DB
+          print('💾 [ModelRepository] Hole Model mit int ID aus DB');
+          final maps = await db.query(
+            tableName,
+            where: 'id = ?',
+            whereArgs: [modelId],
+            limit: 1,
+          );
+          if (maps.isNotEmpty) {
+            final result = fromDatabaseMap(maps.first);
+            print('💾 [ModelRepository] Model erfolgreich aus DB geholt');
+            return result;
           }
+          // Fallback wenn nicht gefunden (sollte nicht passieren)
+          return model;
         } else if (modelId is String) {
-          // Bei String IDs: UUID oder 'new_' Prefix sind temporär
-          if (modelId.isEmpty || modelId.startsWith('new_')) {
-            print('💾 [ModelRepository] Temporäre String ID erkannt, verwende generierte ID');
-            return model.copyWith(id: id.toString()) as T;
-          } else {
-            print('💾 [ModelRepository] Existierende UUID, hole aus DB');
-            final maps = await db.query(
-              tableName,
-              where: 'id = ?',
-              whereArgs: [modelId],
-              limit: 1,
-            );
-            if (maps.isNotEmpty) {
-              return fromDatabaseMap(maps.first);
-            }
-            print('💾 [ModelRepository] Kein Eintrag in DB gefunden, gib Original zurück');
-            return model;
+          // Bei String IDs: Hole das Model aus der DB
+          print('💾 [ModelRepository] Hole Model mit String ID aus DB');
+          final maps = await db.query(
+            tableName,
+            where: 'id = ?',
+            whereArgs: [modelId],
+            limit: 1,
+          );
+          if (maps.isNotEmpty) {
+            final result = fromDatabaseMap(maps.first);
+            print('💾 [ModelRepository] Model erfolgreich aus DB geholt');
+            return result;
           }
+          // Fallback wenn nicht gefunden (sollte nicht passieren)
+          print('💾 [ModelRepository] Warnung: Model nicht in DB gefunden, gib Original zurück');
+          return model;
         }
         
         // Fallback: Kein ID-Typ erkannt
-        print('💾 [ModelRepository] Unbekannter ID-Typ, verwende generierte ID');
-        return model.copyWith(id: id.toString()) as T;
+        print('💾 [ModelRepository] Unbekannter ID-Typ, gib Original zurück');
+        return model;
       } catch (e) {
-        // Fallback: Modelle ohne copyWith
-        print('💾 [ModelRepository] Fehler bei ID-Prüfung: $e, gib Original zurück');
+        // Fallback bei Fehler
+        print('💾 [ModelRepository] Fehler beim Lesen aus DB: $e, gib Original zurück');
         return model;
       }
     }

@@ -28,6 +28,8 @@ import 'database/repositories/session_model_repository.dart';
 import 'database/repositories/scene_model_repository.dart';
 import 'database/repositories/creature_model_repository.dart';
 import 'database/repositories/quest_model_repository.dart';
+import 'database/repositories/sound_model_repository.dart';
+import 'database/repositories/wiki_entry_model_repository.dart';
 
   /// Hauptfunktion der App
 void main() async {
@@ -126,6 +128,12 @@ class DmApp extends StatelessWidget {
         ),
         Provider<QuestModelRepository>(
           create: (_) => QuestModelRepository(dbConnection),
+        ),
+        Provider<SoundModelRepository>(
+          create: (_) => SoundModelRepository(dbConnection),
+        ),
+        Provider<WikiEntryModelRepository>(
+          create: (_) => WikiEntryModelRepository(dbConnection),
         ),
       ],
       child: MaterialApp(

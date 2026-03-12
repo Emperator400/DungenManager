@@ -16,6 +16,7 @@ class SessionEntity extends BaseEntity implements DatabaseEntity<SessionEntity> 
   final String? encounterIds;
   final String? questProgressIds;
   final String? characterTrackingIds;
+  final String? linkedSoundIds;
   final DateTime createdAt;
   final DateTime? startedAt;
   final DateTime? completedAt;
@@ -32,6 +33,7 @@ class SessionEntity extends BaseEntity implements DatabaseEntity<SessionEntity> 
     this.encounterIds,
     this.questProgressIds,
     this.characterTrackingIds,
+    this.linkedSoundIds,
     DateTime? createdAt,
     this.startedAt,
     this.completedAt,
@@ -51,6 +53,7 @@ class SessionEntity extends BaseEntity implements DatabaseEntity<SessionEntity> 
       encounterIds: map['encounterIds'] as String?,
       questProgressIds: map['questProgressIds'] as String?,
       characterTrackingIds: map['characterTrackingIds'] as String?,
+      linkedSoundIds: map['linkedSoundIds'] as String?,
       createdAt: map['createdAt'] != null ? DateTime.parse(map['createdAt'] as String) : DateTime.now(),
       startedAt: map['startedAt'] != null ? DateTime.parse(map['startedAt'] as String) : null,
       completedAt: map['completedAt'] != null ? DateTime.parse(map['completedAt'] as String) : null,
@@ -70,6 +73,7 @@ class SessionEntity extends BaseEntity implements DatabaseEntity<SessionEntity> 
       encounterIds: session.encounterIds?.join(','),
       questProgressIds: session.questProgressIds?.join(','),
       characterTrackingIds: session.characterTrackingIds?.join(','),
+      linkedSoundIds: session.linkedSoundIds?.join(','),
       createdAt: session.createdAt,
       startedAt: session.startedAt,
       completedAt: session.completedAt,
@@ -96,6 +100,7 @@ class SessionEntity extends BaseEntity implements DatabaseEntity<SessionEntity> 
     'encounterIds',
     'questProgressIds',
     'characterTrackingIds',
+    'linkedSoundIds',
     'createdAt',
     'startedAt',
     'completedAt',
@@ -115,6 +120,7 @@ class SessionEntity extends BaseEntity implements DatabaseEntity<SessionEntity> 
       encounterIds TEXT,
       questProgressIds TEXT,
       characterTrackingIds TEXT,
+      linkedSoundIds TEXT,
       createdAt TEXT NOT NULL,
       startedAt TEXT,
       completedAt TEXT,
@@ -143,6 +149,7 @@ class SessionEntity extends BaseEntity implements DatabaseEntity<SessionEntity> 
       'encounterIds': encounterIds,
       'questProgressIds': questProgressIds,
       'characterTrackingIds': characterTrackingIds,
+      'linkedSoundIds': linkedSoundIds,
       'createdAt': createdAt.toIso8601String(),
       'startedAt': startedAt?.toIso8601String(),
       'completedAt': completedAt?.toIso8601String(),
@@ -304,6 +311,7 @@ class SessionEntity extends BaseEntity implements DatabaseEntity<SessionEntity> 
       encounterIds: encounterIds?.split(',').where((s) => s.isNotEmpty).toList() ?? [],
       questProgressIds: questProgressIds?.split(',').where((s) => s.isNotEmpty).toList() ?? [],
       characterTrackingIds: characterTrackingIds?.split(',').where((s) => s.isNotEmpty).toList() ?? [],
+      linkedSoundIds: linkedSoundIds?.split(',').where((s) => s.isNotEmpty).toList() ?? [],
       createdAt: createdAt,
       startedAt: startedAt,
       completedAt: completedAt,

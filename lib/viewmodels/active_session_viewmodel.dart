@@ -3,10 +3,13 @@ import 'package:flutter/foundation.dart';
 import '../models/campaign.dart';
 import '../models/session.dart';
 import '../models/scene.dart';
+import '../models/sound.dart';
 import '../database/repositories/session_model_repository.dart';
 import '../database/repositories/scene_model_repository.dart';
+import '../database/repositories/sound_model_repository.dart';
 import '../database/core/database_connection.dart';
 import '../services/scene_service.dart';
+import '../services/sound_service.dart';
 
 /// ViewModel für aktive Sessions mit neuer Repository-Architektur
 /// Zentralisiert State Management und Business-Logik für laufende D&D-Sessions
@@ -17,6 +20,8 @@ class ActiveSessionViewModel extends ChangeNotifier {
   final SessionModelRepository _sessionRepository;
   final SceneModelRepository _sceneRepository;
   final SceneService _sceneService;
+  final SoundModelRepository _soundRepository;
+  final SoundService _soundService;
 
   // ============================================================================
   // STATE VARIABLES
@@ -54,11 +59,15 @@ class ActiveSessionViewModel extends ChangeNotifier {
     SessionModelRepository? sessionRepository,
     SceneModelRepository? sceneRepository,
     SceneService? sceneService,
+    SoundModelRepository? soundRepository,
+    SoundService? soundService,
   }) : _currentSession = session,
        _campaign = campaign,
        _sessionRepository = sessionRepository ?? SessionModelRepository(DatabaseConnection.instance),
        _sceneRepository = sceneRepository ?? SceneModelRepository(DatabaseConnection.instance),
-       _sceneService = sceneService ?? SceneService(DatabaseConnection.instance) {
+       _sceneService = sceneService ?? SceneService(DatabaseConnection.instance),
+       _soundRepository = soundRepository ?? SoundModelRepository(DatabaseConnection.instance),
+       _soundService = soundService ?? SoundService() {
     // Lade Scenes beim Initialisieren
     _loadScenes();
   }
@@ -229,6 +238,94 @@ class ActiveSessionViewModel extends ChangeNotifier {
       await _sceneService.moveSceneDown(sceneId);
       await _loadScenes();
     });
+  }
+
+  // ============================================================================
+  // SESSION SOUND OPERATIONS
+  // ============================================================================
+
+  /// Lädt alle Sounds aus der Datenbank
+  Future<List<Sound>> loadAllSounds() async {
+    try {
+      return await _soundRepository.findAll();
+    } catch (e) {
+      print('Fehler beim Laden der Sounds: $e');
+      return [];
+    }
+  }
+
+  /// Fügt einen Sound zur Session hinzu
+  Future<void> addSoundToSession(String soundId) async {
+    await _executeWithErrorHandling(() async {
+      final currentSounds = _currentSession.linkedSoundIds.toList();
+      if (!currentSounds.contains(soundId)) {
+        currentSounds.add(soundId);
+        _currentSession = _currentSession.copyWith(
+          linkedSoundIds: currentSounds,
+        );
+        await _sessionRepository.update(_currentSession);
+        notifyListeners();
+      }
+    });
+  }
+
+  /// Entfernt einen Sound aus der Session
+  Future<void> removeSoundFromSession(String soundId) async {
+    await _executeWithErrorHandling(() async {
+      final currentSounds = _currentSession.linkedSoundIds.toList();
+      currentSounds.remove(soundId);
+      _currentSession = _currentSession.copyWith(
+        linkedSoundIds: currentSounds,
+      );
+      await _sessionRepository.update(_currentSession);
+      notifyListeners();
+    });
+  }
+
+  /// Spielt einen Sound ab (für Session-Musik)
+  Future<void> playSessionSound(String soundId, String filePath) async {
+    try {
+      await SoundService.playSound(filePath);
+      notifyListeners();
+    } catch (e) {
+      print('Fehler beim Abspielen des Sounds: $e');
+      rethrow;
+    }
+  }
+
+  /// Pausiert den aktuellen Sound
+  Future<void> pauseSessionSound() async {
+    try {
+      await SoundService.pauseSound();
+      notifyListeners();
+    } catch (e) {
+      print('Fehler beim Pausieren: $e');
+    }
+  }
+
+  /// Stoppt den aktuellen Sound
+  Future<void> stopSessionSound() async {
+    try {
+      await SoundService.stopSound();
+      notifyListeners();
+    } catch (e) {
+      print('Fehler beim Stoppen: $e');
+    }
+  }
+
+  /// Setzt die Lautstärke
+  Future<void> setSessionVolume(double volume) async {
+    try {
+      await SoundService.setVolume(volume);
+      notifyListeners();
+    } catch (e) {
+      print('Fehler beim Setzen der Lautstärke: $e');
+    }
+  }
+
+  /// Prüft ob gerade ein Sound läuft
+  Future<bool> getIsPlaying() async {
+    return await SoundService.isPlaying();
   }
 
   // ============================================================================

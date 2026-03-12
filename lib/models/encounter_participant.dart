@@ -27,6 +27,9 @@ class EncounterParticipant {
   final String? notes;
   final String? characterId; // Für Player-Typen
 
+  /// Gibt den Tabellennamen für die Datenbank zurück
+  static String get tableName => 'encounter_participants';
+
   EncounterParticipant({
     String? id,
     required this.encounterId,

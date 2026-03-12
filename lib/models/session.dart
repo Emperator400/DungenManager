@@ -25,6 +25,7 @@ class Session {
   final List<String> encounterIds; // Kampfbegegnungen
   final List<String> questProgressIds; // Quest-Fortschritt
   final List<String> characterTrackingIds; // Character-Tracking
+  final List<String> linkedSoundIds; // Verknüpfte Sounds für Session-Musik
   final DateTime createdAt;
   final DateTime? startedAt;
   final DateTime? completedAt;
@@ -40,6 +41,7 @@ class Session {
     this.encounterIds = const [],
     this.questProgressIds = const [],
     this.characterTrackingIds = const [],
+    this.linkedSoundIds = const [],
     DateTime? createdAt,
     this.startedAt,
     this.completedAt,
@@ -89,6 +91,7 @@ class Session {
       'encounterIds': _serializeStringList(encounterIds),
       'questProgressIds': _serializeStringList(questProgressIds),
       'characterTrackingIds': _serializeStringList(characterTrackingIds),
+      'linkedSoundIds': _serializeStringList(linkedSoundIds),
       'createdAt': createdAt.toIso8601String(),
       'startedAt': startedAt?.toIso8601String(),
       'completedAt': completedAt?.toIso8601String(),
@@ -113,6 +116,7 @@ class Session {
       encounterIds: _deserializeStringList(map['encounterIds'] as String?),
       questProgressIds: _deserializeStringList(map['questProgressIds'] as String?),
       characterTrackingIds: _deserializeStringList(map['characterTrackingIds'] as String?),
+      linkedSoundIds: _deserializeStringList(map['linkedSoundIds'] as String?),
       createdAt: ModelParsingHelper.safeDateTime(map, 'createdAt', DateTime.now()),
       startedAt: ModelParsingHelper.safeDateTimeOrNull(map, 'startedAt', null),
       completedAt: ModelParsingHelper.safeDateTimeOrNull(map, 'completedAt', null),
@@ -131,6 +135,7 @@ class Session {
     List<String>? encounterIds,
     List<String>? questProgressIds,
     List<String>? characterTrackingIds,
+    List<String>? linkedSoundIds,
     DateTime? createdAt,
     DateTime? startedAt,
     DateTime? completedAt,
@@ -146,6 +151,7 @@ class Session {
       encounterIds: encounterIds ?? this.encounterIds,
       questProgressIds: questProgressIds ?? this.questProgressIds,
       characterTrackingIds: characterTrackingIds ?? this.characterTrackingIds,
+      linkedSoundIds: linkedSoundIds ?? this.linkedSoundIds,
       createdAt: createdAt ?? this.createdAt,
       startedAt: startedAt ?? this.startedAt,
       completedAt: completedAt ?? this.completedAt,

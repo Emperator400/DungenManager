@@ -77,7 +77,26 @@ class _SessionListForCampaignScreenState extends State<SessionListForCampaignScr
         ],
       ),
       body: _buildSessionsList(),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _createNewSession,
+        backgroundColor: DnDTheme.mysticalPurple,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text(
+          'Neue Session',
+          style: TextStyle(color: Colors.white),
+        ),
+        tooltip: 'Neue Session erstellen',
+      ),
     );
+  }
+
+  Future<void> _createNewSession() async {
+    final viewModel = context.read<SessionListForCampaignViewModel>();
+    final newSession = await viewModel.createSession();
+    
+    if (newSession != null) {
+      _editSession(newSession);
+    }
   }
 
   Widget _buildSessionsList() {

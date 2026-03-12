@@ -3,13 +3,19 @@ import 'package:provider/provider.dart';
 import '../../models/campaign.dart';
 import '../../models/session.dart';
 import '../../models/scene.dart';
+import '../../models/sound.dart';
+import '../../models/quest.dart';
+import '../../models/wiki_entry.dart';
 import '../../viewmodels/active_session_viewmodel.dart';
 import '../../viewmodels/edit_scene_viewmodel.dart';
 import '../../database/repositories/scene_model_repository.dart';
 import '../../database/repositories/creature_model_repository.dart';
 import '../../database/repositories/player_character_model_repository.dart';
 import '../../database/repositories/quest_model_repository.dart';
+import '../../database/repositories/sound_model_repository.dart';
+import '../../database/repositories/wiki_entry_model_repository.dart';
 import '../../theme/dnd_theme.dart';
+import '../../widgets/audio/sound_player_widget.dart';
 import 'encounter_setup_screen.dart';
 import '../scenes/edit_scene_screen.dart';
 
@@ -564,6 +570,34 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                   ),
                   const SizedBox(height: 8),
                 ],
+                // Verknüpfte Quests
+                if (scene.linkedQuestIds.isNotEmpty) ...[
+                  Text(
+                    'Verknüpfte Quests',
+                    style: DnDTheme.bodyText2.copyWith(
+                      color: DnDTheme.ancientGold,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 8,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  _buildLinkedQuestsRow(scene),
+                  const SizedBox(height: 8),
+                ],
+                // Verknüpfte Sounds
+                if (scene.linkedSoundIds.isNotEmpty) ...[
+                  Text(
+                    'Verknüpfte Sounds',
+                    style: DnDTheme.bodyText2.copyWith(
+                      color: DnDTheme.ancientGold,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 8,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  _buildLinkedSoundsRow(scene),
+                  const SizedBox(height: 8),
+                ],
                 // Verknüpfte Charaktere
                 if (scene.linkedCharacterIds.isNotEmpty) ...[
                   Text(
@@ -576,6 +610,20 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                   ),
                   const SizedBox(height: 2),
                   _buildLinkedCharactersRow(scene),
+                  const SizedBox(height: 8),
+                ],
+                // Verknüpfte Wiki-Einträge
+                if (scene.linkedWikiEntryIds.isNotEmpty) ...[
+                  Text(
+                    'Verknüpfte Wiki-Einträge',
+                    style: DnDTheme.bodyText2.copyWith(
+                      color: DnDTheme.ancientGold,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 8,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  _buildLinkedWikiEntriesRow(scene),
                   const SizedBox(height: 8),
                 ],
                 // Zusätzliche Details
@@ -668,6 +716,88 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     } else {
       return '${minutes}min';
     }
+  }
+
+  /// Baut eine Reihe mit verknüpften Sounds mit voller Playback-Steuerung
+  Widget _buildLinkedSoundsRow(Scene scene) {
+    if (scene.linkedSoundIds.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return FutureBuilder<List<Sound>>(
+      future: _loadLinkedSounds(scene.linkedSoundIds),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(4),
+            child: Center(
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
+              ),
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Padding(
+            padding: const EdgeInsets.all(4),
+            child: Text(
+              'Fehler beim Laden der Sounds',
+              style: DnDTheme.bodyText2.copyWith(
+                color: DnDTheme.errorRed,
+                fontSize: 8,
+              ),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final linkedSounds = snapshot.data!;
+        return Column(
+          children: linkedSounds.map((sound) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: SoundPlayerWidget(
+                sound: sound,
+                compactMode: true,
+                showCloseButton: false,
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  /// Lädt die Details der verknüpften Sounds
+  Future<List<Sound>> _loadLinkedSounds(List<String> soundIds) async {
+    final List<Sound> result = [];
+    
+    try {
+      final soundRepo = context.read<SoundModelRepository>();
+      
+      for (final soundId in soundIds) {
+        try {
+          final sound = await soundRepo.findById(soundId);
+          // Nur gültige Sounds hinzufügen
+          if (sound != null && sound.isValid) {
+            result.add(sound);
+          }
+        } catch (e) {
+          // Nicht gefunden oder ungültig, überspringen
+          print('Sound $soundId konnte nicht geladen werden: $e');
+        }
+      }
+    } catch (e) {
+      print('Fehler beim Laden der Sounds: $e');
+    }
+    
+    return result;
   }
 
   /// Baut eine Reihe mit verknüpften Charakteren
@@ -790,6 +920,522 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     }
     
     return result;
+  }
+
+  /// Baut eine Reihe mit verknüpften Wiki-Einträgen
+  Widget _buildLinkedWikiEntriesRow(Scene scene) {
+    return FutureBuilder<List<WikiEntry>>(
+      future: _loadLinkedWikiEntries(scene.linkedWikiEntryIds),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(4),
+            child: Center(
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
+              ),
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Padding(
+            padding: const EdgeInsets.all(4),
+            child: Text(
+              'Fehler beim Laden der Wiki-Einträge',
+              style: DnDTheme.bodyText2.copyWith(
+                color: DnDTheme.errorRed,
+                fontSize: 8,
+              ),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final linkedWikiEntries = snapshot.data!;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          decoration: BoxDecoration(
+            color: DnDTheme.mysticalPurple.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+            border: Border.all(
+              color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+              width: 1,
+            ),
+          ),
+          child: Wrap(
+            spacing: 4,
+            runSpacing: 2,
+            children: linkedWikiEntries.map((wikiEntry) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: _getWikiEntryTypeColor(wikiEntry.entryType).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                  border: Border.all(
+                    color: _getWikiEntryTypeColor(wikiEntry.entryType).withValues(alpha: 0.4),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _getWikiEntryTypeIcon(wikiEntry.entryType),
+                      color: _getWikiEntryTypeColor(wikiEntry.entryType),
+                      size: 8,
+                    ),
+                    const SizedBox(width: 2),
+                    Text(
+                      wikiEntry.title,
+                      style: DnDTheme.bodyText2.copyWith(
+                        color: Colors.white,
+                        fontSize: 7,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Lädt die Details der verknüpften Wiki-Einträge
+  Future<List<WikiEntry>> _loadLinkedWikiEntries(List<String> wikiEntryIds) async {
+    final List<WikiEntry> result = [];
+    
+    try {
+      final wikiEntryRepo = context.read<WikiEntryModelRepository>();
+      
+      for (final wikiId in wikiEntryIds) {
+        try {
+          final wikiEntry = await wikiEntryRepo.findById(wikiId);
+          if (wikiEntry != null) {
+            result.add(wikiEntry);
+          }
+        } catch (e) {
+          // Nicht gefunden, überspringen
+          print('Wiki-Eintrag $wikiId konnte nicht geladen werden: $e');
+        }
+      }
+    } catch (e) {
+      print('Fehler beim Laden der Wiki-Einträge: $e');
+    }
+    
+    return result;
+  }
+
+  /// Gibt die Farbe für den Wiki-Eintrag-Typ zurück
+  Color _getWikiEntryTypeColor(WikiEntryType type) {
+    switch (type) {
+      case WikiEntryType.Person:
+        return DnDTheme.successGreen;
+      case WikiEntryType.Place:
+        return DnDTheme.arcaneBlue;
+      case WikiEntryType.Lore:
+        return DnDTheme.ancientGold;
+      case WikiEntryType.Faction:
+        return DnDTheme.mysticalPurple;
+      case WikiEntryType.Magic:
+        return Colors.purple;
+      case WikiEntryType.History:
+        return Colors.orange;
+      case WikiEntryType.Item:
+        return DnDTheme.infoBlue;
+      case WikiEntryType.Quest:
+        return DnDTheme.successGreen;
+      case WikiEntryType.Creature:
+        return DnDTheme.errorRed;
+    }
+  }
+
+  /// Gibt das Icon für den Wiki-Eintrag-Typ zurück
+  IconData _getWikiEntryTypeIcon(WikiEntryType type) {
+    switch (type) {
+      case WikiEntryType.Person:
+        return Icons.person;
+      case WikiEntryType.Place:
+        return Icons.place;
+      case WikiEntryType.Lore:
+        return Icons.book;
+      case WikiEntryType.Faction:
+        return Icons.groups;
+      case WikiEntryType.Magic:
+        return Icons.auto_awesome;
+      case WikiEntryType.History:
+        return Icons.history;
+      case WikiEntryType.Item:
+        return Icons.inventory_2;
+      case WikiEntryType.Quest:
+        return Icons.flag;
+      case WikiEntryType.Creature:
+        return Icons.pets;
+    }
+  }
+
+  /// Baut eine Liste mit verknüpften Quests mit vollständigen Informationen
+  Widget _buildLinkedQuestsRow(Scene scene) {
+    return FutureBuilder<List<Quest>>(
+      future: _loadLinkedQuests(scene.linkedQuestIds),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(4),
+            child: Center(
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
+              ),
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Padding(
+            padding: const EdgeInsets.all(4),
+            child: Text(
+              'Fehler beim Laden der Quests',
+              style: DnDTheme.bodyText2.copyWith(
+                color: DnDTheme.errorRed,
+                fontSize: 8,
+              ),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final linkedQuests = snapshot.data!;
+        return Column(
+          children: linkedQuests.map((quest) {
+            return _buildQuestCard(quest);
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  /// Baut eine vollständige Quest-Karte mit allen Informationen
+  Widget _buildQuestCard(Quest quest) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        gradient: DnDTheme.getMysticalGradient(
+          startColor: DnDTheme.slateGrey.withValues(alpha: 0.8),
+          endColor: DnDTheme.stoneGrey.withValues(alpha: 0.8),
+        ),
+        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+        border: Border.all(
+          color: _getQuestStatusColor(quest.status).withValues(alpha: 0.5),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header: Titel und Status
+          Row(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: _getQuestStatusColor(quest.status).withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: _getQuestStatusColor(quest.status),
+                    width: 1,
+                  ),
+                ),
+                child: Icon(
+                  _getQuestStatusIcon(quest.status),
+                  color: _getQuestStatusColor(quest.status),
+                  size: 14,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      quest.title,
+                      style: DnDTheme.bodyText1.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Row(
+                      children: [
+                        Text(
+                          _getQuestStatusText(quest.status),
+                          style: DnDTheme.bodyText2.copyWith(
+                            color: _getQuestStatusColor(quest.status),
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (quest.location != null && quest.location!.isNotEmpty) ...[
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.location_on,
+                            color: Colors.white54,
+                            size: 10,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            quest.location!,
+                            style: DnDTheme.bodyText2.copyWith(
+                              color: Colors.white54,
+                              fontSize: 8,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          
+          // Beschreibung
+          if (quest.description.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              quest.description,
+              style: DnDTheme.bodyText2.copyWith(
+                color: Colors.white70,
+                fontSize: 8,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          
+          // Aktionen
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              // Als aufgegeben markieren
+              Expanded(
+                child: _buildQuestActionButton(
+                  icon: Icons.remove_circle_outline,
+                  label: 'Aufgegeben',
+                  color: Colors.orange,
+                  isSelected: quest.status == QuestStatus.abandoned,
+                  onTap: () => _updateQuestStatus(quest, QuestStatus.abandoned),
+                ),
+              ),
+              const SizedBox(width: 4),
+              // Als aktiv markieren
+              Expanded(
+                child: _buildQuestActionButton(
+                  icon: Icons.play_circle_outline,
+                  label: 'Aktiv',
+                  color: Colors.grey,
+                  isSelected: quest.status == QuestStatus.active,
+                  onTap: () => _updateQuestStatus(quest, QuestStatus.active),
+                ),
+              ),
+              const SizedBox(width: 4),
+              // Als abgeschlossen markieren
+              Expanded(
+                child: _buildQuestActionButton(
+                  icon: Icons.check_circle_outline,
+                  label: 'Abgeschlossen',
+                  color: DnDTheme.successGreen,
+                  isSelected: quest.status == QuestStatus.completed,
+                  onTap: () => _updateQuestStatus(quest, QuestStatus.completed),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Baut einen Quest-Aktions-Button
+  Widget _buildQuestActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        decoration: BoxDecoration(
+          gradient: DnDTheme.getMysticalGradient(
+            startColor: isSelected ? color.withValues(alpha: 0.4) : color.withValues(alpha: 0.1),
+            endColor: isSelected ? color.withValues(alpha: 0.2) : color.withValues(alpha: 0.05),
+          ),
+          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+          border: Border.all(
+            color: isSelected ? color : color.withValues(alpha: 0.3),
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? color : color.withValues(alpha: 0.7),
+              size: 12,
+            ),
+            const SizedBox(width: 2),
+            Text(
+              label,
+              style: DnDTheme.bodyText2.copyWith(
+                color: isSelected ? color : Colors.white70,
+                fontSize: 7,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Aktualisiert den Status eines Quests
+  Future<void> _updateQuestStatus(Quest quest, QuestStatus newStatus) async {
+    try {
+      final questRepo = context.read<QuestModelRepository>();
+      
+      // Quest mit neuem Status erstellen
+      final updatedQuest = quest.copyWith(
+        status: newStatus,
+        updatedAt: DateTime.now(),
+      );
+      
+      // In der Datenbank aktualisieren
+      await questRepo.update(updatedQuest);
+      
+      // UI aktualisieren
+      setState(() {});
+      
+      // Feedback anzeigen
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(
+                _getQuestStatusIcon(newStatus),
+                color: Colors.white,
+                size: 16,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '"${quest.title}" als ${_getQuestStatusText(newStatus)} markiert',
+                style: const TextStyle(color: Colors.white, fontSize: 11),
+              ),
+            ],
+          ),
+          backgroundColor: _getQuestStatusColor(newStatus),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      print('Fehler beim Aktualisieren des Quest-Status: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Fehler beim Aktualisieren des Quests'),
+          backgroundColor: DnDTheme.errorRed,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  /// Lädt die Details der verknüpften Quests
+  Future<List<Quest>> _loadLinkedQuests(List<String> questIds) async {
+    final List<Quest> result = [];
+    
+    try {
+      final questRepo = context.read<QuestModelRepository>();
+      
+      for (final questId in questIds) {
+        try {
+          final quest = await questRepo.findById(questId);
+          if (quest != null) {
+            result.add(quest);
+          }
+        } catch (e) {
+          // Nicht gefunden, überspringen
+          print('Quest $questId konnte nicht geladen werden: $e');
+        }
+      }
+    } catch (e) {
+      print('Fehler beim Laden der Quests: $e');
+    }
+    
+    return result;
+  }
+
+  /// Gibt die Farbe für den Quest-Status zurück
+  Color _getQuestStatusColor(QuestStatus status) {
+    switch (status) {
+      case QuestStatus.active:
+        return Colors.grey;
+      case QuestStatus.onHold:
+        return DnDTheme.arcaneBlue;
+      case QuestStatus.completed:
+        return DnDTheme.successGreen;
+      case QuestStatus.failed:
+        return DnDTheme.errorRed;
+      case QuestStatus.abandoned:
+        return Colors.orange;
+    }
+  }
+
+  /// Gibt das Icon für den Quest-Status zurück
+  IconData _getQuestStatusIcon(QuestStatus status) {
+    switch (status) {
+      case QuestStatus.active:
+        return Icons.flag_outlined;
+      case QuestStatus.onHold:
+        return Icons.play_arrow;
+      case QuestStatus.completed:
+        return Icons.check_circle;
+      case QuestStatus.failed:
+        return Icons.cancel;
+      case QuestStatus.abandoned:
+        return Icons.remove_circle;
+    }
+  }
+
+  /// Gibt den Text für den Quest-Status zurück
+  String _getQuestStatusText(QuestStatus status) {
+    switch (status) {
+      case QuestStatus.active:
+        return 'Aktiv';
+      case QuestStatus.onHold:
+        return 'In Arbeit';
+      case QuestStatus.completed:
+        return 'Abgeschlossen';
+      case QuestStatus.failed:
+        return 'Fehlgeschlagen';
+      case QuestStatus.abandoned:
+        return 'Aufgegeben';
+    }
   }
 
   /// Gibt die Farbe für den Charaktertyp zurück
@@ -933,6 +1579,8 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     final creatureRepository = context.read<CreatureModelRepository>();
     final playerCharacterRepository = context.read<PlayerCharacterModelRepository>();
     final questRepository = context.read<QuestModelRepository>();
+    final soundRepository = context.read<SoundModelRepository>();
+    final wikiEntryRepository = context.read<WikiEntryModelRepository>();
     
     // Für neue Scenes: sessionId übergeben, für existierende: nicht
     final sessionId = scene == null ? widget.session.id : null;
@@ -948,6 +1596,8 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                 creatureRepository: creatureRepository,
                 playerCharacterRepository: playerCharacterRepository,
                 questRepository: questRepository,
+                soundRepository: soundRepository,
+                wikiEntryRepository: wikiEntryRepository,
               ),
             ),
           ],
@@ -1520,9 +2170,31 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   }
 
   void _startEncounter() {
+    // Prüfe ob eine aktive Scene existiert
+    final activeSceneId = _viewModel.currentSession.activeSceneId;
+    if (activeSceneId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bitte aktiviere zuerst eine Szene!'),
+          duration: Duration(seconds: 2),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Finde die aktive Scene
+    final activeScene = _viewModel.scenes.firstWhere(
+      (scene) => scene.id == activeSceneId,
+      orElse: () => throw Exception('Scene nicht gefunden'),
+    );
+
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
-        builder: (ctx) => EncounterSetupScreen(campaign: _viewModel.campaign),
+        builder: (ctx) => EncounterSetupScreen(
+          campaign: _viewModel.campaign,
+          scene: activeScene,
+        ),
       ),
     );
   }

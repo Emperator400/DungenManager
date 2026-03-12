@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import '../models/session.dart';
+import '../models/sound.dart';
 import '../services/exceptions/service_exceptions.dart';
 import '../database/repositories/session_model_repository.dart';
+import '../database/repositories/sound_model_repository.dart';
 import '../database/core/database_connection.dart';
 
 /// ViewModel für die Session-Bearbeitung mit neuer Repository-Architektur
@@ -9,17 +11,23 @@ import '../database/core/database_connection.dart';
 /// HINWEIS: Verwendet jetzt das neue SessionModelRepository
 class EditSessionViewModel extends ChangeNotifier {
   final SessionModelRepository _sessionRepository;
+  final SoundModelRepository _soundRepository;
 
   /// 
   /// HINWEIS: Verwendet jetzt das neue SessionModelRepository
   /// 
-  EditSessionViewModel({SessionModelRepository? sessionRepository})
-      : _sessionRepository = sessionRepository ?? SessionModelRepository(DatabaseConnection.instance);
+  EditSessionViewModel({
+    SessionModelRepository? sessionRepository,
+    SoundModelRepository? soundRepository,
+  }) : _sessionRepository = sessionRepository ?? SessionModelRepository(DatabaseConnection.instance),
+       _soundRepository = soundRepository ?? SoundModelRepository(DatabaseConnection.instance);
+  
   // State Management
   Session? _session;
   bool _isLoading = false;
   String? _errorMessage;
   bool _hasUnsavedChanges = false;
+  List<Sound> _linkedSounds = [];
 
   // Getter
   Session? get session => _session;
@@ -28,6 +36,7 @@ class EditSessionViewModel extends ChangeNotifier {
   bool get hasUnsavedChanges => _hasUnsavedChanges;
   bool get isEditing => _session != null;
   bool get canSave => _session != null && _hasValidSession();
+  List<Sound> get linkedSounds => _linkedSounds;
 
   /// Initialisiert das ViewModel mit einer Session oder erstellt eine neue
   Future<void> initialize(Session? session) async {
@@ -167,6 +176,55 @@ class EditSessionViewModel extends ChangeNotifier {
       _session = _session!.copyWith(liveNotes: liveNotes);
       _markAsUnsaved();
       notifyListeners();
+    }
+  }
+
+  void updateLinkedSoundIds(List<String>? linkedSoundIds) {
+    if (_session?.linkedSoundIds?.join(',') != linkedSoundIds?.join(',')) {
+      _session = _session!.copyWith(linkedSoundIds: linkedSoundIds);
+      _markAsUnsaved();
+      notifyListeners();
+    }
+  }
+
+  void removeLinkedSound(String soundId) {
+    if (_session?.linkedSoundIds != null) {
+      final newIds = List<String>.from(_session!.linkedSoundIds!);
+      newIds.remove(soundId);
+      _session = _session!.copyWith(linkedSoundIds: newIds);
+      _markAsUnsaved();
+      notifyListeners();
+    }
+  }
+
+  /// Lädt die verlinkten Sounds aus der Datenbank
+  Future<void> loadLinkedSounds() async {
+    if (_session?.linkedSoundIds == null || _session!.linkedSoundIds!.isEmpty) {
+      _linkedSounds = [];
+      notifyListeners();
+      return;
+    }
+
+    try {
+      final soundIds = _session!.linkedSoundIds!;
+      final sounds = <Sound>[];
+      
+      for (final soundId in soundIds) {
+        try {
+          final sound = await _soundRepository.findById(soundId);
+          if (sound != null) {
+            sounds.add(sound);
+          }
+        } catch (e) {
+          // Sound konnte nicht geladen werden, überspringen
+          continue;
+        }
+      }
+      
+      _linkedSounds = sounds;
+      notifyListeners();
+    } catch (e) {
+      _setError('Laden der Sounds fehlgeschlagen: ${e.toString()}');
     }
   }
 

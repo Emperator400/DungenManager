@@ -200,7 +200,7 @@ class UnifiedQuestCard extends UnifiedCardBase {
       case QuestStatus.failed:
         return 'Fehlgeschlagen';
       case QuestStatus.abandoned:
-        return 'Abgebrochen';
+        return 'Aufgegeben';
       case QuestStatus.onHold:
         return 'Pausiert';
     }

@@ -1,12 +1,14 @@
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../models/sound.dart';
 
-/// Service für Sound-Dateioperationen
-/// Verwaltet das Hochladen und Kopieren von Sound-Dateien
+/// Service für Sound-Dateioperationen und Playback
+/// Verwaltet das Hochladen, Kopieren und Abspielen von Sound-Dateien
 class SoundService {
   static const String _soundsDirectory = 'sounds';
+  static AudioPlayer? _audioPlayer;
   
   /// Lädt einen Sound von einer Datei in den App-Speicher hoch
   /// 
@@ -190,6 +192,125 @@ class SoundService {
     } else {
       final gb = bytes / (1024 * 1024 * 1024);
       return '${gb.toStringAsFixed(1)} GB';
+    }
+  }
+  
+  // ===== AUDIO PLAYBACK METHODEN =====
+  
+  /// Initialisiert den AudioPlayer (wird beim ersten Aufruf automatisch ausgeführt)
+  static AudioPlayer _getAudioPlayer() {
+    _audioPlayer ??= AudioPlayer();
+    return _audioPlayer!;
+  }
+  
+  /// Spielt einen Sound ab
+  /// 
+  /// Gibt true zurück, wenn erfolgreich gestartet, sonst false
+  static Future<bool> playSound(String filePath) async {
+    try {
+      final player = _getAudioPlayer();
+      
+      // Prüfen ob Datei existiert
+      final file = File(filePath);
+      if (!await file.exists()) {
+        print('Sound-Datei existiert nicht: $filePath');
+        return false;
+      }
+      
+      // Sound abspielen
+      await player.play(DeviceFileSource(filePath));
+      print('✅ Sound wird abgespielt: $filePath');
+      return true;
+    } catch (e) {
+      print('❌ Fehler beim Abspielen des Sounds: $e');
+      return false;
+    }
+  }
+  
+  /// Stoppt den aktuell abgespielten Sound
+  static Future<void> stopSound() async {
+    try {
+      final player = _getAudioPlayer();
+      await player.stop();
+      print('⏹️ Sound gestoppt');
+    } catch (e) {
+      print('❌ Fehler beim Stoppen des Sounds: $e');
+    }
+  }
+  
+  /// Pausiert den aktuell abgespielten Sound
+  static Future<void> pauseSound() async {
+    try {
+      final player = _getAudioPlayer();
+      await player.pause();
+      print('⏸️ Sound pausiert');
+    } catch (e) {
+      print('❌ Fehler beim Pausieren des Sounds: $e');
+    }
+  }
+  
+  /// Setzt die Lautstärke des AudioPlayers
+  static Future<void> setVolume(double volume) async {
+    try {
+      if (volume < 0.0 || volume > 1.0) {
+        print('⚠️ Lautstärke muss zwischen 0.0 und 1.0 sein');
+        return;
+      }
+      
+      final player = _getAudioPlayer();
+      await player.setVolume(volume);
+      print('🔊 Lautstärke gesetzt auf: $volume');
+    } catch (e) {
+      print('❌ Fehler beim Setzen der Lautstärke: $e');
+    }
+  }
+  
+  /// Gibt den aktuellen Playback-Status zurück
+  /// 
+  /// true = Sound wird abgespielt, false = Sound ist pausiert oder gestoppt
+  static Future<bool> isPlaying() async {
+    try {
+      final player = _getAudioPlayer();
+      return player.state == PlayerState.playing;
+    } catch (e) {
+      print('❌ Fehler beim Prüfen des Playback-Status: $e');
+      return false;
+    }
+  }
+  
+  /// Gibt den aktuellen Player-Stream zurück (für UI-Updates)
+  static Stream<Duration> getPositionStream() {
+    final player = _getAudioPlayer();
+    return player.onPositionChanged;
+  }
+  
+  /// Gibt die Dauer des aktuell abgespielten Sounds zurück
+  static Stream<Duration?> getDurationStream() {
+    final player = _getAudioPlayer();
+    return player.onDurationChanged;
+  }
+  
+  /// Setzt die Position des aktuell abgespielten Sounds
+  static Future<void> seekTo(Duration position) async {
+    try {
+      final player = _getAudioPlayer();
+      await player.seek(position);
+      print('⏩ Zur Position gesprungen: $position');
+    } catch (e) {
+      print('❌ Fehler beim Springen zur Position: $e');
+    }
+  }
+  
+  /// Gibt den AudioPlayer frei (sollte aufgerufen werden, wenn nicht mehr benötigt)
+  static Future<void> dispose() async {
+    try {
+      if (_audioPlayer != null) {
+        await _audioPlayer!.dispose();
+        _audioPlayer = null;
+        print('🗑️ AudioPlayer freigegeben');
+      }
+    } catch (e) {
+      print('❌ Fehler beim Freigeben des AudioPlayers: $e');
     }
   }
 }

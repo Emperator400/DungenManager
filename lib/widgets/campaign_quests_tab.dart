@@ -344,7 +344,7 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
       case QuestStatus.active: return "Aktive Quests";
       case QuestStatus.completed: return "Abgeschlossene Quests";
       case QuestStatus.failed: return "Gescheiterte Quests";
-      case QuestStatus.abandoned: return "Abgebrochene Quests";
+      case QuestStatus.abandoned: return "Aufgegebene Quests";
     }
   }
 }

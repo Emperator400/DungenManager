@@ -38,7 +38,7 @@ class DatabaseConnection {
     
     final db = await openDatabase(
       path,
-      version: 13,
+      version: 14,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       singleInstance: true,
@@ -452,6 +452,7 @@ class DatabaseConnection {
         encounterIds TEXT,
         questProgressIds TEXT,
         characterTrackingIds TEXT,
+        linkedSoundIds TEXT,
         createdAt TEXT NOT NULL,
         startedAt TEXT,
         completedAt TEXT,
@@ -482,6 +483,7 @@ class DatabaseConnection {
         linked_quest_ids TEXT DEFAULT '[]',
         linked_encounter_id TEXT,
         linked_character_ids TEXT DEFAULT '[]',
+        linked_sound_ids TEXT DEFAULT '[]',
         scene_data TEXT DEFAULT '{}',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
@@ -754,6 +756,26 @@ class DatabaseConnection {
       print('🔄 Füge quests Tabelle hinzu (v12 → v13)...');
       await _createQuestsTable(db);
       print('✅ quests Tabelle erstellt (Version 13)');
+    }
+    
+    if (oldVersion < 14 && newVersion >= 14) {
+      print('🔄 Füge linked_sound_ids Spalte zu scenes Tabelle hinzu (v13 → v14)...');
+      try {
+        final tableInfo = await db.rawQuery('PRAGMA table_info(scenes)');
+        final existingColumns = tableInfo.map((column) => column['name'] as String).toSet();
+        
+        // linked_sound_ids hinzufügen
+        if (!existingColumns.contains('linked_sound_ids')) {
+          await db.execute('ALTER TABLE scenes ADD COLUMN linked_sound_ids TEXT DEFAULT "[]"');
+          print('✅ linked_sound_ids Spalte hinzugefügt');
+        } else {
+          print('ℹ️ linked_sound_ids Spalte existiert bereits');
+        }
+        
+        print('✅ scenes Tabelle aktualisiert (Version 14)');
+      } catch (e) {
+        print('⚠️ Konnte linked_sound_ids Spalte nicht hinzufügen: $e');
+      }
     }
   }
   

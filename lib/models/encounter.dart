@@ -27,6 +27,9 @@ class Encounter {
   final DateTime? startedAt;
   final DateTime? completedAt;
 
+  /// Gibt den Tabellennamen für die Datenbank zurück
+  static String get tableName => 'encounters';
+
   Encounter({
     String? id,
     required this.sceneId,  // ← GEÄNDERT

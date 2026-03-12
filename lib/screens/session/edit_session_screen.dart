@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/session.dart';
+import '../../models/sound.dart';
 import '../../viewmodels/edit_session_viewmodel.dart';
 import '../../theme/dnd_theme.dart';
+import '../../widgets/audio/sound_picker_widget.dart';
+import '../../services/sound_service.dart';
 
 /// Enhanced Screen zur Bearbeitung von Sessions mit modernem Design
 class EditSessionScreen extends StatefulWidget {
@@ -28,9 +31,12 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
   void initState() {
     super.initState();
     // ViewModel initialisieren
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<EditSessionViewModel>().initialize(widget.session);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final viewModel = context.read<EditSessionViewModel>();
+      await viewModel.initialize(widget.session);
       _controllersFromViewModel();
+      // Verlinkte Sounds laden
+      await viewModel.loadLinkedSounds();
     });
   }
 
@@ -238,6 +244,100 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
                     ),
                   ),
 
+                  const SizedBox(height: 16),
+
+                  // Sounds
+                  Consumer<EditSessionViewModel>(
+                    builder: (context, viewModel, child) {
+                      return _buildSectionCard(
+                        title: 'Sounds',
+                        icon: Icons.music_note,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Anzeige der verlinkten Sounds mit Play-Buttons
+                              if (viewModel.linkedSounds.isNotEmpty)
+                                Column(
+                                  children: viewModel.linkedSounds.map((sound) {
+                                    return Container(
+                                      margin: const EdgeInsets.only(bottom: 8),
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: DnDTheme.mysticalPurple.withOpacity(0.3)),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.music_note, color: DnDTheme.mysticalPurple),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  sound.name,
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.grey.shade800,
+                                                  ),
+                                                ),
+                                                if (sound.description.isNotEmpty)
+                                                  Text(
+                                                    sound.description,
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: Colors.grey.shade600,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                          IconButton(
+                                            icon: Icon(Icons.play_arrow, color: DnDTheme.arcaneBlue),
+                                            onPressed: () => _playSound(sound),
+                                            tooltip: 'Abspielen',
+                                          ),
+                                          IconButton(
+                                            icon: Icon(Icons.close, color: Colors.grey.shade600),
+                                            onPressed: () => viewModel.removeLinkedSound(sound.id),
+                                            tooltip: 'Entfernen',
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                            
+                              if (viewModel.linkedSounds.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  child: Text(
+                                    'Keine Sounds verlinkt',
+                                    style: TextStyle(color: Colors.grey.shade600),
+                                  ),
+                                ),
+                            
+                              const SizedBox(height: 12),
+                            
+                              // Button zum Hinzufügen von Sounds
+                              ElevatedButton.icon(
+                                onPressed: () => _showSoundPicker(context),
+                                icon: Icon(Icons.add, color: Colors.white),
+                                label: Text('Sounds hinzufügen'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: DnDTheme.mysticalPurple,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                      );
+                    },
+                  ),
+
                   const SizedBox(height: 24),
 
                   // Aktionen
@@ -375,5 +475,53 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
         backgroundColor: Colors.orange,
       ),
     );
+  }
+
+  void _showSoundPicker(BuildContext context) {
+    final viewModel = context.read<EditSessionViewModel>();
+    final initialSoundIds = viewModel.session?.linkedSoundIds ?? [];
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.8,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: DnDTheme.dungeonBlack,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(DnDTheme.radiusMedium),
+              topRight: Radius.circular(DnDTheme.radiusMedium),
+            ),
+          ),
+          child: SoundPickerWidget(
+            initiallySelectedSoundIds: initialSoundIds,
+            onSelectionChanged: (selectedIds) {
+              viewModel.updateLinkedSoundIds(selectedIds);
+            },
+          ),
+        ),
+      ),
+    ).then((selectedIds) {
+      if (selectedIds is List<String> && mounted) {
+        viewModel.updateLinkedSoundIds(selectedIds);
+        setState(() {});
+      }
+    });
+  }
+
+  Future<void> _playSound(Sound sound) async {
+    final success = await SoundService.playSound(sound.filePath);
+    if (!success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Fehler beim Abspielen des Sounds'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

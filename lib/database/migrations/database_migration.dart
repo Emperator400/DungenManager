@@ -47,13 +47,19 @@ class DatabaseMigration {
     // Migration v10 -> v11: Scene als Hauptsäule
     await _migrateToV11(db);
     
-    // Füge is_favorite Spalte hinzu, falls sie nicht existiert
-    await _addIsFavoriteColumn(db);
-    
-    // Füge equipment Spalte hinzu, falls sie nicht existiert
-    await _addEquipmentColumn(db);
-    
-    print('Database migration completed successfully');
+  // Füge is_favorite Spalte hinzu, falls sie nicht existiert
+  await _addIsFavoriteColumn(db);
+  
+  // Füge equipment Spalte hinzu, falls sie nicht existiert
+  await _addEquipmentColumn(db);
+  
+  // Füge linked_sound_ids Spalte zur scenes Tabelle hinzu, falls sie nicht existiert
+  await _addLinkedSoundIdsColumn(db);
+  
+  // Füge linkedSoundIds Spalte zur sessions Tabelle hinzu, falls sie nicht existiert
+  await _migrateSessionsTable(db);
+  
+  print('Database migration completed successfully');
   }
   
   /// Erstellt die PlayerCharacter-Tabelle
@@ -331,6 +337,66 @@ class DatabaseMigration {
     }
   }
 
+  /// Fügt die linked_sound_ids Spalte zur scenes Tabelle hinzu, falls sie nicht existiert
+  Future<void> _addLinkedSoundIdsColumn(Database db) async {
+    try {
+      // Prüfe ob Tabelle existiert
+      final tableExists = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='scenes'",
+      );
+      
+      if (tableExists.isEmpty) {
+        print('Note: scenes table does not exist yet');
+        return;
+      }
+      
+      // Prüfe ob Spalte bereits existiert
+      final tableInfo = await db.rawQuery('PRAGMA table_info(scenes)');
+      final hasLinkedSoundIds = tableInfo.any((column) => column['name'] == 'linked_sound_ids');
+      
+      if (!hasLinkedSoundIds) {
+        await db.execute(
+          'ALTER TABLE scenes ADD COLUMN linked_sound_ids TEXT DEFAULT "[]"',
+        );
+        print('Added linked_sound_ids column to scenes table');
+      } else {
+        print('linked_sound_ids column already exists in scenes table');
+      }
+    } catch (e) {
+      print('Error adding linked_sound_ids column: $e');
+    }
+  }
+
+  /// Migriert die sessions-Tabelle um linkedSoundIds hinzuzufügen
+  Future<void> _migrateSessionsTable(Database db) async {
+    try {
+      // Prüfe ob Tabelle existiert
+      final tableExists = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='sessions'",
+      );
+      
+      if (tableExists.isEmpty) {
+        print('Note: sessions table does not exist yet');
+        return;
+      }
+      
+      final tableInfo = await db.rawQuery('PRAGMA table_info(sessions)');
+      final hasLinkedSoundIds = tableInfo.any((column) => column['name'] == 'linkedSoundIds');
+      
+      if (!hasLinkedSoundIds) {
+        print('Migrating sessions table: adding linkedSoundIds column');
+        await db.execute(
+          'ALTER TABLE sessions ADD COLUMN linkedSoundIds TEXT DEFAULT ""',
+        );
+        print('Successfully added linkedSoundIds column to sessions table');
+      } else {
+        print('linkedSoundIds column already exists in sessions table');
+      }
+    } catch (e) {
+      print('Error migrating sessions table: $e');
+    }
+  }
+
   /// Erstellt die Scenes-Tabelle
   Future<void> _createScenesTable(Database db) async {
     final result = await db.rawQuery(
@@ -351,6 +417,9 @@ class DatabaseMigration {
           complexity TEXT,
           linked_wiki_entry_ids TEXT DEFAULT '[]',
           linked_quest_ids TEXT DEFAULT '[]',
+          linked_character_ids TEXT DEFAULT '[]',
+          linked_sound_ids TEXT DEFAULT '[]',
+          linked_encounter_id TEXT,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL,
           FOREIGN KEY (session_id) REFERENCES sessions (id) ON DELETE CASCADE
@@ -361,8 +430,9 @@ class DatabaseMigration {
       await db.execute('CREATE INDEX idx_scenes_order_index ON scenes(order_index)');
       await db.execute('CREATE INDEX idx_scenes_scene_type ON scenes(scene_type)');
       await db.execute('CREATE INDEX idx_scenes_is_completed ON scenes(is_completed)');
+      await db.execute('CREATE INDEX idx_scenes_linked_encounter_id ON scenes(linked_encounter_id)');
 
-      print('Created scenes table with indexes');
+      print('Created scenes table with indexes (including linked_character_ids and linked_sound_ids)');
     } else {
       print('Scenes table already exists');
     }
@@ -387,6 +457,7 @@ class DatabaseMigration {
           encounterIds TEXT,
           questProgressIds TEXT,
           characterTrackingIds TEXT,
+          linkedSoundIds TEXT,
           createdAt TEXT NOT NULL,
           startedAt TEXT,
           completedAt TEXT,
@@ -396,8 +467,10 @@ class DatabaseMigration {
 
       await db.execute('CREATE INDEX idx_sessions_campaign_id ON sessions(campaignId)');
       await db.execute('CREATE INDEX idx_sessions_created_at ON sessions(createdAt)');
+      await db.execute('CREATE INDEX idx_sessions_started_at ON sessions(startedAt)');
+      await db.execute('CREATE INDEX idx_sessions_active_scene_id ON sessions(activeSceneId)');
 
-      print('Created sessions table with indexes');
+      print('Created sessions table with indexes (using camelCase with linkedSoundIds)');
     } else {
       print('Sessions table already exists');
     }
@@ -413,22 +486,22 @@ class DatabaseMigration {
       await db.execute('''
         CREATE TABLE encounters (
           id TEXT PRIMARY KEY,
-          sessionId TEXT NOT NULL,
+          scene_id TEXT NOT NULL,
           title TEXT NOT NULL,
           description TEXT,
           status TEXT NOT NULL DEFAULT 'planning',
-          participantIds TEXT,
-          createdAt TEXT NOT NULL,
-          startedAt TEXT,
-          completedAt TEXT,
-          FOREIGN KEY (sessionId) REFERENCES sessions (id) ON DELETE CASCADE
+          participant_ids TEXT,
+          created_at TEXT NOT NULL,
+          started_at TEXT,
+          completed_at TEXT,
+          FOREIGN KEY (scene_id) REFERENCES scenes (id) ON DELETE CASCADE
         )
       ''');
 
-      await db.execute('CREATE INDEX idx_encounters_session_id ON encounters(sessionId)');
+      await db.execute('CREATE INDEX idx_encounters_scene_id ON encounters(scene_id)');
       await db.execute('CREATE INDEX idx_encounters_status ON encounters(status)');
 
-      print('Created encounters table with indexes');
+      print('Created encounters table with indexes (using scene_id)');
     } else {
       print('Encounters table already exists');
     }
@@ -444,22 +517,23 @@ class DatabaseMigration {
       await db.execute('''
         CREATE TABLE encounter_participants (
           id TEXT PRIMARY KEY,
-          encounterId TEXT NOT NULL,
+          encounter_id TEXT NOT NULL,
           name TEXT NOT NULL,
           type TEXT NOT NULL DEFAULT 'enemy',
-          currentHp INTEGER NOT NULL DEFAULT 0,
-          maxHp INTEGER NOT NULL DEFAULT 0,
+          current_hp INTEGER NOT NULL DEFAULT 0,
+          max_hp INTEGER NOT NULL DEFAULT 0,
           conditions TEXT,
           notes TEXT,
-          characterId TEXT,
-          FOREIGN KEY (encounterId) REFERENCES encounters (id) ON DELETE CASCADE
+          character_id TEXT,
+          FOREIGN KEY (encounter_id) REFERENCES encounters (id) ON DELETE CASCADE
         )
       ''');
 
-      await db.execute('CREATE INDEX idx_encounter_participants_encounter_id ON encounter_participants(encounterId)');
+      await db.execute('CREATE INDEX idx_encounter_participants_encounter_id ON encounter_participants(encounter_id)');
       await db.execute('CREATE INDEX idx_encounter_participants_type ON encounter_participants(type)');
+      await db.execute('CREATE INDEX idx_encounter_participants_character_id ON encounter_participants(character_id)');
 
-      print('Created encounter_participants table with indexes');
+      print('Created encounter_participants table with indexes (using snake_case)');
     } else {
       print('EncounterParticipants table already exists');
     }

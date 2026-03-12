@@ -1,14 +1,18 @@
 import 'package:flutter/foundation.dart';
 import '../models/scene.dart';
-import '../models/creature.dart';
-import '../models/quest.dart';
+  import '../models/creature.dart';
+  import '../models/quest.dart';
+  import '../models/sound.dart';
+  import '../models/wiki_entry.dart';
 import '../database/repositories/scene_model_repository.dart';
 import '../database/repositories/creature_model_repository.dart';
 import '../database/repositories/player_character_model_repository.dart';
-import '../database/repositories/quest_model_repository.dart';
-import '../services/exceptions/service_exceptions.dart';
+  import '../database/repositories/quest_model_repository.dart';
+  import '../database/repositories/sound_model_repository.dart';
+  import '../database/repositories/wiki_entry_model_repository.dart';
+  import '../services/exceptions/service_exceptions.dart';
 
-/// ViewModel für die Scene-Bearbeitung mit Provider-Pattern
+  /// ViewModel für die Scene-Bearbeitung mit Provider-Pattern
 class EditSceneViewModel extends ChangeNotifier {
   final SceneModelRepository _sceneRepository;
   final CreatureModelRepository _creatureRepository;
@@ -40,22 +44,40 @@ class EditSceneViewModel extends ChangeNotifier {
   List<Map<String, dynamic>> get linkedCharacters => _linkedCharacters;
   List<Quest> get availableQuests => _availableQuests;
   List<Quest> get linkedQuests => _linkedQuests;
+  List<Sound> get availableSounds => _availableSounds;
+  List<Sound> get linkedSounds => _linkedSounds;
+  List<WikiEntry> get availableWikiEntries => _availableWikiEntries;
+  List<WikiEntry> get linkedWikiEntries => _linkedWikiEntries;
 
   final QuestModelRepository _questRepository;
+  final SoundModelRepository _soundRepository;
+  final WikiEntryModelRepository _wikiEntryRepository;
   
   // Quest State
   List<Quest> _availableQuests = [];
   List<Quest> _linkedQuests = [];
+
+  // Sound State
+  List<Sound> _availableSounds = [];
+  List<Sound> _linkedSounds = [];
+
+  // WikiEntry State
+  List<WikiEntry> _availableWikiEntries = [];
+  List<WikiEntry> _linkedWikiEntries = [];
 
   EditSceneViewModel({
     required SceneModelRepository sceneRepository,
     required CreatureModelRepository creatureRepository,
     required PlayerCharacterModelRepository playerCharacterRepository,
     required QuestModelRepository questRepository,
+    required SoundModelRepository soundRepository,
+    required WikiEntryModelRepository wikiEntryRepository,
   }) : _sceneRepository = sceneRepository,
        _creatureRepository = creatureRepository,
        _playerCharacterRepository = playerCharacterRepository,
-       _questRepository = questRepository;
+       _questRepository = questRepository,
+       _soundRepository = soundRepository,
+       _wikiEntryRepository = wikiEntryRepository;
 
   /// Initialisiert das ViewModel mit einer Scene oder erstellt eine neue
   Future<void> initialize(Scene? scene, {String? sessionId}) async {
@@ -446,6 +468,128 @@ class EditSceneViewModel extends ChangeNotifier {
     currentIds.remove(questId);
     updateLinkedQuests(currentIds);
     await buildLinkedQuestsList();
+  }
+
+  /// ===== WIKI ENTRY METHODEN =====
+
+  /// Lädt alle verfügbaren Wiki-Einträge
+  Future<void> loadAvailableWikiEntries() async {
+    try {
+      final wikiEntries = await _wikiEntryRepository.findAll();
+      _availableWikiEntries = wikiEntries;
+      notifyListeners();
+    } catch (e) {
+      _setError('Laden der Wiki-Einträge fehlgeschlagen: ${e.toString()}');
+    }
+  }
+
+  /// Baut die Liste der verknüpften Wiki-Einträge mit Details auf
+  Future<void> buildLinkedWikiEntriesList() async {
+    if (_scene == null) return;
+    
+    try {
+      _linkedWikiEntries = [];
+      
+      for (final wikiId in _scene!.linkedWikiEntryIds) {
+        try {
+          final wikiEntry = await _wikiEntryRepository.findById(wikiId);
+          if (wikiEntry != null) {
+            _linkedWikiEntries.add(wikiEntry);
+          }
+        } catch (e) {
+          // Fehler beim Laden, überspringen
+        }
+      }
+      
+      notifyListeners();
+    } catch (e) {
+      _setError('Laden der verknüpften Wiki-Einträge fehlgeschlagen: ${e.toString()}');
+    }
+  }
+
+  /// Fügt einen einzelnen Wiki-Eintrag zur Szene hinzu
+  Future<void> addWikiEntry(String wikiId) async {
+    if (_scene == null) return;
+    
+    final currentIds = List<String>.from(_scene!.linkedWikiEntryIds);
+    if (!currentIds.contains(wikiId)) {
+      currentIds.add(wikiId);
+      updateLinkedWikiEntries(currentIds);
+      await buildLinkedWikiEntriesList();
+    }
+  }
+
+  /// Entfernt einen einzelnen Wiki-Eintrag aus der Szene
+  Future<void> removeWikiEntry(String wikiId) async {
+    if (_scene == null) return;
+    
+    final currentIds = List<String>.from(_scene!.linkedWikiEntryIds);
+    currentIds.remove(wikiId);
+    updateLinkedWikiEntries(currentIds);
+    await buildLinkedWikiEntriesList();
+  }
+
+  /// ===== SOUND METHODEN =====
+
+  /// Lädt alle verfügbaren Sounds
+  Future<void> loadAvailableSounds() async {
+    try {
+      final sounds = await _soundRepository.findAll();
+      _availableSounds = sounds;
+      notifyListeners();
+    } catch (e) {
+      _setError('Laden der Sounds fehlgeschlagen: ${e.toString()}');
+    }
+  }
+
+  /// Baut die Liste der verknüpften Sounds mit Details auf
+  Future<void> buildLinkedSoundsList() async {
+    if (_scene == null) return;
+    
+    try {
+      _linkedSounds = [];
+      
+      for (final soundId in _scene!.linkedSoundIds) {
+        try {
+          final sound = await _soundRepository.findById(soundId);
+          if (sound != null) {
+            _linkedSounds.add(sound);
+          }
+        } catch (e) {
+          // Fehler beim Laden, überspringen
+        }
+      }
+      
+      notifyListeners();
+    } catch (e) {
+      _setError('Laden der verknüpften Sounds fehlgeschlagen: ${e.toString()}');
+    }
+  }
+
+  /// Fügt einen einzelnen Sound zur Szene hinzu
+  Future<void> addSound(String soundId) async {
+    if (_scene == null) return;
+    
+    final currentIds = List<String>.from(_scene!.linkedSoundIds);
+    if (!currentIds.contains(soundId)) {
+      currentIds.add(soundId);
+      _scene = _scene!.copyWith(linkedSoundIds: currentIds, updatedAt: DateTime.now());
+      _markAsUnsaved();
+      await buildLinkedSoundsList();
+      notifyListeners();
+    }
+  }
+
+  /// Entfernt einen einzelnen Sound aus der Szene
+  Future<void> removeSound(String soundId) async {
+    if (_scene == null) return;
+    
+    final currentIds = List<String>.from(_scene!.linkedSoundIds);
+    currentIds.remove(soundId);
+    _scene = _scene!.copyWith(linkedSoundIds: currentIds, updatedAt: DateTime.now());
+    _markAsUnsaved();
+    await buildLinkedSoundsList();
+    notifyListeners();
   }
 
   /// Setzt die Änderungen zurück
