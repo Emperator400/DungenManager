@@ -341,23 +341,39 @@ class ArmorCalculationService {
     int totalAc = baseArmorClass;
     bool isHeavyArmor = false;
     bool isMediumArmor = false;
+    bool hasArmorEquipped = false;
+
+    print('🛡️ [ArmorCalculationService] calculateArmorClassSync gestartet');
+    print('🛡️ [ArmorCalculationService] Dex: $dexterity, DexMod: $dexModifier, Basis-AC: $baseArmorClass');
+    print('🛡️ [ArmorCalculationService] ${equippedItems.length} Items zum Prüfen');
 
     for (final (slot, item) in equippedItems) {
-      if (item == null) continue;
+      if (item == null) {
+        print('🛡️ [ArmorCalculationService] Slot $slot: null Item, überspringen');
+        continue;
+      }
+
+      print('🛡️ [ArmorCalculationService] Slot $slot: ${item.name} (Type: ${item.itemType}, acFormula: ${item.acFormula})');
 
       // Rüstung im Chest-Slot
       if (slot == EquipSlot.chest && item.itemType == ItemType.Armor) {
         final acValue = _parseAcFormula(item.acFormula);
+        print('🛡️ [ArmorCalculationService] Rüstung erkannt! ${item.name}, AC-Wert: $acValue');
+        
         if (acValue != null && acValue > 0) {
           totalAc = acValue;
+          hasArmorEquipped = true;
           isHeavyArmor = _isHeavyArmor(item);
           isMediumArmor = _isMediumArmor(item);
+          print('🛡️ [ArmorCalculationService] Heavy: $isHeavyArmor, Medium: $isMediumArmor');
         }
       }
 
       // Schild im OffHand-Slot
       if (slot == EquipSlot.offHand && item.itemType == ItemType.Shield) {
         final acValue = _parseAcFormula(item.acFormula);
+        print('🛡️ [ArmorCalculationService] Schild erkannt! ${item.name}, AC-Bonus: $acValue');
+        
         if (acValue != null && acValue > 0) {
           totalAc += acValue;
         }
@@ -365,16 +381,28 @@ class ArmorCalculationService {
     }
 
     // Dex-Modifier anwenden (außer bei Heavy Armor)
-    if (!isHeavyArmor) {
-      if (isMediumArmor) {
+    if (hasArmorEquipped) {
+      if (isHeavyArmor) {
+        // Heavy Armor: Kein Dex-Modifier
+        print('🛡️ [ArmorCalculationService] Heavy Armor - KEIN Dex-Bonus');
+        // totalAc bleibt wie ist
+      } else if (isMediumArmor) {
         // Medium Armor: Dex max +2
-        totalAc += dexModifier > 2 ? 2 : dexModifier;
+        final effectiveDex = dexModifier > 2 ? 2 : dexModifier;
+        totalAc += effectiveDex;
+        print('🛡️ [ArmorCalculationService] Medium Armor - Dex-Bonus max +2: $effectiveDex');
       } else {
-        // Light Armor oder keine Rüstung: Voller Dex
+        // Light Armor: Voller Dex-Modifier
         totalAc += dexModifier;
+        print('🛡️ [ArmorCalculationService] Light Armor - voller Dex-Bonus: $dexModifier');
       }
+    } else {
+      // Keine Rüstung: Basis-AC + Dex
+      totalAc = baseArmorClass + dexModifier;
+      print('🛡️ [ArmorCalculationService] Keine Rüstung - Basis + Dex: $baseArmorClass + $dexModifier');
     }
 
+    print('🛡️ [ArmorCalculationService] Finale AC: $totalAc');
     return totalAc;
   }
 }

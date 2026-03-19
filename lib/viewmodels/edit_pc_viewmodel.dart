@@ -187,14 +187,19 @@ class EditPCViewModel extends ChangeNotifier {
   /// Berechnet die effektive AC synchron (ohne Datenbankzugriff)
   /// 
   /// Verwendet die bereits geladenen Item-Daten für die Berechnung
+  /// WICHTIG: Verwendet _equipment statt _inventory, da _equipment beim
+  /// Ausrüsten sofort aktualisiert wird, während _inventory veraltet sein kann
   int get effectiveArmorClassSync {
-    // Baue Liste der ausgerüsteten Items mit ihren Slots
+    // Baue Liste der ausgerüsteten Items mit ihren Slots aus _equipment
     final equippedItems = <(EquipSlot, Item?)>[];
     
-    for (final displayItem in _inventory) {
-      final invItem = displayItem.inventoryItem;
-      if (invItem.isEquipped && invItem.equipSlot != null) {
-        equippedItems.add((invItem.equipSlot!, displayItem.item));
+    for (final slot in EquipmentSlot.values) {
+      final equippedItem = _equipment.getItem(slot);
+      if (equippedItem != null && equippedItem.item != null) {
+        final equipSlot = _convertToEquipSlot(slot);
+        if (equipSlot != null) {
+          equippedItems.add((equipSlot, equippedItem.item!.item));
+        }
       }
     }
     
