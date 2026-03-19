@@ -364,12 +364,20 @@ class ActiveSessionViewModel extends ChangeNotifier {
   /// 
   /// HINWEIS: Verwendet jetzt das neue SessionModelRepository
   Future<void> updateLiveNotes(String newNotes) async {
+    print('📝 [ActiveSessionViewModel] updateLiveNotes aufgerufen');
+    print('📝 [ActiveSessionViewModel] Session ID: ${_currentSession.id}');
+    print('📝 [ActiveSessionViewModel] Neue Notizen Länge: ${newNotes.length}');
+    
     await _executeWithErrorHandling(() async {
       _currentSession = _currentSession.copyWith(
         liveNotes: newNotes,
       );
       
-      await _sessionRepository.update(_currentSession);
+      print('📝 [ActiveSessionViewModel] Speichere in Datenbank...');
+      final updatedSession = await _sessionRepository.update(_currentSession);
+      print('📝 [ActiveSessionViewModel] Gespeichert! LiveNotes aus DB: "${updatedSession.liveNotes}"');
+      
+      _currentSession = updatedSession;
       notifyListeners();
     });
   }
@@ -435,6 +443,21 @@ class ActiveSessionViewModel extends ChangeNotifier {
   /// Lädt alle Daten neu (Scenes und Session)
   Future<void> triggerDataReload() async {
     await _loadScenes();
+  }
+
+  /// Lädt die Session-Daten neu aus der Datenbank
+  Future<void> reloadSession() async {
+    print('🔄 [ActiveSessionViewModel] reloadSession aufgerufen');
+    await _executeWithErrorHandling(() async {
+      final freshSession = await _sessionRepository.findById(_currentSession.id);
+      if (freshSession != null) {
+        print('🔄 [ActiveSessionViewModel] Session neu geladen, LiveNotes: "${freshSession.liveNotes}"');
+        _currentSession = freshSession;
+        notifyListeners();
+      } else {
+        print('⚠️ [ActiveSessionViewModel] Session nicht in DB gefunden!');
+      }
+    });
   }
 
   // ============================================================================

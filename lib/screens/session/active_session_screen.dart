@@ -16,6 +16,7 @@ import '../../database/repositories/sound_model_repository.dart';
 import '../../database/repositories/wiki_entry_model_repository.dart';
 import '../../theme/dnd_theme.dart';
 import '../../widgets/audio/sound_player_widget.dart';
+import '../../widgets/active_session/live_notes_quadrant.dart';
 import 'encounter_setup_screen.dart';
 import '../scenes/edit_scene_screen.dart';
 
@@ -45,6 +46,8 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
       session: widget.session,
       campaign: widget.campaign,
     );
+    // Session beim Öffnen neu aus der Datenbank laden
+    _viewModel.reloadSession();
   }
 
   @override
@@ -1857,86 +1860,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   }
 
   Widget _buildLiveNotesWidget(ActiveSessionViewModel viewModel) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: DnDTheme.getMysticalGradient(
-          startColor: DnDTheme.slateGrey,
-          endColor: DnDTheme.stoneGrey,
-        ),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-        border: Border.all(
-          color: DnDTheme.ancientGold.withValues(alpha: 0.2),
-        ),
-      ),
-      child: Column(
-        children: [
-          Expanded(
-            child: TextFormField(
-              initialValue: viewModel.currentSession.liveNotes,
-              maxLines: null,
-              expands: true,
-              textAlignVertical: TextAlignVertical.top,
-              style: DnDTheme.bodyText1.copyWith(color: Colors.white, fontSize: 14),
-              decoration: const InputDecoration(
-                hintText: 'Live-Notizen...',
-                hintStyle: TextStyle(color: Colors.white54, fontSize: 14),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.all(12),
-              ),
-              onChanged: (value) {
-                // Debounced update could be implemented here
-              },
-              onFieldSubmitted: (value) async {
-                await viewModel.updateLiveNotes(value);
-              },
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              gradient: DnDTheme.getMysticalGradient(
-                startColor: DnDTheme.ancientGold.withValues(alpha: 0.2),
-                endColor: DnDTheme.stoneGrey,
-              ),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(DnDTheme.radiusSmall),
-                bottomRight: Radius.circular(DnDTheme.radiusSmall),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Auto-Save',
-                  style: DnDTheme.bodyText2.copyWith(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: DnDTheme.successGreen,
-                    borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                  ),
-                  child: Text(
-                    'Save',
-                    style: DnDTheme.bodyText2.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    return LiveNotesQuadrant(viewModel: viewModel);
   }
 
   Widget _buildFloatingActionButton() {
