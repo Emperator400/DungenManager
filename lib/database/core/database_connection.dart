@@ -38,7 +38,7 @@ class DatabaseConnection {
     
     final db = await openDatabase(
       path,
-      version: 15,
+      version: 16,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       singleInstance: true,
@@ -796,6 +796,26 @@ class DatabaseConnection {
         print('✅ player_characters Tabelle aktualisiert (Version 15)');
       } catch (e) {
         print('⚠️ Konnte saving_throw_proficiencies Spalte nicht hinzufügen: $e');
+      }
+    }
+    
+    if (oldVersion < 16 && newVersion >= 16) {
+      print('🔄 Füge armor_category Spalte zu items hinzu (v15 → v16)...');
+      try {
+        final tableInfo = await db.rawQuery('PRAGMA table_info(items)');
+        final existingColumns = tableInfo.map((column) => column['name'] as String).toSet();
+        
+        // armor_category hinzufügen
+        if (!existingColumns.contains('armor_category')) {
+          await db.execute('ALTER TABLE items ADD COLUMN armor_category TEXT');
+          print('✅ armor_category Spalte hinzugefügt');
+        } else {
+          print('ℹ️ armor_category Spalte existiert bereits');
+        }
+        
+        print('✅ items Tabelle aktualisiert (Version 16)');
+      } catch (e) {
+        print('⚠️ Konnte armor_category Spalte nicht hinzufügen: $e');
       }
     }
   }

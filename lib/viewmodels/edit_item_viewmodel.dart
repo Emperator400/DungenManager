@@ -229,15 +229,15 @@ class EditItemViewModel extends ChangeNotifier {
   /// Aktualisiert Nachteil auf Verstecken (Stealth Disadvantage)
   void updateStealthDisadvantage(bool? value) {
     if (_item != null && _item!.stealthDisadvantage != value) {
-      _item = Item(
-        id: _item!.id,
-        name: _item!.name,
-        itemType: _item!.itemType,
-        description: _item!.description,
-        stealthDisadvantage: value,
-        damage: _item!.damage,
-        properties: _item!.properties,
-      );
+      _item = _item!.copyWith(stealthDisadvantage: value);
+      _markAsChanged();
+    }
+  }
+
+  /// Aktualisiert die Rüstungskategorie (Light, Medium, Heavy)
+  void updateArmorCategory(ArmorCategory? category) {
+    if (_item != null && _item!.armorCategory != category) {
+      _item = _item!.copyWith(armorCategory: category);
       _markAsChanged();
     }
   }

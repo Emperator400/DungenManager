@@ -647,6 +647,96 @@ class _EditItemScreenState extends State<EditItemScreen> {
           ),
         ),
         const SizedBox(height: DnDTheme.md),
+        
+        // Rüstungskategorie Dropdown
+        DropdownButtonFormField<String>(
+          value: viewModel.item?.armorCategory != null 
+              ? viewModel.item!.armorCategory!.name 
+              : null,
+          dropdownColor: DnDTheme.stoneGrey,
+          style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+          decoration: InputDecoration(
+            labelText: 'Rüstungskategorie',
+            labelStyle: DnDTheme.bodyText2.copyWith(
+              color: DnDTheme.arcaneBlue,
+            ),
+            prefixIcon: Icon(
+              Icons.category,
+              color: DnDTheme.arcaneBlue,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+              borderSide: BorderSide.none,
+            ),
+            filled: true,
+            fillColor: DnDTheme.slateGrey,
+            contentPadding: const EdgeInsets.all(DnDTheme.md),
+          ),
+          hint: Text(
+            'Kategorie auswählen...',
+            style: DnDTheme.bodyText2.copyWith(color: Colors.white38),
+          ),
+          items: const [
+            DropdownMenuItem(
+              value: 'Light',
+              child: Text('Leichte Rüstung'),
+            ),
+            DropdownMenuItem(
+              value: 'Medium',
+              child: Text('Mittlere Rüstung'),
+            ),
+            DropdownMenuItem(
+              value: 'Heavy',
+              child: Text('Schwere Rüstung'),
+            ),
+          ],
+          onChanged: (value) {
+            if (value == null) {
+              viewModel.updateArmorCategory(null);
+            } else {
+              final category = ArmorCategory.values.firstWhere(
+                (c) => c.name == value,
+                orElse: () => ArmorCategory.Light,
+              );
+              viewModel.updateArmorCategory(category);
+            }
+          },
+        ),
+        const SizedBox(height: DnDTheme.sm),
+        
+        // Info-Box zur Rüstungskategorie
+        if (viewModel.item?.armorCategory != null)
+          Container(
+            padding: const EdgeInsets.all(DnDTheme.sm),
+            decoration: BoxDecoration(
+              color: _getArmorCategoryColor(viewModel.item!.armorCategory!).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+              border: Border.all(
+                color: _getArmorCategoryColor(viewModel.item!.armorCategory!).withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  color: _getArmorCategoryColor(viewModel.item!.armorCategory!),
+                  size: 16,
+                ),
+                const SizedBox(width: DnDTheme.sm),
+                Expanded(
+                  child: Text(
+                    _getArmorCategoryDexInfo(viewModel.item!.armorCategory!),
+                    style: DnDTheme.bodyText2.copyWith(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: DnDTheme.md),
+        
         TextFormField(
           controller: _acFormulaController,
           style: DnDTheme.bodyText1.copyWith(color: Colors.white),
@@ -711,6 +801,66 @@ class _EditItemScreenState extends State<EditItemScreen> {
         ),
       ],
     );
+  }
+
+  /// Gibt das Icon für eine Rüstungskategorie zurück
+  IconData _getArmorCategoryIcon(ArmorCategory category) {
+    switch (category) {
+      case ArmorCategory.Light:
+        return Icons.checkroom;
+      case ArmorCategory.Medium:
+        return Icons.shield;
+      case ArmorCategory.Heavy:
+        return Icons.security;
+    }
+  }
+
+  /// Gibt die Farbe für eine Rüstungskategorie zurück
+  Color _getArmorCategoryColor(ArmorCategory category) {
+    switch (category) {
+      case ArmorCategory.Light:
+        return DnDTheme.successGreen;
+      case ArmorCategory.Medium:
+        return DnDTheme.warningOrange;
+      case ArmorCategory.Heavy:
+        return DnDTheme.errorRed;
+    }
+  }
+
+  /// Gibt den Anzeigenamen für eine Rüstungskategorie zurück
+  String _getArmorCategoryDisplayName(ArmorCategory category) {
+    switch (category) {
+      case ArmorCategory.Light:
+        return 'Leichte Rüstung';
+      case ArmorCategory.Medium:
+        return 'Mittlere Rüstung';
+      case ArmorCategory.Heavy:
+        return 'Schwere Rüstung';
+    }
+  }
+
+  /// Gibt die Beschreibung für eine Rüstungskategorie zurück
+  String _getArmorCategoryDescription(ArmorCategory category) {
+    switch (category) {
+      case ArmorCategory.Light:
+        return 'Leder, Padded, Studded Leather';
+      case ArmorCategory.Medium:
+        return 'Chain Shirt, Scale Mail, Breastplate';
+      case ArmorCategory.Heavy:
+        return 'Chain Mail, Splint, Plate';
+    }
+  }
+
+  /// Gibt die Dexterity-Info für eine Rüstungskategorie zurück
+  String _getArmorCategoryDexInfo(ArmorCategory category) {
+    switch (category) {
+      case ArmorCategory.Light:
+        return 'Leichte Rüstung: Volle Dexterity-Bonus auf AC anrechenbar';
+      case ArmorCategory.Medium:
+        return 'Mittlere Rüstung: Dexterity-Bonus auf AC, maximal +2';
+      case ArmorCategory.Heavy:
+        return 'Schwere Rüstung: Kein Dexterity-Bonus auf AC';
+    }
   }
 
   Widget _buildMagicItemSpecificFields(EditItemViewModel viewModel) {
@@ -1243,7 +1393,7 @@ class _EditItemScreenState extends State<EditItemScreen> {
 
   void _handleCancel(EditItemViewModel viewModel) async {
     if (viewModel.hasUnsavedChanges) {
-      final shouldLeave = await _showUnsavedChangesDialog(viewModel);
+      final shouldLeave = await _showUnsavedChangesDialog();
       if (shouldLeave == true && mounted) {
         Navigator.of(context).pop();
       }
@@ -1264,7 +1414,7 @@ class _EditItemScreenState extends State<EditItemScreen> {
 
   void _handleBackNavigation(EditItemViewModel viewModel) async {
     if (viewModel.hasUnsavedChanges) {
-      final shouldLeave = await _showUnsavedChangesDialog(viewModel);
+      final shouldLeave = await _showUnsavedChangesDialog();
       if (shouldLeave == true && mounted) {
         Navigator.of(context).pop();
       }
@@ -1273,7 +1423,7 @@ class _EditItemScreenState extends State<EditItemScreen> {
     }
   }
 
-  Future<bool?> _showUnsavedChangesDialog(EditItemViewModel viewModel) {
+  Future<bool?> _showUnsavedChangesDialog() {
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(

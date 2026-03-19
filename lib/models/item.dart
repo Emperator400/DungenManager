@@ -17,6 +17,17 @@ enum ItemType {
   SPELL_WEAPON  // Spells als "magische Waffen"
 }
 
+/// Rüstungskategorie nach D&D 5e Regeln
+/// 
+/// - [Light]: Leichte Rüstung (AC + voller Dexterity Modifier)
+/// - [Medium]: Mittlere Rüstung (AC + Dexterity Modifier, max +2)
+/// - [Heavy]: Schwere Rüstung (Feste AC, kein Dexterity Modifier)
+enum ArmorCategory {
+  Light,   // Leichte Rüstung: Leder, Padded, Studded Leather
+  Medium,  // Mittlere Rüstung: Chain Shirt, Scale Mail, Breastplate, Half Plate
+  Heavy,   // Schwere Rüstung: Ring Mail, Chain Mail, Splint, Plate
+}
+
 class Item {
   final String id;
   final String name;
@@ -36,6 +47,7 @@ class Item {
   final String? acFormula;
   final int? strengthRequirement;
   final bool? stealthDisadvantage;
+  final ArmorCategory? armorCategory; // Leichte, Mittlere oder Schwere Rüstung
 
   // Magische Eigenschaften
   final String? rarity;
@@ -68,6 +80,7 @@ class Item {
     this.acFormula,
     this.strengthRequirement,
     this.stealthDisadvantage,
+    this.armorCategory,
     this.rarity,
     this.requiresAttunement,
     this.hasDurability,
@@ -96,6 +109,7 @@ class Item {
       'ac_formula': acFormula,
       'strength_requirement': strengthRequirement,
       'stealth_disadvantage': stealthDisadvantage,
+      'armor_category': armorCategory?.toString().replaceAll('ArmorCategory.', ''),
       'rarity': rarity,
       'requires_attunement': requiresAttunement,
       'has_durability': hasDurability,
@@ -127,6 +141,7 @@ class Item {
       'ac_formula': acFormula,
       'strength_requirement': strengthRequirement,
       'stealth_disadvantage': stealthDisadvantage == true ? 1 : 0,
+      'armor_category': armorCategory?.toString().replaceAll('ArmorCategory.', ''),
       'rarity': rarity,
       'requires_attunement': requiresAttunement == true ? 1 : 0,
       'has_durability': hasDurability == true ? 1 : 0,
@@ -165,6 +180,7 @@ class Item {
       acFormula: ModelParsingHelper.safeStringOrNull(map, 'ac_formula', null),
       strengthRequirement: ModelParsingHelper.safeIntOrNull(map, 'strength_requirement', null),
       stealthDisadvantage: (map['stealth_disadvantage'] as int?) == 1,
+      armorCategory: _parseArmorCategory(map['armor_category'] as String?),
       rarity: ModelParsingHelper.safeStringOrNull(map, 'rarity', null),
       requiresAttunement: (map['requires_attunement'] as int?) == 1,
       hasDurability: (map['has_durability'] as int?) == 1,
@@ -199,6 +215,20 @@ class Item {
     }
   }
 
+  /// Hilfsmethode: Parsiert ArmorCategory aus Datenbank-String
+  static ArmorCategory? _parseArmorCategory(String? categoryString) {
+    if (categoryString == null || categoryString.isEmpty) return null;
+    
+    try {
+      return ArmorCategory.values.firstWhere(
+        (category) => category.toString().contains(categoryString),
+        orElse: () => ArmorCategory.Light,
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
   /// Gibt den Tabellennamen für die Datenbank zurück
   static String get tableName => 'items';
 
@@ -221,6 +251,7 @@ class Item {
       acFormula: ModelParsingHelper.safeStringOrNull(map, 'ac_formula', null),
       strengthRequirement: ModelParsingHelper.safeIntOrNull(map, 'strength_requirement', null),
       stealthDisadvantage: ModelParsingHelper.safeBool(map, 'stealth_disadvantage', false) ? true : null,
+      armorCategory: _parseArmorCategory(map['armor_category'] as String?),
       rarity: ModelParsingHelper.safeStringOrNull(map, 'rarity', null),
       requiresAttunement: ModelParsingHelper.safeBool(map, 'requires_attunement', false) ? true : null,
       hasDurability: ModelParsingHelper.safeBool(map, 'has_durability', false) ? true : null,
@@ -249,6 +280,7 @@ class Item {
     String? acFormula,
     int? strengthRequirement,
     bool? stealthDisadvantage,
+    ArmorCategory? armorCategory,
     String? rarity,
     bool? requiresAttunement,
     bool? hasDurability,
@@ -275,6 +307,7 @@ class Item {
       acFormula: acFormula ?? this.acFormula,
       strengthRequirement: strengthRequirement ?? this.strengthRequirement,
       stealthDisadvantage: stealthDisadvantage ?? this.stealthDisadvantage,
+      armorCategory: armorCategory ?? this.armorCategory,
       rarity: rarity ?? this.rarity,
       requiresAttunement: requiresAttunement ?? this.requiresAttunement,
       hasDurability: hasDurability ?? this.hasDurability,

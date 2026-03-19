@@ -267,9 +267,16 @@ class ArmorCalculationService {
   }
 
   /// Prüft ob es sich um Heavy Armor handelt
+  /// Verwendet primär die armorCategory, fallback auf String-Erkennung
   bool _isHeavyArmor(Item? item) {
     if (item == null) return false;
-    // Prüfen anhand der Properties oder des Namens
+    
+    // Priorisiere die explizite armorCategory
+    if (item.armorCategory != null) {
+      return item.armorCategory == ArmorCategory.Heavy;
+    }
+    
+    // Fallback: Prüfen anhand der Properties oder des Namens
     final properties = item.properties?.toLowerCase() ?? '';
     final name = item.name.toLowerCase();
     
@@ -284,8 +291,16 @@ class ArmorCalculationService {
   }
 
   /// Prüft ob es sich um Medium Armor handelt
+  /// Verwendet primär die armorCategory, fallback auf String-Erkennung
   bool _isMediumArmor(Item? item) {
     if (item == null) return false;
+    
+    // Priorisiere die explizite armorCategory
+    if (item.armorCategory != null) {
+      return item.armorCategory == ArmorCategory.Medium;
+    }
+    
+    // Fallback: Prüfen anhand der Properties oder des Namens
     final properties = item.properties?.toLowerCase() ?? '';
     final name = item.name.toLowerCase();
     
@@ -298,6 +313,52 @@ class ArmorCalculationService {
            properties.contains('mittel') ||
            name.contains('schuppenpanzer') ||
            name.contains('brustharnisch');
+  }
+
+  /// Prüft ob es sich um Light Armor handelt
+  /// Verwendet primär die armorCategory, fallback auf String-Erkennung
+  bool _isLightArmor(Item? item) {
+    if (item == null) return false;
+    
+    // Priorisiere die explizite armorCategory
+    if (item.armorCategory != null) {
+      return item.armorCategory == ArmorCategory.Light;
+    }
+    
+    // Fallback: Prüfen anhand der Properties oder des Namens
+    final properties = item.properties?.toLowerCase() ?? '';
+    final name = item.name.toLowerCase();
+    
+    // Light Armor Kennzeichner
+    return properties.contains('light') ||
+           name.contains('leather') ||
+           name.contains('padded') ||
+           name.contains('studded leather') ||
+           properties.contains('leicht') ||
+           name.contains('leder');
+  }
+
+  /// Gibt die Rüstungskategorie als lesbaren String zurück
+  String getArmorCategoryName(Item? item) {
+    if (item == null) return 'Keine Rüstung';
+    
+    if (item.armorCategory != null) {
+      switch (item.armorCategory!) {
+        case ArmorCategory.Light:
+          return 'Leichte Rüstung';
+        case ArmorCategory.Medium:
+          return 'Mittlere Rüstung';
+        case ArmorCategory.Heavy:
+          return 'Schwere Rüstung';
+      }
+    }
+    
+    // Fallback über String-Erkennung
+    if (_isHeavyArmor(item)) return 'Schwere Rüstung';
+    if (_isMediumArmor(item)) return 'Mittlere Rüstung';
+    if (_isLightArmor(item)) return 'Leichte Rüstung';
+    
+    return 'Unbekannt';
   }
 
   /// Erstellt die Formel-Anzeige
