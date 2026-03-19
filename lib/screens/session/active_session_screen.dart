@@ -37,7 +37,6 @@ class ActiveSessionScreen extends StatefulWidget {
 class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   late ActiveSessionViewModel _viewModel;
   final GlobalKey<State> _sceneFlowKey = GlobalKey();
-  double _quadrantScale = 0.9; // 50% - 100% der verfügbaren Größe
 
   @override
   void initState() {
@@ -190,53 +189,43 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
             children: [
               // Session Info Bar
               _buildSessionInfoBar(viewModel),
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
               
-              // Main Content Grid
+              // Main Content - 2 Column Layout
               Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    // Berechne optimale Größe für 2x2 Grid mit Scale-Faktor
-                    final availableWidth = (constraints.maxWidth / 2 - 2) * _quadrantScale;
-                    final availableHeight = (constraints.maxHeight / 2 - 2) * _quadrantScale;
-                    final aspectRatio = availableWidth / availableHeight;
-                    return GridView.count(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 2,
-                      mainAxisSpacing: 2,
-                      childAspectRatio: aspectRatio.clamp(0.3, 3.0),
-                      children: [
-                    _buildSessionQuadrant(
-                      title: "Szenen-Ablauf",
-                      icon: Icons.list_alt,
-                      color: DnDTheme.arcaneBlue,
-                      content: _buildSceneFlowWidget(viewModel),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Linke Seite: Szenen-Ablauf (volle Höhe)
+                    Expanded(
+                      flex: 1,
+                      child: _buildSceneFlowPanel(viewModel),
                     ),
-                    _buildSessionQuadrant(
-                      title: "Live-Notizen",
-                      icon: Icons.note_alt,
-                      color: DnDTheme.ancientGold,
-                      content: _buildLiveNotesWidget(viewModel),
-                    ),
-                    _buildSessionQuadrant(
-                      title: "Session-Werkzeuge",
-                      icon: Icons.construction,
-                      color: DnDTheme.mysticalPurple,
-                      content: _buildToolsWidget(viewModel),
-                    ),
-                    _buildSessionQuadrant(
-                      title: "Atmosphäre",
-                      icon: Icons.music_note,
-                      color: DnDTheme.successGreen,
-                      content: _buildPlaceholderWidget(
-                        "Sound Mixer",
-                        "Diese Funktion wird in Zukunft verfügbar sein",
-                        Icons.music_note,
+                    
+                    const SizedBox(width: 8),
+                    
+                    // Rechte Seite: Live-Notizen + Atmosphäre
+                    Expanded(
+                      flex: 1,
+                      child: Column(
+                        children: [
+                          // Live-Notizen (obere Hälfte)
+                          Expanded(
+                            flex: 1,
+                            child: _buildLiveNotesPanel(viewModel),
+                          ),
+                          
+                          const SizedBox(height: 8),
+                          
+                          // Atmosphäre (untere Hälfte)
+                          Expanded(
+                            flex: 1,
+                            child: _buildAtmospherePanel(viewModel),
+                          ),
+                        ],
                       ),
                     ),
-                      ],
-                    );
-                  },
+                  ],
                 ),
               ),
             ],
@@ -278,25 +267,13 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
           ),
             const SizedBox(width: 8),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Kampagne: ${viewModel.campaign.title}',
-                  style: DnDTheme.bodyText2.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 11,
-                  ),
-                ),
-                Text(
-                  'Session-Laufzeit: ${viewModel.getFormattedInGameTime()}',
-                  style: DnDTheme.bodyText2.copyWith(
-                    color: Colors.white70,
-                    fontSize: 9,
-                  ),
-                ),
-              ],
+            child: Text(
+              'Kampagne: ${viewModel.campaign.title}',
+              style: DnDTheme.bodyText2.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
+              ),
             ),
           ),
           Container(
@@ -332,6 +309,153 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Baut das Szenen-Ablauf Panel (linke Seite, volle Höhe)
+  Widget _buildSceneFlowPanel(ActiveSessionViewModel viewModel) {
+    return Container(
+      decoration: BoxDecoration(
+        color: DnDTheme.slateGrey.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        border: Border.all(
+          color: DnDTheme.arcaneBlue.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: DnDTheme.arcaneBlue.withValues(alpha: 0.2),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(DnDTheme.radiusMedium),
+                topRight: Radius.circular(DnDTheme.radiusMedium),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.list_alt, color: DnDTheme.arcaneBlue, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Szenen-Ablauf',
+                  style: DnDTheme.bodyText1.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${viewModel.scenes.length} Szenen',
+                  style: DnDTheme.bodyText2.copyWith(
+                    color: Colors.white54,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Content
+          Expanded(
+            child: _buildSceneFlowWidget(viewModel),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Baut das Live-Notizen Panel (rechts oben)
+  Widget _buildLiveNotesPanel(ActiveSessionViewModel viewModel) {
+    return Container(
+      decoration: BoxDecoration(
+        color: DnDTheme.slateGrey.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        border: Border.all(
+          color: DnDTheme.ancientGold.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: DnDTheme.ancientGold.withValues(alpha: 0.2),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(DnDTheme.radiusMedium),
+                topRight: Radius.circular(DnDTheme.radiusMedium),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.note_alt, color: DnDTheme.ancientGold, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Live-Notizen',
+                  style: DnDTheme.bodyText1.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Content
+          Expanded(
+            child: _buildLiveNotesWidget(viewModel),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Baut das Atmosphäre Panel (rechts unten)
+  Widget _buildAtmospherePanel(ActiveSessionViewModel viewModel) {
+    return Container(
+      decoration: BoxDecoration(
+        color: DnDTheme.slateGrey.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        border: Border.all(
+          color: DnDTheme.successGreen.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: DnDTheme.successGreen.withValues(alpha: 0.2),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(DnDTheme.radiusMedium),
+                topRight: Radius.circular(DnDTheme.radiusMedium),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.music_note, color: DnDTheme.successGreen, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Atmosphäre',
+                  style: DnDTheme.bodyText1.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Content
+          Expanded(
+            child: _buildPlaceholderWidget(
+              "Sound Mixer",
+              "Diese Funktion wird in Zukunft verfügbar sein",
+              Icons.music_note,
             ),
           ),
         ],
@@ -409,21 +533,21 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
         ),
         // Add Scene Button
         Padding(
-          padding: const EdgeInsets.all(2),
+          padding: const EdgeInsets.all(8),
           child: ElevatedButton.icon(
             onPressed: () => _showCreateSceneDialog(),
-            icon: const Icon(Icons.add, size: 12),
-            label: const Text('Neue Szene'),
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Neue Szene', style: TextStyle(fontSize: 14)),
             style: ElevatedButton.styleFrom(
               backgroundColor: DnDTheme.arcaneBlue,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(
-                horizontal: DnDTheme.xs,
-                vertical: 4,
+                horizontal: 16,
+                vertical: 12,
               ),
-              textStyle: const TextStyle(fontSize: 8),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+              ),
             ),
           ),
         ),
@@ -443,9 +567,9 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
         highlightColor: Colors.transparent,
       ),
       child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         leading: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
             color: scene.isCompleted 
                 ? DnDTheme.successGreen 
@@ -457,7 +581,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
             style: DnDTheme.bodyText2.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.bold,
-              fontSize: 9,
+              fontSize: 14,
             ),
           ),
         ),
@@ -472,25 +596,26 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                     style: DnDTheme.bodyText2.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 9,
+                      fontSize: 14,
                     ),
                   ),
+                  const SizedBox(height: 2),
                   Row(
                     children: [
                       Text(
                         scene.sceneTypeDisplayName,
                         style: DnDTheme.bodyText2.copyWith(
                           color: Colors.white70,
-                          fontSize: 7,
+                          fontSize: 11,
                         ),
                       ),
                       // Encounter Link Indicator
                       if (scene.linkedEncounterId != null) ...[
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 6),
                         Icon(
                           Icons.gavel,
                           color: DnDTheme.errorRed,
-                          size: 8,
+                          size: 14,
                         ),
                       ],
                     ],
@@ -505,21 +630,21 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                   Icon(
                     Icons.check_circle,
                     color: DnDTheme.successGreen,
-                    size: 12,
+                    size: 18,
                   ),
                 if (isActive)
                   Icon(
                     Icons.play_circle_filled,
                     color: DnDTheme.ancientGold,
-                    size: 12,
+                    size: 18,
                   ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 8),
                 GestureDetector(
                   onTap: onTap,
                   child: Icon(
                     Icons.more_vert,
                     color: Colors.white70,
-                    size: 12,
+                    size: 18,
                   ),
                 ),
               ],
@@ -531,7 +656,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
         children: [
           // Expanded Content
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               gradient: DnDTheme.getMysticalGradient(
                 startColor: isActive 
@@ -557,18 +682,18 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                     style: DnDTheme.bodyText2.copyWith(
                       color: DnDTheme.ancientGold,
                       fontWeight: FontWeight.bold,
-                      fontSize: 8,
+                      fontSize: 12,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
                     scene.description,
                     style: DnDTheme.bodyText2.copyWith(
                       color: Colors.white,
-                      fontSize: 9,
+                      fontSize: 13,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                 ],
                 // Verknüpfte Quests
                 if (scene.linkedQuestIds.isNotEmpty) ...[
@@ -577,12 +702,12 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                     style: DnDTheme.bodyText2.copyWith(
                       color: DnDTheme.ancientGold,
                       fontWeight: FontWeight.bold,
-                      fontSize: 8,
+                      fontSize: 12,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   _buildLinkedQuestsRow(scene),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                 ],
                 // Verknüpfte Sounds
                 if (scene.linkedSoundIds.isNotEmpty) ...[
@@ -591,12 +716,12 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                     style: DnDTheme.bodyText2.copyWith(
                       color: DnDTheme.ancientGold,
                       fontWeight: FontWeight.bold,
-                      fontSize: 8,
+                      fontSize: 12,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   _buildLinkedSoundsRow(scene),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                 ],
                 // Verknüpfte Charaktere
                 if (scene.linkedCharacterIds.isNotEmpty) ...[
@@ -605,12 +730,12 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                     style: DnDTheme.bodyText2.copyWith(
                       color: DnDTheme.ancientGold,
                       fontWeight: FontWeight.bold,
-                      fontSize: 8,
+                      fontSize: 12,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   _buildLinkedCharactersRow(scene),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                 ],
                 // Verknüpfte Wiki-Einträge
                 if (scene.linkedWikiEntryIds.isNotEmpty) ...[
@@ -619,12 +744,12 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                     style: DnDTheme.bodyText2.copyWith(
                       color: DnDTheme.ancientGold,
                       fontWeight: FontWeight.bold,
-                      fontSize: 8,
+                      fontSize: 12,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   _buildLinkedWikiEntriesRow(scene),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                 ],
                 // Zusätzliche Details
                 Row(
@@ -811,7 +936,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
 
         final linkedChars = snapshot.data!;
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           decoration: BoxDecoration(
             color: DnDTheme.mysticalPurple.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
@@ -821,15 +946,15 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
             ),
           ),
           child: Wrap(
-            spacing: 4,
-            runSpacing: 2,
+            spacing: 8,
+            runSpacing: 6,
             children: linkedChars.values.map((char) {
               final type = char['type'] as String;
               final name = char['name'] as String;
               final level = char['level'] as String?;
               
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: _getCharacterTypeColor(type).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
@@ -844,23 +969,23 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                     Icon(
                       _getCharacterTypeIcon(type),
                       color: _getCharacterTypeColor(type),
-                      size: 8,
+                      size: 16,
                     ),
-                    const SizedBox(width: 2),
+                    const SizedBox(width: 6),
                     Text(
                       name,
                       style: DnDTheme.bodyText2.copyWith(
                         color: Colors.white,
-                        fontSize: 7,
+                        fontSize: 12,
                       ),
                     ),
                     if (level != null) ...[
-                      const SizedBox(width: 2),
+                      const SizedBox(width: 4),
                       Text(
                         '($level)',
                         style: DnDTheme.bodyText2.copyWith(
                           color: Colors.white70,
-                          fontSize: 6,
+                          fontSize: 11,
                         ),
                       ),
                     ],
@@ -947,7 +1072,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
               'Fehler beim Laden der Wiki-Einträge',
               style: DnDTheme.bodyText2.copyWith(
                 color: DnDTheme.errorRed,
-                fontSize: 8,
+                fontSize: 10,
               ),
             ),
           );
@@ -959,7 +1084,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
 
         final linkedWikiEntries = snapshot.data!;
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           decoration: BoxDecoration(
             color: DnDTheme.mysticalPurple.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
@@ -969,11 +1094,11 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
             ),
           ),
           child: Wrap(
-            spacing: 4,
-            runSpacing: 2,
+            spacing: 8,
+            runSpacing: 6,
             children: linkedWikiEntries.map((wikiEntry) {
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: _getWikiEntryTypeColor(wikiEntry.entryType).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
@@ -988,14 +1113,14 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                     Icon(
                       _getWikiEntryTypeIcon(wikiEntry.entryType),
                       color: _getWikiEntryTypeColor(wikiEntry.entryType),
-                      size: 8,
+                      size: 16,
                     ),
-                    const SizedBox(width: 2),
+                    const SizedBox(width: 6),
                     Text(
                       wikiEntry.title,
                       style: DnDTheme.bodyText2.copyWith(
                         color: Colors.white,
-                        fontSize: 7,
+                        fontSize: 12,
                       ),
                     ),
                   ],
@@ -1129,8 +1254,8 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   /// Baut eine vollständige Quest-Karte mit allen Informationen
   Widget _buildQuestCard(Quest quest) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.all(8),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         gradient: DnDTheme.getMysticalGradient(
           startColor: DnDTheme.slateGrey.withValues(alpha: 0.8),
@@ -1160,10 +1285,10 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                 child: Icon(
                   _getQuestStatusIcon(quest.status),
                   color: _getQuestStatusColor(quest.status),
-                  size: 14,
+                  size: 20,
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1173,7 +1298,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                       style: DnDTheme.bodyText1.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 10,
+                        fontSize: 14,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -1184,23 +1309,23 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                           _getQuestStatusText(quest.status),
                           style: DnDTheme.bodyText2.copyWith(
                             color: _getQuestStatusColor(quest.status),
-                            fontSize: 8,
+                            fontSize: 11,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         if (quest.location != null && quest.location!.isNotEmpty) ...[
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 6),
                           Icon(
                             Icons.location_on,
                             color: Colors.white54,
-                            size: 10,
+                            size: 14,
                           ),
-                          const SizedBox(width: 2),
+                          const SizedBox(width: 4),
                           Text(
                             quest.location!,
                             style: DnDTheme.bodyText2.copyWith(
                               color: Colors.white54,
-                              fontSize: 8,
+                              fontSize: 11,
                             ),
                           ),
                         ],
@@ -1214,12 +1339,12 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
           
           // Beschreibung
           if (quest.description.isNotEmpty) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Text(
               quest.description,
               style: DnDTheme.bodyText2.copyWith(
                 color: Colors.white70,
-                fontSize: 8,
+                fontSize: 12,
               ),
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
@@ -1227,7 +1352,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
           ],
           
           // Aktionen
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
           Row(
             children: [
               // Als aufgegeben markieren
@@ -1751,12 +1876,12 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
               maxLines: null,
               expands: true,
               textAlignVertical: TextAlignVertical.top,
-              style: DnDTheme.bodyText1.copyWith(color: Colors.white, fontSize: 10),
+              style: DnDTheme.bodyText1.copyWith(color: Colors.white, fontSize: 14),
               decoration: const InputDecoration(
                 hintText: 'Live-Notizen...',
-                hintStyle: TextStyle(color: Colors.white54, fontSize: 10),
+                hintStyle: TextStyle(color: Colors.white54, fontSize: 14),
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.all(4),
+                contentPadding: EdgeInsets.all(12),
               ),
               onChanged: (value) {
                 // Debounced update could be implemented here
@@ -1767,7 +1892,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
             ),
           ),
           Container(
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               gradient: DnDTheme.getMysticalGradient(
                 startColor: DnDTheme.ancientGold.withValues(alpha: 0.2),
@@ -1785,13 +1910,13 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                   'Auto-Save',
                   style: DnDTheme.bodyText2.copyWith(
                     color: Colors.white70,
-                    fontSize: 8,
+                    fontSize: 12,
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 2,
+                    horizontal: 12,
+                    vertical: 6,
                   ),
                   decoration: BoxDecoration(
                     color: DnDTheme.successGreen,
@@ -1802,7 +1927,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                     style: DnDTheme.bodyText2.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 8,
+                      fontSize: 12,
                     ),
                   ),
                 ),
@@ -1810,181 +1935,6 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildToolsWidget(ActiveSessionViewModel viewModel) {
-    return Column(
-      children: [
-        Expanded(
-          child: GridView.count(
-            crossAxisCount: 2,
-            crossAxisSpacing: 2,
-            mainAxisSpacing: 2,
-            childAspectRatio: 1.0,
-            children: [
-              _buildToolButton(
-                icon: Icons.access_time,
-                label: '+15 Min',
-                color: DnDTheme.successGreen,
-                onTap: () => viewModel.addInGameTime(15),
-              ),
-              _buildToolButton(
-                icon: Icons.timer,
-                label: '+30 Min',
-                color: DnDTheme.arcaneBlue,
-                onTap: () => viewModel.addInGameTime(30),
-              ),
-              _buildToolButton(
-                icon: Icons.hourglass_full,
-                label: '+1 Std',
-                color: DnDTheme.mysticalPurple,
-                onTap: () => viewModel.addInGameTime(60),
-              ),
-              _buildToolButton(
-                icon: Icons.refresh,
-                label: 'Neu laden',
-                color: DnDTheme.ancientGold,
-                onTap: () async {
-                  // Widget neu erstellen, da reloadScenes nicht existiert
-                  setState(() {});
-                  await viewModel.triggerDataReload();
-                },
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 2),
-        Container(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            gradient: DnDTheme.getMysticalGradient(
-              startColor: DnDTheme.stoneGrey,
-              endColor: DnDTheme.slateGrey,
-            ),
-            borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-            border: Border.all(
-              color: DnDTheme.ancientGold.withValues(alpha: 0.3),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Session-Status',
-                style: DnDTheme.bodyText2.copyWith(
-                  color: DnDTheme.ancientGold,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 9,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Row(
-                children: [
-                  Icon(
-                    Icons.circle,
-                    color: DnDTheme.successGreen,
-                    size: 8,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Session aktiv',
-                    style: DnDTheme.bodyText2.copyWith(
-                      color: Colors.white70,
-                      fontSize: 8,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              // Scale Slider
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Größe',
-                    style: DnDTheme.bodyText2.copyWith(
-                      color: DnDTheme.arcaneBlue,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 8,
-                    ),
-                  ),
-                  Text(
-                    '${(_quadrantScale * 100).toInt()}%',
-                    style: DnDTheme.bodyText2.copyWith(
-                      color: Colors.white70,
-                      fontSize: 8,
-                    ),
-                  ),
-                ],
-              ),
-              SliderTheme(
-                data: SliderThemeData(
-                  trackHeight: 2,
-                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 4),
-                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 8),
-                  activeTrackColor: DnDTheme.arcaneBlue,
-                  inactiveTrackColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
-                  thumbColor: DnDTheme.ancientGold,
-                ),
-                child: Slider(
-                  value: _quadrantScale,
-                  min: 0.5,
-                  max: 1.0,
-                  divisions: 10,
-                  onChanged: (value) {
-                    setState(() {
-                      _quadrantScale = value;
-                    });
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildToolButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: DnDTheme.getMysticalGradient(
-            startColor: color.withValues(alpha: 0.8),
-            endColor: color.withValues(alpha: 0.4),
-          ),
-          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-          border: Border.all(
-            color: color.withValues(alpha: 0.5),
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: Colors.white,
-              size: 16,
-            ),
-            const SizedBox(height: 2),
-            Text(
-            label,
-              style: DnDTheme.bodyText2.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 9,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -2013,25 +1963,25 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
         children: [
           Icon(
             icon,
-            size: 24,
+            size: 48,
             color: Colors.white38,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 12),
           Text(
             title,
             style: DnDTheme.bodyText2.copyWith(
               color: Colors.white70,
               fontWeight: FontWeight.bold,
-              fontSize: 10,
+              fontSize: 16,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 8),
           Text(
             description,
             style: DnDTheme.bodyText2.copyWith(
               color: Colors.white54,
-              fontSize: 8,
+              fontSize: 13,
             ),
             textAlign: TextAlign.center,
           ),
