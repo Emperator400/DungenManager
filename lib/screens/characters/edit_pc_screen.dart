@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../game_data/dnd_models.dart';
+import '../../game_data/dnd_logic.dart';
 import '../../game_data/game_data.dart';
 import '../../models/player_character.dart';
 import '../../theme/dnd_theme.dart';
@@ -103,9 +104,23 @@ class _EditPCScreenState extends State<EditPCScreen>
   // ============================================================================
 
   PreferredSizeWidget _buildAppBar() {
+    // Zeige Charakternamen wenn vorhanden, sonst Standard-Titel
+    final titleText = _viewModel.isEdit && _viewModel.name.isNotEmpty
+        ? _viewModel.name
+        : (_viewModel.isEdit ? 'Held bearbeiten' : 'Neuen Held erstellen');
+    
     return AppBar(
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () async {
+          final shouldPop = await _onWillPop();
+          if (shouldPop && mounted) {
+            Navigator.of(context).pop();
+          }
+        },
+      ),
       title: Text(
-        _viewModel.isEdit ? 'Held bearbeiten' : 'Neuen Held erstellen',
+        titleText,
         style: DnDTheme.headline2.copyWith(
           color: DnDTheme.ancientGold,
           fontWeight: FontWeight.bold,
@@ -232,6 +247,10 @@ class _EditPCScreenState extends State<EditPCScreen>
                 _buildSectionTitle('Fertigkeiten', Icons.build),
                 const SizedBox(height: DnDTheme.md),
                 _buildSkillsCard(),
+                const SizedBox(height: DnDTheme.xl),
+                _buildSectionTitle('Rettungswürfe', Icons.shield),
+                const SizedBox(height: DnDTheme.md),
+                _buildSavingThrowsSection(viewModel),
               ],
             ),
           ),
@@ -246,9 +265,160 @@ class _EditPCScreenState extends State<EditPCScreen>
         return SingleChildScrollView(
           controller: _scrollController,
           padding: const EdgeInsets.all(DnDTheme.lg),
-          child: _buildAbilityGrid(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildAbilityGrid(),
+            ],
+          ),
         );
       },
+    );
+  }
+
+  /// Baut die Rettungswürfe-Sektion
+  Widget _buildSavingThrowsSection(EditPCViewModel viewModel) {
+    return FormSectionWidget(
+      title: 'Rettungswürfe',
+      icon: Icons.shield,
+      backgroundColor: DnDTheme.slateGrey,
+      borderRadius: DnDTheme.radiusMedium,
+      children: [
+        Text(
+          'Wähle die Rettungswürfe, in denen der Charakter proficient ist.',
+          style: DnDTheme.bodyText2.copyWith(
+            color: Colors.white70,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+        const SizedBox(height: DnDTheme.md),
+        _buildSavingThrowRow(
+          viewModel: viewModel,
+          name: 'Stärke',
+          abilityValue: viewModel.strength,
+          abilityKey: 'strength',
+          icon: Icons.fitness_center,
+          color: Colors.red,
+        ),
+        _buildSavingThrowRow(
+          viewModel: viewModel,
+          name: 'Geschicklichkeit',
+          abilityValue: viewModel.dexterity,
+          abilityKey: 'dexterity',
+          icon: Icons.directions_run,
+          color: Colors.green,
+        ),
+        _buildSavingThrowRow(
+          viewModel: viewModel,
+          name: 'Konstitution',
+          abilityValue: viewModel.constitution,
+          abilityKey: 'constitution',
+          icon: Icons.favorite,
+          color: Colors.orange,
+        ),
+        _buildSavingThrowRow(
+          viewModel: viewModel,
+          name: 'Intelligenz',
+          abilityValue: viewModel.intelligence,
+          abilityKey: 'intelligence',
+          icon: Icons.psychology,
+          color: Colors.blue,
+        ),
+        _buildSavingThrowRow(
+          viewModel: viewModel,
+          name: 'Weisheit',
+          abilityValue: viewModel.wisdom,
+          abilityKey: 'wisdom',
+          icon: Icons.visibility,
+          color: Colors.purple,
+        ),
+        _buildSavingThrowRow(
+          viewModel: viewModel,
+          name: 'Charisma',
+          abilityValue: viewModel.charisma,
+          abilityKey: 'charisma',
+          icon: Icons.star,
+          color: DnDTheme.ancientGold,
+        ),
+      ],
+    );
+  }
+
+  /// Baut eine einzelne Zeile für einen Rettungswurf
+  Widget _buildSavingThrowRow({
+    required EditPCViewModel viewModel,
+    required String name,
+    required int abilityValue,
+    required String abilityKey,
+    required IconData icon,
+    required Color color,
+  }) {
+    final isProficient = viewModel.savingThrowProficiencies.contains(abilityKey);
+    final modifier = getModifier(abilityValue);
+    final totalBonus = modifier + (isProficient ? viewModel.proficiencyBonus : 0);
+    final bonusString = totalBonus >= 0 ? '+$totalBonus' : totalBonus.toString();
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: InkWell(
+        onTap: () => viewModel.toggleSavingThrowProficiency(abilityKey),
+        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: isProficient 
+                ? color.withValues(alpha: 0.15)
+                : DnDTheme.stoneGrey.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+            border: Border.all(
+              color: isProficient ? color : Colors.transparent,
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                color: isProficient ? color : Colors.white54,
+                size: 22,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  name,
+                  style: DnDTheme.bodyText1.copyWith(
+                    color: isProficient ? Colors.white : Colors.white70,
+                    fontWeight: isProficient ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+              ),
+              // Modifier anzeigen
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: DnDTheme.stoneGrey,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  bonusString,
+                  style: DnDTheme.headline3.copyWith(
+                    color: isProficient ? color : DnDTheme.ancientGold,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Checkbox
+              Icon(
+                isProficient ? Icons.check_box : Icons.check_box_outline_blank,
+                color: isProficient ? color : Colors.white54,
+                size: 24,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -484,6 +654,67 @@ class _EditPCScreenState extends State<EditPCScreen>
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+            // Proficiency Bonus (Übungsbonus)
+            Row(
+              children: [
+                Expanded(
+                  child: FormFieldWidget(
+                    label: 'Übungsbonus',
+                    value: _viewModel.hasProficiencyBonusOverride 
+                        ? _viewModel.proficiencyBonus.toString()
+                        : '',
+                    onChanged: (value) {
+                      final bonus = int.tryParse(value);
+                      if (bonus != null && bonus > 0) {
+                        _viewModel.updateProficiencyBonus(bonus);
+                      } else if (value.isEmpty) {
+                        _viewModel.resetProficiencyBonusToAuto();
+                      }
+                    },
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    icon: Icons.add_circle_outline,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: CombatStatChip(
+                    label: 'Aktuell',
+                    value: '+${_viewModel.proficiencyBonus}',
+                    icon: Icons.auto_awesome,
+                    color: _viewModel.hasProficiencyBonusOverride 
+                        ? DnDTheme.mysticalPurple 
+                        : DnDTheme.successGreen,
+                  ),
+                ),
+              ],
+            ),
+            // Info-Text für automatische Berechnung
+            if (!_viewModel.hasProficiencyBonusOverride)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 14,
+                      color: Colors.white54,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Wird automatisch basierend auf dem Level berechnet. Gib einen Wert ein, um ihn manuell zu überschreiben.',
+                        style: DnDTheme.bodyText2.copyWith(
+                          color: Colors.white54,
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             const SizedBox(height: 16),
             Row(
               children: [

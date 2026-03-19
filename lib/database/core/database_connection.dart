@@ -38,7 +38,7 @@ class DatabaseConnection {
     
     final db = await openDatabase(
       path,
-      version: 14,
+      version: 15,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       singleInstance: true,
@@ -190,6 +190,7 @@ class DatabaseConnection {
         spell_slots TEXT,
         spell_save_dc INTEGER NOT NULL DEFAULT 0,
         spell_attack_bonus INTEGER NOT NULL DEFAULT 0,
+        saving_throw_proficiencies TEXT DEFAULT '[]',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY (campaign_id) REFERENCES campaigns (id) ON DELETE CASCADE
@@ -775,6 +776,26 @@ class DatabaseConnection {
         print('✅ scenes Tabelle aktualisiert (Version 14)');
       } catch (e) {
         print('⚠️ Konnte linked_sound_ids Spalte nicht hinzufügen: $e');
+      }
+    }
+    
+    if (oldVersion < 15 && newVersion >= 15) {
+      print('🔄 Füge saving_throw_proficiencies Spalte zu player_characters hinzu (v14 → v15)...');
+      try {
+        final tableInfo = await db.rawQuery('PRAGMA table_info(player_characters)');
+        final existingColumns = tableInfo.map((column) => column['name'] as String).toSet();
+        
+        // saving_throw_proficiencies hinzufügen
+        if (!existingColumns.contains('saving_throw_proficiencies')) {
+          await db.execute('ALTER TABLE player_characters ADD COLUMN saving_throw_proficiencies TEXT DEFAULT "[]"');
+          print('✅ saving_throw_proficiencies Spalte hinzugefügt');
+        } else {
+          print('ℹ️ saving_throw_proficiencies Spalte existiert bereits');
+        }
+        
+        print('✅ player_characters Tabelle aktualisiert (Version 15)');
+      } catch (e) {
+        print('⚠️ Konnte saving_throw_proficiencies Spalte nicht hinzufügen: $e');
       }
     }
   }

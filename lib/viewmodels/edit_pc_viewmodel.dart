@@ -45,7 +45,9 @@ class EditPCViewModel extends ChangeNotifier {
   DndClass? _selectedClass;
   DndRace? _selectedRace;
   Set<String> _proficientSkills = {};
+  Set<String> _savingThrowProficiencies = {};
   String? _imagePath;
+  int _proficiencyBonusOverride = 0; // 0 = automatisch berechnen, >0 = manueller Wert
 
   // Loading States
   final bool _isLoading = false;
@@ -90,6 +92,7 @@ class EditPCViewModel extends ChangeNotifier {
   DndClass? get selectedClass => _selectedClass;
   DndRace? get selectedRace => _selectedRace;
   Set<String> get proficientSkills => _proficientSkills;
+  Set<String> get savingThrowProficiencies => _savingThrowProficiencies;
   String? get imagePath => _imagePath;
   bool get isLoading => _isLoading;
   bool get isSaving => _isSaving;
@@ -130,7 +133,20 @@ class EditPCViewModel extends ChangeNotifier {
 
   // Computed Properties
   int get initiativeBonus => getModifier(_dexterity);
-  int get proficiencyBonus => getProficiencyBonus(_level);
+  
+  /// Gibt den Proficiency Bonus zurück
+  /// Wenn ein manueller Override gesetzt ist (>0), wird dieser verwendet
+  /// Andernfalls wird er automatisch basierend auf dem Level berechnet
+  int get proficiencyBonus => _proficiencyBonusOverride > 0 
+      ? _proficiencyBonusOverride 
+      : getProficiencyBonus(_level);
+  
+  /// Gibt zurück, ob der Proficiency Bonus manuell überschrieben wurde
+  bool get hasProficiencyBonusOverride => _proficiencyBonusOverride > 0;
+  
+  /// Gibt den automatisch berechneten Proficiency Bonus zurück (ohne Override)
+  int get calculatedProficiencyBonus => getProficiencyBonus(_level);
+  
   bool get isEdit => _pcToEdit != null;
 
   // ============================================================================
@@ -245,6 +261,7 @@ class EditPCViewModel extends ChangeNotifier {
         _wisdom = pc.wisdom;
         _charisma = pc.charisma;
         _proficientSkills = pc.proficientSkills.toSet();
+        _savingThrowProficiencies = pc.savingThrowProficiencies.toSet();
         _imagePath = pc.imagePath;
 
         // Lade D&D Details
@@ -410,6 +427,16 @@ class EditPCViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Schaltet die Rettungswurf-Proficiency um
+  void toggleSavingThrowProficiency(String savingThrowName) {
+    if (_savingThrowProficiencies.contains(savingThrowName)) {
+      _savingThrowProficiencies.remove(savingThrowName);
+    } else {
+      _savingThrowProficiencies.add(savingThrowName);
+    }
+    notifyListeners();
+  }
+
   // D&D Details Updaters
   void updateSize(String size) {
     _size = size;
@@ -458,6 +485,19 @@ class EditPCViewModel extends ChangeNotifier {
 
   void updateCopper(double copper) {
     _copper = copper;
+    notifyListeners();
+  }
+
+  /// Aktualisiert den Proficiency Bonus (Übungsbonus)
+  /// Wert 0 = automatisch berechnen, Wert >0 = manueller Override
+  void updateProficiencyBonus(int bonus) {
+    _proficiencyBonusOverride = bonus;
+    notifyListeners();
+  }
+
+  /// Setzt den Proficiency Bonus auf automatische Berechnung zurück
+  void resetProficiencyBonusToAuto() {
+    _proficiencyBonusOverride = 0;
     notifyListeners();
   }
 
@@ -543,6 +583,7 @@ class EditPCViewModel extends ChangeNotifier {
         wisdom: _wisdom,
         charisma: _charisma,
         proficientSkills: _proficientSkills.toList(),
+        savingThrowProficiencies: _savingThrowProficiencies.toList(),
         
         // D&D-Erweiterungsfelder
         size: _size,

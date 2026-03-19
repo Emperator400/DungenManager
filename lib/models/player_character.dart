@@ -31,6 +31,9 @@ class PlayerCharacter {
   // Fertigkeiten
   final List<String> proficientSkills;
   
+  // Rettungswürfe (Saving Throws)
+  final List<String> savingThrowProficiencies;
+  
   // D&D-Klassifikation
   final String? size;
   final String? type;
@@ -110,6 +113,7 @@ class PlayerCharacter {
     this.spellSlots,
     this.spellSaveDc = 8,
     this.spellAttackBonus = 0,
+    this.savingThrowProficiencies = const [],
   });
 
   /// Factory für neuen Player Character
@@ -130,6 +134,7 @@ class PlayerCharacter {
     int wisdom = 10,
     int charisma = 10,
     List<String>? proficientSkills,
+    List<String>? savingThrowProficiencies,
     String? size,
     String? type,
     String? subtype,
@@ -173,6 +178,7 @@ class PlayerCharacter {
       wisdom: wisdom,
       charisma: charisma,
       proficientSkills: proficientSkills ?? [],
+      savingThrowProficiencies: savingThrowProficiencies ?? [],
       size: size,
       type: type,
       subtype: subtype,
@@ -229,6 +235,7 @@ class PlayerCharacter {
       
       // Komplexe Daten als JSON
       'proficient_skills': _serializeList(proficientSkills),
+      'saving_throw_proficiencies': _serializeList(savingThrowProficiencies),
       'special_abilities': specialAbilities,
       'attacks': attacks,
       'attack_list': _serializeAttackList(attackList),
@@ -293,6 +300,7 @@ class PlayerCharacter {
       
       // Komplexe Daten
       proficientSkills: _deserializeList(map['proficient_skills'] as String?),
+      savingThrowProficiencies: _deserializeList(map['saving_throw_proficiencies'] as String?),
       specialAbilities: ModelParsingHelper.safeStringOrNull(map, 'special_abilities', null),
       attacks: map['attacks']?.toString(),
       attackList: _deserializeAttackList(map['attack_list'] as String?),
@@ -480,6 +488,7 @@ class PlayerCharacter {
     int? wisdom,
     int? charisma,
     List<String>? proficientSkills,
+    List<String>? savingThrowProficiencies,
     String? size,
     String? type,
     String? subtype,
@@ -517,6 +526,7 @@ class PlayerCharacter {
       wisdom: wisdom ?? this.wisdom,
       charisma: charisma ?? this.charisma,
       proficientSkills: proficientSkills ?? this.proficientSkills,
+      savingThrowProficiencies: savingThrowProficiencies ?? this.savingThrowProficiencies,
       size: size ?? this.size,
       type: type ?? this.type,
       subtype: subtype ?? this.subtype,

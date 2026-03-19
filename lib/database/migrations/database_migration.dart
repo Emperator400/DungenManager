@@ -59,6 +59,9 @@ class DatabaseMigration {
   // Füge linkedSoundIds Spalte zur sessions Tabelle hinzu, falls sie nicht existiert
   await _migrateSessionsTable(db);
   
+  // Füge saving_throw_proficiencies Spalte zur player_characters Tabelle hinzu
+  await _addSavingThrowProficienciesColumn(db);
+  
   print('Database migration completed successfully');
   }
   
@@ -334,6 +337,36 @@ class DatabaseMigration {
       }
     } catch (e) {
       print('Error adding equipment column: $e');
+    }
+  }
+
+  /// Fügt die saving_throw_proficiencies Spalte zur player_characters Tabelle hinzu, falls sie nicht existiert
+  Future<void> _addSavingThrowProficienciesColumn(Database db) async {
+    try {
+      // Prüfe ob Tabelle existiert
+      final tableExists = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='player_characters'",
+      );
+      
+      if (tableExists.isEmpty) {
+        print('Note: player_characters table does not exist yet');
+        return;
+      }
+      
+      // Prüfe ob Spalte bereits existiert
+      final tableInfo = await db.rawQuery('PRAGMA table_info(player_characters)');
+      final hasSavingThrowProficiencies = tableInfo.any((column) => column['name'] == 'saving_throw_proficiencies');
+      
+      if (!hasSavingThrowProficiencies) {
+        await db.execute(
+          "ALTER TABLE player_characters ADD COLUMN saving_throw_proficiencies TEXT DEFAULT '[]'",
+        );
+        print('Added saving_throw_proficiencies column to player_characters table');
+      } else {
+        print('saving_throw_proficiencies column already exists in player_characters table');
+      }
+    } catch (e) {
+      print('Error adding saving_throw_proficiencies column: $e');
     }
   }
 

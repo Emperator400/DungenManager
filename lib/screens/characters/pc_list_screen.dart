@@ -19,11 +19,8 @@ class PlayerCharacterListScreen extends StatefulWidget {
   State<PlayerCharacterListScreen> createState() => _PlayerCharacterListScreenState();
 }
 
-class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> 
-    with TickerProviderStateMixin {
+class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
   late CharacterEditorViewModel _viewModel;
-  late TabController _tabController;
-  HeroCardViewMode _viewMode = HeroCardViewMode.compact;
   SortOption _sortOption = SortOption.name;
   String _searchQuery = '';
   bool _showFavoritesOnly = false;
@@ -35,13 +32,11 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen>
     _viewModel = CharacterEditorViewModel(
       playerCharacterRepository: PlayerCharacterModelRepository(DatabaseConnection.instance),
     );
-    _tabController = TabController(length: 4, vsync: this);
     _loadCharacters();
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
     _searchController.dispose();
     _viewModel.dispose();
     super.dispose();
@@ -93,79 +88,28 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen>
       child: Scaffold(
         backgroundColor: DnDTheme.dungeonBlack,
         appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
           title: Text(
-            "Helden: ${widget.campaign.title}",
+            widget.campaign.title,
             style: DnDTheme.headline2.copyWith(
               color: DnDTheme.ancientGold,
             ),
           ),
           backgroundColor: DnDTheme.stoneGrey,
           foregroundColor: Colors.white,
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(140),
-            child: _buildSearchAndFilterBar(),
-          ),
-          actions: [
-            Container(
-              margin: const EdgeInsets.only(right: DnDTheme.sm),
-              decoration: DnDTheme.getMysticalBorder(
-                borderColor: DnDTheme.arcaneBlue,
-                width: 2,
-              ),
-              child: PopupMenuButton<HeroCardViewMode>(
-                icon: Icon(Icons.view_list, color: DnDTheme.arcaneBlue),
-                onSelected: (mode) {
-                  setState(() {
-                    _viewMode = mode;
-                  });
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: HeroCardViewMode.compact,
-                    child: Row(
-                      children: [
-                        Icon(Icons.view_list, size: 16, color: DnDTheme.arcaneBlue),
-                        const SizedBox(width: 8),
-                        const Text('Kompakt'),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: HeroCardViewMode.detailed,
-                    child: Row(
-                      children: [
-                        Icon(Icons.view_agenda, size: 16, color: DnDTheme.arcaneBlue),
-                        const SizedBox(width: 8),
-                        const Text('Detailliert'),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: HeroCardViewMode.grid,
-                    child: Row(
-                      children: [
-                        Icon(Icons.grid_view, size: 16, color: DnDTheme.arcaneBlue),
-                        const SizedBox(width: 8),
-                        const Text('Grid'),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: HeroCardViewMode.inventory,
-                    child: Row(
-                      children: [
-                        Icon(Icons.backpack, size: 16, color: DnDTheme.arcaneBlue),
-                        const SizedBox(width: 8),
-                        const Text('Inventar'),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ),
-        body: Consumer<CharacterEditorViewModel>(
+        body: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              // Suchleiste direkt im Body
+              _buildSearchAndFilterBar(),
+              // Liste der Helden
+              Expanded(
+                child: Consumer<CharacterEditorViewModel>(
           builder: (context, viewModel, child) {
             if (viewModel.isLoading) {
               return Center(
@@ -296,8 +240,12 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen>
             );
           },
         ),
+              ),
+            ],
+          ),
+        ),
         floatingActionButton: Container(
-          margin: const EdgeInsets.only(bottom: 100, right: 16),
+          margin: const EdgeInsets.only(bottom: 16, right: 16),
           child: FloatingActionButton.extended(
             tooltip: "Neuen Helden hinzufügen",
             backgroundColor: DnDTheme.successGreen,
@@ -480,41 +428,6 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen>
   }
 
   Widget _buildCharacterList(List<PlayerCharacter> pcs) {
-    switch (_viewMode) {
-      case HeroCardViewMode.grid:
-        return _buildGridLayout(pcs);
-      case HeroCardViewMode.detailed:
-        return _buildDetailedList(pcs);
-      case HeroCardViewMode.inventory:
-        return _buildInventoryList(pcs);
-      case HeroCardViewMode.compact:
-      default:
-        return _buildCompactList(pcs);
-    }
-  }
-
-  Widget _buildCompactList(List<PlayerCharacter> pcs) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(DnDTheme.sm),
-      itemCount: pcs.length,
-      itemBuilder: (context, index) {
-        final pc = pcs[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: DnDTheme.sm),
-          child: EnhancedHeroCardWidget(
-            character: pc,
-            viewMode: HeroCardViewMode.compact,
-            onTap: () => _showCharacterOptions(context, pc),
-            onEdit: () => _editCharacter(context, pc),
-            onFavoriteToggle: () => _toggleFavorite(pc),
-            onQuickAction: () => _showQuickActions(context, pc),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildDetailedList(List<PlayerCharacter> pcs) {
     return ListView.builder(
       padding: const EdgeInsets.all(DnDTheme.sm),
       itemCount: pcs.length,
@@ -524,61 +437,10 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen>
           padding: const EdgeInsets.only(bottom: DnDTheme.md),
           child: EnhancedHeroCardWidget(
             character: pc,
-            viewMode: HeroCardViewMode.detailed,
-            onTap: () => _showCharacterOptions(context, pc),
+            onTap: () => _editCharacter(context, pc),
             onEdit: () => _editCharacter(context, pc),
             onFavoriteToggle: () => _toggleFavorite(pc),
             onQuickAction: () => _showQuickActions(context, pc),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildGridLayout(List<PlayerCharacter> pcs) {
-    return Padding(
-      padding: const EdgeInsets.all(DnDTheme.sm),
-      child: GridView.builder(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: DnDTheme.md,
-          mainAxisSpacing: DnDTheme.md,
-          childAspectRatio: 0.8,
-        ),
-        itemCount: pcs.length,
-        itemBuilder: (context, index) {
-          final pc = pcs[index];
-          return EnhancedHeroCardWidget(
-            character: pc,
-            viewMode: HeroCardViewMode.grid,
-            onTap: () => _showCharacterOptions(context, pc),
-            onEdit: () => _editCharacter(context, pc),
-            onFavoriteToggle: () => _toggleFavorite(pc),
-            onQuickAction: () => _showQuickActions(context, pc),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildInventoryList(List<PlayerCharacter> pcs) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(DnDTheme.sm),
-      itemCount: pcs.length,
-      itemBuilder: (context, index) {
-        final pc = pcs[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: DnDTheme.lg),
-          child: SizedBox(
-            height: 300,
-            child: EnhancedHeroCardWidget(
-              character: pc,
-              viewMode: HeroCardViewMode.inventory,
-              onTap: () => _showCharacterOptions(context, pc),
-              onEdit: () => _editCharacter(context, pc),
-              onFavoriteToggle: () => _toggleFavorite(pc),
-              onQuickAction: () => _showQuickActions(context, pc),
-            ),
           ),
         );
       },

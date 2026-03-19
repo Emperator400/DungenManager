@@ -1,200 +1,142 @@
 import 'package:flutter/material.dart';
 import '../../models/player_character.dart';
-import '../../models/inventory_item.dart';
-import '../../models/item.dart';
 import '../../theme/dnd_theme.dart';
+import '../../services/armor_calculation_service.dart';
 import 'character_list_helpers.dart';
 import 'hero_avatar_widget.dart';
-import 'hero_stats_chips_widget.dart';
+import 'pc_info_chip.dart';
 
-/// Hilfsklasse für die Anzeige von Inventar-Items
-class DisplayInventoryItem {
-  final InventoryItem inventoryItem;
-  final Item item;
-
-  DisplayInventoryItem({
-    required this.inventoryItem,
-    required this.item,
-  });
-}
-
-enum HeroCardViewMode {
-  compact,
-  detailed,
-  grid,
-  inventory,
-}
-
-/// Moderne Heldenkarte mit allen Informationen und Interaktionsmöglichkeiten
-class EnhancedHeroCardWidget extends StatelessWidget {
+/// Moderne Heldenkarte mit UI-Chips für alle relevanten Informationen
+class EnhancedHeroCardWidget extends StatefulWidget {
   final PlayerCharacter character;
-  final HeroCardViewMode viewMode;
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
   final VoidCallback? onFavoriteToggle;
   final VoidCallback? onQuickAction;
   final bool isSelected;
-  final double? elevation;
 
   const EnhancedHeroCardWidget({
     super.key,
     required this.character,
-    this.viewMode = HeroCardViewMode.compact,
     this.onTap,
     this.onEdit,
     this.onFavoriteToggle,
     this.onQuickAction,
     this.isSelected = false,
-    this.elevation,
   });
 
   @override
-  Widget build(BuildContext context) {
-    switch (viewMode) {
-      case HeroCardViewMode.compact:
-        return _buildCompactCard(context);
-      case HeroCardViewMode.detailed:
-        return _buildDetailedCard(context);
-      case HeroCardViewMode.grid:
-        return _buildGridCard(context);
-      case HeroCardViewMode.inventory:
-        return _buildInventoryCard(context);
+  State<EnhancedHeroCardWidget> createState() => _EnhancedHeroCardWidgetState();
+}
+
+class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
+  final ArmorCalculationService _armorService = ArmorCalculationService();
+  ArmorClassResult? _armorResult;
+  bool _isLoadingAc = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadArmorClass();
+  }
+
+  @override
+  void didUpdateWidget(EnhancedHeroCardWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Neu laden wenn sich der Character ändert
+    if (oldWidget.character.id != widget.character.id) {
+      _loadArmorClass();
     }
   }
 
-  Widget _buildCompactCard(BuildContext context) {
-    // Nutze konsistente Klassen-Farben
-    final classColor = CharacterListHelpers.getClassColor(character.className);
+  Future<void> _loadArmorClass() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoadingAc = true;
+    });
+
+    try {
+      final result = await _armorService.calculateArmorClass(
+        characterId: widget.character.id,
+        dexterity: widget.character.dexterity,
+        baseArmorClass: 10,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _armorResult = result;
+          _isLoadingAc = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _armorResult = null;
+          _isLoadingAc = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final classColor = CharacterListHelpers.getClassColor(widget.character.className);
     
     return Container(
       decoration: DnDTheme.getFantasyCardDecoration(
-        borderColor: isSelected ? DnDTheme.ancientGold : classColor,
-        isLegendary: character.isFavorite,
+        borderColor: widget.isSelected ? DnDTheme.ancientGold : classColor,
+        isLegendary: widget.character.isFavorite,
       ).copyWith(
         borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap,
+          onTap: widget.onTap,
           borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
           child: Padding(
             padding: const EdgeInsets.all(DnDTheme.md),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Avatar
-                HeroAvatarWidget(
-                  character: character,
-                  size: 50,
-                  showLevelBadge: true,
+                // === HEADER: Avatar und Basis-Info ===
+                _buildHeader(classColor),
+                
+                const Divider(
+                  color: DnDTheme.slateGrey,
+                  height: 24,
+                  thickness: 1,
                 ),
                 
-                const SizedBox(width: 12),
+                // === KAMPF-CHIPS ===
+                _buildCombatChips(),
                 
-                // Hauptinformationen
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Name mit Favorit-Stern
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              character.name,
-                              style: DnDTheme.headline3.copyWith(
-                                fontSize: 16,
-                                color: isSelected ? DnDTheme.ancientGold : Colors.white,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (onFavoriteToggle != null)
-                            IconButton(
-                              icon: Icon(
-                                character.isFavorite 
-                                    ? Icons.star 
-                                    : Icons.star_border,
-                                color: character.isFavorite 
-                                    ? DnDTheme.ancientGold 
-                                    : DnDTheme.stoneGrey,
-                                size: 20,
-                              ),
-                              onPressed: onFavoriteToggle,
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(
-                                minWidth: 24,
-                                minHeight: 24,
-                              ),
-                            ),
-                        ],
-                      ),
-                      
-                      const SizedBox(height: 4),
-                      
-                      // Klasse und Spieler
-                      Text(
-                        '${character.raceName} ${character.className}',
-                        style: DnDTheme.bodyText2.copyWith(
-                          fontSize: 12,
-                          color: classColor,
-                        ),
-                      ),
-                      
-                      Text(
-                        'Spieler: ${character.playerName}',
-                        style: DnDTheme.caption.copyWith(
-                          fontSize: 11,
-                          color: DnDTheme.stoneGrey.withOpacity(0.8),
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 6),
-                      
-                      // Stats Chips
-                      CompactHeroStatsChipsWidget(
-                        character: character,
-                        iconSize: 10,
-                        fontSize: 8,
-                      ),
-                    ],
-                  ),
-                ),
+                const SizedBox(height: DnDTheme.sm),
                 
-                // Action Buttons
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (onQuickAction != null)
-                      IconButton(
-                        icon: Icon(
-                          Icons.more_vert, 
-                          size: 20,
-                          color: DnDTheme.mysticalPurple,
-                        ),
-                        onPressed: onQuickAction,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                          minWidth: 32,
-                          minHeight: 32,
-                        ),
-                      ),
-                    if (onEdit != null)
-                      IconButton(
-                        icon: Icon(
-                          Icons.edit, 
-                          size: 20,
-                          color: DnDTheme.infoBlue,
-                        ),
-                        onPressed: onEdit,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                          minWidth: 32,
-                          minHeight: 32,
-                        ),
-                      ),
-                  ],
-                ),
+                // === ATTRIBUT-CHIPS ===
+                _buildAttributeChips(),
+                
+                const SizedBox(height: DnDTheme.sm),
+                
+                // === WÄHRUNGS-CHIPS ===
+                _buildCurrencyChips(),
+                
+                // === GESINNUNG (falls vorhanden) ===
+                if (widget.character.alignment != null && widget.character.alignment!.isNotEmpty) ...[
+                  const SizedBox(height: DnDTheme.sm),
+                  _buildAlignmentChip(),
+                ],
+                
+                // === BESCHREIBUNG (falls vorhanden) ===
+                if (widget.character.description != null && widget.character.description!.isNotEmpty) ...[
+                  const SizedBox(height: DnDTheme.sm),
+                  _buildDescription(),
+                ],
+                
+                // === AKTIONS-LEISTE ===
+                const SizedBox(height: DnDTheme.sm),
+                _buildActionBar(classColor),
               ],
             ),
           ),
@@ -203,862 +145,315 @@ class EnhancedHeroCardWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailedCard(BuildContext context) {
-    final classColor = CharacterListHelpers.getClassColor(character.className);
-    final topAttributes = CharacterListHelpers.getTopAttributes(character);
-    
-    return Card(
-      elevation: elevation ?? 3.0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: isSelected 
-            ? BorderSide(color: classColor, width: 3)
-            : BorderSide.none,
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header mit Avatar und Basis-Info
-            Container(
-              padding: const EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
-                color: classColor.withOpacity(0.05),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                ),
-              ),
-              child: Row(
-                children: [
-                  HeroAvatarWidget(
-                    character: character,
-                    size: 60,
-                    showLevelBadge: true,
-                    showAlignment: true,
-                  ),
-                  
-                  const SizedBox(width: 16),
-                  
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Name mit Favorit
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                character.name,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            if (onFavoriteToggle != null)
-                              IconButton(
-                                icon: Icon(
-                                  character.isFavorite 
-                                      ? Icons.star 
-                                      : Icons.star_border,
-                                  color: character.isFavorite 
-                                      ? Colors.amber[600] 
-                                      : Colors.grey[400],
-                                  size: 24,
-                                ),
-                                onPressed: onFavoriteToggle,
-                                padding: EdgeInsets.zero,
-                              ),
-                          ],
-                        ),
-                        
-                        const SizedBox(height: 4),
-                        
-                        // Klasse und Rasse
-                        Text(
-                          '${character.raceName} ${character.className}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: classColor,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        
-                        Text(
-                          'Spieler: ${character.playerName}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        
-                        if (character.description != null && character.description!.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              character.description!,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey[500],
-                                fontStyle: FontStyle.italic,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Stats Section
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Stats Chips
-                  HeroStatsChipsWidget(character: character),
-                  
-                  const SizedBox(height: 12),
-                  
-                  // Top Attributes
-                  Text(
-                    'Wichtigste Attribute',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[700],
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  
-                  Row(
-                    children: topAttributes.map((attr) {
-                      return Expanded(
-                        child: _buildAttributeIndicator(
-                          attr['name'] as String,
-                          attr['value'] as int,
-                          attr['label'] as String,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Action Bar
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  if (onQuickAction != null)
-                    TextButton.icon(
-                      onPressed: onQuickAction,
-                      icon: const Icon(Icons.more_horiz),
-                      label: const Text('Aktionen'),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      ),
-                    ),
-                  if (onEdit != null) ...[
-                    const SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      onPressed: onEdit,
-                      icon: const Icon(Icons.edit),
-                      label: const Text('Bearbeiten'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: classColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
+  /// Header mit Avatar, Name und Basis-Info
+  Widget _buildHeader(Color classColor) {
+    return Row(
+      children: [
+        // Avatar mit Level-Badge
+        HeroAvatarWidget(
+          character: widget.character,
+          size: 56,
+          showLevelBadge: true,
+          showAlignment: false,
         ),
-      ),
-    );
-  }
-
-  Widget _buildGridCard(BuildContext context) {
-    final classColor = CharacterListHelpers.getClassColor(character.className);
-    
-    return Card(
-      elevation: elevation ?? 2.0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: isSelected 
-            ? BorderSide(color: classColor, width: 2)
-            : BorderSide.none,
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
+        
+        const SizedBox(width: 12),
+        
+        // Name und Info
+        Expanded(
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Avatar
-              HeroAvatarWidget(
-                character: character,
-                size: 40,
-                showLevelBadge: true,
+              // Name mit Favorit-Stern
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.character.name,
+                      style: DnDTheme.headline3.copyWith(
+                        fontSize: 18,
+                        color: widget.isSelected ? DnDTheme.ancientGold : Colors.white,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (widget.onFavoriteToggle != null)
+                    IconButton(
+                      icon: Icon(
+                        widget.character.isFavorite ? Icons.star : Icons.star_border,
+                        color: widget.character.isFavorite 
+                            ? DnDTheme.ancientGold 
+                            : DnDTheme.stoneGrey,
+                        size: 22,
+                      ),
+                      onPressed: widget.onFavoriteToggle,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 28,
+                        minHeight: 28,
+                      ),
+                    ),
+                ],
               ),
               
-              const SizedBox(height: 8),
+              const SizedBox(height: 2),
               
-              // Name
+              // Klasse und Rasse
               Text(
-                character.name,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              
-              const SizedBox(height: 4),
-              
-              // Klasse
-              Text(
-                character.className,
-                style: TextStyle(
-                  fontSize: 11,
+                '${widget.character.raceName} ${widget.character.className}',
+                style: DnDTheme.bodyText2.copyWith(
+                  fontSize: 13,
                   color: classColor,
                   fontWeight: FontWeight.w600,
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
               
-              const SizedBox(height: 6),
+              const SizedBox(height: 2),
               
-              // Kompakte Stats
-              CompactHeroStatsChipsWidget(
-                character: character,
-                iconSize: 9,
-                fontSize: 7,
-              ),
-              
-              const SizedBox(height: 8),
-              
-              // Action Icons
+              // Spielername
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  if (onFavoriteToggle != null)
-                    IconButton(
-                      icon: Icon(
-                        character.isFavorite 
-                            ? Icons.star 
-                            : Icons.star_border,
-                        color: character.isFavorite 
-                            ? Colors.amber[600] 
-                            : Colors.grey[400],
-                        size: 16,
-                      ),
-                      onPressed: onFavoriteToggle,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 24,
-                        minHeight: 24,
-                      ),
+                  Icon(
+                    Icons.person_outline,
+                    size: 14,
+                    color: Colors.white54,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    widget.character.playerName,
+                    style: DnDTheme.caption.copyWith(
+                      fontSize: 12,
+                      color: Colors.white54,
                     ),
-                  if (onEdit != null)
-                    IconButton(
-                      icon: const Icon(Icons.edit, size: 16),
-                      onPressed: onEdit,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 24,
-                        minHeight: 24,
-                      ),
-                    ),
-                  if (onQuickAction != null)
-                    IconButton(
-                      icon: const Icon(Icons.more_vert, size: 16),
-                      onPressed: onQuickAction,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 24,
-                        minHeight: 24,
-                      ),
-                    ),
+                  ),
                 ],
               ),
             ],
           ),
         ),
-      ),
+      ],
     );
   }
 
-  Widget _buildInventoryCard(BuildContext context) {
-    final classColor = CharacterListHelpers.getClassColor(character.className);
-    final inventoryItems = character.inventory;
-    final equippedItems = inventoryItems.where((item) => item.isEquipped).toList();
-    final unequippedItems = inventoryItems.where((item) => !item.isEquipped).toList();
+  /// Kampf-Stat Chips (AC, HP, INIT, SPEED)
+  Widget _buildCombatChips() {
+    final dexMod = CharacterListHelpers.getModifier(widget.character.dexterity);
+    final initiative = dexMod + widget.character.initiativeBonus;
+    final initText = initiative >= 0 ? '+$initiative' : '$initiative';
     
-    return Card(
-      elevation: elevation ?? 3.0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: isSelected 
-            ? BorderSide(color: classColor, width: 3)
-            : BorderSide.none,
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header mit Charakter-Info
-            Container(
-              padding: const EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
-                color: classColor.withOpacity(0.05),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                ),
-              ),
-              child: Row(
-                children: [
-                  HeroAvatarWidget(
-                    character: character,
-                    size: 50,
-                    showLevelBadge: true,
-                  ),
-                  
-                  const SizedBox(width: 12),
-                  
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                character.name,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            if (onFavoriteToggle != null)
-                              IconButton(
-                                icon: Icon(
-                                  character.isFavorite 
-                                      ? Icons.star 
-                                      : Icons.star_border,
-                                  color: character.isFavorite 
-                                      ? Colors.amber[600] 
-                                      : Colors.grey[400],
-                                  size: 20,
-                                ),
-                                onPressed: onFavoriteToggle,
-                                padding: EdgeInsets.zero,
-                              ),
-                          ],
-                        ),
-                        
-                        const SizedBox(height: 4),
-                        
-                        Text(
-                          '${character.raceName} ${character.className}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: classColor,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        
-                        const SizedBox(height: 4),
-                        
-                        // Gold-Anzeige
-                        Row(
-                          children: [
-                            Icon(Icons.monetization_on, size: 14, color: Colors.amber[600]),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${character.gold.toStringAsFixed(1)} Gold',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            if (character.silver > 0) ...[
-                              const SizedBox(width: 8),
-                              Icon(Icons.monetization_on, size: 14, color: Colors.grey[400]),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${character.silver.toStringAsFixed(1)} Silber',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ],
-                            if (character.copper > 0) ...[
-                              const SizedBox(width: 8),
-                              Icon(Icons.monetization_on, size: 14, color: Colors.brown[400]),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${character.copper.toStringAsFixed(1)} Kupfer',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Inventar-Bereich
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Ausgerüstete Items
-                    if (equippedItems.isNotEmpty) ...[
-                      Row(
-                        children: [
-                          Icon(Icons.check_circle, size: 16, color: Colors.green[600]),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Ausgerüstet (${equippedItems.length})',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green[700],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        height: 60,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: equippedItems.length,
-                          itemBuilder: (context, index) {
-                            return Container(
-                              width: 50,
-                              margin: const EdgeInsets.only(right: 8),
-                              child: Column(
-                                children: [
-                                  Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[400],
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: Colors.green, width: 2),
-                                    ),
-                                    child: Icon(
-                                      Icons.inventory_2,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Item ${index + 1}',
-                                    style: const TextStyle(
-                                      fontSize: 8,
-                                      color: Colors.grey,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    
-                    // Inventar-Items
-                    Row(
-                      children: [
-                        Icon(Icons.inventory_2, size: 16, color: Colors.blue[600]),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Inventar (${unequippedItems.length})',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue[700],
-                          ),
-                        ),
-                        const Spacer(),
-                        if (unequippedItems.isNotEmpty)
-                          Text(
-                            '${(unequippedItems.length * 2.5).toStringAsFixed(1)} lbs', // Geschätztes Gewicht
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    
-                    // Inventar Grid
-                    Expanded(
-                      child: unequippedItems.isEmpty
-                          ? Container(
-                              decoration: BoxDecoration(
-                                color: Colors.grey[100],
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.inventory_2_outlined,
-                                      size: 32,
-                                      color: Colors.grey[400],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'Keine Gegenstände',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[500],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            )
-                          : GridView.builder(
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 4,
-                                childAspectRatio: 1,
-                                crossAxisSpacing: 8,
-                                mainAxisSpacing: 8,
-                              ),
-                              itemCount: unequippedItems.length > 8 ? 8 : unequippedItems.length,
-                              itemBuilder: (context, index) {
-                                final inventoryItem = unequippedItems[index];
-                                
-                                return Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[100],
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: Colors.grey[300]!),
-                                  ),
-                                  child: Stack(
-                                    children: [
-                                      Center(
-                                        child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              Icons.inventory_2,
-                                              color: Colors.grey[600],
-                                              size: 20,
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              'Item ${index + 1}',
-                                              style: const TextStyle(
-                                                fontSize: 8,
-                                                color: Colors.grey,
-                                              ),
-                                              textAlign: TextAlign.center,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      
-                                      // Mengen-Anzeige
-                                      if (inventoryItem.quantity > 1)
-                                        Positioned(
-                                          top: 2,
-                                          right: 2,
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                            decoration: BoxDecoration(
-                                              color: Colors.blue[600],
-                                              borderRadius: BorderRadius.circular(10),
-                                            ),
-                                            child: Text(
-                                              inventoryItem.quantity.toString(),
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 8,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-                    
-                    // Mehr Items Indicator
-                    if (unequippedItems.length > 8)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.blue[50],
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.blue[200]!),
-                          ),
-                          child: Center(
-                            child: Text(
-                              '+${unequippedItems.length - 8} weitere Gegenstände',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.blue[700],
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            
-            // Action Bar
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  if (onQuickAction != null)
-                    TextButton.icon(
-                      onPressed: onQuickAction,
-                      icon: const Icon(Icons.more_horiz, size: 16),
-                      label: const Text('Aktionen', style: TextStyle(fontSize: 12)),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
-                  if (onEdit != null) ...[
-                    const SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      onPressed: onEdit,
-                      icon: const Icon(Icons.edit, size: 16),
-                      label: const Text('Bearbeiten', style: TextStyle(fontSize: 12)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: classColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
+    // AC-Wert: Berechnet oder Fallback
+    String acDisplay;
+    String? acTooltip;
+    
+    if (_isLoadingAc) {
+      acDisplay = '${widget.character.armorClass}';
+      acTooltip = 'Wird berechnet...';
+    } else if (_armorResult != null) {
+      acDisplay = '${_armorResult!.totalAc}';
+      if (_armorResult!.formula.isNotEmpty) {
+        acTooltip = _armorResult!.formula;
+      }
+    } else {
+      acDisplay = '${widget.character.armorClass}';
+    }
+    
+    return PcChipSection(
+      title: 'Kampfwerte',
+      titleIcon: Icons.shield,
+      chips: [
+        // AC-Chip mit Tooltip für Formel
+        Tooltip(
+          message: acTooltip ?? 'Basis AC',
+          child: PcInfoChip.combat(
+            label: 'AC',
+            value: acDisplay,
+            icon: Icons.shield_outlined,
+            color: DnDTheme.infoBlue,
+            onTap: widget.onEdit,
+          ),
+        ),
+        PcInfoChip.combat(
+          label: 'HP',
+          value: '${widget.character.maxHp}',
+          icon: Icons.favorite_outlined,
+          color: DnDTheme.successGreen,
+          onTap: widget.onEdit,
+        ),
+        PcInfoChip.combat(
+          label: 'INIT',
+          value: initText,
+          icon: Icons.bolt_outlined,
+          color: DnDTheme.arcaneBlue,
+          onTap: widget.onEdit,
+        ),
+        PcInfoChip.combat(
+          label: 'SPEED',
+          value: '${widget.character.speed} ft',
+          icon: Icons.directions_run_outlined,
+          color: DnDTheme.mysticalPurple,
+          onTap: widget.onEdit,
+        ),
+      ],
+    );
+  }
+
+  /// Alle 6 Attribut-Chips
+  Widget _buildAttributeChips() {
+    return PcChipSection(
+      title: 'Attribute',
+      titleIcon: Icons.auto_graph,
+      chips: [
+        PcInfoChip.attribute(
+          name: 'STR',
+          value: widget.character.strength,
+          modifier: CharacterListHelpers.getModifier(widget.character.strength),
+          onTap: widget.onEdit,
+        ),
+        PcInfoChip.attribute(
+          name: 'DEX',
+          value: widget.character.dexterity,
+          modifier: CharacterListHelpers.getModifier(widget.character.dexterity),
+          onTap: widget.onEdit,
+        ),
+        PcInfoChip.attribute(
+          name: 'CON',
+          value: widget.character.constitution,
+          modifier: CharacterListHelpers.getModifier(widget.character.constitution),
+          onTap: widget.onEdit,
+        ),
+        PcInfoChip.attribute(
+          name: 'INT',
+          value: widget.character.intelligence,
+          modifier: CharacterListHelpers.getModifier(widget.character.intelligence),
+          onTap: widget.onEdit,
+        ),
+        PcInfoChip.attribute(
+          name: 'WIS',
+          value: widget.character.wisdom,
+          modifier: CharacterListHelpers.getModifier(widget.character.wisdom),
+          onTap: widget.onEdit,
+        ),
+        PcInfoChip.attribute(
+          name: 'CHA',
+          value: widget.character.charisma,
+          modifier: CharacterListHelpers.getModifier(widget.character.charisma),
+          onTap: widget.onEdit,
+        ),
+      ],
+    );
+  }
+
+  /// Währungs-Chips
+  Widget _buildCurrencyChips() {
+    final hasCurrency = widget.character.gold > 0 || widget.character.silver > 0 || widget.character.copper > 0;
+    
+    if (!hasCurrency) {
+      return const SizedBox.shrink();
+    }
+    
+    final chips = <Widget>[];
+    
+    if (widget.character.gold > 0) {
+      chips.add(PcInfoChip.currency(
+        label: '',
+        amount: widget.character.gold,
+        icon: Icons.monetization_on,
+        color: Colors.amber,
+      ));
+    }
+    
+    if (widget.character.silver > 0) {
+      chips.add(PcInfoChip.currency(
+        label: '',
+        amount: widget.character.silver,
+        icon: Icons.monetization_on_outlined,
+        color: Colors.blueGrey,
+      ));
+    }
+    
+    if (widget.character.copper > 0) {
+      chips.add(PcInfoChip.currency(
+        label: '',
+        amount: widget.character.copper,
+        icon: Icons.circle_outlined,
+        color: Colors.brown,
+      ));
+    }
+    
+    return PcChipSection(
+      title: 'Vermögen',
+      titleIcon: Icons.account_balance_wallet_outlined,
+      chips: chips,
+    );
+  }
+
+  /// Gesinnungs-Chip
+  Widget _buildAlignmentChip() {
+    return PcChipRow(
+      chips: [
+        PcInfoChip.alignment(alignment: widget.character.alignment!),
+      ],
+    );
+  }
+
+  /// Beschreibungstext
+  Widget _buildDescription() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(DnDTheme.sm),
+      decoration: BoxDecoration(
+        color: DnDTheme.slateGrey.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+        border: Border.all(
+          color: DnDTheme.mysticalPurple.withOpacity(0.2),
+          width: 1,
         ),
       ),
+      child: Text(
+        widget.character.description!,
+        style: DnDTheme.bodyText2.copyWith(
+          fontSize: 12,
+          color: Colors.white70,
+          fontStyle: FontStyle.italic,
+        ),
+        maxLines: 3,
+        overflow: TextOverflow.ellipsis,
+      ),
     );
   }
 
-  Widget _buildAttributeIndicator(String name, int value, String label) {
-    final color = CharacterListHelpers.getAttributeQualityColor(value);
-    final modifier = CharacterListHelpers.getModifierDisplay(value);
-    
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 2),
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.3), width: 1),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            name,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: color,
+  /// Aktionsleiste mit Buttons
+  Widget _buildActionBar(Color classColor) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        if (widget.onQuickAction != null)
+          TextButton.icon(
+            onPressed: widget.onQuickAction,
+            icon: const Icon(Icons.more_horiz, size: 18),
+            label: const Text('Aktionen'),
+            style: TextButton.styleFrom(
+              foregroundColor: DnDTheme.mysticalPurple,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            modifier,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: color,
+        if (widget.onEdit != null) ...[
+          const SizedBox(width: 8),
+          ElevatedButton.icon(
+            onPressed: widget.onEdit,
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            label: const Text('Bearbeiten'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: classColor,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+              ),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Color _getRarityColor(String rarity) {
-    switch (rarity.toLowerCase()) {
-      case 'common':
-        return Colors.grey;
-      case 'uncommon':
-        return Colors.green;
-      case 'rare':
-        return Colors.blue;
-      case 'very rare':
-        return Colors.purple;
-      case 'legendary':
-        return Colors.orange;
-      default:
-        return Colors.grey;
-    }
-  }
-}
-
-/// Widget für die Anzeige von Quick-Actions in einem Popup-Menü
-class HeroQuickActionsWidget extends StatelessWidget {
-  final PlayerCharacter character;
-  final VoidCallback? onEdit;
-  final VoidCallback? onDuplicate;
-  final VoidCallback? onDelete;
-  final VoidCallback? onToggleFavorite;
-
-  const HeroQuickActionsWidget({
-    super.key,
-    required this.character,
-    this.onEdit,
-    this.onDuplicate,
-    this.onDelete,
-    this.onToggleFavorite,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert),
-      onSelected: (value) {
-        switch (value) {
-          case 'edit':
-            onEdit?.call();
-            break;
-          case 'duplicate':
-            onDuplicate?.call();
-            break;
-          case 'favorite':
-            onToggleFavorite?.call();
-            break;
-          case 'delete':
-            onDelete?.call();
-            break;
-        }
-      },
-      itemBuilder: (BuildContext context) {
-        return [
-          const PopupMenuItem<String>(
-            value: 'edit',
-            child: Row(
-              children: [
-                Icon(Icons.edit, size: 16),
-                SizedBox(width: 8),
-                Text('Bearbeiten'),
-              ],
-            ),
-          ),
-          const PopupMenuItem<String>(
-            value: 'duplicate',
-            child: Row(
-              children: [
-                Icon(Icons.copy, size: 16),
-                SizedBox(width: 8),
-                Text('Duplizieren'),
-              ],
-            ),
-          ),
-          PopupMenuItem<String>(
-            value: 'favorite',
-            child: Row(
-              children: [
-                Icon(
-                  character.isFavorite ? Icons.star : Icons.star_border,
-                  size: 16,
-                  color: character.isFavorite ? Colors.amber : null,
-                ),
-                SizedBox(width: 8),
-                Text(character.isFavorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'),
-              ],
-            ),
-          ),
-          const PopupMenuItem<String>(
-            value: 'delete',
-            child: Row(
-              children: [
-                Icon(Icons.delete, size: 16, color: Colors.red),
-                SizedBox(width: 8),
-                Text('Löschen', style: TextStyle(color: Colors.red)),
-              ],
-            ),
-          ),
-        ];
-      },
+      ],
     );
   }
 }
