@@ -17,6 +17,7 @@ import '../../database/repositories/wiki_entry_model_repository.dart';
 import '../../theme/dnd_theme.dart';
 import '../../widgets/audio/sound_player_widget.dart';
 import '../../widgets/active_session/live_notes_quadrant.dart';
+import '../../widgets/active_session/quest_list_section.dart';
 import 'encounter_setup_screen.dart';
 import '../scenes/edit_scene_screen.dart';
 
@@ -207,26 +208,10 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                     
                     const SizedBox(width: 8),
                     
-                    // Rechte Seite: Live-Notizen + Atmosphäre
+                    // Rechte Seite: Scrollbare Sidebar mit Live-Notizen, Atmosphäre und Quests
                     Expanded(
                       flex: 1,
-                      child: Column(
-                        children: [
-                          // Live-Notizen (obere Hälfte)
-                          Expanded(
-                            flex: 1,
-                            child: _buildLiveNotesPanel(viewModel),
-                          ),
-                          
-                          const SizedBox(height: 8),
-                          
-                          // Atmosphäre (untere Hälfte)
-                          Expanded(
-                            flex: 1,
-                            child: _buildAtmospherePanel(viewModel),
-                          ),
-                        ],
-                      ),
+                      child: _buildScrollableSidebar(viewModel),
                     ),
                   ],
                 ),
@@ -459,6 +444,43 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
               "Sound Mixer",
               "Diese Funktion wird in Zukunft verfügbar sein",
               Icons.music_note,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Baut die scrollbare rechte Sidebar mit Live-Notizen, Atmosphäre und Quests
+  Widget _buildScrollableSidebar(ActiveSessionViewModel viewModel) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Live-Notizen (350px Höhe)
+          SizedBox(
+            height: 350,
+            child: _buildLiveNotesPanel(viewModel),
+          ),
+          
+          const SizedBox(height: 8),
+          
+          // Atmosphäre (350px Höhe)
+          SizedBox(
+            height: 350,
+            child: _buildAtmospherePanel(viewModel),
+          ),
+          
+          const SizedBox(height: 8),
+          
+          // Quest-Liste (350px Höhe)
+          SizedBox(
+            height: 350,
+            child: QuestListSection(
+              campaignId: viewModel.campaign.id,
+              onQuestUpdated: () {
+                // Szenen neu laden um Quest-Status in Szenen-Karten zu aktualisieren
+                _viewModel.triggerDataReload();
+              },
             ),
           ),
         ],
@@ -1257,17 +1279,17 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   /// Baut eine vollständige Quest-Karte mit allen Informationen
   Widget _buildQuestCard(Quest quest) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: DnDTheme.getMysticalGradient(
           startColor: DnDTheme.slateGrey.withValues(alpha: 0.8),
           endColor: DnDTheme.stoneGrey.withValues(alpha: 0.8),
         ),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
         border: Border.all(
           color: _getQuestStatusColor(quest.status).withValues(alpha: 0.5),
-          width: 1,
+          width: 2,
         ),
       ),
       child: Column(
@@ -1277,31 +1299,31 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
           Row(
             children: [
               Container(
+                padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   color: _getQuestStatusColor(quest.status).withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: _getQuestStatusColor(quest.status),
-                    width: 1,
+                    width: 2,
                   ),
                 ),
                 child: Icon(
                   _getQuestStatusIcon(quest.status),
                   color: _getQuestStatusColor(quest.status),
-                  size: 20,
+                  size: 22,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       quest.title,
-                      style: DnDTheme.bodyText1.copyWith(
+                      style: DnDTheme.headline3.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -1310,25 +1332,25 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                       children: [
                         Text(
                           _getQuestStatusText(quest.status),
-                          style: DnDTheme.bodyText2.copyWith(
+                          style: DnDTheme.bodyText1.copyWith(
                             color: _getQuestStatusColor(quest.status),
-                            fontSize: 11,
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         if (quest.location != null && quest.location!.isNotEmpty) ...[
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 8),
                           Icon(
                             Icons.location_on,
                             color: Colors.white54,
-                            size: 14,
+                            size: 18,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             quest.location!,
-                            style: DnDTheme.bodyText2.copyWith(
+                            style: DnDTheme.bodyText1.copyWith(
                               color: Colors.white54,
-                              fontSize: 11,
+                              fontSize: 14,
                             ),
                           ),
                         ],
@@ -1342,12 +1364,12 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
           
           // Beschreibung
           if (quest.description.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Text(
               quest.description,
-              style: DnDTheme.bodyText2.copyWith(
+              style: DnDTheme.bodyText1.copyWith(
                 color: Colors.white70,
-                fontSize: 12,
+                fontSize: 14,
               ),
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
@@ -1355,7 +1377,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
           ],
           
           // Aktionen
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           Row(
             children: [
               // Als aufgegeben markieren
@@ -1368,23 +1390,23 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                   onTap: () => _updateQuestStatus(quest, QuestStatus.abandoned),
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 8),
               // Als aktiv markieren
               Expanded(
                 child: _buildQuestActionButton(
                   icon: Icons.play_circle_outline,
                   label: 'Aktiv',
-                  color: Colors.grey,
+                  color: DnDTheme.ancientGold,
                   isSelected: quest.status == QuestStatus.active,
                   onTap: () => _updateQuestStatus(quest, QuestStatus.active),
                 ),
               ),
-              const SizedBox(width: 4),
-              // Als abgeschlossen markieren
+              const SizedBox(width: 8),
+              // Als erledigt markieren
               Expanded(
                 child: _buildQuestActionButton(
                   icon: Icons.check_circle_outline,
-                  label: 'Abgeschlossen',
+                  label: 'Erledigt',
                   color: DnDTheme.successGreen,
                   isSelected: quest.status == QuestStatus.completed,
                   onTap: () => _updateQuestStatus(quest, QuestStatus.completed),
@@ -1408,13 +1430,13 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
           gradient: DnDTheme.getMysticalGradient(
             startColor: isSelected ? color.withValues(alpha: 0.4) : color.withValues(alpha: 0.1),
             endColor: isSelected ? color.withValues(alpha: 0.2) : color.withValues(alpha: 0.05),
           ),
-          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected ? color : color.withValues(alpha: 0.3),
             width: isSelected ? 2 : 1,
@@ -1426,14 +1448,14 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
             Icon(
               icon,
               color: isSelected ? color : color.withValues(alpha: 0.7),
-              size: 12,
+              size: 18,
             ),
-            const SizedBox(width: 2),
+            const SizedBox(width: 6),
             Text(
               label,
-              style: DnDTheme.bodyText2.copyWith(
+              style: DnDTheme.bodyText1.copyWith(
                 color: isSelected ? color : Colors.white70,
-                fontSize: 7,
+                fontSize: 13,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
