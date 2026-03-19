@@ -8,6 +8,7 @@ import '../models/equip_slot.dart';
 import '../models/attack.dart';
 import '../services/character_editor_service.dart';
 import '../services/inventory_service.dart';
+import '../services/armor_calculation_service.dart';
 import '../services/uuid_service.dart';
 import '../database/repositories/player_character_model_repository.dart';
 import '../database/repositories/creature_model_repository.dart';
@@ -457,6 +458,75 @@ class CharacterEditorViewModel extends ChangeNotifier {
   List<EquipSlot> getAvailableEquipSlots(Item item) {
     return _inventoryService.getAvailableEquipSlots(item);
   }
+
+  // ============================================================================
+  // ARMOR CLASS CALCULATION
+  // ============================================================================
+
+  /// Berechnet die effektive Rüstungsklasse basierend auf ausgerüsteter Rüstung und Schild
+  /// 
+  /// Berücksichtigt:
+  /// - Basis-AC (10 oder Character-AC)
+  /// - Dexterity Modifier
+  /// - Rüstungs-AC (ersetzt Basis-AC)
+  /// - Schild-Bonus
+  /// 
+  /// D&D 5e Regeln:
+  /// - Heavy Armor: Kein Dex-Bonus
+  /// - Medium Armor: Dex-Bonus max +2
+  /// - Light Armor: Voller Dex-Bonus
+  Future<ArmorClassResult> calculateEffectiveArmorClass() async {
+    final characterId = _isPlayerCharacter ? _playerCharacter?.id : _creature?.id;
+    final dexterity = _isPlayerCharacter ? _playerCharacter?.dexterity ?? 10 : _creature?.dexterity ?? 10;
+    final baseAc = armorClass; // Verwende die gespeicherte AC als Basis
+    
+    if (characterId == null) {
+      return ArmorClassResult(
+        totalAc: baseAc,
+        baseAc: baseAc,
+        dexModifier: 0,
+        armorBonus: 0,
+        shieldBonus: 0,
+        formula: '$baseAc',
+      );
+    }
+    
+    return _inventoryService.calculateEffectiveArmorClass(
+      characterId: characterId,
+      dexterity: dexterity,
+      baseArmorClass: baseAc,
+    );
+  }
+
+  /// Berechnet die effektive AC synchron (ohne Datenbankzugriff)
+  /// 
+  /// Verwendet die bereits geladenen Item-Daten für die Berechnung
+  int get effectiveArmorClassSync {
+    final dexterity = _isPlayerCharacter ? _playerCharacter?.dexterity ?? 10 : _creature?.dexterity ?? 10;
+    final baseAc = 10; // Standard Basis-AC
+    
+    // Baue Liste der ausgerüsteten Items mit ihren Slots
+    final equippedItems = <(EquipSlot, Item?)>[];
+    
+    for (final invItem in _inventory) {
+      if (invItem.isEquipped && invItem.equipSlot != null) {
+        final item = _itemDetails[invItem.itemId];
+        equippedItems.add((invItem.equipSlot!, item));
+      }
+    }
+    
+    return _inventoryService.calculateArmorClassSync(
+      dexterity: dexterity,
+      equippedItems: equippedItems,
+      baseArmorClass: baseAc,
+    );
+  }
+
+  /// Gibt die Dexterity zurück
+  int get dexterity => _isPlayerCharacter ? _playerCharacter?.dexterity ?? 10 : _creature?.dexterity ?? 10;
+
+  /// Gibt den Dexterity Modifier zurück
+  int get dexterityModifier => ((dexterity - 10) ~/ 2);
 
   // ============================================================================
   // ERROR HANDLING

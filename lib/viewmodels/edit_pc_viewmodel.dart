@@ -12,6 +12,7 @@ import '../models/player_character.dart';
 import '../models/equipment.dart';
 import '../models/equip_slot.dart';
 import '../services/inventory_service.dart';
+import '../services/armor_calculation_service.dart';
 
 /// ViewModel für die Bearbeitung von Player Characters
 /// 
@@ -131,6 +132,74 @@ class EditPCViewModel extends ChangeNotifier {
   int get initiativeBonus => getModifier(_dexterity);
   int get proficiencyBonus => getProficiencyBonus(_level);
   bool get isEdit => _pcToEdit != null;
+
+  // ============================================================================
+  // ARMOR CLASS CALCULATION
+  // ============================================================================
+
+  /// Berechnet die effektive Rüstungsklasse basierend auf ausgerüsteter Rüstung und Schild
+  /// 
+  /// Berücksichtigt:
+  /// - Basis-AC (10)
+  /// - Dexterity Modifier
+  /// - Rüstungs-AC (ersetzt Basis-AC)
+  /// - Schild-Bonus
+  /// 
+  /// D&D 5e Regeln:
+  /// - Heavy Armor: Kein Dex-Bonus
+  /// - Medium Armor: Dex-Bonus max +2
+  /// - Light Armor: Voller Dex-Bonus
+  Future<ArmorClassResult> calculateEffectiveArmorClass() async {
+    if (_pcToEdit == null) {
+      return ArmorClassResult(
+        totalAc: _armorClass,
+        baseAc: _armorClass,
+        dexModifier: 0,
+        armorBonus: 0,
+        shieldBonus: 0,
+        formula: '$_armorClass',
+      );
+    }
+    
+    return _inventoryService.calculateEffectiveArmorClass(
+      characterId: _pcToEdit!.id,
+      dexterity: _dexterity,
+      baseArmorClass: 10, // Standard Basis-AC
+    );
+  }
+
+  /// Berechnet die effektive AC synchron (ohne Datenbankzugriff)
+  /// 
+  /// Verwendet die bereits geladenen Item-Daten für die Berechnung
+  int get effectiveArmorClassSync {
+    // Baue Liste der ausgerüsteten Items mit ihren Slots
+    final equippedItems = <(EquipSlot, Item?)>[];
+    
+    for (final displayItem in _inventory) {
+      final invItem = displayItem.inventoryItem;
+      if (invItem.isEquipped && invItem.equipSlot != null) {
+        equippedItems.add((invItem.equipSlot!, displayItem.item));
+      }
+    }
+    
+    return _inventoryService.calculateArmorClassSync(
+      dexterity: _dexterity,
+      equippedItems: equippedItems,
+      baseArmorClass: 10,
+    );
+  }
+
+  /// Gibt den Dexterity Modifier zurück
+  int get dexterityModifier => getModifier(_dexterity);
+
+  /// Aktualisiert die gespeicherte AC basierend auf ausgerüsteter Rüstung
+  void _updateEffectiveArmorClass() {
+    final effectiveAc = effectiveArmorClassSync;
+    if (effectiveAc != _armorClass) {
+      _armorClass = effectiveAc;
+      print('🛡️ [EditPCViewModel] AC aktualisiert: $effectiveAc');
+    }
+  }
 
   // ============================================================================
   // CONSTRUCTOR
@@ -750,6 +819,9 @@ class EditPCViewModel extends ChangeNotifier {
       final equipSlot = _convertToEquipSlot(slot);
       await _updateInventoryItemEquipment(item.inventoryItem.id, equipSlot);
       
+      // Aktualisiere die effektive AC
+      _updateEffectiveArmorClass();
+      
       notifyListeners();
       print('✅ [EditPCViewModel] Item ${item.item.name} erfolgreich in $slot ausgerüstet');
     } catch (e) {
@@ -775,6 +847,9 @@ class EditPCViewModel extends ChangeNotifier {
         await _updateInventoryItemEquipment(equippedItem.inventoryItemId!, null);
         print('✅ [EditPCViewModel] Item ${equippedItem.itemName} erfolgreich aus $slot abgelegt');
       }
+      
+      // Aktualisiere die effektive AC
+      _updateEffectiveArmorClass();
       
       notifyListeners();
     } catch (e) {

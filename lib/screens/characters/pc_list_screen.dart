@@ -798,7 +798,7 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen>
   void _showDeleteConfirmation(BuildContext context, PlayerCharacter pc) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: DnDTheme.stoneGrey,
         title: Text(
           'Löschen bestätigen',
@@ -812,7 +812,7 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text(
               'Abbrechen',
               style: DnDTheme.bodyText1.copyWith(
@@ -822,13 +822,13 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen>
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               try {
                 await _viewModel.deletePlayerCharacter(pc.id);
                 await _refreshCharacterList();
                 
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(this.context).showSnackBar(
                     SnackBar(
                       content: Text('${pc.name} wurde gelöscht'),
                       backgroundColor: DnDTheme.successGreen,
@@ -837,7 +837,7 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen>
                 }
               } catch (e) {
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(this.context).showSnackBar(
                     SnackBar(
                       content: Text('Fehler beim Löschen: $e'),
                       backgroundColor: DnDTheme.errorRed,

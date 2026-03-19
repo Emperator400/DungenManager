@@ -445,103 +445,172 @@ class _EditPCScreenState extends State<EditPCScreen>
   }
 
   Widget _buildCombatStatsCard() {
-    return FormSectionWidget(
-      title: 'Kampfwerte',
-      icon: Icons.security,
-      backgroundColor: DnDTheme.slateGrey,
-      borderRadius: DnDTheme.radiusMedium,
-      children: [
-        Row(
+    return Consumer<EditPCViewModel>(
+      builder: (context, viewModel, child) {
+        // Berechne effektive AC
+        final effectiveAc = viewModel.effectiveArmorClassSync;
+        final hasEquipmentBonus = effectiveAc != viewModel.armorClass;
+        
+        return FormSectionWidget(
+          title: 'Kampfwerte',
+          icon: Icons.security,
+          backgroundColor: DnDTheme.slateGrey,
+          borderRadius: DnDTheme.radiusMedium,
           children: [
-            Expanded(
-              child: FormFieldWidget(
-                label: 'Stufe',
-                value: _viewModel.level.toString(),
-                onChanged: (value) => _viewModel.updateLevel(int.tryParse(value) ?? 1),
-                validator: _viewModel.validateNumber,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                icon: Icons.star,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: FormFieldWidget(
-                label: 'Max. HP',
-                value: _viewModel.maxHp.toString(),
-                onChanged: (value) => _viewModel.updateMaxHp(int.tryParse(value) ?? 10),
-                validator: _viewModel.validateNumber,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                icon: Icons.favorite,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: FormFieldWidget(
-                label: 'Ruestungsklasse',
-                value: _viewModel.armorClass.toString(),
-                onChanged: (value) => _viewModel.updateArmorClass(int.tryParse(value) ?? 10),
-                validator: _viewModel.validateNumber,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                icon: Icons.security,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: CombatStatChip(
-                label: 'Initiative',
-                value: _viewModel.initiativeBonus >= 0 
-                    ? '+${_viewModel.initiativeBonus}' 
-                    : '${_viewModel.initiativeBonus}',
-                icon: Icons.flash_on,
-                color: DnDTheme.ancientGold,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: DnDTheme.stoneGrey,
-            borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.monetization_on,
-                    color: DnDTheme.ancientGold,
-                    size: 20,
+            Row(
+              children: [
+                Expanded(
+                  child: FormFieldWidget(
+                    label: 'Stufe',
+                    value: _viewModel.level.toString(),
+                    onChanged: (value) => _viewModel.updateLevel(int.tryParse(value) ?? 1),
+                    validator: _viewModel.validateNumber,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    icon: Icons.star,
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Währung',
-                    style: DnDTheme.headline3.copyWith(
-                      color: DnDTheme.ancientGold,
-                      fontWeight: FontWeight.bold,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: FormFieldWidget(
+                    label: 'Max. HP',
+                    value: _viewModel.maxHp.toString(),
+                    onChanged: (value) => _viewModel.updateMaxHp(int.tryParse(value) ?? 10),
+                    validator: _viewModel.validateNumber,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    icon: Icons.favorite,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: FormFieldWidget(
+                    label: 'Basis-AC',
+                    value: _viewModel.armorClass.toString(),
+                    onChanged: (value) => _viewModel.updateArmorClass(int.tryParse(value) ?? 10),
+                    validator: _viewModel.validateNumber,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    icon: Icons.security,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: CombatStatChip(
+                    label: 'Initiative',
+                    value: _viewModel.initiativeBonus >= 0 
+                        ? '+${_viewModel.initiativeBonus}' 
+                        : '${_viewModel.initiativeBonus}',
+                    icon: Icons.flash_on,
+                    color: DnDTheme.ancientGold,
+                  ),
+                ),
+              ],
+            ),
+            // Zeige effektive AC wenn Ausrüstung getragen wird
+            if (viewModel.isEdit && hasEquipmentBonus) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: DnDTheme.arcaneBlue.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                  border: Border.all(
+                    color: DnDTheme.arcaneBlue.withValues(alpha: 0.5),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.shield,
+                      color: DnDTheme.arcaneBlue,
+                      size: 24,
                     ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Effektive Rüstungsklasse',
+                            style: DnDTheme.bodyText2.copyWith(
+                              color: Colors.white70,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '$effectiveAc',
+                            style: DnDTheme.headline1.copyWith(
+                              color: DnDTheme.arcaneBlue,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 28,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Zeige Dex Modifier
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: DnDTheme.stoneGrey,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Dex ${viewModel.dexterityModifier >= 0 ? '+' : ''}${viewModel.dexterityModifier}',
+                        style: DnDTheme.bodyText2.copyWith(
+                          color: DnDTheme.ancientGold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: DnDTheme.stoneGrey,
+                borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.monetization_on,
+                        color: DnDTheme.ancientGold,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Währung',
+                        style: DnDTheme.headline3.copyWith(
+                          color: DnDTheme.ancientGold,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  CurrencyWidget(
+                    gold: _viewModel.gold,
+                    silver: _viewModel.silver,
+                    copper: _viewModel.copper,
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              CurrencyWidget(
-                gold: _viewModel.gold,
-                silver: _viewModel.silver,
-                copper: _viewModel.copper,
-              ),
-            ],
-          ),
-        ),
-      ],
+            ),
+          ],
+        );
+      },
     );
   }
 

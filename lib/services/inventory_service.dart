@@ -15,6 +15,7 @@ import '../database/core/database_connection.dart';
 import 'exceptions/service_exceptions.dart';
 import 'uuid_service.dart';
 import 'creature_helper_service.dart';
+import 'armor_calculation_service.dart';
 
 /// Service für alle Inventory Business-Logik
 /// entfernt direkte Datenbankzugriffe aus UI-Components
@@ -366,6 +367,54 @@ class InventoryService {
     } catch (e) {
       return null;
     }
+  }
+
+  // ============================================================================
+  // ARMOR CLASS CALCULATION
+  // ============================================================================
+
+  /// Berechnet die effektive Rüstungsklasse für einen Character
+  /// 
+  /// Verwendet den ArmorCalculationService für D&D 5e konforme AC-Berechnung
+  /// 
+  /// [characterId] - Die ID des Characters
+  /// [dexterity] - Der Dexterity-Wert des Characters
+  /// [baseArmorClass] - Optional: Die Basis-AC (Standard: 10)
+  Future<ArmorClassResult> calculateEffectiveArmorClass({
+    required String characterId,
+    required int dexterity,
+    int baseArmorClass = 10,
+  }) async {
+    final armorService = ArmorCalculationService(
+      inventoryRepository: _inventoryRepository,
+      itemRepository: _itemRepository,
+    );
+    
+    return armorService.calculateArmorClass(
+      characterId: characterId,
+      dexterity: dexterity,
+      baseArmorClass: baseArmorClass,
+    );
+  }
+
+  /// Berechnet die AC synchron mit bereits geladenen Items
+  /// 
+  /// Verwendet bereits geladene Items für die Berechnung ohne Datenbankzugriff
+  int calculateArmorClassSync({
+    required int dexterity,
+    required List<(EquipSlot, Item?)> equippedItems,
+    int baseArmorClass = 10,
+  }) {
+    final armorService = ArmorCalculationService(
+      inventoryRepository: _inventoryRepository,
+      itemRepository: _itemRepository,
+    );
+    
+    return armorService.calculateArmorClassSync(
+      dexterity: dexterity,
+      equippedItems: equippedItems,
+      baseArmorClass: baseArmorClass,
+    );
   }
 
   // ============================================================================
