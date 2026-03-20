@@ -30,6 +30,8 @@ import 'database/repositories/creature_model_repository.dart';
 import 'database/repositories/quest_model_repository.dart';
 import 'database/repositories/sound_model_repository.dart';
 import 'database/repositories/wiki_entry_model_repository.dart';
+import 'viewmodels/update_viewmodel.dart';
+import 'widgets/update_dialog.dart';
 
   /// Hauptfunktion der App
 void main() async {
@@ -135,6 +137,14 @@ class DmApp extends StatelessWidget {
         Provider<WikiEntryModelRepository>(
           create: (_) => WikiEntryModelRepository(dbConnection),
         ),
+        // Update ViewModel für Auto-Update-Check
+        ChangeNotifierProvider(
+          create: (_) {
+            final viewModel = UpdateViewModel();
+            viewModel.init();
+            return viewModel;
+          },
+        ),
       ],
       child: MaterialApp(
         title: 'Dungeon Manager',
@@ -158,11 +168,32 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
+  bool _updateChecked = false;
 
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
+    _checkForUpdates();
+  }
+
+  /// Prüft automatisch auf Updates beim Start
+  Future<void> _checkForUpdates() async {
+    if (_updateChecked) return;
+    _updateChecked = true;
+
+    // Kurze Verzögerung damit die UI geladen ist
+    await Future.delayed(const Duration(seconds: 1));
+
+    if (!mounted) return;
+
+    final viewModel = context.read<UpdateViewModel>();
+    final hasUpdate = await viewModel.checkForUpdate();
+
+    if (hasUpdate && mounted) {
+      // Zeige Update-Dialog wenn Update verfügbar
+      showUpdateDialogIfNeeded(context);
+    }
   }
 
   void _initializeAnimations() {
