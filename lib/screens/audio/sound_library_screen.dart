@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../viewmodels/sound_library_viewmodel.dart';
+import '../../viewmodels/edit_sound_viewmodel.dart';
 import '../../models/sound.dart';
 import '../../theme/dnd_theme.dart';
 import '../../widgets/sound_scenes_tab.dart';
+import '../../widgets/audio/sound_player_widget.dart';
+import 'edit_sound_screen.dart';
 
 /// Enhanced Sound Library Screen mit Provider-Pattern und modernem D&D Design
 class SoundLibraryScreen extends StatefulWidget {
@@ -470,19 +473,41 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen>
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Direkter Play-Button
+            Container(
+              decoration: BoxDecoration(
+                gradient: DnDTheme.getMysticalGradient(
+                  startColor: DnDTheme.successGreen.withValues(alpha: 0.3),
+                  endColor: DnDTheme.successGreen.withValues(alpha: 0.1),
+                ),
+                borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                border: Border.all(
+                  color: DnDTheme.successGreen.withValues(alpha: 0.5),
+                ),
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.play_arrow, color: DnDTheme.successGreen),
+                onPressed: () => _playSound(sound),
+                tooltip: 'Abspielen',
+              ),
+            ),
+            
+            const SizedBox(width: DnDTheme.sm),
+            
             if (sound.isFavorite)
               Icon(
                 Icons.favorite,
                 color: DnDTheme.errorRed,
                 size: 20,
               ),
-            const SizedBox(width: DnDTheme.sm),
+            const SizedBox(width: DnDTheme.xs),
             IconButton(
               icon: Icon(
                 sound.isFavorite ? Icons.favorite_border : Icons.favorite,
                 color: sound.isFavorite ? DnDTheme.errorRed : Colors.white54,
               ),
               onPressed: () => viewModel.toggleSoundFavorite(sound.id),
+              tooltip: sound.isFavorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten',
             ),
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert, color: Colors.white54),
@@ -668,14 +693,111 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen>
   void _handleSoundAction(String action, Sound sound) {
     switch (action) {
       case 'play':
-        // TODO: Sound abspielen
+        _playSound(sound);
         break;
       case 'edit':
-        // TODO: Sound bearbeiten
+        _navigateToEditSound(sound);
         break;
       case 'delete':
         _showDeleteConfirmation(context, sound);
         break;
+    }
+  }
+
+  /// Spielt einen Sound ab oder zeigt den Player an
+  Future<void> _playSound(Sound sound) async {
+    // Zeige den Player als BottomSheet
+    _showSoundPlayerBottomSheet(sound);
+  }
+  
+  /// Zeigt den Sound-Player als BottomSheet
+  void _showSoundPlayerBottomSheet(Sound sound) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(DnDTheme.md),
+        decoration: BoxDecoration(
+          gradient: DnDTheme.getMysticalGradient(
+            startColor: DnDTheme.dungeonBlack,
+            endColor: DnDTheme.stoneGrey,
+          ),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(DnDTheme.radiusLarge),
+            topRight: Radius.circular(DnDTheme.radiusLarge),
+          ),
+          border: Border.all(
+            color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
+            width: 2,
+          ),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle-Bar
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: DnDTheme.md),
+                decoration: BoxDecoration(
+                  color: DnDTheme.ancientGold.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              
+              // Titel
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.music_note,
+                    color: DnDTheme.ancientGold,
+                    size: 20,
+                  ),
+                  const SizedBox(width: DnDTheme.sm),
+                  Text(
+                    'Sound Player',
+                    style: DnDTheme.headline3.copyWith(
+                      color: DnDTheme.ancientGold,
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: DnDTheme.md),
+              
+              // Sound Player Widget
+              SoundPlayerWidget(
+                sound: sound,
+                showCloseButton: true,
+                onClose: () => Navigator.of(context).pop(),
+              ),
+              
+              const SizedBox(height: DnDTheme.lg),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Navigiert zum Edit-Sound-Screen
+  Future<void> _navigateToEditSound(Sound sound) async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChangeNotifierProvider(
+          create: (_) => EditSoundViewModel(),
+          child: EditSoundScreen(sound: sound),
+        ),
+      ),
+    );
+    
+    // Wenn ein Sound bearbeitet wurde, Liste aktualisieren
+    if (result == true && mounted) {
+      await _viewModel.loadSounds();
     }
   }
 
@@ -717,6 +839,8 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen>
     final nameController = TextEditingController();
     final descriptionController = TextEditingController();
     SoundType selectedType = SoundType.Ambiente;
+    String? selectedFilePath;
+    bool isUploading = false;
     
     showDialog<void>(
       context: context,
@@ -729,187 +853,185 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen>
               color: DnDTheme.ancientGold,
             ),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ElevatedButton.icon(
-                onPressed: () async {
-                  final result = await FilePicker.platform.pickFiles(
-                    type: FileType.audio,
-                    allowMultiple: false,
-                  );
-                  
-                  if (result != null && result.files.single.path != null) {
-                    final fileName = result.files.single.name;
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Datei-Auswahl Button
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final result = await FilePicker.platform.pickFiles(
+                      type: FileType.audio,
+                      allowMultiple: false,
+                    );
                     
-                    // Name aus Dateiname extrahieren (ohne Extension)
-                    nameController.text = fileName.contains('.')
-                        ? fileName.substring(0, fileName.lastIndexOf('.'))
-                        : fileName;
-                  }
-                },
-                icon: const Icon(Icons.upload_file),
-                label: const Text('Datei auswählen'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: DnDTheme.arcaneBlue,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-              const SizedBox(height: DnDTheme.md),
-              TextField(
-                controller: nameController,
-                style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                decoration: InputDecoration(
-                  labelText: 'Name',
-                  labelStyle: DnDTheme.bodyText2.copyWith(color: Colors.white70),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                    borderSide: BorderSide(color: DnDTheme.mysticalPurple),
+                    if (result != null && result.files.single.path != null) {
+                      final fileName = result.files.single.name;
+                      selectedFilePath = result.files.single.path!;
+                      
+                      // Name aus Dateiname extrahieren (ohne Extension)
+                      final extractedName = fileName.contains('.')
+                          ? fileName.substring(0, fileName.lastIndexOf('.'))
+                          : fileName;
+                      
+                      setDialogState(() {
+                        nameController.text = extractedName;
+                      });
+                    }
+                  },
+                  icon: const Icon(Icons.upload_file),
+                  label: Text(selectedFilePath != null ? 'Datei ändern' : 'Datei auswählen'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: selectedFilePath != null 
+                        ? DnDTheme.successGreen 
+                        : DnDTheme.arcaneBlue,
+                    foregroundColor: Colors.white,
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                    borderSide: BorderSide(
-                      color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
+                ),
+                
+                // Anzeige der ausgewählten Datei
+                if (selectedFilePath != null) ...[
+                  const SizedBox(height: DnDTheme.sm),
+                  Container(
+                    padding: const EdgeInsets.all(DnDTheme.sm),
+                    decoration: BoxDecoration(
+                      color: DnDTheme.successGreen.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                      border: Border.all(color: DnDTheme.successGreen.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle, color: DnDTheme.successGreen, size: 16),
+                        const SizedBox(width: DnDTheme.xs),
+                        Expanded(
+                          child: Text(
+                            'Datei ausgewählt',
+                            style: DnDTheme.bodyText2.copyWith(color: DnDTheme.successGreen),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                    borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
-                ),
-              ),
-              const SizedBox(height: DnDTheme.md),
-              DropdownButtonFormField<SoundType>(
-                value: selectedType,
-                dropdownColor: DnDTheme.stoneGrey,
-                decoration: InputDecoration(
-                  labelText: 'Typ',
-                  labelStyle: DnDTheme.bodyText2.copyWith(color: Colors.white70),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                    borderSide: BorderSide(color: DnDTheme.mysticalPurple),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                    borderSide: BorderSide(
-                      color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
+                ],
+                
+                const SizedBox(height: DnDTheme.md),
+                
+                // Name Feld
+                TextField(
+                  controller: nameController,
+                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Name *',
+                    labelStyle: DnDTheme.bodyText2.copyWith(color: Colors.white70),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                      borderSide: BorderSide(color: DnDTheme.mysticalPurple),
                     ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                    borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
-                ),
-                items: SoundType.values.map((type) {
-                  return DropdownMenuItem<SoundType>(
-                    value: type,
-                    child: Text(
-                      type.displayName,
-                      style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                      borderSide: BorderSide(
+                        color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
+                      ),
                     ),
-                  );
-                }).toList(),
-                onChanged: (SoundType? value) {
-                  if (value != null) {
-                    setDialogState(() => selectedType = value);
-                  }
-                },
-              ),
-              const SizedBox(height: DnDTheme.md),
-              TextField(
-                controller: descriptionController,
-                style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                maxLines: 3,
-                decoration: InputDecoration(
-                  labelText: 'Beschreibung (optional)',
-                  labelStyle: DnDTheme.bodyText2.copyWith(color: Colors.white70),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                    borderSide: BorderSide(color: DnDTheme.mysticalPurple),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                    borderSide: BorderSide(
-                      color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                      borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
                     ),
+                    filled: true,
+                    fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                    borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
                 ),
-              ),
-            ],
+                
+                const SizedBox(height: DnDTheme.md),
+                
+                // Typ Dropdown
+                DropdownButtonFormField<SoundType>(
+                  value: selectedType,
+                  dropdownColor: DnDTheme.stoneGrey,
+                  decoration: InputDecoration(
+                    labelText: 'Typ',
+                    labelStyle: DnDTheme.bodyText2.copyWith(color: Colors.white70),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                      borderSide: BorderSide(color: DnDTheme.mysticalPurple),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                      borderSide: BorderSide(
+                        color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                      borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
+                    ),
+                    filled: true,
+                    fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
+                  ),
+                  items: SoundType.values.map((type) {
+                    return DropdownMenuItem<SoundType>(
+                      value: type,
+                      child: Text(
+                        type.displayName,
+                        style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (SoundType? value) {
+                    if (value != null) {
+                      setDialogState(() => selectedType = value);
+                    }
+                  },
+                ),
+                
+                const SizedBox(height: DnDTheme.md),
+                
+                // Beschreibung Feld
+                TextField(
+                  controller: descriptionController,
+                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: 'Beschreibung (optional)',
+                    labelStyle: DnDTheme.bodyText2.copyWith(color: Colors.white70),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                      borderSide: BorderSide(color: DnDTheme.mysticalPurple),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                      borderSide: BorderSide(
+                        color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                      borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
+                    ),
+                    filled: true,
+                    fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                nameController.dispose();
-                descriptionController.dispose();
+              onPressed: isUploading ? null : () {
                 Navigator.of(context).pop();
               },
               child: Text(
                 'Abbrechen',
                 style: DnDTheme.bodyText1.copyWith(
-                  color: DnDTheme.mysticalPurple,
+                  color: isUploading ? Colors.white38 : DnDTheme.mysticalPurple,
                 ),
               ),
             ),
             ElevatedButton(
-              onPressed: () async {
-                // Prüfen ob ein Dateipfad ausgewählt wurde
-                final result = await FilePicker.platform.pickFiles(
-                  type: FileType.audio,
-                  allowMultiple: false,
-                );
-                
-                if (result != null && result.files.single.path != null) {
-                  // Sound hochladen
-                  final uploadedSound = await _viewModel.uploadSound(
-                    result.files.single.path!,
-                    selectedType,
-                    customName: nameController.text.isNotEmpty ? nameController.text : null,
-                    description: descriptionController.text,
-                  );
-                  
-                  if (uploadedSound != null) {
-                    // Dialog schließen und Success-Message zeigen
-                    nameController.dispose();
-                    descriptionController.dispose();
-                    Navigator.of(context).pop();
-                    
-                    if (!mounted) return;
-                    
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Sound "${uploadedSound.name}" erfolgreich hochgeladen',
-                          style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                        ),
-                        backgroundColor: DnDTheme.successGreen,
-                      ),
-                    );
-                  } else {
-                    // Error-Message zeigen
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          _viewModel.soundError ?? 'Fehler beim Hochladen',
-                          style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                        ),
-                        backgroundColor: DnDTheme.errorRed,
-                      ),
-                    );
-                  }
-                } else {
-                  // Keine Datei ausgewählt
+              onPressed: isUploading || selectedFilePath == null ? null : () async {
+                if (selectedFilePath == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
@@ -919,13 +1041,64 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen>
                       backgroundColor: DnDTheme.warningOrange,
                     ),
                   );
+                  return;
+                }
+                
+                setDialogState(() => isUploading = true);
+                
+                // Sound hochladen mit dem gespeicherten Dateipfad
+                final uploadedSound = await _viewModel.uploadSound(
+                  selectedFilePath!,
+                  selectedType,
+                  customName: nameController.text.isNotEmpty ? nameController.text : null,
+                  description: descriptionController.text,
+                );
+                
+                setDialogState(() => isUploading = false);
+                
+                if (uploadedSound != null) {
+                  // Dialog schließen und Success-Message zeigen
+                  Navigator.of(context).pop();
+                  
+                  if (!mounted) return;
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Sound "${uploadedSound.name}" erfolgreich hochgeladen',
+                        style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                      ),
+                      backgroundColor: DnDTheme.successGreen,
+                    ),
+                  );
+                } else {
+                  // Error-Message zeigen
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        _viewModel.soundError ?? 'Fehler beim Hochladen',
+                        style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                      ),
+                      backgroundColor: DnDTheme.errorRed,
+                    ),
+                  );
                 }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: DnDTheme.successGreen,
                 foregroundColor: Colors.white,
+                disabledBackgroundColor: DnDTheme.slateGrey,
               ),
-              child: const Text('Hochladen'),
+              child: isUploading 
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Hochladen'),
             ),
           ],
         ),

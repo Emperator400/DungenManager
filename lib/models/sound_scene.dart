@@ -1,26 +1,30 @@
 // lib/models/sound_scene.dart
 import '../services/uuid_service.dart';
 import '../utils/model_parsing_helper.dart';
+import 'sound_scene_item.dart';
 
 /// Sound Scene Type für die Klassifizierung von Sound-Szenen
-enum SoundSceneType { Ambiente, Effekte }
+enum SoundSceneType { Ambiente, Effekte, Mixed }
 
 class SoundScene {
   final String id;
   final String name;
-  final SoundSceneType type;
-  final String sceneId; // Verknüpfung zur Scene
+  final String description;
+  final bool isFavorite;
+  final List<SoundSceneItem> items;
   final DateTime createdAt;
   final DateTime updatedAt;
 
   SoundScene({
     String? id,
     required this.name,
-    required this.type,
-    required this.sceneId,
+    this.description = '',
+    this.isFavorite = false,
+    List<SoundSceneItem>? items,
     DateTime? createdAt,
     DateTime? updatedAt,
   })  : id = id ?? UuidService().generateId(),
+        items = items ?? [],
         createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
@@ -28,59 +32,97 @@ class SoundScene {
   SoundScene copyWith({
     String? id,
     String? name,
-    SoundSceneType? type,
-    String? sceneId,
+    String? description,
+    bool? isFavorite,
+    List<SoundSceneItem>? items,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
     return SoundScene(
       id: id ?? this.id,
       name: name ?? this.name,
-      type: type ?? this.type,
-      sceneId: sceneId ?? this.sceneId,
+      description: description ?? this.description,
+      isFavorite: isFavorite ?? this.isFavorite,
+      items: items ?? List<SoundSceneItem>.from(this.items),
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
     );
   }
 
-  Map<String, dynamic> toMap() {
+  /// Konvertiert zu Datenbank-Map (ohne Items, diese werden separat gespeichert)
+  Map<String, dynamic> toDatabaseMap() {
     return {
       'id': id,
       'name': name,
-      'type': type.name,
-      'sceneId': sceneId,
-      'createdAt': createdAt.millisecondsSinceEpoch,
-      'updatedAt': updatedAt.millisecondsSinceEpoch,
+      'description': description,
+      'is_favorite': isFavorite ? 1 : 0,
+      'created_at': createdAt.millisecondsSinceEpoch,
+      'updated_at': updatedAt.millisecondsSinceEpoch,
     };
   }
 
-  factory SoundScene.fromMap(Map<String, dynamic> map) {
+  /// Erstellt aus Datenbank-Map (ohne Items)
+  factory SoundScene.fromDatabaseMap(Map<String, dynamic> map) {
     return SoundScene(
       id: ModelParsingHelper.safeId(map, 'id'),
-      name: ModelParsingHelper.safeString(map, 'name', 'Unbenannte Sound Scene'),
-      type: SoundSceneType.values.firstWhere(
-        (e) => e.name == ModelParsingHelper.safeString(map, 'type', 'Ambiente'),
-        orElse: () => SoundSceneType.Ambiente,
-      ),
-      sceneId: ModelParsingHelper.safeString(map, 'sceneId', ''),
-      createdAt: DateTime.fromMillisecondsSinceEpoch(ModelParsingHelper.safeInt(map, 'createdAt', 0)),
-      updatedAt: DateTime.fromMillisecondsSinceEpoch(ModelParsingHelper.safeInt(map, 'updatedAt', 0)),
+      name: ModelParsingHelper.safeString(map, 'name', 'Unbenannte Szene'),
+      description: ModelParsingHelper.safeString(map, 'description', ''),
+      isFavorite: ModelParsingHelper.safeBool(map, 'is_favorite', false),
+      createdAt: ModelParsingHelper.safeDateTime(map, 'created_at', DateTime.now()),
+      updatedAt: ModelParsingHelper.safeDateTime(map, 'updated_at', DateTime.now()),
     );
   }
 
-  /// Gets the display name for the sound scene type
-  String get typeDisplayName {
-    switch (type) {
-      case SoundSceneType.Ambiente:
-        return 'Ambiente';
-      case SoundSceneType.Effekte:
-        return 'Effekte';
+  /// Erstellt aus Datenbank-Map mit Items
+  factory SoundScene.fromDatabaseMapWithItems(
+    Map<String, dynamic> map,
+    List<SoundSceneItem> items,
+  ) {
+    return SoundScene(
+      id: ModelParsingHelper.safeId(map, 'id'),
+      name: ModelParsingHelper.safeString(map, 'name', 'Unbenannte Szene'),
+      description: ModelParsingHelper.safeString(map, 'description', ''),
+      isFavorite: ModelParsingHelper.safeBool(map, 'is_favorite', false),
+      items: items,
+      createdAt: ModelParsingHelper.safeDateTime(map, 'created_at', DateTime.now()),
+      updatedAt: ModelParsingHelper.safeDateTime(map, 'updated_at', DateTime.now()),
+    );
+  }
+
+  /// Legacy-Methode für Abwärtskompatibilität
+  Map<String, dynamic> toMap() => toDatabaseMap();
+  
+  /// Legacy-Methode für Abwärtskompatibilität
+  factory SoundScene.fromMap(Map<String, dynamic> map) => SoundScene.fromDatabaseMap(map);
+
+  /// Anzahl der Sounds in dieser Szene
+  int get soundCount => items.length;
+
+  /// Typ der Szene (für Abwärtskompatibilität)
+  SoundSceneType get type {
+    if (items.isEmpty) return SoundSceneType.Mixed;
+    // Bestimmt den Typ basierend auf den Sounds
+    return SoundSceneType.Mixed;
+  }
+
+  /// Szenen-ID (Alias für id, für Abwärtskompatibilität)
+  String get sceneId => id;
+
+  /// Prüft ob die Szene Sounds enthält
+  bool get hasSounds => items.isNotEmpty;
+
+  /// Findet ein Item anhand der Sound-ID
+  SoundSceneItem? findItemBySoundId(String soundId) {
+    try {
+      return items.firstWhere((item) => item.soundId == soundId);
+    } catch (_) {
+      return null;
     }
   }
 
-  /// Validates the sound scene model
+  /// Validierung
   bool get isValid {
-    return name.isNotEmpty && sceneId.isNotEmpty;
+    return name.isNotEmpty;
   }
 
   @override
@@ -94,6 +136,6 @@ class SoundScene {
 
   @override
   String toString() {
-    return 'SoundScene(id: $id, name: $name, type: $type, sceneId: $sceneId)';
+    return 'SoundScene(id: $id, name: $name, items: ${items.length})';
   }
 }

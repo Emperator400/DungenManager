@@ -80,6 +80,8 @@ class DatabaseConnection {
     await _createSessionCharacterTrackingTable(db);
     await _createSceneQuestStatusTable(db); // SceneQuestStatus Tabelle hinzugefügt
     await _createQuestsTable(db); // Quests Tabelle hinzugefügt
+    await _createSoundScenesTable(db); // SoundScenes Tabelle
+    await _createSoundSceneItemsTable(db); // SoundSceneItems Junction Table
   }
   
   /// Erstellt die wiki_entries Tabelle
@@ -656,6 +658,50 @@ class DatabaseConnection {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_quests_priority ON quests(priority)');
 
     print('✅ quests Tabelle erstellt');
+  }
+
+  /// Erstellt die sound_scenes Tabelle
+  Future<void> _createSoundScenesTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS sound_scenes (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        is_favorite INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )
+    ''');
+
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_sound_scenes_name ON sound_scenes(name)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_sound_scenes_is_favorite ON sound_scenes(is_favorite)');
+
+    print('✅ sound_scenes Tabelle erstellt');
+  }
+
+  /// Erstellt die sound_scene_items Tabelle (Junction Table für Sound-Zuordnung)
+  Future<void> _createSoundSceneItemsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS sound_scene_items (
+        id TEXT PRIMARY KEY,
+        sound_scene_id TEXT NOT NULL,
+        sound_id TEXT NOT NULL,
+        volume REAL NOT NULL DEFAULT 1.0,
+        is_looping INTEGER NOT NULL DEFAULT 1,
+        fade_in_duration REAL DEFAULT 0.0,
+        fade_out_duration REAL DEFAULT 0.0,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY (sound_scene_id) REFERENCES sound_scenes (id) ON DELETE CASCADE,
+        FOREIGN KEY (sound_id) REFERENCES sounds (id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_sound_scene_items_scene_id ON sound_scene_items(sound_scene_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_sound_scene_items_sound_id ON sound_scene_items(sound_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_sound_scene_items_sort_order ON sound_scene_items(sort_order)');
+
+    print('✅ sound_scene_items Tabelle erstellt');
   }
   
   /// Aktualisiert das Datenbankschema
