@@ -1,10 +1,23 @@
 import 'package:flutter/material.dart';
 import '../../theme/dnd_theme.dart';
+import '../audio/sound_mixer_widget.dart';
 import 'session_quadrant_base.dart';
 
-/// Atmosphäre-Quadrant - Placeholder für zukünftige Sound Mixer Funktionalität
+/// Atmosphäre-Quadrant - Sound Mixer für die Active Session
+/// 
+/// Bietet Multi-Stream Audio-Wiedergabe mit:
+/// - Mehrere gleichzeitige Sounds
+/// - Individuelle Lautstärke pro Kanal
+/// - Master-Lautstärke-Steuerung
+/// - Loop-Steuerung
 class AtmosphereQuadrant extends StatelessWidget {
-  const AtmosphereQuadrant({super.key});
+  /// Optional: Liste von Sound-IDs die automatisch geladen werden sollen
+  final List<String>? initialSoundIds;
+  
+  const AtmosphereQuadrant({
+    super.key,
+    this.initialSoundIds,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -12,41 +25,13 @@ class AtmosphereQuadrant extends StatelessWidget {
       title: "Atmosphäre",
       icon: Icons.music_note,
       color: DnDTheme.successGreen,
-      content: _buildPlaceholderContent(),
+      content: _buildMixerContent(),
     );
   }
 
-  Widget _buildPlaceholderContent() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.music_note,
-            size: 24,
-            color: Colors.white38,
-          ),
-          SizedBox(height: 4),
-          Text(
-            'Sound Mixer',
-            style: TextStyle(
-              color: Colors.white70,
-              fontWeight: FontWeight.bold,
-              fontSize: 10,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 2),
-          Text(
-            'Diese Funktion wird in Zukunft verfügbar sein',
-            style: TextStyle(
-              color: Colors.white54,
-              fontSize: 8,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+  Widget _buildMixerContent() {
+    return SoundMixerWidget(
+      initialSoundIds: initialSoundIds,
     );
   }
 }

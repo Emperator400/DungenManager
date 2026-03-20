@@ -17,6 +17,7 @@ import '../../database/repositories/wiki_entry_model_repository.dart';
 import '../../theme/dnd_theme.dart';
 import '../../widgets/audio/sound_player_widget.dart';
 import '../../widgets/active_session/live_notes_quadrant.dart';
+import '../../widgets/active_session/atmosphere_quadrant.dart';
 import '../../widgets/active_session/quest_list_section.dart';
 import 'encounter_setup_screen.dart';
 import '../scenes/edit_scene_screen.dart';
@@ -402,52 +403,22 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     );
   }
 
-  /// Baut das Atmosphäre Panel (rechts unten)
+  /// Baut das Atmosphäre Panel (rechts unten) mit Sound Mixer
   Widget _buildAtmospherePanel(ActiveSessionViewModel viewModel) {
-    return Container(
-      decoration: BoxDecoration(
-        color: DnDTheme.slateGrey.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-        border: Border.all(
-          color: DnDTheme.successGreen.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Column(
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: DnDTheme.successGreen.withValues(alpha: 0.2),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(DnDTheme.radiusMedium),
-                topRight: Radius.circular(DnDTheme.radiusMedium),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.music_note, color: DnDTheme.successGreen, size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  'Atmosphäre',
-                  style: DnDTheme.bodyText1.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Content
-          Expanded(
-            child: _buildPlaceholderWidget(
-              "Sound Mixer",
-              "Diese Funktion wird in Zukunft verfügbar sein",
-              Icons.music_note,
-            ),
-          ),
-        ],
-      ),
+    // Hole verknüpfte Sounds der aktiven Szene
+    final activeSceneId = viewModel.currentSession.activeSceneId;
+    List<String> linkedSoundIds = [];
+    
+    if (activeSceneId != null) {
+      final activeScene = viewModel.scenes.firstWhere(
+        (scene) => scene.id == activeSceneId,
+        orElse: () => throw Exception('Scene nicht gefunden'),
+      );
+      linkedSoundIds = activeScene.linkedSoundIds;
+    }
+    
+    return AtmosphereQuadrant(
+      initialSoundIds: linkedSoundIds,
     );
   }
 
@@ -464,9 +435,9 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
           
           const SizedBox(height: 8),
           
-          // Atmosphäre (350px Höhe)
+          // Atmosphäre (450px Höhe) - Sound Mixer
           SizedBox(
-            height: 350,
+            height: 450,
             child: _buildAtmospherePanel(viewModel),
           ),
           
