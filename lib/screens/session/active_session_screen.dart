@@ -40,6 +40,7 @@ class ActiveSessionScreen extends StatefulWidget {
 class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   late ActiveSessionViewModel _viewModel;
   final GlobalKey<State> _sceneFlowKey = GlobalKey();
+  int _questUpdateCounter = 0; // Counter für Quest-Updates zur UI-Aktualisierung
 
   @override
   void initState() {
@@ -447,10 +448,13 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
           SizedBox(
             height: 350,
             child: QuestListSection(
+              key: ValueKey('quest_list_$_questUpdateCounter'),
               campaignId: viewModel.campaign.id,
               onQuestUpdated: () {
-                // Szenen neu laden um Quest-Status in Szenen-Karten zu aktualisieren
-                _viewModel.triggerDataReload();
+                // Counter erhöhen für UI-Update von ALLEN Quest-Anzeigen
+                setState(() {
+                  _questUpdateCounter++;
+                });
               },
             ),
           ),
@@ -462,6 +466,12 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   Widget _buildSceneFlowWidget(ActiveSessionViewModel viewModel) {
     final scenes = viewModel.scenes;
     
+    // KEIN KeyedSubtree mehr - damit ExpansionTiles nicht zusammenklappen
+    // Nur der FutureBuilder für Quests hat einen Key
+    return _buildSceneListContent(viewModel, scenes);
+  }
+  
+  Widget _buildSceneListContent(ActiveSessionViewModel viewModel, List<Scene> scenes) {
     if (scenes.isEmpty) {
       return Center(
         child: Column(
@@ -1203,8 +1213,10 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   }
 
   /// Baut eine Liste mit verknüpften Quests mit vollständigen Informationen
+  /// Verwendet _questUpdateCounter als Key um bei Quest-Updates neu zu laden
   Widget _buildLinkedQuestsRow(Scene scene) {
     return FutureBuilder<List<Quest>>(
+      key: ValueKey('quests_${scene.id}_$_questUpdateCounter'),
       future: _loadLinkedQuests(scene.linkedQuestIds),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -1450,8 +1462,10 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
       // In der Datenbank aktualisieren
       await questRepo.update(updatedQuest);
       
-      // UI aktualisieren
-      setState(() {});
+      // UI aktualisieren - Counter erhöhen für FutureBuilder-Refresh
+      setState(() {
+        _questUpdateCounter++;
+      });
       
       // Feedback anzeigen
       ScaffoldMessenger.of(context).showSnackBar(
