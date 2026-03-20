@@ -310,13 +310,16 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
                       ],
                     ),
                   ),
+                  // Bearbeiten-Button direkt sichtbar
+                  IconButton(
+                    icon: Icon(Icons.edit, color: DnDTheme.mysticalPurple),
+                    onPressed: () => _editSession(session),
+                    tooltip: 'Bearbeiten',
+                  ),
                   PopupMenuButton<String>(
                     icon: Icon(Icons.more_vert),
                     onSelected: (value) {
                       switch (value) {
-                        case 'edit':
-                          _editSession(session);
-                          break;
                         case 'duplicate':
                           _duplicateSession(session);
                           break;
@@ -326,16 +329,6 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
                       }
                     },
                     itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit, size: 16),
-                            const SizedBox(width: 8),
-                            Text('Bearbeiten'),
-                          ],
-                        ),
-                      ),
                       PopupMenuItem(
                         value: 'duplicate',
                         child: Row(
@@ -591,7 +584,17 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
     final newSession = await viewModel.createSession();
     
     if (newSession != null) {
-      _editSession(newSession);
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => EditSessionScreen(
+            session: newSession,
+            isNewSession: true,
+          ),
+        ),
+      ).then((_) {
+        // Liste aktualisieren nach dem Bearbeiten
+        context.read<SessionListForCampaignViewModel>().refreshSessions();
+      });
     }
   }
 

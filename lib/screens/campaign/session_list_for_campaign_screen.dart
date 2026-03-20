@@ -95,7 +95,13 @@ class _SessionListForCampaignScreenState extends State<SessionListForCampaignScr
     final newSession = await viewModel.createSession();
     
     if (newSession != null) {
-      _editSession(newSession);
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (ctx) => EditSessionScreen(session: newSession, isNewSession: true),
+        ),
+      );
+      // Liste nach dem Editieren aktualisieren
+      context.read<SessionListForCampaignViewModel>().refreshSessions();
     }
   }
 

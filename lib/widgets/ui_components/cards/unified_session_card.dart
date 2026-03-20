@@ -279,13 +279,21 @@ class UnifiedSessionCard extends UnifiedCardBase {
                   ),
                 ),
                 
-                // Play Button im Header
+            // Play Button im Header
                 if (onPlay != null)
                   IconButton(
                     icon: const Icon(Icons.play_arrow, size: 28),
                     onPressed: onPlay,
                     tooltip: 'Sitzung starten',
                     color: Colors.amber,
+                  ),
+                // Bearbeiten Button direkt sichtbar
+                if (onEdit != null)
+                  IconButton(
+                    icon: const Icon(Icons.edit, size: 24),
+                    onPressed: onEdit,
+                    tooltip: 'Bearbeiten',
+                    color: Colors.blue,
                   ),
               ],
             ),

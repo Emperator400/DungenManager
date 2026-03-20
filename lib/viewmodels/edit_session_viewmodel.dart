@@ -28,21 +28,28 @@ class EditSessionViewModel extends ChangeNotifier {
   String? _errorMessage;
   bool _hasUnsavedChanges = false;
   List<Sound> _linkedSounds = [];
+  bool _isNewSession = false;
 
   // Getter
   Session? get session => _session;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get hasUnsavedChanges => _hasUnsavedChanges;
-  bool get isEditing => _session != null;
+  /// isEditing ist true wenn eine existierende Session bearbeitet wird (nicht neu erstellt)
+  bool get isEditing => !_isNewSession;
+  bool get isNewSession => _isNewSession;
   bool get canSave => _session != null && _hasValidSession();
   List<Sound> get linkedSounds => _linkedSounds;
 
   /// Initialisiert das ViewModel mit einer Session oder erstellt eine neue
-  Future<void> initialize(Session? session) async {
+  /// [session] - Die zu bearbeitende Session, oder null für eine neue Session
+  /// [isNewSession] - Wenn true, wird die Session als neu markiert (Löschen-Button ausgeblendet)
+  Future<void> initialize(Session? session, {bool isNewSession = false}) async {
     try {
       _setLoading(true);
       _clearError();
+      
+      _isNewSession = isNewSession;
       
       if (session != null) {
         _session = session;
@@ -51,6 +58,7 @@ class EditSessionViewModel extends ChangeNotifier {
           title: '',
           campaignId: '',
         );
+        _isNewSession = true;
       }
       
       _resetUnsavedChanges();

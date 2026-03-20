@@ -10,10 +10,12 @@ import '../../services/sound_service.dart';
 /// Enhanced Screen zur Bearbeitung von Sessions mit modernem Design
 class EditSessionScreen extends StatefulWidget {
   final Session? session;
+  final bool isNewSession;
 
   const EditSessionScreen({
     Key? key,
     this.session,
+    this.isNewSession = false,
   }) : super(key: key);
 
   @override
@@ -33,7 +35,7 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
     // ViewModel initialisieren
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final viewModel = context.read<EditSessionViewModel>();
-      await viewModel.initialize(widget.session);
+      await viewModel.initialize(widget.session, isNewSession: widget.isNewSession);
       _controllersFromViewModel();
       // Verlinkte Sounds laden
       await viewModel.loadLinkedSounds();
@@ -147,6 +149,7 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
                       children: [
                         TextFormField(
                           controller: _titleController,
+                          style: TextStyle(color: Colors.white),
                           decoration: _buildInputDecoration('Titel', Icons.title),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
@@ -159,6 +162,7 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: _campaignIdController,
+                          style: TextStyle(color: Colors.white),
                           decoration: _buildInputDecoration('Campaign ID', Icons.campaign),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
@@ -238,6 +242,7 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
                     icon: Icons.note_alt,
                     child: TextFormField(
                       controller: _liveNotesController,
+                      style: TextStyle(color: Colors.white),
                       decoration: _buildInputDecoration('Notizen während der Session', Icons.edit_note),
                       maxLines: 8,
                       onChanged: (_) => _updateViewModel(),
@@ -263,7 +268,7 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
                                       margin: const EdgeInsets.only(bottom: 8),
                                       padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: Colors.grey.shade100,
+                                        color: DnDTheme.slateGrey,
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(color: DnDTheme.mysticalPurple.withOpacity(0.3)),
                                       ),
@@ -279,7 +284,7 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
                                                   sound.name,
                                                   style: TextStyle(
                                                     fontWeight: FontWeight.bold,
-                                                    color: Colors.grey.shade800,
+                                                    color: Colors.white,
                                                   ),
                                                 ),
                                                 if (sound.description.isNotEmpty)
@@ -287,7 +292,7 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
                                                     sound.description,
                                                     style: TextStyle(
                                                       fontSize: 12,
-                                                      color: Colors.grey.shade600,
+                                                      color: Colors.white70,
                                                     ),
                                                     maxLines: 1,
                                                     overflow: TextOverflow.ellipsis,
@@ -301,7 +306,7 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
                                             tooltip: 'Abspielen',
                                           ),
                                           IconButton(
-                                            icon: Icon(Icons.close, color: Colors.grey.shade600),
+                                            icon: Icon(Icons.close, color: Colors.white70),
                                             onPressed: () => viewModel.removeLinkedSound(sound.id),
                                             tooltip: 'Entfernen',
                                           ),
@@ -316,7 +321,7 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
                                   padding: const EdgeInsets.symmetric(vertical: 12),
                                   child: Text(
                                     'Keine Sounds verlinkt',
-                                    style: TextStyle(color: Colors.grey.shade600),
+                                    style: TextStyle(color: Colors.white54),
                                   ),
                                 ),
                             
@@ -358,6 +363,7 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
   }) {
     return Card(
       elevation: 2,
+      color: DnDTheme.stoneGrey,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -389,6 +395,8 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
   InputDecoration _buildInputDecoration(String label, IconData icon) {
     return InputDecoration(
       labelText: label,
+      labelStyle: TextStyle(color: Colors.white70),
+      hintStyle: TextStyle(color: Colors.white54),
       prefixIcon: Icon(icon, color: DnDTheme.mysticalPurple),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8.0),
@@ -399,50 +407,74 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
         borderSide: BorderSide(color: DnDTheme.mysticalPurple),
       ),
       filled: true,
-      fillColor: Colors.grey.shade50,
+      fillColor: DnDTheme.slateGrey,
     );
   }
 
   Widget _buildActionButtons(EditSessionViewModel viewModel) {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: OutlinedButton(
-            onPressed: () => Navigator.pop(context),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              side: BorderSide(color: Colors.grey.shade400),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: BorderSide(color: Colors.grey.shade400),
+                ),
+                child: Text('Abbrechen'),
+              ),
             ),
-            child: Text('Abbrechen'),
-          ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: viewModel.canSave ? _saveSession : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: DnDTheme.mysticalPurple,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: Text(
+                  'Speichern',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            if (viewModel.isEditing)
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _duplicateSession,
+                  icon: Icon(Icons.copy, color: Colors.white),
+                  label: Text('Duplizieren'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
+              ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: ElevatedButton(
-            onPressed: viewModel.canSave ? _saveSession : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.mysticalPurple,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-            child: Text(
-              'Speichern',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        if (viewModel.isEditing)
-          Expanded(
+        
+        // Löschen-Button (nur beim Bearbeiten einer existierenden Session)
+        if (viewModel.isEditing) ...[
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: _duplicateSession,
-              icon: Icon(Icons.copy, color: Colors.white),
-              label: Text('Duplizieren'),
+              onPressed: () => _deleteSession(viewModel),
+              icon: Icon(Icons.delete, color: Colors.white),
+              label: Text(
+                'Session löschen',
+                style: TextStyle(color: Colors.white),
+              ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
+                backgroundColor: Colors.red.shade700,
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
             ),
           ),
+        ],
       ],
     );
   }
@@ -475,6 +507,55 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
         backgroundColor: Colors.orange,
       ),
     );
+  }
+
+  Future<void> _deleteSession(EditSessionViewModel viewModel) async {
+    // Bestätigungsdialog anzeigen
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Session löschen'),
+        content: Text(
+          'Möchtest du die Session "${viewModel.session?.title}" wirklich löschen?\n\n'
+          'Diese Aktion kann nicht rückgängig gemacht werden.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Abbrechen'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+              foregroundColor: Colors.white,
+            ),
+            child: Text('Löschen'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final success = await viewModel.deleteSession();
+      
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Session erfolgreich gelöscht'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, true); // Zurück zur Liste mit Refresh-Flag
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Fehler beim Löschen der Session'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _showSoundPicker(BuildContext context) {
