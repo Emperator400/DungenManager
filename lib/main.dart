@@ -33,7 +33,20 @@ import 'database/repositories/wiki_entry_model_repository.dart';
 import 'viewmodels/update_viewmodel.dart';
 import 'widgets/update_dialog.dart';
 
-  /// Hauptfunktion der App
+// ============================================================
+// APP KONFIGURATION
+// ============================================================
+// 
+// PRODUKTIONS-MODUS: Setze auf `true` für Release-Builds
+// - Nutzer wird direkt zur CampaignSelectionScreen geleitet
+// 
+// ENTWICKLUNGS-MODUS: Setze auf `false` für Entwicklung
+// - Zeigt AppSelectionScreen mit allen Debug-Optionen
+// 
+const bool kIsProductionMode = true;
+// ============================================================
+
+/// Hauptfunktion der App
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -47,7 +60,7 @@ void main() async {
   runApp(const DmApp());
 }
 
-  /// Initialisiert die Datenbank
+/// Initialisiert die Datenbank
 Future<void> _initializeDatabase() async {
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     sqfliteFfiInit();
@@ -149,14 +162,18 @@ class DmApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Dungeon Manager',
         theme: DnDTheme.darkTheme,
-        home: const AppSelectionScreen(),
+        // Produktionsmodus: Direkt zur CampaignSelectionScreen
+        // Entwicklungsmodus: Zeigt AppSelectionScreen
+        home: kIsProductionMode 
+            ? const CampaignSelectionScreen() 
+            : const AppSelectionScreen(),
         debugShowCheckedModeBanner: false,
       ),
     );
   }
 }
 
-/// App Selection Screen - Hauptauswahl zwischen allen Anwendungen
+/// App Selection Screen - Hauptauswahl zwischen allen Anwendungen (nur für Entwicklung)
 class AppSelectionScreen extends StatefulWidget {
   const AppSelectionScreen({super.key});
 

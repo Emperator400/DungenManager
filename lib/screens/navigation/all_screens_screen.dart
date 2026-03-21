@@ -3,7 +3,6 @@ import '../../theme/dnd_theme.dart';
 
 // Import aller Screens
 import '../campaign/campaign_selection_screen.dart';
-import '../campaign/campaign_dashboard_screen.dart';
 import 'main_navigation_screen.dart';
 
 // Quest Screens
@@ -156,12 +155,6 @@ class AllScreensScreen extends StatelessWidget {
           title: 'Campaign Selection',
           description: 'Screen zur Auswahl einer Kampagne',
           onTap: () => _navigateToScreen(context, () => const CampaignSelectionScreen()),
-        ),
-        _buildScreenCard(
-          context: context,
-          title: 'Campaign Dashboard',
-          description: 'Zentrale Verwaltung aller Kampagnen',
-          onTap: () => _navigateToScreen(context, () => const CampaignDashboardScreen()),
         ),
       ],
     );

@@ -369,7 +369,7 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
                 },
                 backgroundColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
                 selectedColor: DnDTheme.ancientGold,
-                checkmarkColor: Colors.white,
+                showCheckmark: false,
                 avatar: _showFavoritesOnly 
                     ? Icon(Icons.star, size: 16, color: Colors.white)
                     : Icon(Icons.star_border, size: 16, color: DnDTheme.mysticalPurple),

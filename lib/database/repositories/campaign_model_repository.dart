@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../core/database_connection.dart';
 import '../../models/campaign.dart';
 import 'model_repository.dart';
@@ -374,6 +376,133 @@ class CampaignModelRepository extends ModelRepository<Campaign> {
       return descending ? -comparison : comparison;
     });
     return sortedCampaigns;
+  }
+
+  /// Lädt dynamische Statistiken für eine Kampagne aus der Datenbank
+  /// Zählt die tatsächlichen Einträge in den entsprechenden Tabellen
+  Future<Map<String, int>> loadCampaignStats(String campaignId) async {
+    final stats = <String, int>{
+      'heroCount': 0,
+      'sessionCount': 0,
+      'questCount': 0,
+    };
+
+    try {
+      // Helden zählen (player_characters Tabelle)
+      final heroResult = await rawQuery(
+        'SELECT COUNT(*) as count FROM player_characters WHERE campaign_id = ?',
+        [campaignId],
+      );
+      stats['heroCount'] = heroResult.first['count'] as int? ?? 0;
+
+      // Sessions zählen (sessions Tabelle)
+      final sessionResult = await rawQuery(
+        'SELECT COUNT(*) as count FROM sessions WHERE campaign_id = ?',
+        [campaignId],
+      );
+      stats['sessionCount'] = sessionResult.first['count'] as int? ?? 0;
+
+      // Quests zählen (quests Tabelle)
+      final questResult = await rawQuery(
+        'SELECT COUNT(*) as count FROM quests WHERE campaign_id = ?',
+        [campaignId],
+      );
+      stats['questCount'] = questResult.first['count'] as int? ?? 0;
+    } catch (e) {
+      debugPrint('Fehler beim Laden der Kampagnen-Statistiken: $e');
+    }
+
+    return stats;
+  }
+
+  /// Lädt Statistiken für alle Kampagnen (für effizientes Bulk-Loading)
+  Future<Map<String, Map<String, int>>> loadAllCampaignStats() async {
+    final stats = <String, Map<String, int>>{};
+
+    try {
+      // Alle Kampagnen-IDs sammeln - initialisiere mit 0
+      final campaigns = await findAll();
+      
+      // Initialisiere alle Kampagnen mit 0-Werten
+      for (final campaign in campaigns) {
+        stats[campaign.id] = {
+          'heroCount': 0,
+          'sessionCount': 0,
+          'questCount': 0,
+        };
+      }
+      
+      debugPrint('📊 [CampaignModelRepository] Lade Stats für ${campaigns.length} Kampagnen...');
+      
+      // Helden pro Kampagne zählen
+      try {
+        final heroStats = await rawQuery('''
+          SELECT campaign_id, COUNT(*) as count 
+          FROM player_characters 
+          WHERE campaign_id IS NOT NULL AND campaign_id != ''
+          GROUP BY campaign_id
+        ''');
+        
+        debugPrint('📊 [CampaignModelRepository] Hero stats result: ${heroStats.length} Einträge');
+        
+        for (final row in heroStats) {
+          final campaignId = row['campaign_id'] as String?;
+          final count = row['count'] as int? ?? 0;
+          debugPrint('📊 [CampaignModelRepository] Hero count für $campaignId: $count');
+          if (campaignId != null && stats.containsKey(campaignId)) {
+            stats[campaignId]!['heroCount'] = count;
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ [CampaignModelRepository] Fehler beim Laden der Hero-Stats: $e');
+      }
+
+      // Sessions pro Kampagne zählen
+      try {
+        final sessionStats = await rawQuery('''
+          SELECT campaign_id, COUNT(*) as count 
+          FROM sessions 
+          WHERE campaign_id IS NOT NULL AND campaign_id != ''
+          GROUP BY campaign_id
+        ''');
+        
+        for (final row in sessionStats) {
+          final campaignId = row['campaign_id'] as String?;
+          final count = row['count'] as int? ?? 0;
+          if (campaignId != null && stats.containsKey(campaignId)) {
+            stats[campaignId]!['sessionCount'] = count;
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ [CampaignModelRepository] Fehler beim Laden der Session-Stats: $e');
+      }
+
+      // Quests pro Kampagne zählen
+      try {
+        final questStats = await rawQuery('''
+          SELECT campaign_id, COUNT(*) as count 
+          FROM quests 
+          WHERE campaign_id IS NOT NULL AND campaign_id != ''
+          GROUP BY campaign_id
+        ''');
+        
+        for (final row in questStats) {
+          final campaignId = row['campaign_id'] as String?;
+          final count = row['count'] as int? ?? 0;
+          if (campaignId != null && stats.containsKey(campaignId)) {
+            stats[campaignId]!['questCount'] = count;
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ [CampaignModelRepository] Fehler beim Laden der Quest-Stats: $e');
+      }
+
+      debugPrint('📊 [CampaignModelRepository] Finale Stats: $stats');
+    } catch (e) {
+      debugPrint('❌ [CampaignModelRepository] Fehler beim Laden aller Kampagnen-Statistiken: $e');
+    }
+
+    return stats;
   }
 
   /// ===== BATCH OPERATIONEN =====

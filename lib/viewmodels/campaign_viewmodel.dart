@@ -84,6 +84,10 @@ class CampaignViewModel extends ChangeNotifier {
   List<Campaign> _campaigns = [];
   List<Campaign> get campaigns => _campaigns;
   
+  // Dynamische Statistiken für Kampagnen
+  Map<String, Map<String, int>> _campaignStats = {};
+  Map<String, Map<String, int>> get campaignStats => _campaignStats;
+  
   Campaign? _selectedCampaign;
   Campaign? get selectedCampaign => _selectedCampaign;
   
@@ -163,6 +167,9 @@ class CampaignViewModel extends ChangeNotifier {
         _campaigns = await _campaignRepo!.findAll();
         debugPrint('✅ [CampaignViewModel] ${_campaigns.length} Kampagnen geladen');
         
+        // Lade Statistiken für alle Kampagnen
+        await loadCampaignStats();
+        
         _invalidateFilteredCache();
       } else {
         debugPrint('⚠️ [CampaignViewModel] CampaignModelRepository nicht verfügbar');
@@ -185,6 +192,25 @@ class CampaignViewModel extends ChangeNotifier {
       _setLoading(false);
       debugPrint('🏁 [CampaignViewModel] loadCampaigns() abgeschlossen');
     }
+  }
+  
+  /// Lädt Statistiken für alle Kampagnen aus der Datenbank
+  Future<void> loadCampaignStats() async {
+    if (_campaignRepo == null) return;
+    
+    try {
+      debugPrint('📊 [CampaignViewModel] Lade Kampagnen-Statistiken...');
+      _campaignStats = await _campaignRepo!.loadAllCampaignStats();
+      debugPrint('✅ [CampaignViewModel] Statistiken für ${_campaignStats.length} Kampagnen geladen');
+    } catch (e) {
+      debugPrint('❌ [CampaignViewModel] Fehler beim Laden der Statistiken: $e');
+      _campaignStats = {};
+    }
+  }
+  
+  /// Holt die Statistiken für eine bestimmte Kampagne
+  Map<String, int> getStatsForCampaign(String campaignId) {
+    return _campaignStats[campaignId] ?? {'heroCount': 0, 'sessionCount': 0, 'questCount': 0};
   }
   
   Future<void> selectCampaign(Campaign campaign) async {

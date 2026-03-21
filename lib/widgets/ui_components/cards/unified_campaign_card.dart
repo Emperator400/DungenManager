@@ -97,22 +97,28 @@ class UnifiedCampaignCard extends UnifiedCardBase {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        children: [
-                          _buildInfoChip(
-                            Icons.people,
-                            '${campaign.playerCharacterIds.length}',
-                          ),
-                          _buildInfoChip(
-                            Icons.calendar_today,
-                            '${campaign.sessionIds.length}',
-                          ),
-                          _buildInfoChip(
-                            Icons.assessment,
-                            '${campaign.questIds.length}',
-                          ),
-                        ],
+                      Builder(
+                        builder: (context) {
+                          // Hole dynamische Statistiken aus dem ViewModel
+                          final stats = viewModel.getStatsForCampaign(campaign.id);
+                          return Wrap(
+                            spacing: 8,
+                            children: [
+                              _buildInfoChip(
+                                Icons.people,
+                                '${stats['heroCount'] ?? 0}',
+                              ),
+                              _buildInfoChip(
+                                Icons.calendar_today,
+                                '${stats['sessionCount'] ?? 0}',
+                              ),
+                              _buildInfoChip(
+                                Icons.assessment,
+                                '${stats['questCount'] ?? 0}',
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -155,11 +161,16 @@ class UnifiedCampaignCard extends UnifiedCardBase {
             const SizedBox(height: UnifiedCardBase.defaultSpacing),
             
             // Metadata
-            CardMetadataWidget(
-              createdAt: campaign.createdAt,
-              updatedAt: campaign.updatedAt,
-              status: campaign.statusDescription,
-              itemCount: campaign.questIds.length,
+            Builder(
+              builder: (context) {
+                final stats = viewModel.getStatsForCampaign(campaign.id);
+                return CardMetadataWidget(
+                  createdAt: campaign.createdAt,
+                  updatedAt: campaign.updatedAt,
+                  status: campaign.statusDescription,
+                  itemCount: stats['questCount'] ?? 0,
+                );
+              },
             ),
           ],
         ),

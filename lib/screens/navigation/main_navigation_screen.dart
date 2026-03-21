@@ -15,8 +15,9 @@ import '../../viewmodels/wiki_viewmodel.dart';
 
 // Screens
 import '../bestiary/bestiary_screen.dart';
-import '../campaign/campaign_dashboard_screen.dart';
+import '../campaign/campaign_selection_screen.dart';
 import '../campaign/campaign_quests_screen.dart';
+import '../campaign/edit_campaign_screen.dart';
 import '../items/item_library_screen.dart';
 import '../lore/lore_keeper_screen.dart';
 import '../bestiary/official_monsters_screen.dart';
@@ -73,7 +74,6 @@ class _MainNavigationLayout extends StatelessWidget {
           
           if (campaign != null) _buildCampaignSection(context, campaign!),
           _buildContentSection(context),
-          _buildToolsSection(context),
           
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],
@@ -291,58 +291,6 @@ class _MainNavigationLayout extends StatelessWidget {
     );
   }
 
-  Widget _buildToolsSection(BuildContext context) {
-    return SliverToBoxAdapter(
-      child: Container(
-        margin: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    DnDTheme.mysticalPurple.withValues(alpha: 0.1),
-                    DnDTheme.mysticalPurple.withValues(alpha: 0.05),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
-                  width: 1,
-                ),
-              ),
-              child: Text(
-                'Tools & Referenzen',
-                style: DnDTheme.headline3.copyWith(
-                  color: DnDTheme.mysticalPurple,
-                  fontSize: 18,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            _ContentListItem(
-              title: 'Offizielle Monster',
-              subtitle: '5e SRD Datenbank',
-              icon: Icons.auto_awesome,
-              color: DnDTheme.mysticalPurple,
-              onTap: () => _navigateToScreen(context, ScreenType.monsters),
-            ),
-            _ContentListItem(
-              title: 'Alle Kampagnen',
-              subtitle: 'Kampagnenübersicht',
-              icon: Icons.dashboard,
-              color: DnDTheme.ancientGold,
-              onTap: () => _navigateToScreen(context, ScreenType.campaigns),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 // ============================================================================
@@ -417,7 +365,7 @@ class _CampaignActionButtons extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: OutlinedButton.icon(
-            onPressed: () => _navigateToScreen(context, ScreenType.campaigns),
+            onPressed: () => _navigateToEditCampaign(context, campaign),
             icon: const Icon(Icons.edit),
             label: const Text('Bearbeiten'),
             style: OutlinedButton.styleFrom(
@@ -596,7 +544,7 @@ void _navigateToScreen(BuildContext context, ScreenType screenType, {Campaign? c
     case ScreenType.campaigns:
       screen = ChangeNotifierProvider<CampaignViewModel>(
         create: (_) => CampaignViewModel(),
-        child: const CampaignDashboardScreen(),
+        child: const CampaignSelectionScreen(),
       );
       break;
     case ScreenType.quests:
@@ -670,4 +618,15 @@ void _showSettingsDialog(BuildContext context) {
 String _formatDate(DateTime? date) {
   if (date == null) return 'Unbekannt';
   return '${date.day}.${date.month}.${date.year}';
+}
+
+void _navigateToEditCampaign(BuildContext context, Campaign campaign) {
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (context) => ChangeNotifierProvider.value(
+        value: context.read<CampaignViewModel>(),
+        child: EditCampaignScreen(campaign: campaign),
+      ),
+    ),
+  );
 }
