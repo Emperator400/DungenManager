@@ -64,7 +64,7 @@ class UpdateService {
   UpdateService._internal();
 
   /// Aktuelle App-Version aus pubspec.yaml
-  static const String currentVersionString = '1.0.1';
+  static const String currentVersionString = '1.0.2';
 
   /// Status-Controller für UI-Updates
   final _statusController = StreamController<UpdateStatus>.broadcast();
