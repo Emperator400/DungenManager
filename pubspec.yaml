@@ -1,7 +1,7 @@
 name: dungen_manager
 description: A new Flutter project.
 publish_to: 'none'
-version: 1.0.2+2
+version: 1.0.3+3
 
 environment:
   # KORREKTUR: Wir erlauben jede Dart-Version ab 3.0.0. Deine Version 3.9.2 passt da perfekt rein.

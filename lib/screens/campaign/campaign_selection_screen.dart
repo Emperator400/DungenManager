@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../models/campaign.dart';
 import '../../theme/dnd_theme.dart';
 import '../../viewmodels/campaign_viewmodel.dart';
+import '../../viewmodels/update_viewmodel.dart';
+import '../../widgets/update_dialog.dart';
 import '../../widgets/campaign/campaign_create_dialog_widget.dart';
 import '../../widgets/campaign/enhanced_campaign_filter_chips_widget.dart';
 import '../../widgets/ui_components/cards/unified_campaign_card.dart';
@@ -28,13 +30,35 @@ class CampaignSelectionScreen extends StatefulWidget {
 }
 
 class _CampaignSelectionScreenState extends State<CampaignSelectionScreen> {
+  bool _updateChecked = false;
+
   @override
   void initState() {
     super.initState();
     // Lade Kampagnen beim Start des Screens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CampaignViewModel>().loadCampaigns();
+      _checkForUpdates();
     });
+  }
+
+  /// Prüft automatisch auf Updates beim Start
+  Future<void> _checkForUpdates() async {
+    if (_updateChecked) return;
+    _updateChecked = true;
+
+    // Kurze Verzögerung damit die UI geladen ist
+    await Future.delayed(const Duration(seconds: 1));
+
+    if (!mounted) return;
+
+    final viewModel = context.read<UpdateViewModel>();
+    final hasUpdate = await viewModel.checkForUpdate();
+
+    if (hasUpdate && mounted) {
+      // Zeige Update-Dialog wenn Update verfügbar
+      await showUpdateDialogIfNeeded(context);
+    }
   }
 
   @override
