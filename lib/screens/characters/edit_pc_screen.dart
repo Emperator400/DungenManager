@@ -804,6 +804,9 @@ class _EditPCScreenState extends State<EditPCScreen>
               ),
             ],
             const SizedBox(height: 16),
+            // Trefferwürfel-Anzeige
+            _buildHitDiceSection(viewModel),
+            const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -842,6 +845,137 @@ class _EditPCScreenState extends State<EditPCScreen>
           ],
         );
       },
+    );
+  }
+
+  /// Baut die Trefferwürfel-Sektion
+  Widget _buildHitDiceSection(EditPCViewModel viewModel) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: DnDTheme.stoneGrey,
+        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        border: Border.all(
+          color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.casino,
+                color: DnDTheme.mysticalPurple,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Trefferwürfel',
+                style: DnDTheme.headline3.copyWith(
+                  color: DnDTheme.mysticalPurple,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Spacer(),
+              // Zeige den Würfel-Typ basierend auf der Klasse
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: DnDTheme.mysticalPurple.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: DnDTheme.mysticalPurple,
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  viewModel.hitDice.toUpperCase(),
+                  style: DnDTheme.headline3.copyWith(
+                    color: DnDTheme.mysticalPurple,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Visuelle Würfel-Anzeige
+          _buildHitDiceVisual(viewModel),
+          const SizedBox(height: 12),
+          // Info-Text
+          Row(
+            children: [
+              Icon(
+                Icons.info_outline,
+                size: 14,
+                color: Colors.white54,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Trefferwürfel werden für Kurzrasten verwendet. Anzahl = Stufe.',
+                  style: DnDTheme.bodyText2.copyWith(
+                    color: Colors.white54,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Baut die visuelle Darstellung der Trefferwürfel
+  Widget _buildHitDiceVisual(EditPCViewModel viewModel) {
+    final hitDiceCount = viewModel.level; // Anzahl = Level
+    final hitDiceType = viewModel.hitDice;
+    
+    // Extrahiere die Zahl aus dem Würfel (z.B. "d8" -> 8)
+    final diceMax = int.tryParse(hitDiceType.replaceAll('d', '')) ?? 8;
+    
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: List.generate(hitDiceCount, (index) {
+        return Tooltip(
+          message: 'Trefferwürfel ${index + 1}: $hitDiceType (1-$diceMax)',
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: DnDTheme.mysticalPurple,
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: DnDTheme.mysticalPurple.withValues(alpha: 0.2),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Text(
+                hitDiceType.replaceAll('d', ''),
+                style: DnDTheme.headline3.copyWith(
+                  color: DnDTheme.ancientGold,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
     );
   }
 

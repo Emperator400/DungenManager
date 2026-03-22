@@ -22,6 +22,7 @@ import 'viewmodels/campaign_viewmodel.dart';
 import 'viewmodels/wiki_viewmodel.dart';
 import 'viewmodels/edit_session_viewmodel.dart';
 import 'database/core/database_connection.dart';
+import 'database/migrations/database_migration.dart';
 import 'database/repositories/campaign_model_repository.dart';
 import 'database/repositories/player_character_model_repository.dart';
 import 'database/repositories/session_model_repository.dart';
@@ -66,16 +67,21 @@ Future<void> _initializeDatabase() async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
     print('🗄️ SQLite FFI für Desktop initialisiert');
+  }
+  
+  // Initialisiere Datenbank und führe Migrationen aus
+  try {
+    final dbConnection = DatabaseConnection.instance;
+    await dbConnection.database;
+    print('✅ Datenbank-Verbindung erfolgreich getestet');
     
-    // Teste die Datenbank-Verbindung
-    try {
-      final dbConnection = DatabaseConnection.instance;
-      await dbConnection.database;
-      print('✅ Datenbank-Verbindung erfolgreich getestet');
-    } catch (e) {
-      print('❌ Fehler beim Testen der Datenbank-Verbindung: $e');
-      rethrow;
-    }
+    // Führe Datenbank-Migrationen aus
+    final migration = DatabaseMigration(dbConnection);
+    await migration.runMigrations();
+    print('✅ Datenbank-Migrationen erfolgreich ausgeführt');
+  } catch (e) {
+    print('❌ Fehler beim Initialisieren der Datenbank: $e');
+    rethrow;
   }
 }
 

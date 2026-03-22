@@ -62,6 +62,9 @@ class DatabaseMigration {
   // Füge saving_throw_proficiencies Spalte zur player_characters Tabelle hinzu
   await _addSavingThrowProficienciesColumn(db);
   
+  // Füge Trefferwürfel-Spalten zur player_characters Tabelle hinzu
+  await _addHitDiceColumns(db);
+  
   print('Database migration completed successfully');
   }
   
@@ -367,6 +370,58 @@ class DatabaseMigration {
       }
     } catch (e) {
       print('Error adding saving_throw_proficiencies column: $e');
+    }
+  }
+
+  /// Fügt die Trefferwürfel-Spalten zur player_characters Tabelle hinzu
+  Future<void> _addHitDiceColumns(Database db) async {
+    try {
+      // Prüfe ob Tabelle existiert
+      final tableExists = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='player_characters'",
+      );
+      
+      if (tableExists.isEmpty) {
+        print('Note: player_characters table does not exist yet');
+        return;
+      }
+      
+      final tableInfo = await db.rawQuery('PRAGMA table_info(player_characters)');
+      
+      // hit_dice Spalte hinzufügen
+      final hasHitDice = tableInfo.any((column) => column['name'] == 'hit_dice');
+      if (!hasHitDice) {
+        await db.execute(
+          "ALTER TABLE player_characters ADD COLUMN hit_dice TEXT DEFAULT 'd8'",
+        );
+        print('Added hit_dice column to player_characters table');
+      } else {
+        print('hit_dice column already exists in player_characters table');
+      }
+      
+      // hit_dice_count Spalte hinzufügen
+      final hasHitDiceCount = tableInfo.any((column) => column['name'] == 'hit_dice_count');
+      if (!hasHitDiceCount) {
+        await db.execute(
+          'ALTER TABLE player_characters ADD COLUMN hit_dice_count INTEGER DEFAULT 1',
+        );
+        print('Added hit_dice_count column to player_characters table');
+      } else {
+        print('hit_dice_count column already exists in player_characters table');
+      }
+      
+      // hit_dice_remaining Spalte hinzufügen
+      final hasHitDiceRemaining = tableInfo.any((column) => column['name'] == 'hit_dice_remaining');
+      if (!hasHitDiceRemaining) {
+        await db.execute(
+          'ALTER TABLE player_characters ADD COLUMN hit_dice_remaining INTEGER DEFAULT 1',
+        );
+        print('Added hit_dice_remaining column to player_characters table');
+      } else {
+        print('hit_dice_remaining column already exists in player_characters table');
+      }
+    } catch (e) {
+      print('Error adding hit dice columns: $e');
     }
   }
 

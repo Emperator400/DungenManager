@@ -26,6 +26,11 @@ class PlayerCharacterEntity extends BaseEntity implements DatabaseEntity<PlayerC
   Map<String, dynamic> characterData; // Zusätzliche Charakterdaten
   DateTime createdAt;
   DateTime updatedAt;
+  
+  // Trefferwürfel
+  String hitDice; // z.B. "d8", "d10", "d12"
+  int hitDiceCount; // Anzahl der Trefferwürfel (normalerweise = Level)
+  int hitDiceRemaining; // Verbleibende Trefferwürfel für Kurzrast
 
   PlayerCharacterEntity({
     required this.id,
@@ -54,6 +59,9 @@ class PlayerCharacterEntity extends BaseEntity implements DatabaseEntity<PlayerC
     this.characterData = const {},
     required this.createdAt,
     required this.updatedAt,
+    this.hitDice = 'd8',
+    this.hitDiceCount = 1,
+    this.hitDiceRemaining = 1,
   });
 
   @override
@@ -147,6 +155,9 @@ class PlayerCharacterEntity extends BaseEntity implements DatabaseEntity<PlayerC
       'characterData': _encodeCharacterData(characterData),
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'hitDice': hitDice,
+      'hitDiceCount': hitDiceCount,
+      'hitDiceRemaining': hitDiceRemaining,
     });
   }
 
@@ -174,6 +185,9 @@ class PlayerCharacterEntity extends BaseEntity implements DatabaseEntity<PlayerC
       characterData: _decodeCharacterData(camelCaseMap['characterData'] as String?),
       createdAt: DateTime.parse(camelCaseMap['createdAt'] as String),
       updatedAt: DateTime.parse(camelCaseMap['updatedAt'] as String),
+      hitDice: camelCaseMap['hitDice'] as String? ?? 'd8',
+      hitDiceCount: camelCaseMap['hitDiceCount'] as int? ?? 1,
+      hitDiceRemaining: camelCaseMap['hitDiceRemaining'] as int? ?? 1,
     );
   }
 
@@ -285,6 +299,9 @@ class PlayerCharacterEntity extends BaseEntity implements DatabaseEntity<PlayerC
     Map<String, dynamic>? characterData,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? hitDice,
+    int? hitDiceCount,
+    int? hitDiceRemaining,
   }) {
     return PlayerCharacterEntity(
       id: id ?? this.id,
@@ -306,6 +323,9 @@ class PlayerCharacterEntity extends BaseEntity implements DatabaseEntity<PlayerC
       characterData: characterData ?? this.characterData,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      hitDice: hitDice ?? this.hitDice,
+      hitDiceCount: hitDiceCount ?? this.hitDiceCount,
+      hitDiceRemaining: hitDiceRemaining ?? this.hitDiceRemaining,
     );
   }
 
@@ -648,6 +668,11 @@ class PlayerCharacterEntity extends BaseEntity implements DatabaseEntity<PlayerC
       sourceId: campaignId,
       isFavorite: false,
       version: '1.0',
+      
+      // Trefferwürfel
+      hitDice: hitDice,
+      hitDiceCount: hitDiceCount,
+      hitDiceRemaining: hitDiceRemaining,
     );
   }
 
@@ -693,6 +718,9 @@ class PlayerCharacterEntity extends BaseEntity implements DatabaseEntity<PlayerC
       },
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
+      hitDice: model.hitDice,
+      hitDiceCount: model.hitDiceCount,
+      hitDiceRemaining: model.hitDiceRemaining,
     );
   }
 }

@@ -70,6 +70,11 @@ class PlayerCharacter {
   final String? spellSlots; // JSON-String für Spell-Slot-Verwaltung
   final int spellSaveDc;
   final int spellAttackBonus;
+  
+  // Trefferwürfel (Hit Dice)
+  final String hitDice; // z.B. "d8", "d10", "d12"
+  final int hitDiceCount; // Anzahl der Trefferwürfel (normalerweise = Level)
+  final int hitDiceRemaining; // Verbleibende Trefferwürfel für Kurzrast
 
   const PlayerCharacter({
     required this.id,
@@ -114,6 +119,9 @@ class PlayerCharacter {
     this.spellSaveDc = 8,
     this.spellAttackBonus = 0,
     this.savingThrowProficiencies = const [],
+    this.hitDice = 'd8',
+    this.hitDiceCount = 1,
+    this.hitDiceRemaining = 1,
   });
 
   /// Factory für neuen Player Character
@@ -159,7 +167,13 @@ class PlayerCharacter {
     String? spellSlots,
     int spellSaveDc = 8,
     int spellAttackBonus = 0,
+    String? hitDice,
+    int? hitDiceCount,
+    int? hitDiceRemaining,
   }) {
+    // Bestimme Trefferwürfel basierend auf Klasse, falls nicht angegeben
+    final determinedHitDice = hitDice ?? PlayerCharacter.getHitDiceForClass(className);
+    
     return PlayerCharacter(
       id: UuidService().generateId(),
       campaignId: campaignId,
@@ -203,7 +217,44 @@ class PlayerCharacter {
       spellSlots: spellSlots,
       spellSaveDc: spellSaveDc,
       spellAttackBonus: spellAttackBonus,
+      hitDice: determinedHitDice,
+      hitDiceCount: hitDiceCount ?? level,
+      hitDiceRemaining: hitDiceRemaining ?? level,
     );
+  }
+
+  /// Ermittelt die Trefferwürfel für eine bestimmte Klasse
+  /// D&D 5e Hit Dice nach Klasse:
+  /// - d12: Barbar
+  /// - d10: Kämpfer, Paladin, Mönch, Waldläufer
+  /// - d8:  Dieb, Kleriker, Barde, Druide, Hexenmeister, Kunstschausteller
+  /// - d6:  Magier, Zauberer, Hexer
+  static String getHitDiceForClass(String className) {
+    final normalizedClass = className.toLowerCase().trim();
+    
+    // d12 Klassen
+    if (normalizedClass.contains('barbar') || normalizedClass == 'barbarian') {
+      return 'd12';
+    }
+    
+    // d10 Klassen
+    if (normalizedClass.contains('kämpfer') || normalizedClass == 'fighter' ||
+        normalizedClass.contains('paladin') || normalizedClass == 'paladin' ||
+        normalizedClass.contains('mönch') || normalizedClass == 'monk' ||
+        normalizedClass.contains('waldläufer') || normalizedClass == 'ranger') {
+      return 'd10';
+    }
+    
+    // d6 Klassen
+    if (normalizedClass.contains('magier') || normalizedClass == 'wizard' ||
+        normalizedClass.contains('zauberer') || normalizedClass == 'sorcerer' ||
+        normalizedClass.contains('hexer') || normalizedClass == 'warlock') {
+      return 'd6';
+    }
+    
+    // d8 Klassen (Standard für die meisten anderen)
+    // Dieb/Rogue, Kleriker/Cleric, Barde/Bard, Druide/Druid, Hexenmeister/Warlock, Kunstschausteller/Bard
+    return 'd8';
   }
 
   Map<String, dynamic> toMap() => toDatabaseMap();
@@ -267,6 +318,11 @@ class PlayerCharacter {
       'spell_slots': spellSlots,
       'spell_save_dc': spellSaveDc,
       'spell_attack_bonus': spellAttackBonus,
+      
+      // Trefferwürfel
+      'hit_dice': hitDice,
+      'hit_dice_count': hitDiceCount,
+      'hit_dice_remaining': hitDiceRemaining,
       
       // Timestamps
       'created_at': DateTime.now().toIso8601String(),
@@ -332,6 +388,11 @@ class PlayerCharacter {
       spellSlots: ModelParsingHelper.safeStringOrNull(map, 'spell_slots', null),
       spellSaveDc: ModelParsingHelper.safeInt(map, 'spell_save_dc', 8),
       spellAttackBonus: ModelParsingHelper.safeInt(map, 'spell_attack_bonus', 0),
+      
+      // Trefferwürfel
+      hitDice: ModelParsingHelper.safeString(map, 'hit_dice', 'd8'),
+      hitDiceCount: ModelParsingHelper.safeInt(map, 'hit_dice_count', 1),
+      hitDiceRemaining: ModelParsingHelper.safeInt(map, 'hit_dice_remaining', 1),
     );
   }
 
@@ -465,6 +526,11 @@ class PlayerCharacter {
       spellSlots: ModelParsingHelper.safeStringOrNull(map, 'spellSlots', null),
       spellSaveDc: ModelParsingHelper.safeInt(map, 'spellSaveDc', 8),
       spellAttackBonus: ModelParsingHelper.safeInt(map, 'spellAttackBonus', 0),
+      
+      // Trefferwürfel
+      hitDice: ModelParsingHelper.safeString(map, 'hit_dice', 'd8'),
+      hitDiceCount: ModelParsingHelper.safeInt(map, 'hit_dice_count', 1),
+      hitDiceRemaining: ModelParsingHelper.safeInt(map, 'hit_dice_remaining', 1),
     );
   }
 
@@ -506,6 +572,9 @@ class PlayerCharacter {
     bool? isFavorite,
     String? version,
     Map<String, String>? equipment,
+    String? hitDice,
+    int? hitDiceCount,
+    int? hitDiceRemaining,
   }) {
     return PlayerCharacter(
       id: id ?? this.id,
@@ -544,6 +613,9 @@ class PlayerCharacter {
       isFavorite: isFavorite ?? this.isFavorite,
       version: version ?? this.version,
       equipment: equipment ?? this.equipment,
+      hitDice: hitDice ?? this.hitDice,
+      hitDiceCount: hitDiceCount ?? this.hitDiceCount,
+      hitDiceRemaining: hitDiceRemaining ?? this.hitDiceRemaining,
     );
   }
 

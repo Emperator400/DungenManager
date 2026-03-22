@@ -71,6 +71,11 @@ class EditPCViewModel extends ChangeNotifier {
   double _gold = 0.0;
   double _silver = 0.0;
   double _copper = 0.0;
+  
+  // Trefferwürfel
+  String _hitDice = 'd8';
+  int _hitDiceCount = 1;
+  int _hitDiceRemaining = 1;
 
   // ============================================================================
   // GETTERS
@@ -130,6 +135,11 @@ class EditPCViewModel extends ChangeNotifier {
   double get gold => _gold;
   double get silver => _silver;
   double get copper => _copper;
+  
+  // Trefferwürfel Getters
+  String get hitDice => _hitDice;
+  int get hitDiceCount => _hitDiceCount;
+  int get hitDiceRemaining => _hitDiceRemaining;
 
   // Computed Properties
   int get initiativeBonus => getModifier(_dexterity);
@@ -405,8 +415,13 @@ class EditPCViewModel extends ChangeNotifier {
   }
 
   /// Aktualisiert die Klasse
+  /// Aktualisiert auch automatisch die Trefferwürfel basierend auf der Klasse
   void updateClass(DndClass? selectedClass) {
     _selectedClass = selectedClass;
+    // Aktualisiere Trefferwürfel basierend auf der neuen Klasse
+    if (selectedClass != null) {
+      _hitDice = PlayerCharacter.getHitDiceForClass(selectedClass.name);
+    }
     notifyListeners();
   }
 
