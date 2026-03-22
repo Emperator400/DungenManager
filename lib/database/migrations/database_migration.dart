@@ -65,6 +65,9 @@ class DatabaseMigration {
   // Füge Trefferwürfel-Spalten zur player_characters Tabelle hinzu
   await _addHitDiceColumns(db);
   
+  // Füge damage_type Spalte zur items Tabelle hinzu
+  await _addDamageTypeColumn(db);
+  
   print('Database migration completed successfully');
   }
   
@@ -422,6 +425,36 @@ class DatabaseMigration {
       }
     } catch (e) {
       print('Error adding hit dice columns: $e');
+    }
+  }
+
+  /// Fügt die damage_type Spalte zur items Tabelle hinzu, falls sie nicht existiert
+  Future<void> _addDamageTypeColumn(Database db) async {
+    try {
+      // Prüfe ob Tabelle existiert
+      final tableExists = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='items'",
+      );
+      
+      if (tableExists.isEmpty) {
+        print('Note: items table does not exist yet');
+        return;
+      }
+      
+      // Prüfe ob Spalte bereits existiert
+      final tableInfo = await db.rawQuery('PRAGMA table_info(items)');
+      final hasDamageType = tableInfo.any((column) => column['name'] == 'damage_type');
+      
+      if (!hasDamageType) {
+        await db.execute(
+          'ALTER TABLE items ADD COLUMN damage_type TEXT',
+        );
+        print('Added damage_type column to items table');
+      } else {
+        print('damage_type column already exists in items table');
+      }
+    } catch (e) {
+      print('Error adding damage_type column: $e');
     }
   }
 

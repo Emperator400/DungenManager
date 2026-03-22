@@ -41,6 +41,7 @@ class Item {
 
   // Waffen-Eigenschaften
   final String? damage;
+  final String? damageType; // Schadenstyp: Hiebschaden, Stichschaden, Feuerschaden, etc.
   final String? properties;
 
   // Rüstungs-Eigenschaften
@@ -76,6 +77,7 @@ class Item {
     this.cost = 0.0,
     this.imageUrl = '',
     this.damage,
+    this.damageType,
     this.properties,
     this.acFormula,
     this.strengthRequirement,
@@ -105,6 +107,7 @@ class Item {
       'cost': cost,
       'image_url': imageUrl,
       'damage': damage,
+      'damage_type': damageType,
       'properties': properties,
       'ac_formula': acFormula,
       'strength_requirement': strengthRequirement,
@@ -137,6 +140,7 @@ class Item {
       'cost': cost,
       'image_url': imageUrl,
       'damage': damage,
+      'damage_type': damageType,
       'properties': properties,
       'ac_formula': acFormula,
       'strength_requirement': strengthRequirement,
@@ -176,6 +180,7 @@ class Item {
       cost: ModelParsingHelper.safeDouble(map, 'cost', 0.0),
       imageUrl: ModelParsingHelper.safeString(map, 'image_url', ''),
       damage: ModelParsingHelper.safeStringOrNull(map, 'damage', null),
+      damageType: ModelParsingHelper.safeStringOrNull(map, 'damage_type', null),
       properties: ModelParsingHelper.safeStringOrNull(map, 'properties', null),
       acFormula: ModelParsingHelper.safeStringOrNull(map, 'ac_formula', null),
       strengthRequirement: ModelParsingHelper.safeIntOrNull(map, 'strength_requirement', null),
@@ -247,6 +252,7 @@ class Item {
       cost: ModelParsingHelper.safeDouble(map, 'cost', 0.0),
       imageUrl: ModelParsingHelper.safeString(map, 'image_url', ''),
       damage: ModelParsingHelper.safeStringOrNull(map, 'damage', null),
+      damageType: ModelParsingHelper.safeStringOrNull(map, 'damage_type', null),
       properties: ModelParsingHelper.safeStringOrNull(map, 'properties', null),
       acFormula: ModelParsingHelper.safeStringOrNull(map, 'ac_formula', null),
       strengthRequirement: ModelParsingHelper.safeIntOrNull(map, 'strength_requirement', null),
@@ -276,6 +282,7 @@ class Item {
     double? cost,
     String? imageUrl,
     String? damage,
+    String? damageType,
     String? properties,
     String? acFormula,
     int? strengthRequirement,
@@ -303,6 +310,7 @@ class Item {
       cost: cost ?? this.cost,
       imageUrl: imageUrl ?? this.imageUrl,
       damage: damage ?? this.damage,
+      damageType: damageType ?? this.damageType,
       properties: properties ?? this.properties,
       acFormula: acFormula ?? this.acFormula,
       strengthRequirement: strengthRequirement ?? this.strengthRequirement,

@@ -170,6 +170,27 @@ class EditItemViewModel extends ChangeNotifier {
         description: _item!.description,
         properties: _item!.properties,
         damage: damage,
+        damageType: _item!.damageType,
+      );
+      _markAsChanged();
+    }
+  }
+
+  /// Aktualisiert den Schadenstyp des Items (für Waffen)
+  /// HINWEIS: Items haben keine copyWith-Methode, daher wird hier neu erstellt
+  void updateDamageType(String? damageType) {
+    if (_item != null && _item!.damageType != damageType) {
+      _item = Item(
+        id: _item!.id,
+        name: _item!.name,
+        itemType: _item!.itemType,
+        rarity: _item!.rarity,
+        cost: _item!.cost,
+        weight: _item!.weight,
+        description: _item!.description,
+        properties: _item!.properties,
+        damage: _item!.damage,
+        damageType: damageType,
       );
       _markAsChanged();
     }

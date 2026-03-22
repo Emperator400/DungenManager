@@ -611,6 +611,51 @@ class _EditItemScreenState extends State<EditItemScreen> {
           ),
           onChanged: (value) => viewModel.updateDamage(value),
         ),
+        const SizedBox(height: DnDTheme.md),
+        DropdownButtonFormField<String>(
+          value: viewModel.item?.damageType,
+          dropdownColor: DnDTheme.stoneGrey,
+          style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+          decoration: InputDecoration(
+            labelText: 'Schadenstyp',
+            labelStyle: DnDTheme.bodyText2.copyWith(
+              color: DnDTheme.errorRed,
+            ),
+            prefixIcon: Icon(
+              Icons.whatshot_outlined,
+              color: DnDTheme.errorRed,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+              borderSide: BorderSide.none,
+            ),
+            filled: true,
+            fillColor: DnDTheme.slateGrey,
+            contentPadding: const EdgeInsets.all(DnDTheme.md),
+          ),
+          hint: Text(
+            'Schadenstyp auswählen...',
+            style: DnDTheme.bodyText2.copyWith(color: Colors.white38),
+          ),
+          items: const [
+            DropdownMenuItem(value: 'Slashing', child: Text('Hiebschaden (Slashing)')),
+            DropdownMenuItem(value: 'Piercing', child: Text('Stichschaden (Piercing)')),
+            DropdownMenuItem(value: 'Bludgeoning', child: Text('Wuchtschaden (Bludgeoning)')),
+            DropdownMenuItem(value: 'Fire', child: Text('Feuerschaden')),
+            DropdownMenuItem(value: 'Cold', child: Text('Kälteschaden')),
+            DropdownMenuItem(value: 'Lightning', child: Text('Blitzschaden')),
+            DropdownMenuItem(value: 'Thunder', child: Text('Donnerschaden')),
+            DropdownMenuItem(value: 'Poison', child: Text('Giftschaden')),
+            DropdownMenuItem(value: 'Acid', child: Text('Säureschaden')),
+            DropdownMenuItem(value: 'Necrotic', child: Text('Nekrotischer Schaden')),
+            DropdownMenuItem(value: 'Radiant', child: Text('Strahlender Schaden')),
+            DropdownMenuItem(value: 'Psychic', child: Text('Psychischer Schaden')),
+            DropdownMenuItem(value: 'Force', child: Text('Magischer Schaden')),
+          ],
+          onChanged: (value) {
+            viewModel.updateDamageType(value);
+          },
+        ),
       ],
     );
   }

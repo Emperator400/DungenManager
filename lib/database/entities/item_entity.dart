@@ -15,6 +15,7 @@ class ItemEntity extends BaseEntity {
 
   // Waffen-Eigenschaften
   final String? damage;
+  final String? damageType; // Schadenstyp: Hiebschaden, Stichschaden, Feuerschaden, etc.
   final String? properties;
 
   // Rüstungs-Eigenschaften
@@ -58,6 +59,7 @@ class ItemEntity extends BaseEntity {
     this.cost = 0.0,
     this.imageUrl = '',
     this.damage,
+    this.damageType,
     this.properties,
     this.acFormula,
     this.strengthRequirement,
@@ -93,6 +95,7 @@ class ItemEntity extends BaseEntity {
       cost: (map['cost'] as num?)?.toDouble() ?? 0.0,
       imageUrl: map['image_url'] as String? ?? '',
       damage: map['damage'] as String?,
+      damageType: map['damage_type'] as String?,
       properties: map['properties'] as String?,
       acFormula: map['ac_formula'] as String?,
       strengthRequirement: map['strength_requirement'] as int?,
@@ -129,6 +132,7 @@ class ItemEntity extends BaseEntity {
       cost: item.cost,
       imageUrl: item.imageUrl,
       damage: item.damage,
+      damageType: item.damageType,
       properties: item.properties,
       acFormula: item.acFormula,
       strengthRequirement: item.strengthRequirement,
@@ -219,6 +223,7 @@ class ItemEntity extends BaseEntity {
       'cost': cost,
       'image_url': imageUrl,
       'damage': damage,
+      'damage_type': damageType,
       'properties': properties,
       'ac_formula': acFormula,
       'strength_requirement': strengthRequirement,
@@ -255,6 +260,7 @@ class ItemEntity extends BaseEntity {
       cost: cost,
       imageUrl: imageUrl,
       damage: damage,
+      damageType: damageType,
       properties: properties,
       acFormula: acFormula,
       strengthRequirement: strengthRequirement,
@@ -284,6 +290,7 @@ class ItemEntity extends BaseEntity {
     double? cost,
     String? imageUrl,
     String? damage,
+    String? damageType,
     String? properties,
     String? acFormula,
     int? strengthRequirement,
@@ -316,6 +323,7 @@ class ItemEntity extends BaseEntity {
       cost: cost ?? this.cost,
       imageUrl: imageUrl ?? this.imageUrl,
       damage: damage ?? this.damage,
+      damageType: damageType ?? this.damageType,
       properties: properties ?? this.properties,
       acFormula: acFormula ?? this.acFormula,
       strengthRequirement: strengthRequirement ?? this.strengthRequirement,
@@ -356,6 +364,7 @@ class ItemEntity extends BaseEntity {
         cost REAL DEFAULT 0.0,
         image_url TEXT DEFAULT '',
         damage TEXT,
+        damage_type TEXT,
         properties TEXT,
         ac_formula TEXT,
         strength_requirement INTEGER,
