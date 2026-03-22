@@ -757,6 +757,67 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                   _buildLinkedWikiEntriesRow(scene),
                   const SizedBox(height: 12),
                 ],
+                // Combat-Szene: Kampf starten Button
+                if (scene.sceneType == SceneType.Combat && 
+                    scene.linkedEncounterId != null && 
+                    scene.linkedEncounterId!.isNotEmpty) ...[
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(top: 8),
+                    child: ElevatedButton.icon(
+                      onPressed: () => _startEncounterForScene(scene),
+                      icon: const Icon(Icons.gavel, size: 18),
+                      label: const Text('Kampf starten'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: DnDTheme.errorRed,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                
+                // Combat-Szene ohne Encounter: Hinweis anzeigen
+                if (scene.sceneType == SceneType.Combat && 
+                    (scene.linkedEncounterId == null || scene.linkedEncounterId!.isEmpty)) ...[
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: DnDTheme.ancientGold.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                      border: Border.all(
+                        color: DnDTheme.ancientGold.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: DnDTheme.ancientGold,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Kein Encounter geplant - Bearbeite die Szene um einen Encounter hinzuzufügen',
+                            style: DnDTheme.bodyText2.copyWith(
+                              color: DnDTheme.ancientGold,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                
                 // Zusätzliche Details
                 Row(
                   children: [
@@ -2075,6 +2136,18 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
         builder: (ctx) => EncounterSetupScreen(
           campaign: _viewModel.campaign,
           scene: activeScene,
+        ),
+      ),
+    );
+  }
+
+  /// Startet einen Encounter für eine spezifische Scene (aus Combat-Szene)
+  void _startEncounterForScene(Scene scene) {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (ctx) => EncounterSetupScreen(
+          campaign: _viewModel.campaign,
+          scene: scene,
         ),
       ),
     );

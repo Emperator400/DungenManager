@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-  import '../../models/scene.dart';
-  import '../../models/quest.dart';
-  import '../../models/sound.dart';
-  import '../../models/wiki_entry.dart';
-  import '../../viewmodels/edit_scene_viewmodel.dart';
-  import '../../theme/dnd_theme.dart';
-  import '../../services/sound_service.dart';
-  import '../characters/select_character_screen.dart';
+import '../../models/scene.dart';
+import '../../models/quest.dart';
+import '../../models/sound.dart';
+import '../../models/wiki_entry.dart';
+import '../../viewmodels/edit_scene_viewmodel.dart';
+import '../../theme/dnd_theme.dart';
+import '../../services/sound_service.dart';
+import '../characters/select_character_screen.dart';
 
 /// Enhanced Screen zur Bearbeitung von Scenes mit D&D Theme
 class EditSceneScreen extends StatefulWidget {
@@ -308,6 +308,19 @@ class _EditSceneScreenState extends State<EditSceneScreen> {
                           ],
                         ),
                       );
+                    },
+                  ),
+
+                  const SizedBox(height: DnDTheme.md),
+
+                  // Combat-Sektion (nur wenn SceneType.Combat)
+                  Consumer<EditSceneViewModel>(
+                    builder: (context, viewModel, child) {
+                      if (viewModel.scene?.sceneType != SceneType.Combat) {
+                        return const SizedBox.shrink();
+                      }
+                      
+                      return _buildCombatSection(viewModel);
                     },
                   ),
 
@@ -1516,6 +1529,310 @@ class _EditSceneScreenState extends State<EditSceneScreen> {
 
   Future<void> _updateVolume() async {
     await SoundService.setVolume(_volume);
+  }
+
+  // ===== COMBAT SECTION =====
+
+  Widget _buildCombatSection(EditSceneViewModel viewModel) {
+    final hasEncounter = viewModel.scene?.linkedEncounterId != null && 
+                         viewModel.scene!.linkedEncounterId!.isNotEmpty;
+    
+    return _buildSectionCard(
+      title: 'Kampf-Planung',
+      icon: Icons.gavel,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Info-Text
+          Container(
+            padding: const EdgeInsets.all(DnDTheme.sm),
+            decoration: BoxDecoration(
+              color: DnDTheme.errorRed.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+              border: Border.all(
+                color: DnDTheme.errorRed.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: DnDTheme.errorRed, size: 20),
+                const SizedBox(width: DnDTheme.sm),
+                Expanded(
+                  child: Text(
+                    'Diese Szene ist als Kampfszene markiert. '
+                    'Du kannst einen Encounter planen, der während der Session gestartet werden kann.',
+                    style: DnDTheme.bodyText2.copyWith(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: DnDTheme.md),
+          
+          // Encounter Status
+          if (hasEncounter) ...[
+            Container(
+              padding: const EdgeInsets.all(DnDTheme.md),
+              decoration: BoxDecoration(
+                gradient: DnDTheme.getMysticalGradient(
+                  startColor: DnDTheme.successGreen.withValues(alpha: 0.2),
+                  endColor: DnDTheme.successGreen.withValues(alpha: 0.1),
+                ),
+                borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                border: Border.all(
+                  color: DnDTheme.successGreen,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle, color: DnDTheme.successGreen),
+                  const SizedBox(width: DnDTheme.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Encounter geplant',
+                          style: DnDTheme.bodyText1.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'ID: ${viewModel.scene!.linkedEncounterId}',
+                          style: DnDTheme.bodyText2.copyWith(
+                            color: Colors.white54,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Encounter entfernen
+                  TextButton.icon(
+                    onPressed: () => _removeEncounter(viewModel),
+                    icon: Icon(Icons.delete, color: DnDTheme.errorRed, size: 16),
+                    label: Text(
+                      'Entfernen',
+                      style: TextStyle(color: DnDTheme.errorRed),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            // Button zum Encounter planen
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _planEncounter(viewModel),
+                icon: const Icon(Icons.gavel, size: 20),
+                label: const Text('Encounter planen'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: DnDTheme.errorRed,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: DnDTheme.md,
+                    horizontal: DnDTheme.lg,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                  ),
+                ),
+              ),
+            ),
+          ],
+          
+          const SizedBox(height: DnDTheme.md),
+          
+          // Teilnehmer-Info
+          if (viewModel.linkedCharacters.isNotEmpty) ...[
+            Text(
+              'Verfügbare Teilnehmer:',
+              style: DnDTheme.bodyText2.copyWith(
+                color: Colors.white70,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: DnDTheme.sm),
+            Wrap(
+              spacing: DnDTheme.xs,
+              runSpacing: DnDTheme.xs,
+              children: viewModel.linkedCharacters.map((char) => 
+                Chip(
+                  label: Text(
+                    char['name'].toString(),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                    ),
+                  ),
+                  backgroundColor: _getCharacterColor(char['type']).withValues(alpha: 0.3),
+                  side: BorderSide(
+                    color: _getCharacterColor(char['type']),
+                  ),
+                  avatar: Icon(
+                    _getCharacterIcon(char['type']),
+                    color: _getCharacterColor(char['type']),
+                    size: 16,
+                  ),
+                ),
+              ).toList(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _removeEncounter(EditSceneViewModel viewModel) {
+    viewModel.updateLinkedEncounter(null);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Encounter von Szene entfernt'),
+        backgroundColor: DnDTheme.successGreen,
+      ),
+    );
+  }
+
+  void _planEncounter(EditSceneViewModel viewModel) async {
+    // Navigiere zum Encounter Setup Screen
+    // Da wir keine Campaign und Scene direkt haben, nutzen wir einen Dialog
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: DnDTheme.stoneGrey,
+        title: Row(
+          children: [
+            Icon(Icons.gavel, color: DnDTheme.errorRed),
+            const SizedBox(width: DnDTheme.sm),
+            Text(
+              'Encounter planen',
+              style: DnDTheme.headline3.copyWith(color: Colors.white),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Möchtest du einen Encounter für diese Szene planen?',
+              style: DnDTheme.bodyText1.copyWith(color: Colors.white70),
+            ),
+            const SizedBox(height: DnDTheme.md),
+            Text(
+              'Hinweis: Speichere die Szene zuerst, bevor du den Encounter planst.',
+              style: DnDTheme.bodyText2.copyWith(
+                color: DnDTheme.ancientGold,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Abbrechen'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              
+              // Erst speichern falls nötig
+              if (viewModel.hasUnsavedChanges || !viewModel.isEditing) {
+                final saved = await viewModel.saveScene();
+                if (!saved) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Fehler beim Speichern der Szene'),
+                      backgroundColor: DnDTheme.errorRed,
+                    ),
+                  );
+                  return;
+                }
+              }
+              
+              // Encounter-Dialog zeigen
+              _showEncounterTitleDialog(viewModel);
+            },
+            icon: Icon(Icons.gavel),
+            label: Text('Encounter erstellen'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DnDTheme.errorRed,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEncounterTitleDialog(EditSceneViewModel viewModel) {
+    final titleController = TextEditingController(
+      text: '${viewModel.scene?.name ?? "Kampf"} - Encounter',
+    );
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: DnDTheme.stoneGrey,
+        title: Text(
+          'Encounter-Titel',
+          style: DnDTheme.headline3.copyWith(color: DnDTheme.ancientGold),
+        ),
+        content: TextField(
+          controller: titleController,
+          decoration: InputDecoration(
+            labelText: 'Titel',
+            labelStyle: TextStyle(color: DnDTheme.ancientGold),
+            enabledBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: DnDTheme.ancientGold),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
+            ),
+          ),
+          style: TextStyle(color: Colors.white),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Abbrechen'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Hier würde die Encounter-Erstellung stattfinden
+              // Für jetzt simulieren wir es mit einer Dummy-ID
+              final encounterId = 'enc_${DateTime.now().millisecondsSinceEpoch}';
+              viewModel.updateLinkedEncounter(encounterId);
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.white),
+                      const SizedBox(width: 8),
+                      Text('Encounter "${titleController.text}" erstellt!'),
+                    ],
+                  ),
+                  backgroundColor: DnDTheme.successGreen,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DnDTheme.ancientGold,
+              foregroundColor: DnDTheme.dungeonBlack,
+            ),
+            child: Text('Erstellen'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showSoundSelector(EditSceneViewModel viewModel) async {

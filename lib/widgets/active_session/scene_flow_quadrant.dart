@@ -9,12 +9,14 @@ class SceneFlowQuadrant extends StatelessWidget {
   final ActiveSessionViewModel viewModel;
   final VoidCallback onCreateScene;
   final Function(Scene) onSceneTap;
+  final Function(Scene)? onStartEncounter;
 
   const SceneFlowQuadrant({
     super.key,
     required this.viewModel,
     required this.onCreateScene,
     required this.onSceneTap,
+    this.onStartEncounter,
   });
 
   @override
@@ -224,6 +226,72 @@ class SceneFlowQuadrant extends StatelessWidget {
                     style: DnDTheme.bodyText2.copyWith(
                       color: Colors.white,
                       fontSize: 9,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          
+          // Combat-Szene: Kampf starten Button
+          if (scene.sceneType == SceneType.Combat && 
+              scene.linkedEncounterId != null && 
+              scene.linkedEncounterId!.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.symmetric(horizontal: 6),
+              child: ElevatedButton.icon(
+                onPressed: onStartEncounter != null 
+                    ? () => onStartEncounter!(scene)
+                    : null,
+                icon: const Icon(Icons.gavel, size: 12),
+                label: const Text('Kampf starten'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: DnDTheme.errorRed,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  textStyle: const TextStyle(fontSize: 9),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                  ),
+                ),
+              ),
+            ),
+          ],
+          
+          // Combat-Szene ohne Encounter: Hinweis anzeigen
+          if (scene.sceneType == SceneType.Combat && 
+              (scene.linkedEncounterId == null || scene.linkedEncounterId!.isEmpty)) ...[
+            const SizedBox(height: 4),
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 6),
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: DnDTheme.ancientGold.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                border: Border.all(
+                  color: DnDTheme.ancientGold.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: DnDTheme.ancientGold,
+                    size: 10,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'Kein Encounter geplant',
+                      style: DnDTheme.bodyText2.copyWith(
+                        color: DnDTheme.ancientGold,
+                        fontSize: 8,
+                      ),
                     ),
                   ),
                 ],

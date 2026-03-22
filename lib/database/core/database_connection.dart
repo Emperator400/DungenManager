@@ -38,7 +38,7 @@ class DatabaseConnection {
     
     final db = await openDatabase(
       path,
-      version: 16,
+      version: 17,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       singleInstance: true,
@@ -507,19 +507,19 @@ class DatabaseConnection {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS encounters (
         id TEXT PRIMARY KEY,
-        sessionId TEXT NOT NULL,
+        scene_id TEXT NOT NULL,
         title TEXT NOT NULL,
         description TEXT,
         status TEXT NOT NULL DEFAULT 'planning',
-        participantIds TEXT,
-        createdAt TEXT NOT NULL,
-        startedAt TEXT,
-        completedAt TEXT,
-        FOREIGN KEY (sessionId) REFERENCES sessions (id) ON DELETE CASCADE
+        participant_ids TEXT,
+        created_at TEXT NOT NULL,
+        started_at TEXT,
+        completed_at TEXT,
+        FOREIGN KEY (scene_id) REFERENCES scenes (id) ON DELETE CASCADE
       )
     ''');
 
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_encounters_session_id ON encounters(sessionId)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_encounters_scene_id ON encounters(scene_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_encounters_status ON encounters(status)');
 
     print('✅ encounters Tabelle erstellt');
@@ -530,20 +530,21 @@ class DatabaseConnection {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS encounter_participants (
         id TEXT PRIMARY KEY,
-        encounterId TEXT NOT NULL,
+        encounter_id TEXT NOT NULL,
         name TEXT NOT NULL,
         type TEXT NOT NULL DEFAULT 'enemy',
-        currentHp INTEGER NOT NULL DEFAULT 0,
-        maxHp INTEGER NOT NULL DEFAULT 0,
+        current_hp INTEGER NOT NULL DEFAULT 0,
+        max_hp INTEGER NOT NULL DEFAULT 0,
         conditions TEXT,
         notes TEXT,
-        characterId TEXT,
-        FOREIGN KEY (encounterId) REFERENCES encounters (id) ON DELETE CASCADE
+        character_id TEXT,
+        FOREIGN KEY (encounter_id) REFERENCES encounters (id) ON DELETE CASCADE
       )
     ''');
 
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_encounter_participants_encounter_id ON encounter_participants(encounterId)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_encounter_participants_encounter_id ON encounter_participants(encounter_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_encounter_participants_type ON encounter_participants(type)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_encounter_participants_character_id ON encounter_participants(character_id)');
 
     print('✅ encounter_participants Tabelle erstellt');
   }
@@ -862,6 +863,107 @@ class DatabaseConnection {
         print('✅ items Tabelle aktualisiert (Version 16)');
       } catch (e) {
         print('⚠️ Konnte armor_category Spalte nicht hinzufügen: $e');
+      }
+    }
+    
+    if (oldVersion < 17 && newVersion >= 17) {
+      print('🔄 Migriere encounters und encounter_participants zu snake_case (v16 → v17)...');
+      try {
+        // Prüfe ob encounters Tabelle das alte Schema hat
+        final encountersInfo = await db.rawQuery('PRAGMA table_info(encounters)');
+        final encounterColumns = encountersInfo.map((column) => column['name'] as String).toSet();
+        
+        // Wenn sessionId existiert, müssen wir migrieren
+        if (encounterColumns.contains('sessionId')) {
+          print('🔄 Migriere encounters Tabelle...');
+          
+          // 1. Erstelle neue Tabelle
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS encounters_new (
+              id TEXT PRIMARY KEY,
+              scene_id TEXT NOT NULL,
+              title TEXT NOT NULL,
+              description TEXT,
+              status TEXT NOT NULL DEFAULT 'planning',
+              participant_ids TEXT,
+              created_at TEXT NOT NULL,
+              started_at TEXT,
+              completed_at TEXT,
+              FOREIGN KEY (scene_id) REFERENCES scenes (id) ON DELETE CASCADE
+            )
+          ''');
+          
+          // 2. Kopiere Daten (mit Fallback für sessionId -> scene_id)
+          await db.execute('''
+            INSERT INTO encounters_new (id, scene_id, title, description, status, participant_ids, created_at, started_at, completed_at)
+            SELECT id, COALESCE(scene_id, sessionId), title, description, status, COALESCE(participant_ids, participantIds), 
+                   COALESCE(created_at, createdAt), COALESCE(started_at, startedAt), COALESCE(completed_at, completedAt)
+            FROM encounters
+          ''');
+          
+          // 3. Lösche alte Tabelle
+          await db.execute('DROP TABLE encounters');
+          
+          // 4. Benenne neue Tabelle um
+          await db.execute('ALTER TABLE encounters_new RENAME TO encounters');
+          
+          // 5. Erstelle Indizes
+          await db.execute('CREATE INDEX IF NOT EXISTS idx_encounters_scene_id ON encounters(scene_id)');
+          await db.execute('CREATE INDEX IF NOT EXISTS idx_encounters_status ON encounters(status)');
+          
+          print('✅ encounters Tabelle migriert');
+        }
+        
+        // Prüfe ob encounter_participants Tabelle das alte Schema hat
+        final participantsInfo = await db.rawQuery('PRAGMA table_info(encounter_participants)');
+        final participantColumns = participantsInfo.map((column) => column['name'] as String).toSet();
+        
+        // Wenn encounterId existiert, müssen wir migrieren
+        if (participantColumns.contains('encounterId')) {
+          print('🔄 Migriere encounter_participants Tabelle...');
+          
+          // 1. Erstelle neue Tabelle
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS encounter_participants_new (
+              id TEXT PRIMARY KEY,
+              encounter_id TEXT NOT NULL,
+              name TEXT NOT NULL,
+              type TEXT NOT NULL DEFAULT 'enemy',
+              current_hp INTEGER NOT NULL DEFAULT 0,
+              max_hp INTEGER NOT NULL DEFAULT 0,
+              conditions TEXT,
+              notes TEXT,
+              character_id TEXT,
+              FOREIGN KEY (encounter_id) REFERENCES encounters (id) ON DELETE CASCADE
+            )
+          ''');
+          
+          // 2. Kopiere Daten
+          await db.execute('''
+            INSERT INTO encounter_participants_new (id, encounter_id, name, type, current_hp, max_hp, conditions, notes, character_id)
+            SELECT id, COALESCE(encounter_id, encounterId), name, type, 
+                   COALESCE(current_hp, currentHp), COALESCE(max_hp, maxHp), 
+                   conditions, notes, COALESCE(character_id, characterId)
+            FROM encounter_participants
+          ''');
+          
+          // 3. Lösche alte Tabelle
+          await db.execute('DROP TABLE encounter_participants');
+          
+          // 4. Benenne neue Tabelle um
+          await db.execute('ALTER TABLE encounter_participants_new RENAME TO encounter_participants');
+          
+          // 5. Erstelle Indizes
+          await db.execute('CREATE INDEX IF NOT EXISTS idx_encounter_participants_encounter_id ON encounter_participants(encounter_id)');
+          await db.execute('CREATE INDEX IF NOT EXISTS idx_encounter_participants_type ON encounter_participants(type)');
+          await db.execute('CREATE INDEX IF NOT EXISTS idx_encounter_participants_character_id ON encounter_participants(character_id)');
+          
+          print('✅ encounter_participants Tabelle migriert');
+        }
+        
+        print('✅ Encounter-Tabellen migriert (Version 17)');
+      } catch (e) {
+        print('⚠️ Konnte Encounter-Tabellen nicht migrieren: $e');
       }
     }
   }

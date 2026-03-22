@@ -68,6 +68,12 @@ class DatabaseMigration {
   // Füge damage_type Spalte zur items Tabelle hinzu
   await _addDamageTypeColumn(db);
   
+  // Stelle sicher, dass encounters Tabelle scene_id Spalte hat
+  await _ensureEncountersSceneIdColumn(db);
+  
+  // Stelle sicher, dass encounter_participants die richtigen Spalten hat
+  await _ensureEncounterParticipantsColumns(db);
+  
   print('Database migration completed successfully');
   }
   
@@ -995,5 +1001,159 @@ class DatabaseMigration {
       'status': integrity['campaigns']?['status'] ?? 'unknown',
       'integrity': integrity,
     };
+  }
+
+  /// Stellt sicher, dass die encounters Tabelle die scene_id Spalte hat
+  /// und sessionId KEIN NOT NULL Constraint mehr hat
+  Future<void> _ensureEncountersSceneIdColumn(Database db) async {
+    try {
+      // Prüfe ob Tabelle existiert
+      final tableExists = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='encounters'",
+      );
+      
+      if (tableExists.isEmpty) {
+        print('Note: encounters table does not exist yet');
+        return;
+      }
+      
+      final tableInfo = await db.rawQuery('PRAGMA table_info(encounters)');
+      final columnNames = tableInfo.map((c) => c['name'] as String).toList();
+      print('Encounters table columns: $columnNames');
+      
+      final hasSceneId = columnNames.contains('scene_id');
+      final hasSessionId = columnNames.contains('sessionId');
+      
+      // Prüfe ob sessionId NOT NULL hat
+      bool sessionIdHasNotNull = false;
+      if (hasSessionId) {
+        final sessionIdColumn = tableInfo.firstWhere((c) => c['name'] == 'sessionId');
+        sessionIdHasNotNull = sessionIdColumn['notnull'] == 1;
+        print('sessionId has NOT NULL constraint: $sessionIdHasNotNull');
+      }
+      
+      print('Encounters table check: hasSceneId=$hasSceneId, hasSessionId=$hasSessionId, sessionIdHasNotNull=$sessionIdHasNotNull');
+      
+      // Wenn sessionId noch NOT NULL hat, müssen wir die Tabelle neu erstellen
+      // da SQLite NOT NULL Constraints nicht entfernen kann
+      if (sessionIdHasNotNull || !hasSceneId) {
+        print('Need to recreate encounters table (sessionId NOT NULL or scene_id missing)');
+        await _recreateEncountersTableWithSceneId(db);
+        return;
+      }
+      
+      // Wenn scene_id bereits existiert und sessionId kein NOT NULL hat, ist alles gut
+      if (hasSceneId) {
+        print('encounters table already has scene_id column and sessionId is nullable - OK');
+        return;
+      }
+      
+    } catch (e) {
+      print('Error ensuring scene_id column: $e');
+    }
+  }
+
+  /// Erstellt die encounters Tabelle komplett neu mit scene_id
+  Future<void> _recreateEncountersTableWithSceneId(Database db) async {
+    print('Recreating encounters table with scene_id...');
+    
+    try {
+      // 1. Backup der alten Daten
+      final existingData = await db.rawQuery('SELECT * FROM encounters');
+      print('Found ${existingData.length} existing encounters to migrate');
+      
+      // 2. Alte Tabelle löschen
+      await db.execute('DROP TABLE IF EXISTS encounters');
+      
+      // 3. Neue Tabelle mit scene_id erstellen
+      await db.execute('''
+        CREATE TABLE encounters (
+          id TEXT PRIMARY KEY,
+          scene_id TEXT,
+          title TEXT NOT NULL,
+          description TEXT,
+          status TEXT NOT NULL DEFAULT 'planning',
+          participant_ids TEXT,
+          created_at TEXT NOT NULL,
+          started_at TEXT,
+          completed_at TEXT
+        )
+      ''');
+      
+      // 4. Indizes erstellen
+      await db.execute('CREATE INDEX idx_encounters_scene_id ON encounters(scene_id)');
+      await db.execute('CREATE INDEX idx_encounters_status ON encounters(status)');
+      
+      print('Successfully recreated encounters table with scene_id');
+    } catch (e) {
+      print('Error recreating encounters table: $e');
+    }
+  }
+
+  /// Stellt sicher, dass encounter_participants die richtigen Spalten hat
+  Future<void> _ensureEncounterParticipantsColumns(Database db) async {
+    try {
+      // Prüfe ob Tabelle existiert
+      final tableExists = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='encounter_participants'",
+      );
+      
+      if (tableExists.isEmpty) {
+        print('Note: encounter_participants table does not exist yet');
+        return;
+      }
+      
+      final tableInfo = await db.rawQuery('PRAGMA table_info(encounter_participants)');
+      final columnNames = tableInfo.map((c) => c['name'] as String).toList();
+      print('Encounter participants table columns: $columnNames');
+      
+      final hasEncounterId = columnNames.contains('encounter_id');
+      
+      // Wenn encounter_id fehlt, Tabelle neu erstellen
+      if (!hasEncounterId) {
+        print('Need to recreate encounter_participants table (encounter_id missing)');
+        await _recreateEncounterParticipantsTable(db);
+        return;
+      }
+      
+      print('encounter_participants table has encounter_id column - OK');
+      
+    } catch (e) {
+      print('Error ensuring encounter_participants columns: $e');
+    }
+  }
+
+  /// Erstellt die encounter_participants Tabelle komplett neu
+  Future<void> _recreateEncounterParticipantsTable(Database db) async {
+    print('Recreating encounter_participants table...');
+    
+    try {
+      // 1. Alte Tabelle löschen
+      await db.execute('DROP TABLE IF EXISTS encounter_participants');
+      
+      // 2. Neue Tabelle erstellen
+      await db.execute('''
+        CREATE TABLE encounter_participants (
+          id TEXT PRIMARY KEY,
+          encounter_id TEXT NOT NULL,
+          name TEXT NOT NULL,
+          type TEXT NOT NULL DEFAULT 'enemy',
+          current_hp INTEGER NOT NULL DEFAULT 0,
+          max_hp INTEGER NOT NULL DEFAULT 0,
+          conditions TEXT,
+          notes TEXT,
+          character_id TEXT
+        )
+      ''');
+      
+      // 3. Indizes erstellen
+      await db.execute('CREATE INDEX idx_encounter_participants_encounter_id ON encounter_participants(encounter_id)');
+      await db.execute('CREATE INDEX idx_encounter_participants_type ON encounter_participants(type)');
+      await db.execute('CREATE INDEX idx_encounter_participants_character_id ON encounter_participants(character_id)');
+      
+      print('Successfully recreated encounter_participants table');
+    } catch (e) {
+      print('Error recreating encounter_participants table: $e');
+    }
   }
 }

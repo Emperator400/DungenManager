@@ -9,6 +9,7 @@ import '../../models/sound.dart';
 import '../../viewmodels/encounter_planning_viewmodel.dart';
 import '../../database/repositories/sound_model_repository.dart';
 import '../../services/sound_service.dart';
+import 'encounter_tracker_screen.dart';
 
 /// Encounter Setup Screen
 /// 
@@ -90,14 +91,18 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
     final encounter = await _viewModel.createEncounter();
     
     if (encounter != null && mounted) {
-      // Erfolgreich erstellt - zurück zur Scene
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Kampf erfolgreich erstellt!'),
-          duration: Duration(seconds: 2),
+      // Sound stoppen bevor wir zum Tracker navigieren
+      await _stopSound();
+      
+      // Direkt zum Encounter Tracker navigieren
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => EncounterTrackerScreen(
+            encounterId: encounter.id,
+            encounterTitle: encounter.title,
+          ),
         ),
       );
-      Navigator.of(context).pop(encounter);
     } else if (_viewModel.errorMessage != null && mounted) {
       // Fehler anzeigen
       ScaffoldMessenger.of(context).showSnackBar(
@@ -462,7 +467,10 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
       data: character,
       feedback: Material(
         color: Colors.transparent,
-        child: _buildCharacterTile(character, isDragging: true),
+        child: SizedBox(
+          width: 300,
+          child: _buildCharacterTile(character, isDragging: true),
+        ),
       ),
       childWhenDragging: Opacity(
         opacity: 0.3,
@@ -538,7 +546,10 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
       data: monster,
       feedback: Material(
         color: Colors.transparent,
-        child: _buildMonsterTile(monster, isDragging: true),
+        child: SizedBox(
+          width: 300,
+          child: _buildMonsterTile(monster, isDragging: true),
+        ),
       ),
       childWhenDragging: Opacity(
         opacity: 0.3,

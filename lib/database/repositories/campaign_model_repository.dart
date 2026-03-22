@@ -397,7 +397,7 @@ class CampaignModelRepository extends ModelRepository<Campaign> {
 
       // Sessions zählen (sessions Tabelle)
       final sessionResult = await rawQuery(
-        'SELECT COUNT(*) as count FROM sessions WHERE campaign_id = ?',
+        'SELECT COUNT(*) as count FROM sessions WHERE campaignId = ?',
         [campaignId],
       );
       stats['sessionCount'] = sessionResult.first['count'] as int? ?? 0;
@@ -460,14 +460,14 @@ class CampaignModelRepository extends ModelRepository<Campaign> {
       // Sessions pro Kampagne zählen
       try {
         final sessionStats = await rawQuery('''
-          SELECT campaign_id, COUNT(*) as count 
+          SELECT campaignId, COUNT(*) as count 
           FROM sessions 
-          WHERE campaign_id IS NOT NULL AND campaign_id != ''
-          GROUP BY campaign_id
+          WHERE campaignId IS NOT NULL AND campaignId != ''
+          GROUP BY campaignId
         ''');
         
         for (final row in sessionStats) {
-          final campaignId = row['campaign_id'] as String?;
+          final campaignId = row['campaignId'] as String?;
           final count = row['count'] as int? ?? 0;
           if (campaignId != null && stats.containsKey(campaignId)) {
             stats[campaignId]!['sessionCount'] = count;

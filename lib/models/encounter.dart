@@ -63,20 +63,49 @@ class Encounter {
   }
 
   /// Factory für Datenbank-Map mit sicherem Parsing
+  /// Unterstützt sowohl camelCase (neue DB) als auch snake_case (alte DB)
   factory Encounter.fromDatabaseMap(Map<String, dynamic> map) {
+    // Unterstütze sowohl camelCase als auch snake_case für scene_id
+    String sceneIdValue = ModelParsingHelper.safeString(map, 'scene_id', '');
+    if (sceneIdValue.isEmpty) {
+      sceneIdValue = ModelParsingHelper.safeString(map, 'sessionId', '');  // Fallback auf sessionId
+    }
+    
+    // participantIds kann camelCase oder snake_case sein
+    String? participantIdsRaw = map['participantIds'] as String? ?? 
+        map['participant_ids'] as String?;
+    
+    // createdAt kann camelCase oder snake_case sein
+    DateTime createdAtValue = ModelParsingHelper.safeDateTime(map, 'createdAt', DateTime.now());
+    if (map['created_at'] != null) {
+      createdAtValue = ModelParsingHelper.safeDateTime(map, 'created_at', DateTime.now());
+    }
+    
+    // startedAt kann camelCase oder snake_case sein
+    DateTime? startedAtValue = ModelParsingHelper.safeDateTimeOrNull(map, 'startedAt', null);
+    if (startedAtValue == null && map['started_at'] != null) {
+      startedAtValue = ModelParsingHelper.safeDateTimeOrNull(map, 'started_at', null);
+    }
+    
+    // completedAt kann camelCase oder snake_case sein
+    DateTime? completedAtValue = ModelParsingHelper.safeDateTimeOrNull(map, 'completedAt', null);
+    if (completedAtValue == null && map['completed_at'] != null) {
+      completedAtValue = ModelParsingHelper.safeDateTimeOrNull(map, 'completed_at', null);
+    }
+    
     return Encounter(
       id: ModelParsingHelper.safeId(map, 'id'),
-      sceneId: ModelParsingHelper.safeString(map, 'scene_id', ''),  // ← GEÄNDERT
+      sceneId: sceneIdValue,
       title: ModelParsingHelper.safeString(map, 'title', 'Unbenannter Encounter'),
       description: ModelParsingHelper.safeString(map, 'description', ''),
       status: EncounterStatus.values.firstWhere(
         (e) => e.toString() == 'EncounterStatus.${ModelParsingHelper.safeString(map, 'status', 'planning')}',
         orElse: () => EncounterStatus.planning,
       ),
-      participantIds: _deserializeStringList(map['participant_ids'] as String?),
-      createdAt: ModelParsingHelper.safeDateTime(map, 'created_at', DateTime.now()),
-      startedAt: ModelParsingHelper.safeDateTimeOrNull(map, 'started_at', null),
-      completedAt: ModelParsingHelper.safeDateTimeOrNull(map, 'completed_at', null),
+      participantIds: _deserializeStringList(participantIdsRaw),
+      createdAt: createdAtValue,
+      startedAt: startedAtValue,
+      completedAt: completedAtValue,
     );
   }
 
@@ -98,10 +127,11 @@ class Encounter {
   }
 
   /// Konvertiert zu einer Map für die Datenbank
+  /// Verwendet snake_case für die neu erstellte Tabelle
   Map<String, dynamic> toDatabaseMap() {
     return {
       'id': id,
-      'scene_id': sceneId,  // ← GEÄNDERT
+      'scene_id': sceneId,
       'title': title,
       'description': description,
       'status': status.toString().split('.').last,
