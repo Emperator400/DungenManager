@@ -18,11 +18,19 @@ import 'encounter_tracker_screen.dart';
 class EncounterSetupScreen extends StatefulWidget {
   final Campaign campaign;
   final Scene scene;
+  final String? encounterTitle; // Optionaler Titel, der vorausgefüllt wird
+  final List<String> preselectedCharacterIds; // Vorausgewählte Helden-IDs von der Scene
+  final List<String> preselectedMonsterIds; // Vorausgewählte Monster-IDs von der Scene
+  final String? preselectedDescription; // Beschreibung von der Scene
   
   const EncounterSetupScreen({
     super.key, 
     required this.campaign,
     required this.scene,
+    this.encounterTitle,
+    this.preselectedCharacterIds = const [],
+    this.preselectedMonsterIds = const [],
+    this.preselectedDescription,
   });
 
   @override
@@ -41,15 +49,29 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
   @override
   void initState() {
     super.initState();
+    
+    // Titel vorausfüllen falls übergeben
+    if (widget.encounterTitle != null && widget.encounterTitle!.isNotEmpty) {
+      _titleController.text = widget.encounterTitle!;
+    }
+    
     _initViewModel();
     _loadSounds();
   }
 
   void _initViewModel() {
-    // ViewModel initialisieren
+    // Beschreibung vorausfüllen falls übergeben
+    if (widget.preselectedDescription != null && widget.preselectedDescription!.isNotEmpty) {
+      _descriptionController.text = widget.preselectedDescription!;
+    }
+    
+    // ViewModel initialisieren mit vorausgewählten Daten
     _viewModel = EncounterPlanningViewModel(
       campaignId: widget.campaign.id,
       sceneId: widget.scene.id,
+      preselectedCharacterIds: widget.preselectedCharacterIds,
+      preselectedMonsterIds: widget.preselectedMonsterIds,
+      preselectedDescription: widget.preselectedDescription,
     );
     
     _viewModel.loadData();

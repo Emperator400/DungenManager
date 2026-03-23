@@ -4,12 +4,14 @@ import '../models/scene.dart';
   import '../models/quest.dart';
   import '../models/sound.dart';
   import '../models/wiki_entry.dart';
+  import '../models/encounter.dart';
 import '../database/repositories/scene_model_repository.dart';
 import '../database/repositories/creature_model_repository.dart';
 import '../database/repositories/player_character_model_repository.dart';
   import '../database/repositories/quest_model_repository.dart';
   import '../database/repositories/sound_model_repository.dart';
   import '../database/repositories/wiki_entry_model_repository.dart';
+  import '../database/repositories/encounter_model_repository.dart';
   import '../services/exceptions/service_exceptions.dart';
 
   /// ViewModel für die Scene-Bearbeitung mit Provider-Pattern
@@ -23,6 +25,7 @@ class EditSceneViewModel extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   bool _hasUnsavedChanges = false;
+  bool _isDisposed = false;
 
   // Character/Creature State
   List<Creature> _availableCreatures = [];
@@ -48,10 +51,13 @@ class EditSceneViewModel extends ChangeNotifier {
   List<Sound> get linkedSounds => _linkedSounds;
   List<WikiEntry> get availableWikiEntries => _availableWikiEntries;
   List<WikiEntry> get linkedWikiEntries => _linkedWikiEntries;
+  Encounter? get linkedEncounter => _linkedEncounter;
+  bool get hasLinkedEncounter => _linkedEncounter != null;
 
   final QuestModelRepository _questRepository;
   final SoundModelRepository _soundRepository;
   final WikiEntryModelRepository _wikiEntryRepository;
+  final EncounterModelRepository _encounterRepository;
   
   // Quest State
   List<Quest> _availableQuests = [];
@@ -65,6 +71,9 @@ class EditSceneViewModel extends ChangeNotifier {
   List<WikiEntry> _availableWikiEntries = [];
   List<WikiEntry> _linkedWikiEntries = [];
 
+  // Encounter State
+  Encounter? _linkedEncounter;
+
   EditSceneViewModel({
     required SceneModelRepository sceneRepository,
     required CreatureModelRepository creatureRepository,
@@ -72,12 +81,14 @@ class EditSceneViewModel extends ChangeNotifier {
     required QuestModelRepository questRepository,
     required SoundModelRepository soundRepository,
     required WikiEntryModelRepository wikiEntryRepository,
+    required EncounterModelRepository encounterRepository,
   }) : _sceneRepository = sceneRepository,
        _creatureRepository = creatureRepository,
        _playerCharacterRepository = playerCharacterRepository,
        _questRepository = questRepository,
        _soundRepository = soundRepository,
-       _wikiEntryRepository = wikiEntryRepository;
+       _wikiEntryRepository = wikiEntryRepository,
+       _encounterRepository = encounterRepository;
 
   /// Initialisiert das ViewModel mit einer Scene oder erstellt eine neue
   Future<void> initialize(Scene? scene, {String? sessionId}) async {
@@ -120,6 +131,10 @@ class EditSceneViewModel extends ChangeNotifier {
       }
       
       _resetUnsavedChanges();
+      
+      // Verknüpften Encounter laden falls vorhanden
+      await loadLinkedEncounter();
+      
       notifyListeners();
     } catch (e) {
       _setError('Initialisierung fehlgeschlagen: ${e.toString()}');
@@ -162,6 +177,8 @@ class EditSceneViewModel extends ChangeNotifier {
         final createdScene = await _sceneRepository.create(_scene!);
         if (createdScene != null) {
           _scene = createdScene;
+          // Nach dem ersten Speichern: Als existierende Scene markieren
+          _isEditingExistingScene = true;
         }
         print('✅ [EditSceneViewModel] Scene erstellt');
       }
@@ -592,6 +609,141 @@ class EditSceneViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// ===== ENCOUNTER METHODEN =====
+
+  /// Lädt den verknüpften Encounter
+  Future<void> loadLinkedEncounter() async {
+    if (_scene == null || _scene!.linkedEncounterId == null || _scene!.linkedEncounterId!.isEmpty) {
+      _linkedEncounter = null;
+      notifyListeners();
+      return;
+    }
+
+    try {
+      final encounter = await _encounterRepository.findById(_scene!.linkedEncounterId!);
+      _linkedEncounter = encounter;
+      notifyListeners();
+    } catch (e) {
+      print('Fehler beim Laden des Encounters: $e');
+      _linkedEncounter = null;
+      notifyListeners();
+    }
+  }
+
+  /// Erstellt einen neuen Encounter für die Szene
+  /// [customTitle] - Optionaler Titel. Wenn null oder leer, wird der Szenenname verwendet
+  Future<Encounter?> createEncounterForScene({String? customTitle}) async {
+    if (_scene == null) {
+      _setError('Keine Szene zum Erstellen des Encounters vorhanden');
+      return null;
+    }
+
+    try {
+      _setLoading(true);
+      _clearError();
+
+      // Titel bestimmen: Custom-Titel oder Szenenname
+      final encounterTitle = (customTitle != null && customTitle.trim().isNotEmpty)
+          ? customTitle.trim()
+          : _scene!.name;
+
+      // WICHTIG: Szene zuerst speichern falls sie noch nicht in der DB existiert
+      if (!_isEditingExistingScene) {
+        print('⚠️ [EditSceneViewModel] Szene muss erst gespeichert werden...');
+        final saved = await saveScene();
+        if (!saved) {
+          _setError('Szene konnte nicht gespeichert werden');
+          return null;
+        }
+        print('✅ [EditSceneViewModel] Szene gespeichert, ID: ${_scene!.id}');
+      }
+
+      // Encounter erstellen
+      final encounter = Encounter.create(
+        sceneId: _scene!.id,
+        title: encounterTitle,
+        description: 'Encounter für Szene: ${_scene!.name}',
+      );
+
+      // In Datenbank speichern
+      final savedEncounter = await _encounterRepository.create(encounter);
+
+      // Scene mit Encounter-ID aktualisieren
+      _scene = _scene!.copyWith(
+        linkedEncounterId: savedEncounter.id,
+        updatedAt: DateTime.now(),
+      );
+      
+      // Scene updaten (jetzt ist sie sicher in der DB)
+      await _sceneRepository.update(_scene!);
+
+      _linkedEncounter = savedEncounter;
+      _resetUnsavedChanges(); // Änderungen wurden gespeichert
+      _safeNotifyListeners();
+
+      print('✅ [EditSceneViewModel] Encounter erstellt: ${savedEncounter.title}');
+      return savedEncounter;
+    } catch (e) {
+      _setError('Fehler beim Erstellen des Encounters: ${e.toString()}');
+      return null;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Löscht den verknüpften Encounter
+  Future<bool> deleteLinkedEncounter() async {
+    if (_linkedEncounter == null) {
+      return true; // Nichts zu löschen
+    }
+
+    try {
+      _setLoading(true);
+      _clearError();
+
+      // Encounter aus Datenbank löschen
+      await _encounterRepository.delete(_linkedEncounter!.id);
+
+      // Scene aktualisieren (Encounter-ID entfernen)
+      _scene = _scene!.copyWith(
+        linkedEncounterId: null,
+        updatedAt: DateTime.now(),
+      );
+      await _sceneRepository.update(_scene!);
+
+      _linkedEncounter = null;
+      _markAsUnsaved();
+      _safeNotifyListeners();
+
+      print('✅ [EditSceneViewModel] Encounter gelöscht');
+      return true;
+    } catch (e) {
+      _setError('Fehler beim Löschen des Encounters: ${e.toString()}');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Aktualisiert den Encounter-Titel
+  Future<bool> updateEncounterTitle(String newTitle) async {
+    if (_linkedEncounter == null) {
+      _setError('Kein Encounter zum Aktualisieren vorhanden');
+      return false;
+    }
+
+    try {
+      final updatedEncounter = _linkedEncounter!.copyWith(title: newTitle);
+      await _encounterRepository.update(updatedEncounter);
+      _linkedEncounter = updatedEncounter;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError('Fehler beim Aktualisieren des Encounters: ${e.toString()}');
+      return false;
+    }
+  }
+
   /// Setzt die Änderungen zurück
   void resetChanges() async {
     if (_scene != null && isEditing) {
@@ -612,13 +764,13 @@ class EditSceneViewModel extends ChangeNotifier {
   void _setLoading(bool loading) {
     if (_isLoading != loading) {
       _isLoading = loading;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
   void _setError(String error) {
     _errorMessage = error;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void _clearError() {
@@ -638,5 +790,18 @@ class EditSceneViewModel extends ChangeNotifier {
     
     // Grundlegende Validierung
     return _scene!.name.trim().isNotEmpty && _scene!.sessionId.isNotEmpty;
+  }
+
+  /// Sichere notifyListeners-Methode die prüft ob das ViewModel disposed wurde
+  void _safeNotifyListeners() {
+    if (!_isDisposed) {
+      notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
   }
 }

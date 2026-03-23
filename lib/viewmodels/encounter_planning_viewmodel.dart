@@ -34,11 +34,18 @@ class EncounterPlanningViewModel extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
 
+  // Vorausgewählte Daten von der Scene
+  final List<String> preselectedCharacterIds;
+  final List<String> preselectedMonsterIds;
+  final String? preselectedDescription;
+
   EncounterPlanningViewModel({
-    required String campaignId,
-    required String sceneId,
-  }) : campaignId = campaignId,
-       sceneId = sceneId {
+    required this.campaignId,
+    required this.sceneId,
+    this.preselectedCharacterIds = const [],
+    this.preselectedMonsterIds = const [],
+    this.preselectedDescription,
+  }) {
     final connection = DatabaseConnection.instance;
     _encounterRepo = EncounterModelRepository(connection);
     _participantRepo = EncounterParticipantModelRepository(connection);
@@ -77,6 +84,31 @@ class EncounterPlanningViewModel extends ChangeNotifier {
       // TODO: Monster aus Bestiarium laden
       // Hier müsste ein CreatureRepository verwendet werden
       _availableMonsters = [];
+
+      // Vorausgewählte Charaktere von der Scene übernehmen
+      if (preselectedCharacterIds.isNotEmpty) {
+        for (final charId in preselectedCharacterIds) {
+          // Prüfen ob der Charakter existiert
+          if (_availableCharacters.any((c) => c.id == charId)) {
+            _selectedCharacterIds.add(charId);
+          }
+        }
+      }
+
+      // Vorausgewählte Monster von der Scene übernehmen
+      if (preselectedMonsterIds.isNotEmpty) {
+        for (final monsterId in preselectedMonsterIds) {
+          // Prüfen ob das Monster existiert
+          if (_availableMonsters.any((m) => m.id == monsterId)) {
+            _selectedMonsterIds.add(monsterId);
+          }
+        }
+      }
+
+      // Vorausgefüllte Beschreibung übernehmen
+      if (preselectedDescription != null && preselectedDescription!.isNotEmpty) {
+        _encounterDescription = preselectedDescription!;
+      }
 
       _setLoading(false);
     } catch (e) {

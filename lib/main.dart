@@ -31,6 +31,7 @@ import 'database/repositories/creature_model_repository.dart';
 import 'database/repositories/quest_model_repository.dart';
 import 'database/repositories/sound_model_repository.dart';
 import 'database/repositories/wiki_entry_model_repository.dart';
+import 'database/repositories/encounter_model_repository.dart';
 import 'viewmodels/update_viewmodel.dart';
 import 'widgets/update_dialog.dart';
 
@@ -155,6 +156,9 @@ class DmApp extends StatelessWidget {
         ),
         Provider<WikiEntryModelRepository>(
           create: (_) => WikiEntryModelRepository(dbConnection),
+        ),
+        Provider<EncounterModelRepository>(
+          create: (_) => EncounterModelRepository(dbConnection),
         ),
         // Update ViewModel für Auto-Update-Check
         ChangeNotifierProvider(

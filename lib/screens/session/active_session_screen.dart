@@ -14,6 +14,7 @@ import '../../database/repositories/player_character_model_repository.dart';
 import '../../database/repositories/quest_model_repository.dart';
 import '../../database/repositories/sound_model_repository.dart';
 import '../../database/repositories/wiki_entry_model_repository.dart';
+import '../../database/repositories/encounter_model_repository.dart';
 import '../../theme/dnd_theme.dart';
 import '../../widgets/audio/sound_player_widget.dart';
 import '../../widgets/active_session/live_notes_quadrant.dart';
@@ -1777,6 +1778,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     final questRepository = context.read<QuestModelRepository>();
     final soundRepository = context.read<SoundModelRepository>();
     final wikiEntryRepository = context.read<WikiEntryModelRepository>();
+    final encounterRepository = context.read<EncounterModelRepository>();
     
     // Für neue Scenes: sessionId übergeben, für existierende: nicht
     final sessionId = scene == null ? widget.session.id : null;
@@ -1794,6 +1796,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                 questRepository: questRepository,
                 soundRepository: soundRepository,
                 wikiEntryRepository: wikiEntryRepository,
+                encounterRepository: encounterRepository,
               ),
             ),
           ],
@@ -2111,7 +2114,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     );
   }
 
-  void _startEncounter() {
+  Future<void> _startEncounter() async {
     // Prüfe ob eine aktive Scene existiert
     final activeSceneId = _viewModel.currentSession.activeSceneId;
     if (activeSceneId == null) {
@@ -2131,23 +2134,69 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
       orElse: () => throw Exception('Scene nicht gefunden'),
     );
 
+    // Lade den verknüpften Encounter um den Titel zu erhalten
+    String? encounterTitle;
+    
+    if (activeScene.linkedEncounterId != null && activeScene.linkedEncounterId!.isNotEmpty) {
+      try {
+        final encounterRepo = context.read<EncounterModelRepository>();
+        final encounter = await encounterRepo.findById(activeScene.linkedEncounterId!);
+        if (encounter != null) {
+          encounterTitle = encounter.title;
+        }
+      } catch (e) {
+        print('Fehler beim Laden des Encounters: $e');
+      }
+    }
+    
+    // Falls kein Encounter-Titel vorhanden, verwende Szenen-Namen
+    encounterTitle ??= activeScene.name;
+    
+    if (!mounted) return;
+
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         builder: (ctx) => EncounterSetupScreen(
           campaign: _viewModel.campaign,
           scene: activeScene,
+          encounterTitle: encounterTitle,
+          preselectedCharacterIds: activeScene.linkedCharacterIds,
+          preselectedDescription: activeScene.description.isNotEmpty ? activeScene.description : null,
         ),
       ),
     );
   }
 
   /// Startet einen Encounter für eine spezifische Scene (aus Combat-Szene)
-  void _startEncounterForScene(Scene scene) {
+  Future<void> _startEncounterForScene(Scene scene) async {
+    // Lade den verknüpften Encounter um den Titel zu erhalten
+    String? encounterTitle;
+    
+    if (scene.linkedEncounterId != null && scene.linkedEncounterId!.isNotEmpty) {
+      try {
+        final encounterRepo = context.read<EncounterModelRepository>();
+        final encounter = await encounterRepo.findById(scene.linkedEncounterId!);
+        if (encounter != null) {
+          encounterTitle = encounter.title;
+        }
+      } catch (e) {
+        print('Fehler beim Laden des Encounters: $e');
+      }
+    }
+    
+    // Falls kein Encounter-Titel vorhanden, verwende Szenen-Namen
+    encounterTitle ??= scene.name;
+    
+    if (!mounted) return;
+    
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         builder: (ctx) => EncounterSetupScreen(
           campaign: _viewModel.campaign,
           scene: scene,
+          encounterTitle: encounterTitle,
+          preselectedCharacterIds: scene.linkedCharacterIds,
+          preselectedDescription: scene.description.isNotEmpty ? scene.description : null,
         ),
       ),
     );
