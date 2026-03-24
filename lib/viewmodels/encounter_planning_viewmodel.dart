@@ -76,37 +76,79 @@ class EncounterPlanningViewModel extends ChangeNotifier {
 
   /// Lädt alle verfügbaren Helden und Monster
   Future<void> loadData() async {
+    print('');
+    print('🎯🎯🎯 [EncounterPlanningViewModel] loadData() aufgerufen 🎯🎯🎯');
+    print('🎯 [EncounterPlanningViewModel] campaignId: $campaignId, sceneId: $sceneId');
     _setLoading(true);
     _clearError();
 
     try {
       // Helden der Kampagne laden
+      print('🎯 [EncounterPlanningViewModel] Lade Helden für Kampagne...');
       final characters = await _characterRepo.findByCampaign(campaignId);
+      print('🎯 [EncounterPlanningViewModel] ${characters.length} Helden geladen');
       _availableCharacters = characters;
 
       // Monster aus Bestiarium laden (custom und official)
+      print('🎯 [EncounterPlanningViewModel] Lade alle Kreaturen aus Datenbank...');
+      
+      // ERST: Direkte SQL-Abfrage zum Debuggen
+      final rawResults = await _creatureRepo.rawQuery('SELECT id, name, is_player, source_type FROM creatures LIMIT 10');
+      print('🎯 [EncounterPlanningViewModel] RAW SQL Ergebnis (${rawResults.length} Einträge):');
+      for (final row in rawResults) {
+        print('🎯   - ID: ${row['id']}, Name: ${row['name']}, is_player: ${row['is_player']}, source_type: ${row['source_type']}');
+      }
+      
       final allCreatures = await _creatureRepo.findAll();
-      // Nur Monster (keine NPCs) - offizielle und custom Kreaturen
+      print('🎯 [EncounterPlanningViewModel] ${allCreatures.length} Kreaturen insgesamt geladen');
+      
+      // Debug: Zeige Details jeder Kreatur
+      for (final creature in allCreatures) {
+        print('🎯 [EncounterPlanningViewModel] Kreatur: ${creature.name}, sourceType: "${creature.sourceType}", isPlayer: ${creature.isPlayer}');
+      }
+      
+      // Debug: Zeige sourceTypes
+      final sourceTypes = allCreatures.map((c) => c.sourceType).toSet();
+      print('🎯 [EncounterPlanningViewModel] Gefundene sourceTypes: $sourceTypes');
+      
+      // Alle Kreaturen, die keine Spieler sind, als Monster verfügbar machen
+      // Das schließt custom, official, und alle anderen sourceTypes ein
       _availableMonsters = allCreatures.where((c) => 
-        c.sourceType == 'official' || c.sourceType == 'custom'
+        c.isPlayer == false || c.isPlayer == null
       ).toList();
+      print('🎯 [EncounterPlanningViewModel] ${_availableMonsters.length} Monster nach Filterung verfügbar (isPlayer == false)');
+      print('');
 
-      // Vorausgewählte Charaktere von der Scene übernehmen
+      // Vorausgewählte Charaktere und Monster von der Scene übernehmen
+      // WICHTIG: preselectedCharacterIds kann sowohl PCs als auch Monster enthalten
+      // Wir müssen intelligent unterscheiden, um beides automatisch auszuwählen
+      
+      // Zuerst: Explizit übergebene preselectedCharacterIds verarbeiten
       if (preselectedCharacterIds.isNotEmpty) {
-        for (final charId in preselectedCharacterIds) {
-          // Prüfen ob der Charakter existiert
-          if (_availableCharacters.any((c) => c.id == charId)) {
-            _selectedCharacterIds.add(charId);
+        for (final id in preselectedCharacterIds) {
+          // Prüfen ob es ein Player Character ist
+          if (_availableCharacters.any((c) => c.id == id)) {
+            if (!_selectedCharacterIds.contains(id)) {
+              _selectedCharacterIds.add(id);
+            }
+          }
+          // Prüfen ob es ein Monster ist
+          else if (_availableMonsters.any((m) => m.id == id)) {
+            if (!_selectedMonsterIds.contains(id)) {
+              _selectedMonsterIds.add(id);
+            }
           }
         }
       }
 
-      // Vorausgewählte Monster von der Scene übernehmen
+      // Dann: Explizit übergebene preselectedMonsterIds verarbeiten
       if (preselectedMonsterIds.isNotEmpty) {
         for (final monsterId in preselectedMonsterIds) {
           // Prüfen ob das Monster existiert
           if (_availableMonsters.any((m) => m.id == monsterId)) {
-            _selectedMonsterIds.add(monsterId);
+            if (!_selectedMonsterIds.contains(monsterId)) {
+              _selectedMonsterIds.add(monsterId);
+            }
           }
         }
       }
