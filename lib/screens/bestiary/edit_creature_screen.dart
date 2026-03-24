@@ -15,6 +15,30 @@ import '../../widgets/ui_components/cards/section_card_widget.dart';
 import '../../widgets/ui_components/feedback/snackbar_helper.dart';
 import '../../services/inventory_service.dart';
 
+/// D&D 5e Kreaturentypen
+enum CreatureCategory {
+  humanoid('Humanoid', 'NPC - Menschen, Elfen, Zwerge, etc.', Icons.person),
+  beast('Beast', 'Monster - Tiere und natürliche Kreaturen', Icons.pets),
+  dragon('Dragon', 'Monster - Drachen und Drachenblütige', Icons.landscape),
+  undead('Undead', 'Monster - Untote wie Zombies, Skelette', Icons.nightlight),
+  fiend('Fiend', 'Monster - Dämonen und Teufel', Icons.whatshot),
+  construct('Construct', 'Monster - Golems und magische Konstrukte', Icons.smart_toy),
+  giant('Giant', 'Monster - Riesen', Icons.accessibility_new),
+  elemental('Elemental', 'Monster - Elementare', Icons.water_drop),
+  fey('Fey', 'Monster - Feenwesen', Icons.auto_awesome),
+  aberration('Aberration', 'Monster - Aberrationen wie Illithiden', Icons.visibility),
+  monstrosity('Monstrosity', 'Monster - Monstrositäten', Icons.warning),
+  ooze('Ooze', 'Monster - Schleime', Icons.bubble_chart),
+  plant('Plant', 'Monster - Pflanzenwesen', Icons.grass),
+  celestial('Celestial', 'Monster - Himmlische Wesen', Icons.wb_sunny);
+
+  final String displayName;
+  final String description;
+  final IconData icon;
+
+  const CreatureCategory(this.displayName, this.description, this.icon);
+}
+
 /// Enhanced Screen zur Bearbeitung von Creatures - basierend auf Hero Creation Screen
 class EditCreatureScreen extends StatefulWidget {
   final Creature? creature;
@@ -410,18 +434,173 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
   Widget _buildCreatureTypeSection() {
     return Consumer<EditCreatureViewModel>(
       builder: (context, viewModel, child) {
+        // Finde den aktuellen Kreaturentyp
+        CreatureCategory? selectedCategory;
+        if (viewModel.type != null && viewModel.type!.isNotEmpty) {
+          final typeLower = viewModel.type!.toLowerCase();
+          try {
+            selectedCategory = CreatureCategory.values.firstWhere(
+              (c) => c.name.toLowerCase() == typeLower || c.displayName.toLowerCase() == typeLower,
+            );
+          } catch (_) {
+            // Typ nicht gefunden, bleibt null
+          }
+        }
+
         return SectionCardWidget(
           title: 'Kreatureigenschaften',
           icon: Icons.category,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              FormFieldWidget(
-                label: 'Typ',
-                value: viewModel.type ?? '',
-                onChanged: (value) => viewModel.updateType(value.isEmpty ? null : value),
-                icon: Icons.category,
+              // Kreaturentyp-Dropdown
+              Text(
+                'Kreaturentyp',
+                style: DnDTheme.bodyText2.copyWith(
+                  color: Colors.white70,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: DnDTheme.slateGrey,
+                  borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                ),
+                child: DropdownButtonFormField<CreatureCategory?>(
+                  value: selectedCategory,
+                  decoration: InputDecoration(
+                    prefixIcon: Icon(
+                      selectedCategory?.icon ?? Icons.category,
+                      color: DnDTheme.ancientGold,
+                      size: 20,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.all(12),
+                    hintText: 'Typ auswählen...',
+                    hintStyle: DnDTheme.bodyText2.copyWith(color: Colors.white60),
+                  ),
+                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                  dropdownColor: DnDTheme.stoneGrey,
+                  items: [
+                    DropdownMenuItem<CreatureCategory?>(
+                      value: null,
+                      child: Text(
+                        'Kein Typ ausgewählt',
+                        style: DnDTheme.bodyText2.copyWith(color: Colors.white60),
+                      ),
+                    ),
+                    ...CreatureCategory.values.map((category) {
+                      final isNpc = category == CreatureCategory.humanoid;
+                      return DropdownMenuItem<CreatureCategory?>(
+                        value: category,
+                        child: Row(
+                          children: [
+                            Icon(
+                              category.icon,
+                              color: isNpc ? DnDTheme.arcaneBlue : DnDTheme.errorRed,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    category.displayName,
+                                    style: DnDTheme.bodyText1.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    category.description,
+                                    style: DnDTheme.bodyText2.copyWith(
+                                      color: Colors.white60,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: isNpc ? DnDTheme.arcaneBlue : DnDTheme.errorRed,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                isNpc ? 'NPC' : 'Monster',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                  onChanged: (category) {
+                    if (category != null) {
+                      viewModel.updateType(category.displayName);
+                    } else {
+                      viewModel.updateType(null);
+                    }
+                  },
+                ),
               ),
               const SizedBox(height: DnDTheme.md),
+              
+              // Info-Text
+              if (selectedCategory != null)
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: (selectedCategory == CreatureCategory.humanoid 
+                        ? DnDTheme.arcaneBlue 
+                        : DnDTheme.errorRed).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: selectedCategory == CreatureCategory.humanoid 
+                          ? DnDTheme.arcaneBlue 
+                          : DnDTheme.errorRed,
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        selectedCategory == CreatureCategory.humanoid 
+                            ? Icons.person 
+                            : Icons.pets,
+                        color: selectedCategory == CreatureCategory.humanoid 
+                            ? DnDTheme.arcaneBlue 
+                            : DnDTheme.errorRed,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          selectedCategory == CreatureCategory.humanoid
+                              ? 'Wird im NPC-Tab der Szenen-Auswahl angezeigt'
+                              : 'Wird im Monster-Tab der Szenen-Auswahl angezeigt',
+                          style: DnDTheme.bodyText2.copyWith(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: DnDTheme.md),
+              
+              // Restliche Felder
               FormFieldWidget(
                 label: 'Subtyp',
                 value: viewModel.subtype ?? '',

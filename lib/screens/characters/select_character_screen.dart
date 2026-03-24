@@ -201,10 +201,18 @@ class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneS
   }
 
   Widget _buildNPCList() {
-    final npcs = _filteredCreatures.where((c) => !c.isPlayer && c.type != null).toList();
+    // NPCs sind Humanoiden (Menschen, Elfen, Zwerge, etc.)
+    // Fallback: Creatures ohne type werden als NPCs angezeigt (für Abwärtskompatibilität)
+    final npcs = _filteredCreatures.where((c) {
+      if (c.isPlayer) return false;
+      final typeLower = c.type?.toLowerCase();
+      // NPC wenn: type ist humanoid/npc, oder type ist null/leer (Fallback)
+      if (typeLower == null || typeLower.isEmpty) return true;
+      return typeLower == 'humanoid' || typeLower == 'npc';
+    }).toList();
     
     if (npcs.isEmpty) {
-      return _buildEmptyState('Keine NPCs gefunden');
+      return _buildEmptyState('Keine NPCs gefunden\n(Tip: NPCs haben den Typ "Humanoid")');
     }
 
     return ListView.builder(
@@ -213,8 +221,8 @@ class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneS
         final npc = npcs[index];
         final isSelected = _isSelected(npc.id);
         final subtitle = npc.challengeRating != null 
-            ? 'CR ${npc.challengeRating.toString()}' 
-            : (npc.type ?? 'NPC').toString();
+            ? 'CR ${npc.challengeRating.toString()} • ${npc.type ?? "Humanoid"}'
+            : (npc.type ?? 'Humanoid').toString();
         return _buildCharacterTile(
           id: npc.id,
           name: npc.name,
@@ -228,10 +236,18 @@ class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneS
   }
 
   Widget _buildMonsterList() {
-    final monsters = _filteredCreatures.where((c) => !c.isPlayer && c.type != null).toList();
+    // Monster sind alle Nicht-Humanoiden (Bestien, Drachen, Untote, etc.)
+    // WICHTIG: Creatures ohne type werden im NPC-Tab angezeigt (Fallback)
+    final monsters = _filteredCreatures.where((c) {
+      if (c.isPlayer) return false;
+      final typeLower = c.type?.toLowerCase();
+      // Monster wenn: type existiert UND ist nicht humanoid/npc/leer
+      if (typeLower == null || typeLower.isEmpty) return false;
+      return typeLower != 'humanoid' && typeLower != 'npc';
+    }).toList();
     
     if (monsters.isEmpty) {
-      return _buildEmptyState('Keine Monster gefunden');
+      return _buildEmptyState('Keine Monster gefunden\n(Tip: Monster haben einen anderen Typ als "Humanoid"\nz.B. Beast, Dragon, Undead, etc.)');
     }
 
     return ListView.builder(
@@ -240,7 +256,7 @@ class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneS
         final monster = monsters[index];
         final isSelected = _isSelected(monster.id);
         final subtitle = monster.challengeRating != null 
-            ? 'CR ${monster.challengeRating.toString()}' 
+            ? 'CR ${monster.challengeRating.toString()} • ${monster.type ?? "Unbekannt"}'
             : (monster.type ?? 'Monster').toString();
         return _buildCharacterTile(
           id: monster.id,
@@ -302,16 +318,20 @@ class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneS
 
   Widget _buildEmptyState(String message) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.search_off, size: 64, color: Colors.grey),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
