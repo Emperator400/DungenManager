@@ -196,12 +196,20 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
   bool _updateChecked = false;
+  UpdateViewModel? _updateViewModel;
 
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
     _checkForUpdates();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Sichere Referenz auf UpdateViewModel speichern (wie von Flutter empfohlen)
+    _updateViewModel ??= context.read<UpdateViewModel>();
   }
 
   /// Prüft automatisch auf Updates beim Start
@@ -212,10 +220,9 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
     // Kurze Verzögerung damit die UI geladen ist
     await Future.delayed(const Duration(seconds: 1));
 
-    if (!mounted) return;
+    if (!mounted || _updateViewModel == null) return;
 
-    final viewModel = context.read<UpdateViewModel>();
-    final hasUpdate = await viewModel.checkForUpdate();
+    final hasUpdate = await _updateViewModel!.checkForUpdate();
 
     if (hasUpdate && mounted) {
       // Zeige Update-Dialog wenn Update verfügbar
