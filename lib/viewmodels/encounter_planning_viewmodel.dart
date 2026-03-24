@@ -3,6 +3,7 @@ import '../database/core/database_connection.dart';
 import '../database/repositories/encounter_model_repository.dart';
 import '../database/repositories/encounter_participant_model_repository.dart';
 import '../database/repositories/player_character_model_repository.dart';
+import '../database/repositories/creature_model_repository.dart';
 import '../models/encounter.dart';
 import '../models/encounter_participant.dart';
 import '../models/player_character.dart';
@@ -15,6 +16,7 @@ class EncounterPlanningViewModel extends ChangeNotifier {
   late final EncounterModelRepository _encounterRepo;
   late final EncounterParticipantModelRepository _participantRepo;
   late final PlayerCharacterModelRepository _characterRepo;
+  late final CreatureModelRepository _creatureRepo;
 
   // Campaign ID
   final String campaignId;
@@ -50,6 +52,7 @@ class EncounterPlanningViewModel extends ChangeNotifier {
     _encounterRepo = EncounterModelRepository(connection);
     _participantRepo = EncounterParticipantModelRepository(connection);
     _characterRepo = PlayerCharacterModelRepository(connection);
+    _creatureRepo = CreatureModelRepository(connection);
   }
 
   // ===== GETTERS =====
@@ -81,9 +84,12 @@ class EncounterPlanningViewModel extends ChangeNotifier {
       final characters = await _characterRepo.findByCampaign(campaignId);
       _availableCharacters = characters;
 
-      // TODO: Monster aus Bestiarium laden
-      // Hier müsste ein CreatureRepository verwendet werden
-      _availableMonsters = [];
+      // Monster aus Bestiarium laden (custom und official)
+      final allCreatures = await _creatureRepo.findAll();
+      // Nur Monster (keine NPCs) - offizielle und custom Kreaturen
+      _availableMonsters = allCreatures.where((c) => 
+        c.sourceType == 'official' || c.sourceType == 'custom'
+      ).toList();
 
       // Vorausgewählte Charaktere von der Scene übernehmen
       if (preselectedCharacterIds.isNotEmpty) {

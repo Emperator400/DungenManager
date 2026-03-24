@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/creature.dart';
 import '../../theme/dnd_theme.dart';
@@ -48,12 +48,6 @@ class _BestiaryScreenState extends State<BestiaryScreen>
         );
       }
     }
-  }
-
-  List<Creature> get _filteredCreatures {
-    final allCreatures = _viewModel.allCreatures;
-    final filteredCreatures = _viewModel.filterCreatures(allCreatures);
-    return _viewModel.sortCreatures(filteredCreatures);
   }
 
   @override
@@ -107,9 +101,9 @@ class _BestiaryScreenState extends State<BestiaryScreen>
         body: TabBarView(
           controller: _tabController,
           children: [
-            _buildCreaturesTab(_filteredCreatures, "Alle Kreaturen"),
-            _buildCreaturesTab(_viewModel.customCreatures, "Eigene Kreaturen"),
-            _buildCreaturesTab(_viewModel.officialCreatures, "Offizielle Monster"),
+            _buildCreaturesTab(_tabAll, "Alle Kreaturen"),
+            _buildCreaturesTab(_tabCustom, "Eigene Kreaturen"),
+            _buildCreaturesTab(_tabOfficial, "Offizielle Monster"),
             _buildImporterTab(),
           ],
         ),
@@ -251,9 +245,37 @@ class _BestiaryScreenState extends State<BestiaryScreen>
     );
   }
 
-  Widget _buildCreaturesTab(List<Creature> creatures, String title) {
+  /// Enum für die verschiedenen Kreatur-Listen-Typen
+  static const int _tabAll = 0;
+  static const int _tabCustom = 1;
+  static const int _tabOfficial = 2;
+  static const int _tabImporter = 3;
+
+  /// Holt die richtige Kreatur-Liste basierend auf dem Tab-Typ
+  /// Wird INNERHALB des Consumers aufgerufen, um aktuelle Daten zu erhalten
+  List<Creature> _getCreaturesForTab(BestiaryViewModel viewModel, int listType) {
+    switch (listType) {
+      case _tabAll:
+        // Alle Kreaturen filtern und sortieren
+        final filtered = viewModel.filterCreatures(viewModel.allCreatures);
+        return viewModel.sortCreatures(filtered);
+      case _tabCustom:
+        // Eigene Kreaturen
+        return viewModel.customCreatures;
+      case _tabOfficial:
+        // Offizielle Monster
+        return viewModel.officialCreatures;
+      default:
+        return [];
+    }
+  }
+
+  Widget _buildCreaturesTab(int listType, String title) {
     return Consumer<BestiaryViewModel>(
       builder: (context, viewModel, child) {
+        // Liste wird INNERHALB des Consumers basierend auf dem listType berechnet
+        final creatures = _getCreaturesForTab(viewModel, listType);
+        
         if (viewModel.isLoading) {
           return Center(
             child: Column(
