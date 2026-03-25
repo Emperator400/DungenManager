@@ -1,16 +1,20 @@
 // lib/screens/session/encounter_setup_screen.dart
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter/services.dart';
 
 import '../../models/campaign.dart';
 import '../../models/scene.dart';
 import '../../models/player_character.dart';
 import '../../models/creature.dart';
 import '../../models/sound.dart';
+import '../../models/attack.dart';
 import '../../viewmodels/encounter_planning_viewmodel.dart';
 import '../../database/repositories/sound_model_repository.dart';
+import '../../database/core/database_connection.dart';
 import '../../services/sound_service.dart';
+import '../../theme/dnd_theme.dart';
 import 'encounter_tracker_screen.dart' as encounter_tracker;
+import '../bestiary/bestiary_screen.dart';
 
 /// Encounter Setup Screen
 ///
@@ -111,11 +115,15 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
     if (encounter != null && mounted) {
       await _stopSound();
 
+      // Hole Initiative-Werte vom ViewModel
+      final initiativeValues = _viewModel.getInitiativeMapForTracker();
+
       Navigator.of(context).pushReplacement<void, void>(
         MaterialPageRoute<void>(
           builder: (context) => encounter_tracker.EncounterTrackerScreen(
             encounterId: encounter.id,
             encounterTitle: encounter.title,
+            initialInitiativeValues: initiativeValues,
           ),
         ),
       );
@@ -134,29 +142,24 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
     _viewModel.toggleCharacterSelection(character.id);
   }
 
-  void _removeCharacter(String characterId) {
-    _viewModel.removeCharacter(characterId);
-  }
-
   void _addMonster(Creature monster) {
     _viewModel.toggleMonsterSelection(monster.id);
   }
 
-  void _removeMonster(String monsterId) {
-    _viewModel.removeMonster(monsterId);
-  }
-
   Future<void> _loadSounds() async {
     try {
-      final soundRepo = context.read<SoundModelRepository>();
+      // Repository direkt erstellen statt context.read<>() in initState zu verwenden
+      final soundRepo = SoundModelRepository(DatabaseConnection.instance);
       final allSounds = await soundRepo.findAll();
 
       final linkedSounds =
           allSounds.where((sound) => widget.scene.linkedSoundIds.contains(sound.id)).toList();
 
-      setState(() {
-        _linkedSounds = linkedSounds;
-      });
+      if (mounted) {
+        setState(() {
+          _linkedSounds = linkedSounds;
+        });
+      }
     } catch (e) {
       debugPrint('Fehler beim Laden der Sounds: $e');
     }
@@ -165,15 +168,17 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
   void _togglePlayPause(String soundId, String filePath) async {
     if (_currentPlayingSoundId == soundId && _isPlaying) {
       await SoundService.pauseSound();
-      setState(() {
-        _isPlaying = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isPlaying = false;
+        });
+      }
     } else {
       if (_currentPlayingSoundId != soundId) {
         await SoundService.stopSound();
       }
       final success = await SoundService.playSound(filePath);
-      if (success) {
+      if (success && mounted) {
         setState(() {
           _currentPlayingSoundId = soundId;
           _isPlaying = true;
@@ -186,10 +191,12 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
 
   Future<void> _stopSound() async {
     await SoundService.stopSound();
-    setState(() {
-      _isPlaying = false;
-      _currentPlayingSoundId = null;
-    });
+    if (mounted) {
+      setState(() {
+        _isPlaying = false;
+        _currentPlayingSoundId = null;
+      });
+    }
   }
 
   @override
@@ -517,10 +524,44 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
         _viewModel.availableMonsters.where((m) => !_viewModel.isMonsterSelected(m.id)).toList();
 
     if (monsters.isEmpty) {
-      return const Center(
-        child: Text(
-          'Keine Gegner verfügbar',
-          style: TextStyle(color: Colors.grey),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.pets_outlined,
+              size: 64,
+              color: Colors.grey,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Keine Gegner verfügbar',
+              style: TextStyle(color: Colors.grey, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Importiere oder erstelle Monster im Bestiarium',
+              style: TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () async {
+                await Navigator.of(context).push<bool>(
+                  MaterialPageRoute<bool>(
+                    builder: (ctx) => const BestiaryScreen(),
+                  ),
+                );
+                // Nach Rückkehr aus dem Bestiarium: Daten neu laden
+                _viewModel.loadData();
+              },
+              icon: const Icon(Icons.auto_stories),
+              label: const Text('Bestiarium öffnen'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.purple,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -590,17 +631,48 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
   Widget _buildSelectedList() {
     final selectedCharacters = _viewModel.selectedCharacters;
     final selectedMonsters = _viewModel.selectedMonsters;
+    final sortedParticipants = _viewModel.getSortedParticipantsByInitiative();
 
     return Column(
       children: [
-        const Padding(
-          padding: EdgeInsets.all(16),
-          child: Text(
-            'Im Kampf',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        // Header mit Initiative-Buttons
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              const Text(
+                'Im Kampf',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              // Alle würfeln Button
+              if (_viewModel.totalParticipants > 0) ...[
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.casino, size: 18),
+                  label: const Text('Alle würfeln'),
+                  onPressed: () {
+                    _viewModel.rollInitiativeForAll();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: DnDTheme.ancientGold,
+                    foregroundColor: DnDTheme.dungeonBlack,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Zurücksetzen Button
+                IconButton(
+                  icon: const Icon(Icons.refresh, color: Colors.grey),
+                  onPressed: () {
+                    _viewModel.clearAllInitiatives();
+                  },
+                  tooltip: 'Initiative zurücksetzen',
+                ),
+              ],
+            ],
           ),
         ),
-        const Divider(),
+        const Divider(height: 1),
         Expanded(
           child: DragTarget<Object>(
             onAcceptWithDetails: (details) {
@@ -625,11 +697,37 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
                         style: TextStyle(color: Colors.grey),
                       ),
                     )
-                  : ListView(
-                      children: [
-                        ...selectedCharacters.map(_buildSelectedCharacterTile),
-                        ...selectedMonsters.map(_buildSelectedMonsterTile),
-                      ],
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount: sortedParticipants.length,
+                      itemBuilder: (context, index) {
+                        final participant = sortedParticipants[index];
+                        final isCharacter = participant['type'] == 'character';
+                        
+                        if (isCharacter) {
+                          final character = selectedCharacters.firstWhere(
+                            (c) => c.id == participant['id'],
+                            orElse: () => selectedCharacters.first,
+                          );
+                          return _buildSelectedCharacterTileWithInitiative(
+                            character, 
+                            index + 1,
+                            participant['initiative'] as int,
+                            participant['initiativeSet'] as bool,
+                          );
+                        } else {
+                          final monster = selectedMonsters.firstWhere(
+                            (m) => m.id == participant['id'],
+                            orElse: () => selectedMonsters.first,
+                          );
+                          return _buildSelectedMonsterTileWithInitiative(
+                            monster,
+                            index + 1,
+                            participant['initiative'] as int,
+                            participant['initiativeSet'] as bool,
+                          );
+                        }
+                      },
                     ),
             ),
           ),
@@ -638,30 +736,417 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
     );
   }
 
-  Widget _buildSelectedCharacterTile(PlayerCharacter character) => ListTile(
-        leading: const Icon(Icons.account_circle, color: Colors.blue),
-        title: Text(character.name),
-        subtitle: Text('${character.className} Lvl ${character.level}'),
-        trailing: IconButton(
-          icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
-          onPressed: () => _removeCharacter(character.id),
-          tooltip: 'Entfernen',
+  Widget _buildSelectedCharacterTileWithInitiative(
+    PlayerCharacter character, 
+    int position,
+    int initiative,
+    bool initiativeSet,
+  ) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.blue[800]?.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.blue[700] ?? Colors.blue,
+          width: 1,
         ),
-      );
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          children: [
+            // Erste Zeile: Position, Name, Initiative, Entfernen
+            Row(
+              children: [
+                // Position
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[700],
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '#$position',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Icon
+                const Icon(Icons.account_circle, color: Colors.blue, size: 32),
+                const SizedBox(width: 8),
+                // Name und Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        character.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        '${character.className} Lvl ${character.level}',
+                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                // Initiative-Eingabe
+                _buildInitiativeInput(
+                  character.id,
+                  initiative,
+                  initiativeSet,
+                  isCharacter: true,
+                ),
+                const SizedBox(width: 8),
+                // Entfernen Button
+                IconButton(
+                  icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent, size: 20),
+                  onPressed: () => _viewModel.removeCharacterWithInitiative(character.id),
+                  tooltip: 'Entfernen',
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  padding: EdgeInsets.zero,
+                ),
+              ],
+            ),
+            // Zweite Zeile: Stats (HP, AC, Attribute)
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                _buildStatChip('HP', '${character.maxHp}', Colors.green),
+                _buildStatChip('AC', '${character.armorClass}', Colors.orange),
+                _buildAbilityChip('STR', character.strength),
+                _buildAbilityChip('DEX', character.dexterity),
+                _buildAbilityChip('CON', character.constitution),
+                _buildAbilityChip('INT', character.intelligence),
+                _buildAbilityChip('WIS', character.wisdom),
+                _buildAbilityChip('CHA', character.charisma),
+              ],
+            ),
+            // Dritte Zeile: Angriffe (falls vorhanden)
+            if (character.attackList.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: character.attackList.take(4).map((attack) => 
+                  _buildAttackChip(attack.name, attack.totalDamage)
+                ).toList(),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 
-  Widget _buildSelectedMonsterTile(Creature monster) {
+  Widget _buildSelectedMonsterTileWithInitiative(
+    Creature monster,
+    int position,
+    int initiative,
+    bool initiativeSet,
+  ) {
     final crText = monster.challengeRating?.toString() ?? '?';
     final typeText = monster.type ?? 'Unbekannt';
 
-    return ListTile(
-      leading: const Icon(Icons.shield, color: Colors.red),
-      title: Text(monster.name),
-      subtitle: Text('$typeText CR $crText'),
-      trailing: IconButton(
-        icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
-        onPressed: () => _removeMonster(monster.id),
-        tooltip: 'Entfernen',
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.red[900]?.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.red[700] ?? Colors.red,
+          width: 1,
+        ),
       ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          children: [
+            // Erste Zeile: Position, Name, Initiative, Entfernen
+            Row(
+              children: [
+                // Position
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[700],
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '#$position',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Icon
+                const Icon(Icons.shield, color: Colors.red, size: 32),
+                const SizedBox(width: 8),
+                // Name und Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        monster.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        '$typeText CR $crText',
+                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                // Initiative-Eingabe
+                _buildInitiativeInput(
+                  monster.id,
+                  initiative,
+                  initiativeSet,
+                  isCharacter: false,
+                ),
+                const SizedBox(width: 8),
+                // Entfernen Button
+                IconButton(
+                  icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent, size: 20),
+                  onPressed: () => _viewModel.removeMonsterWithInitiative(monster.id),
+                  tooltip: 'Entfernen',
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  padding: EdgeInsets.zero,
+                ),
+              ],
+            ),
+            // Zweite Zeile: Stats (HP, AC, Attribute)
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                _buildStatChip('HP', '${monster.maxHp}', Colors.green),
+                _buildStatChip('AC', '${monster.armorClass}', Colors.orange),
+                _buildAbilityChip('STR', monster.strength),
+                _buildAbilityChip('DEX', monster.dexterity),
+                _buildAbilityChip('CON', monster.constitution),
+                _buildAbilityChip('INT', monster.intelligence),
+                _buildAbilityChip('WIS', monster.wisdom),
+                _buildAbilityChip('CHA', monster.charisma),
+              ],
+            ),
+            // Dritte Zeile: Angriffe (falls vorhanden)
+            if (monster.attackList.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: monster.attackList.take(4).map((attack) => 
+                  _buildAttackChip(attack.name, attack.totalDamage)
+                ).toList(),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Helper für Stat-Chips (HP, AC)
+  Widget _buildStatChip(String label, String value, Color color) {
+    // Nicht-const Variablen um const-Evaluation zu verhindern
+    final padding = EdgeInsets.symmetric(horizontal: 6, vertical: 2);
+    final bgColor = color.withValues(alpha: 0.2);
+    final borderColor = color.withValues(alpha: 0.5);
+    
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: borderColor),
+      ),
+      child: Text(
+        '$label: $value',
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  /// Helper für Ability-Score-Chips mit Modifier
+  Widget _buildAbilityChip(String label, int score) {
+    final modifier = ((score - 10) ~/ 2);
+    final modText = modifier >= 0 ? '+$modifier' : '$modifier';
+    // Nicht-const Variablen um const-Evaluation zu verhindern
+    final padding = EdgeInsets.symmetric(horizontal: 4, vertical: 2);
+    final bgColor = Colors.grey[800] ?? Color(0xFF424242);
+    
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        '$label $score ($modText)',
+        style: TextStyle(
+          color: Colors.white70,
+          fontSize: 9,
+        ),
+      ),
+    );
+  }
+
+  /// Helper für Attack-Chips
+  Widget _buildAttackChip(String name, String damage) {
+    // Nicht-const Variablen um const-Evaluation zu verhindern
+    final padding = EdgeInsets.symmetric(horizontal: 6, vertical: 2);
+    final bgColor = Colors.purple[900]?.withValues(alpha: 0.3) ?? Color(0x4D4A148C);
+    final borderColor = Colors.purple[700] ?? Color(0xFF7B1FA2);
+    final textColor = Colors.purple[200] ?? Color(0xFFCE93D8);
+    
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: borderColor),
+      ),
+      child: Text(
+        damage.isNotEmpty ? '$name ($damage)' : name,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 9,
+        ),
+      ),
+    );
+  }
+
+  /// Erstellt die InputDecoration für das Initiative-Feld
+  /// Als separate Methode um const-Evaluation zu vermeiden
+  InputDecoration _createInitInputDecoration(Color fillColor) {
+    // Verwende nicht-const Variablen um const-Evaluation zu verhindern
+    final hintColor = Colors.grey[600] ?? Color(0xFF9E9E9E);
+    final borderColor = Colors.grey[600] ?? Color(0xFF757575);
+    // Nicht-const EdgeInsets um const-Evaluation zu verhindern
+    final contentPadding = EdgeInsets.symmetric(horizontal: 4, vertical: 8);
+    // Nicht-const Farbe um const-Evaluation zu verhindern
+    final goldColor = Color(0xFFD4AF37);
+    
+    return InputDecoration(
+      hintText: 'Init',
+      hintStyle: TextStyle(color: hintColor, fontSize: 10),
+      contentPadding: contentPadding,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(4),
+        borderSide: BorderSide(color: borderColor),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(4),
+        borderSide: BorderSide(color: goldColor, width: 2), // Gold
+      ),
+      filled: true,
+      fillColor: fillColor,
+    );
+  }
+
+  Widget _buildInitiativeInput(
+    String id,
+    int initiative,
+    bool initiativeSet, {
+    required bool isCharacter,
+  }) {
+    final controller = TextEditingController(
+      text: initiativeSet ? initiative.toString() : '',
+    );
+    
+    // Dynamische Farbe basierend auf initiativeSet
+    final textColor = initiativeSet ? DnDTheme.ancientGold : Colors.grey;
+    // Nicht-const Farbe für fillColor (verwendet nicht-const Fallback)
+    final fillColor = Colors.grey[850] ?? Color(0xFF424242);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Initiative-Eingabefeld
+        SizedBox(
+          width: 50,
+          height: 36,
+          child: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: textColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+            decoration: _createInitInputDecoration(fillColor),
+            onSubmitted: (value) {
+              final intValue = int.tryParse(value);
+              if (intValue != null) {
+                if (isCharacter) {
+                  _viewModel.setCharacterInitiative(id, intValue);
+                } else {
+                  _viewModel.setMonsterInitiative(id, intValue);
+                }
+              }
+            },
+          ),
+        ),
+        const SizedBox(width: 4),
+        // Würfel-Button
+        InkWell(
+          onTap: () {
+            if (isCharacter) {
+              _viewModel.rollInitiativeForCharacter(id);
+            } else {
+              _viewModel.rollInitiativeForMonster(id);
+            }
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: DnDTheme.ancientGold.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+              border: Border.all(color: DnDTheme.ancientGold.withValues(alpha: 0.5)),
+            ),
+            child: Icon(
+              Icons.casino,
+              color: DnDTheme.ancientGold,
+              size: 16,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

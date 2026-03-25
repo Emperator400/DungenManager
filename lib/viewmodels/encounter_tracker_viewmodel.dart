@@ -2,8 +2,12 @@ import 'package:flutter/foundation.dart';
 import '../database/core/database_connection.dart';
 import '../database/repositories/encounter_model_repository.dart';
 import '../database/repositories/encounter_participant_model_repository.dart';
+import '../database/repositories/player_character_model_repository.dart';
+import '../database/repositories/creature_model_repository.dart';
 import '../models/encounter.dart';
 import '../models/encounter_participant.dart';
+import '../models/player_character.dart';
+import '../models/creature.dart';
 
 /// ViewModel für den Encounter Tracker
 /// 
@@ -11,10 +15,18 @@ import '../models/encounter_participant.dart';
 class EncounterTrackerViewModel extends ChangeNotifier {
   late final EncounterModelRepository _encounterRepo;
   late final EncounterParticipantModelRepository _participantRepo;
+  late final PlayerCharacterModelRepository _characterRepo;
+  late final CreatureModelRepository _creatureRepo;
 
   // Encounter-Daten
   Encounter? _encounter;
   List<EncounterParticipant> _participants = [];
+  
+  // Geladene Character-Daten für Spieler-Teilnehmer
+  final Map<String, PlayerCharacter> _loadedCharacters = {};
+  
+  // Geladene Creature-Daten für Monster-Teilnehmer
+  final Map<String, Creature> _loadedCreatures = {};
   
   // Kampf-Zustand
   int _roundCounter = 1;
@@ -29,6 +41,8 @@ class EncounterTrackerViewModel extends ChangeNotifier {
     final connection = DatabaseConnection.instance;
     _encounterRepo = EncounterModelRepository(connection);
     _participantRepo = EncounterParticipantModelRepository(connection);
+    _characterRepo = PlayerCharacterModelRepository(connection);
+    _creatureRepo = CreatureModelRepository(connection);
   }
 
   // ===== GETTERS =====
@@ -65,6 +79,22 @@ class EncounterTrackerViewModel extends ChangeNotifier {
       .where((p) => p.type == ParticipantType.enemy && p.isAlive)
       .length;
 
+  /// Gibt die geladenen Character-Daten für einen Teilnehmer zurück
+  PlayerCharacter? getCharacterForParticipant(EncounterParticipant participant) {
+    if (participant.type != ParticipantType.player || participant.characterId == null) {
+      return null;
+    }
+    return _loadedCharacters[participant.characterId];
+  }
+
+  /// Gibt die geladenen Creature-Daten für einen Monster-Teilnehmer zurück
+  Creature? getCreatureForParticipant(EncounterParticipant participant) {
+    if (participant.type != ParticipantType.enemy || participant.creatureId == null) {
+      return null;
+    }
+    return _loadedCreatures[participant.creatureId];
+  }
+
   // ===== DATEN LADEN =====
 
   /// Lädt einen Encounter mit allen Teilnehmern
@@ -84,6 +114,9 @@ class EncounterTrackerViewModel extends ChangeNotifier {
 
       // Teilnehmer laden
       _participants = await _participantRepo.findByEncounter(encounterId);
+      
+      // Character-Daten für Spieler-Teilnehmer laden
+      await _loadCharacterData();
       
       // Initiative rollen falls noch nicht vorhanden
       _rollInitiativeForAll();
@@ -123,6 +156,25 @@ class EncounterTrackerViewModel extends ChangeNotifier {
     }
   }
 
+  // ===== CHARACTER DATA LOADING =====
+
+  /// Lädt Character-Daten für alle Spieler-Teilnehmer und Creature-Daten für Monster
+  Future<void> _loadCharacterData() async {
+    for (final participant in _participants) {
+      if (participant.type == ParticipantType.player && participant.characterId != null) {
+        final character = await _characterRepo.findById(participant.characterId!);
+        if (character != null) {
+          _loadedCharacters[participant.characterId!] = character;
+        }
+      } else if (participant.type == ParticipantType.enemy && participant.creatureId != null) {
+        final creature = await _creatureRepo.findById(participant.creatureId!);
+        if (creature != null) {
+          _loadedCreatures[participant.creatureId!] = creature;
+        }
+      }
+    }
+  }
+
   // ===== INITIATIVE =====
 
   /// Rollt Initiative für alle Teilnehmer die noch keine haben
@@ -158,6 +210,9 @@ class EncounterTrackerViewModel extends ChangeNotifier {
   void nextTurn() {
     if (_participants.isEmpty) return;
     
+    // Prüfen ob wir am Ende der Runde sind (letzter lebender Teilnehmer)
+    bool wasLastInRound = _isLastAliveParticipant(_currentTurnIndex);
+    
     // Nächsten lebenden Teilnehmer finden
     int nextIndex = _currentTurnIndex;
     int attempts = 0;
@@ -165,15 +220,26 @@ class EncounterTrackerViewModel extends ChangeNotifier {
     do {
       nextIndex = (nextIndex + 1) % _participants.length;
       attempts++;
-      
-      // Neue Runde wenn wir wieder am Anfang sind
-      if (nextIndex == 0 && attempts > 1) {
-        _roundCounter++;
-      }
     } while (_participants[nextIndex].isDead && attempts < _participants.length);
+    
+    // Neue Runde wenn wir vom letzten zum ersten Teilnehmer wechseln
+    if (wasLastInRound && nextIndex < _currentTurnIndex) {
+      _roundCounter++;
+    }
     
     _currentTurnIndex = nextIndex;
     notifyListeners();
+  }
+  
+  /// Prüft ob der gegebene Index der letzte lebende Teilnehmer ist
+  bool _isLastAliveParticipant(int index) {
+    final aliveIndices = <int>[];
+    for (int i = 0; i < _participants.length; i++) {
+      if (_participants[i].isAlive) {
+        aliveIndices.add(i);
+      }
+    }
+    return aliveIndices.length <= 1 || aliveIndices.last == index;
   }
 
   /// Zurück zum ersten Teilnehmer

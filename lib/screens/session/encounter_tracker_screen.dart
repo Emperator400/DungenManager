@@ -4,6 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../models/encounter_participant.dart';
 import '../../models/condition.dart';
+import '../../models/player_character.dart';
+import '../../models/creature.dart';
+import '../../models/attack.dart';
 import '../../viewmodels/encounter_tracker_viewmodel.dart';
 import '../../theme/dnd_theme.dart';
 import 'dart:math';
@@ -18,11 +21,13 @@ import 'dart:math';
 class EncounterTrackerScreen extends StatefulWidget {
   final String encounterId;
   final String encounterTitle;
+  final Map<String, int>? initialInitiativeValues;
 
   const EncounterTrackerScreen({
     super.key,
     required this.encounterId,
     this.encounterTitle = 'Kampf',
+    this.initialInitiativeValues,
   });
 
   @override
@@ -39,7 +44,42 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
   void initState() {
     super.initState();
     _viewModel = EncounterTrackerViewModel();
-    _viewModel.loadEncounter(widget.encounterId);
+    _viewModel.loadEncounter(widget.encounterId).then((_) {
+      // Übernehme Initiative-Werte vom Setup-Screen, falls vorhanden
+      _applyInitialInitiativeValues();
+    });
+  }
+
+  /// Wendet die übergebenen Initiative-Werte auf die Teilnehmer an
+  void _applyInitialInitiativeValues() {
+    if (widget.initialInitiativeValues == null || 
+        widget.initialInitiativeValues!.isEmpty) {
+      return;
+    }
+    
+    // Mapping von Character/Monster-IDs zu Participant-IDs
+    for (final participant in _viewModel.participants) {
+      // Prüfe ob es ein Character ist
+      if (participant.characterId != null) {
+        final charKey = 'char_${participant.characterId}';
+        if (widget.initialInitiativeValues!.containsKey(charKey)) {
+          setState(() {
+            _initiativeValues[participant.id] = 
+                widget.initialInitiativeValues![charKey]!;
+          });
+        }
+      }
+      // Prüfe ob es ein Monster/Creature ist
+      if (participant.creatureId != null) {
+        final monsterKey = 'monster_${participant.creatureId}';
+        if (widget.initialInitiativeValues!.containsKey(monsterKey)) {
+          setState(() {
+            _initiativeValues[participant.id] = 
+                widget.initialInitiativeValues![monsterKey]!;
+          });
+        }
+      }
+    }
   }
 
   @override
@@ -385,121 +425,480 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
     bool isPlayer,
     Color cardColor,
   ) {
+    // Lade Character- oder Creature-Daten für Stats
+    final character = _viewModel.getCharacterForParticipant(participant);
+    final creature = _viewModel.getCreatureForParticipant(participant);
+    
+    // AC ermitteln
+    int? armorClass;
+    if (character != null) {
+      armorClass = character.armorClass;
+    } else if (creature != null) {
+      armorClass = creature.armorClass;
+    }
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Row(
+      child: Column(
         children: [
-          // Initiative Badge
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.3),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: DnDTheme.ancientGold.withValues(alpha: 0.5),
-                width: 2,
-              ),
-            ),
-            child: Center(
-              child: initiative != null
-                  ? Text(
-                      initiative.toString(),
-                      style: const TextStyle(
-                        color: DnDTheme.ancientGold,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    )
-                  : IconButton(
-                      icon: const Icon(
-                        Icons.casino,
-                        color: DnDTheme.ancientGold,
-                        size: 20,
-                      ),
-                      onPressed: () => _showInitiativeDialog(participant),
-                      tooltip: 'Initiative setzen',
-                    ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Name und Typ
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  participant.name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+          Row(
+            children: [
+              // Initiative Badge
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: DnDTheme.ancientGold.withValues(alpha: 0.5),
+                    width: 2,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Row(
+                child: Center(
+                  child: initiative != null
+                      ? Text(
+                          initiative.toString(),
+                          style: const TextStyle(
+                            color: DnDTheme.ancientGold,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      : IconButton(
+                          icon: const Icon(
+                            Icons.casino,
+                            color: DnDTheme.ancientGold,
+                            size: 20,
+                          ),
+                          onPressed: () => _showInitiativeDialog(participant),
+                          tooltip: 'Initiative setzen',
+                        ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Name und Typ
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      isPlayer ? Icons.person : Icons.shield,
-                      color: Colors.white70,
-                      size: 14,
-                    ),
-                    const SizedBox(width: 4),
                     Text(
-                      isPlayer ? 'Held' : 'Gegner',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
+                      participant.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    if (participant.isDead) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Icon(
+                          isPlayer ? Icons.person : Icons.shield,
+                          color: Colors.white70,
+                          size: 14,
                         ),
-                        decoration: BoxDecoration(
-                          color: DnDTheme.errorRed,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'TOT',
+                        const SizedBox(width: 4),
+                        Text(
+                          isPlayer ? 'Held' : 'Gegner',
                           style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                        if (participant.isDead) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: DnDTheme.errorRed,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'TOT',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              // HP und AC Anzeige
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // HP
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.green.withValues(alpha: 0.5)),
+                        ),
+                        child: Text(
+                          'HP: ${participant.currentHp}/${participant.maxHp}',
+                          style: const TextStyle(
+                            color: Colors.green,
+                            fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
+                      // AC (falls verfügbar)
+                      if (armorClass != null) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+                          ),
+                          child: Text(
+                            'AC: $armorClass',
+                            style: const TextStyle(
+                              color: Colors.orange,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
-                ),
-              ],
-            ),
-          ),
-          // HP Anzeige
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${participant.currentHp}/${participant.maxHp}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                'HP',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 10,
-                ),
+                  ),
+                ],
               ),
             ],
           ),
+          // Attribute und Angriffe (falls verfügbar)
+          if (character != null || creature != null) ...[
+            const SizedBox(height: 8),
+            _buildStatsAndAttacks(character, creature),
+          ],
         ],
+      ),
+    );
+  }
+
+  /// D&D 5e Fertigkeiten und ihre zugehörigen Attribute
+  static const Map<String, String> _skillAbilities = {
+    // Deutsche Namen
+    'Akrobatik': 'DEX',
+    'Athletik': 'STR',
+    'Auftreten': 'CHA',
+    'Einschüchtern': 'CHA',
+    'Fingerfertigkeit': 'DEX',
+    'Geschichte': 'INT',
+    'Heilkunde': 'WIS',
+    'Heimlichkeit': 'DEX',
+    'Motiv erkennen': 'WIS',
+    'Nachforschung': 'INT',
+    'Naturkunde': 'INT',
+    'Täuschen': 'CHA',
+    'Überleben': 'WIS',
+    'Überzeugen': 'CHA',
+    'Wahrnehmung': 'WIS',
+    'Tierkunde': 'WIS',
+    'Arkane Kunde': 'INT',
+    // Englische Namen
+    'Acrobatics': 'DEX',
+    'Athletics': 'STR',
+    'Performance': 'CHA',
+    'Intimidation': 'CHA',
+    'Sleight of Hand': 'DEX',
+    'History': 'INT',
+    'Medicine': 'WIS',
+    'Stealth': 'DEX',
+    'Insight': 'WIS',
+    'Investigation': 'INT',
+    'Nature': 'INT',
+    'Religion': 'INT', // Religion ist auf Deutsch und Englisch gleich
+    'Deception': 'CHA',
+    'Survival': 'WIS',
+    'Persuasion': 'CHA',
+    'Perception': 'WIS',
+    'Animal Handling': 'WIS',
+    'Arcana': 'INT',
+  };
+
+  /// Berechnet den Rettungswurf-Bonus
+  int _getSavingThrowBonus(String saveName, PlayerCharacter character) {
+    // Attribut ermitteln basierend auf dem Namen
+    String ability = 'CON'; // Standard
+    String normalizedName = saveName.toLowerCase();
+    
+    if (normalizedName.contains('str') || normalizedName.contains('stärke')) {
+      ability = 'STR';
+    } else if (normalizedName.contains('dex') || normalizedName.contains('geschick')) {
+      ability = 'DEX';
+    } else if (normalizedName.contains('con') || normalizedName.contains('konstitution')) {
+      ability = 'CON';
+    } else if (normalizedName.contains('int') || normalizedName.contains('intelligenz')) {
+      ability = 'INT';
+    } else if (normalizedName.contains('wis') || normalizedName.contains('weisheit')) {
+      ability = 'WIS';
+    } else if (normalizedName.contains('cha') || normalizedName.contains('charisma')) {
+      ability = 'CHA';
+    }
+    
+    int abilityScore;
+    switch (ability) {
+      case 'STR':
+        abilityScore = character.strength;
+        break;
+      case 'DEX':
+        abilityScore = character.dexterity;
+        break;
+      case 'CON':
+        abilityScore = character.constitution;
+        break;
+      case 'INT':
+        abilityScore = character.intelligence;
+        break;
+      case 'WIS':
+        abilityScore = character.wisdom;
+        break;
+      case 'CHA':
+        abilityScore = character.charisma;
+        break;
+      default:
+        abilityScore = 10;
+    }
+    
+    // Modifikator berechnen
+    int modifier = ((abilityScore - 10) ~/ 2);
+    
+    // Kompetenzbonus addieren (ist ja geübt)
+    modifier += character.proficiencyBonus;
+    
+    return modifier;
+  }
+
+  /// Helper für Saving Throw-Chips
+  Widget _buildSavingThrowChip(String saveName, int bonus) {
+    final modText = bonus >= 0 ? '+$bonus' : '$bonus';
+    
+    // Gold/Amber für Rettungswürfe
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.amber[900]?.withValues(alpha: 0.3) ?? const Color(0x4DFF6F00),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: Colors.amber[600] ?? const Color(0xFFFFB300),
+          width: 1,
+        ),
+      ),
+      child: Text(
+        '$saveName $modText',
+        style: TextStyle(
+          color: Colors.amber[200] ?? const Color(0xFFFFE082),
+          fontSize: 9,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  /// Berechnet den Fertigkeitsbonus
+  int _getSkillBonus(String skillName, PlayerCharacter character) {
+    // Attribut ermitteln
+    final ability = _skillAbilities[skillName] ?? 'DEX';
+    int abilityScore;
+    
+    switch (ability) {
+      case 'STR':
+        abilityScore = character.strength;
+        break;
+      case 'DEX':
+        abilityScore = character.dexterity;
+        break;
+      case 'CON':
+        abilityScore = character.constitution;
+        break;
+      case 'INT':
+        abilityScore = character.intelligence;
+        break;
+      case 'WIS':
+        abilityScore = character.wisdom;
+        break;
+      case 'CHA':
+        abilityScore = character.charisma;
+        break;
+      default:
+        abilityScore = 10;
+    }
+    
+    // Modifikator berechnen
+    int modifier = ((abilityScore - 10) ~/ 2);
+    
+    // Kompetenzbonus addieren wenn geübt
+    if (character.proficientSkills.contains(skillName)) {
+      modifier += character.proficiencyBonus;
+    }
+    
+    return modifier;
+  }
+
+  /// Baut die Stats- und Angriffs-Anzeige für einen Teilnehmer
+  Widget _buildStatsAndAttacks(PlayerCharacter? character, Creature? creature) {
+    final List<Widget> statChips = [];
+    
+    if (character != null) {
+      // Attributs-Boni (kompakt in einer Zeile)
+      statChips.addAll([
+        _buildAbilityChip('STR', character.strength),
+        _buildAbilityChip('DEX', character.dexterity),
+        _buildAbilityChip('CON', character.constitution),
+        _buildAbilityChip('INT', character.intelligence),
+        _buildAbilityChip('WIS', character.wisdom),
+        _buildAbilityChip('CHA', character.charisma),
+      ]);
+      
+      // Rettungswürfe (Saving Throws) - nur die geübten
+      if (character.savingThrowProficiencies.isNotEmpty) {
+        for (final save in character.savingThrowProficiencies.take(3)) {
+          final bonus = _getSavingThrowBonus(save, character);
+          statChips.add(_buildSavingThrowChip(save, bonus));
+        }
+      }
+      
+      // Fertigkeiten mit Boni (nur die geübten)
+      if (character.proficientSkills.isNotEmpty) {
+        for (final skill in character.proficientSkills.take(4)) {
+          final bonus = _getSkillBonus(skill, character);
+          statChips.add(_buildSkillChip(skill, bonus));
+        }
+      }
+      
+      // Angriffe für Helden
+      if (character.attackList.isNotEmpty) {
+        for (final attack in character.attackList.take(3)) {
+          statChips.add(_buildAttackChip(attack.name, attack.totalDamage));
+        }
+      }
+    } else if (creature != null) {
+      // Attribute für Monster
+      statChips.addAll([
+        _buildAbilityChip('STR', creature.strength),
+        _buildAbilityChip('DEX', creature.dexterity),
+        _buildAbilityChip('CON', creature.constitution),
+        _buildAbilityChip('INT', creature.intelligence),
+        _buildAbilityChip('WIS', creature.wisdom),
+        _buildAbilityChip('CHA', creature.charisma),
+      ]);
+      // Angriffe für Monster
+      if (creature.attackList.isNotEmpty) {
+        for (final attack in creature.attackList.take(3)) {
+          statChips.add(_buildAttackChip(attack.name, attack.totalDamage));
+        }
+      }
+    }
+    
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      children: statChips,
+    );
+  }
+
+  /// Helper für Ability-Score-Chips - zeigt nur den Bonus
+  Widget _buildAbilityChip(String label, int score) {
+    final modifier = ((score - 10) ~/ 2);
+    final modText = modifier >= 0 ? '+$modifier' : '$modifier';
+    
+    // Farbe basierend auf Bonus-Stärke
+    Color textColor;
+    if (modifier >= 3) {
+      textColor = Colors.green; // Sehr gut
+    } else if (modifier >= 1) {
+      textColor = Colors.lightGreen; // Gut
+    } else if (modifier == 0) {
+      textColor = Colors.white70; // Neutral
+    } else if (modifier >= -2) {
+      textColor = Colors.orange; // Leicht negativ
+    } else {
+      textColor = Colors.red; // Stark negativ
+    }
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: textColor.withValues(alpha: 0.5),
+          width: 1,
+        ),
+      ),
+      child: Text(
+        '$label $modText',
+        style: TextStyle(
+          color: textColor,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  /// Helper für Skill-Chips
+  Widget _buildSkillChip(String skillName, int bonus) {
+    final modText = bonus >= 0 ? '+$bonus' : '$bonus';
+    
+    // Cyan/Türkis für Fertigkeiten
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.cyan[900]?.withValues(alpha: 0.3) ?? const Color(0x4D004D40),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: Colors.cyan[600] ?? const Color(0xFF00ACC1),
+          width: 1,
+        ),
+      ),
+      child: Text(
+        '$skillName $modText',
+        style: TextStyle(
+          color: Colors.cyan[200] ?? const Color(0xFF80DEEA),
+          fontSize: 9,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  /// Helper für Attack-Chips
+  Widget _buildAttackChip(String name, String damage) {
+    final bgColor = Colors.purple[900]?.withValues(alpha: 0.3) ?? const Color(0x4D4A148C);
+    final borderColor = Colors.purple[700] ?? const Color(0xFF7B1FA2);
+    final textColor = Colors.purple[200] ?? const Color(0xFFCE93D8);
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: borderColor),
+      ),
+      child: Text(
+        damage.isNotEmpty ? '$name ($damage)' : name,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 9,
+        ),
       ),
     );
   }
