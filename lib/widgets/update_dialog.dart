@@ -17,12 +17,20 @@ Future<bool> showUpdateDialogIfNeeded(
 }) async {
   final viewModel = context.read<UpdateViewModel>();
   
-  if (!forceShow && viewModel.userNotified) {
-    return false;
-  }
-
-  if (!viewModel.hasUpdateAvailable || viewModel.availableUpdate == null) {
-    return false;
+  // Bei forceShow immer anzeigen, sonst nur wenn Update verfügbar und User noch nicht benachrichtigt
+  if (!forceShow) {
+    if (viewModel.userNotified) {
+      return false;
+    }
+    
+    if (!viewModel.hasUpdateAvailable || viewModel.availableUpdate == null) {
+      return false;
+    }
+  } else {
+    // Bei forceShow: Nur anzeigen wenn ein Update verfügbar ist
+    if (viewModel.availableUpdate == null) {
+      return false;
+    }
   }
 
   viewModel.markUserNotified();
@@ -47,6 +55,31 @@ class _UpdateDialogState extends State<UpdateDialog> {
   Widget build(BuildContext context) {
     return Consumer<UpdateViewModel>(
       builder: (context, viewModel, child) {
+        // Prüfe ob ein Update verfügbar ist (availableUpdate != null)
+        if (viewModel.availableUpdate == null) {
+          return AlertDialog(
+            backgroundColor: DnDTheme.slateGrey,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: DnDTheme.ancientGold, width: 2),
+            ),
+            title: const Text(
+              'Fehler',
+              style: TextStyle(color: DnDTheme.errorRed),
+            ),
+            content: const Text(
+              'Kein Update verfügbar oder Fehler beim Laden.',
+              style: TextStyle(color: Colors.white70),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Schließen', style: TextStyle(color: Color.fromARGB(255, 145, 100, 48))),
+              ),
+            ],
+          );
+        }
+        
         return AlertDialog(
           backgroundColor: DnDTheme.slateGrey,
           shape: RoundedRectangleBorder(
@@ -84,7 +117,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
     }
 
     return SizedBox(
-      width: 400,
+      width: 600,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -106,7 +139,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                 Text(
                   'Neu: ${update.displayVersion}',
                   style: const TextStyle(
-                    color: DnDTheme.errorRed,
+                    color: DnDTheme.emeraldGreen,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -163,38 +196,108 @@ class _UpdateDialogState extends State<UpdateDialog> {
               ),
             ),
 
-          // Release Notes
-          if (update.releaseNotes.isNotEmpty && 
-              !viewModel.isDownloading && 
-              !viewModel.isExtracting)
+          // Release Notes - immer anzeigen
+          if (!viewModel.isDownloading && !viewModel.isExtracting)
             Flexible(
               child: Container(
-                constraints: const BoxConstraints(maxHeight: 200),
+                constraints: const BoxConstraints(maxHeight: 500),
                 decoration: BoxDecoration(
                   border: Border.all(color: DnDTheme.charcoalGrey),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Änderungen:',
-                        style: TextStyle(
-                          color: DnDTheme.ancientGold,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      // Release Header mit Version, Datum und Pre-Release Badge
+                      Row(
+                        children: [
+                          Text(
+                            update.displayVersion,
+                            style: const TextStyle(
+                              color: DnDTheme.ancientGold,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          if (update.isPrerelease)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: DnDTheme.arcaneBlue.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: DnDTheme.arcaneBlue),
+                              ),
+                              child: const Text(
+                                'Pre-Release',
+                                style: TextStyle(
+                                  color: DnDTheme.arcaneBlue,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.calendar_today, size: 14, color: DnDTheme.charcoalGrey),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Veröffentlicht: ${update.formattedDate}',
+                            style: const TextStyle(
+                              color: DnDTheme.charcoalGrey,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      const Divider(color: DnDTheme.charcoalGrey, height: 1),
+                      const SizedBox(height: 12),
+                      // Release Notes Inhalt
                       MarkdownBody(
-                        data: update.releaseNotes,
+                        data: update.releaseNotes.isNotEmpty 
+                            ? update.releaseNotes 
+                            : '*Keine Release-Notes verfügbar.*\n\nWeitere Informationen finden Sie auf der [GitHub Releases Seite](https://github.com/Emperator400/DungenManager/releases).',
                         styleSheet: MarkdownStyleSheet(
-                          p: const TextStyle(color: Colors.white70),
-                          h1: const TextStyle(color: DnDTheme.ancientGold),
-                          h2: const TextStyle(color: DnDTheme.ancientGold),
+                          p: const TextStyle(color: Colors.white70, fontSize: 14),
+                          h1: const TextStyle(color: DnDTheme.ancientGold, fontSize: 20),
+                          h2: const TextStyle(color: DnDTheme.ancientGold, fontSize: 18),
+                          h3: const TextStyle(color: DnDTheme.ancientGold, fontSize: 16),
                           listBullet: const TextStyle(color: Colors.white70),
+                          code: const TextStyle(
+                            color: DnDTheme.arcaneBlue,
+                            backgroundColor: DnDTheme.dungeonBlack,
+                            fontFamily: 'monospace',
+                          ),
+                          codeblockDecoration: BoxDecoration(
+                            color: DnDTheme.dungeonBlack,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          blockquote: const TextStyle(
+                            color: DnDTheme.charcoalGrey,
+                            fontStyle: FontStyle.italic,
+                          ),
+                          strong: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          em: const TextStyle(
+                            color: Colors.white70,
+                            fontStyle: FontStyle.italic,
+                          ),
                         ),
+                        selectable: true,
+                        onTapLink: (text, href, title) {
+                          // Links im Browser öffnen
+                          if (href != null) {
+                            viewModel.openReleasesPage();
+                          }
+                        },
                       ),
                     ],
                   ),

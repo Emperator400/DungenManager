@@ -154,9 +154,9 @@ class _CampaignSelectionLayout extends StatelessWidget {
       elevation: 0,
       actions: [
         IconButton(
-          onPressed: () => _showImportDialog(context),
-          icon: const Icon(Icons.upload_file, color: Colors.white),
-          tooltip: 'Kampagne importieren',
+          onPressed: () => _checkForUpdatesManually(context),
+          icon: const Icon(Icons.system_update_alt, color: Colors.white),
+          tooltip: 'Nach Updates suchen',
         ),
         IconButton(
           onPressed: () => _showSearchDialog(context),
@@ -356,41 +356,28 @@ class _CampaignSelectionLayout extends StatelessWidget {
     );
   }
 
-  void _showImportDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Kampagne importieren',
-          style: DnDTheme.headline3.copyWith(
-            color: DnDTheme.infoBlue,
-          ),
-        ),
-        content: Text(
-          'Import-Funktion wird in zukünftigen Versionen verfügbar.',
-          style: DnDTheme.bodyText1.copyWith(
-            color: Colors.white70,
-          ),
-        ),
-        backgroundColor: DnDTheme.stoneGrey,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(
-            color: DnDTheme.infoBlue.withValues(alpha: 0.3),
-            width: 1,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: TextButton.styleFrom(
-              foregroundColor: DnDTheme.infoBlue,
-            ),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
+  /// Prüft manuell auf Updates und zeigt das Ergebnis an
+  Future<void> _checkForUpdatesManually(BuildContext context) async {
+    final viewModel = context.read<UpdateViewModel>();
+    
+    // Zeige Lade-Indikator
+    SnackBarHelper.showInfo(context, 'Prüfe auf Updates...');
+    
+    // Prüfe auf Updates
+    await viewModel.checkForUpdate();
+    
+    if (!context.mounted) return;
+    
+    if (viewModel.availableUpdate != null) {
+      // Zeige das vollständige UpdateDialog Widget mit Patchnotes
+      await showUpdateDialogIfNeeded(context, forceShow: true);
+    } else if (viewModel.errorMessage != null) {
+      // Fehler beim Prüfen
+      SnackBarHelper.showError(context, 'Fehler beim Prüfen: ${viewModel.errorMessage}');
+    } else {
+      // Kein Update verfügbar
+      SnackBarHelper.showSuccess(context, 'Du verwendest bereits die neueste Version!');
+    }
   }
 
   void _showSearchDialog(BuildContext context) async {
