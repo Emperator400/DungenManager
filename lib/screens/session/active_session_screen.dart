@@ -21,6 +21,7 @@ import '../../widgets/active_session/atmosphere_quadrant.dart';
 import '../../widgets/active_session/live_notes_quadrant.dart';
 import '../../widgets/active_session/quest_list_section.dart';
 import '../../widgets/audio/sound_player_widget.dart';
+import '../../widgets/lore_keeper/wiki_entry_popup_dialog.dart';
 import '../scenes/edit_scene_screen.dart';
 import 'encounter_setup_screen.dart' as encounter_setup;
 
@@ -410,41 +411,39 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
 
   /// Baut die scrollbare rechte Sidebar mit Live-Notizen, Atmosphäre und Quests
   Widget _buildScrollableSidebar(ActiveSessionViewModel viewModel) =>
-      SingleChildScrollView(
-        child: Column(
-          children: [
-            // Live-Notizen (350px Höhe)
-            SizedBox(
-              height: 350,
-              child: _buildLiveNotesPanel(viewModel),
+      Column(
+        children: [
+          // Live-Notizen (flexibel)
+          Expanded(
+            flex: 3,
+            child: _buildLiveNotesPanel(viewModel),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Atmosphäre (flexibel) - Sound Mixer
+          Expanded(
+            flex: 4,
+            child: _buildAtmospherePanel(viewModel),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Quest-Liste (flexibel)
+          Expanded(
+            flex: 3,
+            child: QuestListSection(
+              key: ValueKey('quest_list_$_questUpdateCounter'),
+              campaignId: viewModel.campaign.id,
+              onQuestUpdated: () {
+                // Counter erhöhen für UI-Update von ALLEN Quest-Anzeigen
+                setState(() {
+                  _questUpdateCounter++;
+                });
+              },
             ),
-
-            const SizedBox(height: 8),
-
-            // Atmosphäre (450px Höhe) - Sound Mixer
-            SizedBox(
-              height: 450,
-              child: _buildAtmospherePanel(viewModel),
-            ),
-
-            const SizedBox(height: 8),
-
-            // Quest-Liste (350px Höhe)
-            SizedBox(
-              height: 350,
-              child: QuestListSection(
-                key: ValueKey('quest_list_$_questUpdateCounter'),
-                campaignId: viewModel.campaign.id,
-                onQuestUpdated: () {
-                  // Counter erhöhen für UI-Update von ALLEN Quest-Anzeigen
-                  setState(() {
-                    _questUpdateCounter++;
-                  });
-                },
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       );
 
   Widget _buildSceneFlowWidget(ActiveSessionViewModel viewModel) {
@@ -503,45 +502,42 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
       );
     }
 
-    return Column(
-      children: [
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(2),
-            itemCount: scenes.length,
-            itemBuilder: (context, index) {
-              final scene = scenes[index];
-              final isActive = viewModel.currentSession.activeSceneId == scene.id;
-
-              return _buildSceneCard(
-                scene: scene,
-                isActive: isActive,
-                onTap: () => _showSceneOptions(scene),
-              );
-            },
-          ),
-        ),
-        // Add Scene Button
-        Padding(
-          padding: const EdgeInsets.all(8),
-          child: ElevatedButton.icon(
-            onPressed: _showCreateSceneDialog,
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Neue Szene', style: TextStyle(fontSize: 14)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.arcaneBlue,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+    return ListView.builder(
+      padding: const EdgeInsets.all(2),
+      itemCount: scenes.length + 1, // +1 für den Button am Ende
+      itemBuilder: (context, index) {
+        // Letztes Item ist der "Neue Szene" Button
+        if (index == scenes.length) {
+          return Padding(
+            padding: const EdgeInsets.all(8),
+            child: ElevatedButton.icon(
+              onPressed: _showCreateSceneDialog,
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Neue Szene', style: TextStyle(fontSize: 14)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: DnDTheme.arcaneBlue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                ),
               ),
             ),
-          ),
-        ),
-      ],
+          );
+        }
+
+        final scene = scenes[index];
+        final isActive = viewModel.currentSession.activeSceneId == scene.id;
+
+        return _buildSceneCard(
+          scene: scene,
+          isActive: isActive,
+          onTap: () => _showSceneOptions(scene),
+        );
+      },
     );
   }
 
@@ -642,7 +638,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
           trailing: const SizedBox.shrink(), // Wir haben unsere eigenen Icons
           backgroundColor: Colors.transparent,
           children: [
-            // Expanded Content
+            // Expanded Content - mit SingleChildScrollView um Overflow zu verhindern
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
@@ -661,8 +657,8 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                 ),
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                   // Beschreibung
                   if (scene.description.isNotEmpty) ...[
                     Text(
@@ -1143,14 +1139,24 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
             spacing: 8,
             runSpacing: 6,
             children: linkedWikiEntries.map((wikiEntry) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: _getWikiEntryTypeColor(wikiEntry.entryType).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                  border: Border.all(
-                    color: _getWikiEntryTypeColor(wikiEntry.entryType).withValues(alpha: 0.4),
-                    width: 1,
+                return  TextButton(
+                  onPressed: () {
+                     WikiEntryPopupDialog.show(context: context, entry: wikiEntry);
+                  },
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap
+                  ),
+                  child: 
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                        color: _getWikiEntryTypeColor(wikiEntry.entryType).withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                        border: Border.all(
+                        color: _getWikiEntryTypeColor(wikiEntry.entryType).withValues(alpha: 0.4),
+                        width: 1,
                   ),
                 ),
                 child: Row(
@@ -1171,6 +1177,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                     ),
                   ],
                 ),
+              )
               );
             }).toList(),
           ),

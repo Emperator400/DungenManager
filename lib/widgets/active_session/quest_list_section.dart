@@ -305,6 +305,7 @@ class _QuestListSectionState extends State<QuestListSection> {
     if (_error != null) {
       return Center(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.error_outline, color: DnDTheme.errorRed, size: 32),
@@ -333,6 +334,7 @@ class _QuestListSectionState extends State<QuestListSection> {
     if (filteredQuests.isEmpty) {
       return Center(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(

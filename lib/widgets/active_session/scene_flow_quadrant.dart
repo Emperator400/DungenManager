@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../theme/dnd_theme.dart';
 import '../../models/scene.dart';
+import '../../models/wiki_entry.dart';
 import '../../viewmodels/active_session_viewmodel.dart';
+import '../lore_keeper/wiki_entry_popup_dialog.dart';
 import 'session_quadrant_base.dart';
 
 /// Scene-Flow-Quadrant - Zeigt alle Szenen einer Session an
@@ -233,6 +235,12 @@ class SceneFlowQuadrant extends StatelessWidget {
             ),
           ],
           
+          // Wiki-Einträge anzeigen
+          if (scene.linkedWikiEntryIds.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            _buildWikiEntriesSection(scene),
+          ],
+          
           // Combat-Szene: Kampf starten Button
           if (scene.sceneType == SceneType.Combat && 
               scene.linkedEncounterId != null && 
@@ -301,5 +309,180 @@ class SceneFlowQuadrant extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// Baut die Wiki-Einträge-Sektion für eine Szene
+  Widget _buildWikiEntriesSection(Scene scene) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 6),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: DnDTheme.mysticalPurple.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+        border: Border.all(
+          color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.menu_book,
+                color: DnDTheme.mysticalPurple,
+                size: 10,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Wiki-Einträge',
+                style: DnDTheme.bodyText2.copyWith(
+                  color: DnDTheme.mysticalPurple,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 8,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          FutureBuilder<List<WikiEntry>>(
+            future: viewModel.getWikiEntriesForScene(scene),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                  padding: EdgeInsets.all(4),
+                  child: SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                );
+              }
+              
+              final entries = snapshot.data ?? [];
+              if (entries.isEmpty) {
+                return Text(
+                  'Keine Einträge gefunden',
+                  style: DnDTheme.bodyText2.copyWith(
+                    color: Colors.white38,
+                    fontSize: 8,
+                    fontStyle: FontStyle.italic,
+                  ),
+                );
+              }
+              
+              return Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                children: entries.map((entry) => _buildWikiEntryChip(entry, context)).toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Baut einen klickbaren Chip für einen Wiki-Eintrag
+  Widget _buildWikiEntryChip(WikiEntry entry, BuildContext context) {
+    return InkWell(
+      onTap: () => _showWikiEntryPopup(entry, context),
+      borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: _getTypeColor(entry).withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+          border: Border.all(
+            color: _getTypeColor(entry).withValues(alpha: 0.5),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _getTypeIcon(entry),
+              size: 10,
+              color: _getTypeColor(entry),
+            ),
+            const SizedBox(width: 3),
+            Text(
+              entry.title,
+              style: DnDTheme.bodyText2.copyWith(
+                color: Colors.white,
+                fontSize: 8,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 2),
+            Icon(
+              Icons.open_in_new,
+              size: 8,
+              color: _getTypeColor(entry).withValues(alpha: 0.7),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Zeigt das Wiki-Eintrag-Popup an
+  void _showWikiEntryPopup(WikiEntry entry, BuildContext context) {
+    WikiEntryPopupDialog.show(
+      context: context,
+      entry: entry,
+      onOpenFull: () {
+        Navigator.of(context).pop();
+        // Navigation zum LoreKeeperScreen könnte hier ergänzt werden
+      },
+    );
+  }
+
+  /// Gibt die Farbe für einen Wiki-Eintragstyp zurück
+  Color _getTypeColor(WikiEntry entry) {
+    switch (entry.entryType) {
+      case WikiEntryType.Person:
+        return DnDTheme.arcaneBlue;
+      case WikiEntryType.Place:
+        return DnDTheme.successGreen;
+      case WikiEntryType.Lore:
+        return DnDTheme.mysticalPurple;
+      case WikiEntryType.Faction:
+        return DnDTheme.warningOrange;
+      case WikiEntryType.Magic:
+        return DnDTheme.infoBlue;
+      case WikiEntryType.History:
+        return DnDTheme.ancientGold;
+      case WikiEntryType.Item:
+        return DnDTheme.arcaneBlue;
+      case WikiEntryType.Quest:
+        return DnDTheme.mysticalPurple;
+      case WikiEntryType.Creature:
+        return DnDTheme.errorRed;
+    }
+  }
+
+  /// Gibt das Icon für einen Wiki-Eintragstyp zurück
+  IconData _getTypeIcon(WikiEntry entry) {
+    switch (entry.entryType) {
+      case WikiEntryType.Person:
+        return Icons.person;
+      case WikiEntryType.Place:
+        return Icons.location_on;
+      case WikiEntryType.Lore:
+        return Icons.menu_book;
+      case WikiEntryType.Faction:
+        return Icons.groups;
+      case WikiEntryType.Magic:
+        return Icons.auto_fix_high;
+      case WikiEntryType.History:
+        return Icons.history;
+      case WikiEntryType.Item:
+        return Icons.inventory_2;
+      case WikiEntryType.Quest:
+        return Icons.task_alt;
+      case WikiEntryType.Creature:
+        return Icons.cruelty_free;
+    }
   }
 }

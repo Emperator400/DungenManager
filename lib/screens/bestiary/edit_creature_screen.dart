@@ -495,6 +495,7 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
                       return DropdownMenuItem<CreatureCategory?>(
                         value: category,
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               category.icon,
@@ -502,7 +503,7 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
                               size: 20,
                             ),
                             const SizedBox(width: 8),
-                            Expanded(
+                            Flexible(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,

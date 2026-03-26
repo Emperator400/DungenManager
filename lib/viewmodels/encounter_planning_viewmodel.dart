@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'dart:math';
 import '../database/core/database_connection.dart';
 import '../database/repositories/encounter_model_repository.dart';
 import '../database/repositories/encounter_participant_model_repository.dart';
@@ -31,6 +32,10 @@ class EncounterPlanningViewModel extends ChangeNotifier {
   // Encounter-Daten
   String _encounterTitle = '';
   String _encounterDescription = '';
+
+  // Initiative-Werte (Key: characterId oder monsterId mit Prefix 'char_' oder 'monster_')
+  final Map<String, int> _initiativeValues = {};
+  final Random _random = Random();
 
   // Loading States
   bool _isLoading = false;
@@ -230,6 +235,139 @@ class EncounterPlanningViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ===== INITIATIVE SYSTEM =====
+
+  /// Key für Character-Initiative
+  String _charKey(String id) => 'char_$id';
+  
+  /// Key für Monster-Initiative
+  String _monsterKey(String id) => 'monster_$id';
+
+  /// Holt Initiative für einen Character
+  int? getCharacterInitiative(String characterId) {
+    return _initiativeValues[_charKey(characterId)];
+  }
+
+  /// Holt Initiative für ein Monster
+  int? getMonsterInitiative(String monsterId) {
+    return _initiativeValues[_monsterKey(monsterId)];
+  }
+
+  /// Setzt Initiative für einen Character
+  void setCharacterInitiative(String characterId, int value) {
+    _initiativeValues[_charKey(characterId)] = value;
+    notifyListeners();
+  }
+
+  /// Setzt Initiative für ein Monster
+  void setMonsterInitiative(String monsterId, int value) {
+    _initiativeValues[_monsterKey(monsterId)] = value;
+    notifyListeners();
+  }
+
+  /// Würfelt Initiative für einen einzelnen Character (d20)
+  int rollInitiativeForCharacter(String characterId) {
+    final roll = _random.nextInt(20) + 1;
+    setCharacterInitiative(characterId, roll);
+    return roll;
+  }
+
+  /// Würfelt Initiative für ein einzelnes Monster (d20)
+  int rollInitiativeForMonster(String monsterId) {
+    final roll = _random.nextInt(20) + 1;
+    setMonsterInitiative(monsterId, roll);
+    return roll;
+  }
+
+  /// Würfelt Initiative für alle ausgewählten Teilnehmer
+  void rollInitiativeForAll() {
+    for (final characterId in _selectedCharacterIds) {
+      final roll = _random.nextInt(20) + 1;
+      _initiativeValues[_charKey(characterId)] = roll;
+    }
+    for (final monsterId in _selectedMonsterIds) {
+      final roll = _random.nextInt(20) + 1;
+      _initiativeValues[_monsterKey(monsterId)] = roll;
+    }
+    notifyListeners();
+  }
+
+  /// Setzt alle Initiative-Werte zurück
+  void clearAllInitiatives() {
+    _initiativeValues.clear();
+    notifyListeners();
+  }
+
+  /// Gibt eine nach Initiative sortierte Liste aller Teilnehmer zurück
+  /// Returns List of Maps mit: {'id': String, 'name': String, 'type': String ('character' oder 'monster'), 'initiative': int}
+  List<Map<String, dynamic>> getSortedParticipantsByInitiative() {
+    final participants = <Map<String, dynamic>>[];
+    
+    // Characters hinzufügen
+    for (final character in selectedCharacters) {
+      final initiative = _initiativeValues[_charKey(character.id)];
+      participants.add({
+        'id': character.id,
+        'name': character.name,
+        'type': 'character',
+        'initiative': initiative ?? 0,
+        'initiativeSet': initiative != null,
+      });
+    }
+    
+    // Monster hinzufügen
+    for (final monster in selectedMonsters) {
+      final initiative = _initiativeValues[_monsterKey(monster.id)];
+      participants.add({
+        'id': monster.id,
+        'name': monster.name,
+        'type': 'monster',
+        'initiative': initiative ?? 0,
+        'initiativeSet': initiative != null,
+      });
+    }
+    
+    // Nach Initiative sortieren (höchste zuerst)
+    participants.sort((a, b) => (b['initiative'] as int).compareTo(a['initiative'] as int));
+    
+    return participants;
+  }
+
+  /// Gibt die Initiative-Werte als Map zurück (für Übergabe an Tracker)
+  /// Key ist die ID, Value ist die Initiative
+  Map<String, int> getInitiativeMapForTracker() {
+    return Map.from(_initiativeValues);
+  }
+
+  /// Prüft ob alle Teilnehmer Initiative-Werte haben
+  bool get allHaveInitiative {
+    for (final characterId in _selectedCharacterIds) {
+      if (!_initiativeValues.containsKey(_charKey(characterId))) {
+        return false;
+      }
+    }
+    for (final monsterId in _selectedMonsterIds) {
+      if (!_initiativeValues.containsKey(_monsterKey(monsterId))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// Entfernt Initiative wenn Character entfernt wird
+  void removeCharacterWithInitiative(String characterId) {
+    _selectedCharacterIds.remove(characterId);
+    _initiativeValues.remove(_charKey(characterId));
+    notifyListeners();
+  }
+
+  /// Entfernt Initiative wenn Monster entfernt wird
+  void removeMonsterWithInitiative(String monsterId) {
+    _selectedMonsterIds.remove(monsterId);
+    _initiativeValues.remove(_monsterKey(monsterId));
+    notifyListeners();
+  }
+
   // ===== ENCOUNTER ERSTELLEN =====
 
   /// Erstellt und speichert einen neuen Encounter
@@ -286,6 +424,7 @@ class EncounterPlanningViewModel extends ChangeNotifier {
           type: ParticipantType.enemy,
           currentHp: monster.maxHp,
           maxHp: monster.maxHp,
+          creatureId: monster.id, // WICHTIG: Referenz zum ursprünglichen Monster speichern
         );
 
         final savedParticipant = await _participantRepo.create(participant);

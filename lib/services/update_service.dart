@@ -64,7 +64,7 @@ class UpdateService {
   UpdateService._internal();
 
   /// Aktuelle App-Version aus pubspec.yaml
-  static const String currentVersionString = '1.0.3';
+  static const String currentVersionString = '1.0.6';
 
   /// Status-Controller für UI-Updates
   final _statusController = StreamController<UpdateStatus>.broadcast();
@@ -150,6 +150,7 @@ class UpdateService {
     try {
       final tagName = data['tag_name'] as String;
       final version = AppVersion.parseVersionFromTag(tagName);
+      final body = data['body'] as String? ?? '';
       
       // Finde die passende Download-URL für die aktuelle Plattform
       final assets = data['assets'] as List<dynamic>;
@@ -179,7 +180,7 @@ class UpdateService {
       return AppVersion(
         version: version,
         tagName: tagName,
-        releaseNotes: data['body'] as String? ?? '',
+        releaseNotes: body,
         downloadUrl: downloadUrl ?? '',
         publishedAt: DateTime.parse(data['published_at'] as String),
         isPrerelease: data['prerelease'] as bool? ?? false,

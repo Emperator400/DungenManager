@@ -26,6 +26,7 @@ class EncounterParticipant {
   final List<String> conditions;
   final String? notes;
   final String? characterId; // Für Player-Typen
+  final String? creatureId;  // Für Monster/Gegner - Referenz zum ursprünglichen Monster
 
   /// Gibt den Tabellennamen für die Datenbank zurück
   static String get tableName => 'encounter_participants';
@@ -40,6 +41,7 @@ class EncounterParticipant {
     this.conditions = const [],
     this.notes,
     this.characterId,
+    this.creatureId,
   }) : id = id ?? UuidService().generateId();
 
   /// Factory für Datenbank-Map mit sicherem Parsing
@@ -62,6 +64,7 @@ class EncounterParticipant {
       conditions: StringListParser.parseStringList(ModelParsingHelper.safeStringOrNull(map, 'conditions', null)),
       notes: ModelParsingHelper.safeStringOrNull(map, 'notes', null),
       characterId: ModelParsingHelper.safeStringOrNull(map, 'character_id', null),
+      creatureId: ModelParsingHelper.safeStringOrNull(map, 'creature_id', null),
     );
   }
 
@@ -82,6 +85,7 @@ class EncounterParticipant {
       'conditions': conditions.isNotEmpty ? conditions.join(',') : null,
       'notes': notes,
       'character_id': characterId,
+      'creature_id': creatureId,
     };
   }
 
@@ -96,6 +100,7 @@ class EncounterParticipant {
     List<String>? conditions,
     String? notes,
     String? characterId,
+    String? creatureId,
   }) {
     return EncounterParticipant(
       id: id ?? this.id,
@@ -107,6 +112,7 @@ class EncounterParticipant {
       conditions: conditions ?? this.conditions,
       notes: notes ?? this.notes,
       characterId: characterId ?? this.characterId,
+      creatureId: creatureId ?? this.creatureId,
     );
   }
 

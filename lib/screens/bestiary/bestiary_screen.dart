@@ -860,9 +860,12 @@ class _BestiaryScreenState extends State<BestiaryScreen>
   }
 
   void _showDeleteConfirmation(Creature creature) {
+    // ScaffoldMessenger vor dem Dialog speichern
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    
     showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: DnDTheme.stoneGrey,
         title: Text(
           'Kreatur löschen',
@@ -877,7 +880,7 @@ class _BestiaryScreenState extends State<BestiaryScreen>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text(
               'Abbrechen',
               style: DnDTheme.bodyText1.copyWith(
@@ -887,11 +890,11 @@ class _BestiaryScreenState extends State<BestiaryScreen>
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               try {
                 await _viewModel.deleteCreature(creature.id.toString());
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  scaffoldMessenger.showSnackBar(
                     SnackBar(
                       content: Text('${creature.name} wurde gelöscht'),
                       backgroundColor: DnDTheme.successGreen,
@@ -900,7 +903,7 @@ class _BestiaryScreenState extends State<BestiaryScreen>
                 }
               } catch (e) {
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  scaffoldMessenger.showSnackBar(
                     SnackBar(
                       content: Text('Fehler beim Löschen: $e'),
                       backgroundColor: DnDTheme.errorRed,

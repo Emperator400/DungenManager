@@ -44,6 +44,9 @@ class DatabaseMigration {
     // Quests Tabelle (für Quest-Management)
     await _createQuestsTable(db);
     
+    // Creatures Tabelle (für Bestiarium/Monster)
+    await _createCreaturesTable(db);
+    
     // Migration v10 -> v11: Scene als Hauptsäule
     await _migrateToV11(db);
     
@@ -73,6 +76,9 @@ class DatabaseMigration {
   
   // Stelle sicher, dass encounter_participants die richtigen Spalten hat
   await _ensureEncounterParticipantsColumns(db);
+  
+  // Füge creature_id Spalte zu encounter_participants hinzu (für Loot-Verteilung)
+  await _addCreatureIdColumn(db);
   
   print('Database migration completed successfully');
   }
@@ -298,6 +304,71 @@ class DatabaseMigration {
       print('Created quests table with indexes');
     } else {
       print('Quests table already exists');
+    }
+  }
+
+  /// Erstellt die Creatures-Tabelle (für Bestiarium/Monster)
+  Future<void> _createCreaturesTable(Database db) async {
+    final result = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='creatures'",
+    );
+
+    if (result.isEmpty) {
+      await db.execute('''
+        CREATE TABLE creatures (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          max_hp INTEGER NOT NULL DEFAULT 0,
+          current_hp INTEGER NOT NULL DEFAULT 0,
+          armor_class INTEGER NOT NULL DEFAULT 10,
+          speed TEXT DEFAULT '30ft',
+          attacks TEXT DEFAULT '',
+          initiative_bonus INTEGER NOT NULL DEFAULT 0,
+          strength INTEGER NOT NULL DEFAULT 10,
+          dexterity INTEGER NOT NULL DEFAULT 10,
+          constitution INTEGER NOT NULL DEFAULT 10,
+          intelligence INTEGER NOT NULL DEFAULT 10,
+          wisdom INTEGER NOT NULL DEFAULT 10,
+          charisma INTEGER NOT NULL DEFAULT 10,
+          is_player INTEGER NOT NULL DEFAULT 0,
+          gold REAL DEFAULT 0.0,
+          silver REAL DEFAULT 0.0,
+          copper REAL DEFAULT 0.0,
+          official_monster_id TEXT,
+          official_spell_ids TEXT,
+          official_item_ids TEXT,
+          size TEXT,
+          type TEXT,
+          subtype TEXT,
+          alignment TEXT,
+          challenge_rating INTEGER,
+          special_abilities TEXT,
+          legendary_actions TEXT,
+          is_custom INTEGER NOT NULL DEFAULT 1,
+          description TEXT,
+          attack_list TEXT DEFAULT '[]',
+          inventory TEXT DEFAULT '[]',
+          source_type TEXT DEFAULT 'custom',
+          source_id TEXT,
+          is_favorite INTEGER NOT NULL DEFAULT 0,
+          version TEXT DEFAULT '1.0',
+          initiative INTEGER,
+          conditions TEXT DEFAULT '',
+          campaign_id TEXT
+        )
+      ''');
+
+      // Erstelle Indizes
+      await db.execute('CREATE INDEX idx_creatures_name ON creatures(name)');
+      await db.execute('CREATE INDEX idx_creatures_type ON creatures(type)');
+      await db.execute('CREATE INDEX idx_creatures_is_player ON creatures(is_player)');
+      await db.execute('CREATE INDEX idx_creatures_source_type ON creatures(source_type)');
+      await db.execute('CREATE INDEX idx_creatures_challenge_rating ON creatures(challenge_rating)');
+      await db.execute('CREATE INDEX idx_creatures_campaign_id ON creatures(campaign_id)');
+
+      print('Created creatures table with indexes');
+    } else {
+      print('Creatures table already exists');
     }
   }
   
@@ -1154,6 +1225,36 @@ class DatabaseMigration {
       print('Successfully recreated encounter_participants table');
     } catch (e) {
       print('Error recreating encounter_participants table: $e');
+    }
+  }
+
+  /// Fügt die creature_id Spalte zu encounter_participants hinzu (für Loot-Verteilung)
+  Future<void> _addCreatureIdColumn(Database db) async {
+    try {
+      // Prüfe ob Tabelle existiert
+      final tableExists = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='encounter_participants'",
+      );
+      
+      if (tableExists.isEmpty) {
+        print('Note: encounter_participants table does not exist yet');
+        return;
+      }
+      
+      // Prüfe ob Spalte bereits existiert
+      final tableInfo = await db.rawQuery('PRAGMA table_info(encounter_participants)');
+      final hasCreatureId = tableInfo.any((column) => column['name'] == 'creature_id');
+      
+      if (!hasCreatureId) {
+        await db.execute(
+          'ALTER TABLE encounter_participants ADD COLUMN creature_id TEXT',
+        );
+        print('Added creature_id column to encounter_participants table');
+      } else {
+        print('creature_id column already exists in encounter_participants table');
+      }
+    } catch (e) {
+      print('Error adding creature_id column: $e');
     }
   }
 }

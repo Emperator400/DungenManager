@@ -4,9 +4,11 @@ import '../models/campaign.dart';
 import '../models/session.dart';
 import '../models/scene.dart';
 import '../models/sound.dart';
+import '../models/wiki_entry.dart';
 import '../database/repositories/session_model_repository.dart';
 import '../database/repositories/scene_model_repository.dart';
 import '../database/repositories/sound_model_repository.dart';
+import '../database/repositories/wiki_entry_model_repository.dart';
 import '../database/core/database_connection.dart';
 import '../services/scene_service.dart';
 import '../services/sound_service.dart';
@@ -22,6 +24,7 @@ class ActiveSessionViewModel extends ChangeNotifier {
   final SceneService _sceneService;
   final SoundModelRepository _soundRepository;
   final SoundService _soundService;
+  final WikiEntryModelRepository _wikiRepository;
 
   // ============================================================================
   // STATE VARIABLES
@@ -31,6 +34,9 @@ class ActiveSessionViewModel extends ChangeNotifier {
   Session _currentSession;
   Campaign _campaign;
   List<Scene> _scenes = [];
+
+  // Wiki Cache für schnellen Zugriff
+  final Map<String, WikiEntry> _wikiCache = {};
 
   // Loading States
   bool _isLoading = false;
@@ -61,13 +67,15 @@ class ActiveSessionViewModel extends ChangeNotifier {
     SceneService? sceneService,
     SoundModelRepository? soundRepository,
     SoundService? soundService,
+    WikiEntryModelRepository? wikiRepository,
   }) : _currentSession = session,
        _campaign = campaign,
        _sessionRepository = sessionRepository ?? SessionModelRepository(DatabaseConnection.instance),
        _sceneRepository = sceneRepository ?? SceneModelRepository(DatabaseConnection.instance),
        _sceneService = sceneService ?? SceneService(DatabaseConnection.instance),
        _soundRepository = soundRepository ?? SoundModelRepository(DatabaseConnection.instance),
-       _soundService = soundService ?? SoundService() {
+       _soundService = soundService ?? SoundService(),
+       _wikiRepository = wikiRepository ?? WikiEntryModelRepository(DatabaseConnection.instance) {
     // Lade Scenes beim Initialisieren
     _loadScenes();
   }
@@ -461,11 +469,62 @@ class ActiveSessionViewModel extends ChangeNotifier {
   }
 
   // ============================================================================
+  // WIKI ENTRY OPERATIONS
+  // ============================================================================
+
+  /// Lädt einen Wiki-Eintrag per ID (mit Caching)
+  Future<WikiEntry?> getWikiEntryById(String id) async {
+    // Prüfe Cache zuerst
+    if (_wikiCache.containsKey(id)) {
+      return _wikiCache[id];
+    }
+
+    try {
+      final entry = await _wikiRepository.findById(id);
+      if (entry != null) {
+        _wikiCache[id] = entry;
+      }
+      return entry;
+    } catch (e) {
+      print('Fehler beim Laden des Wiki-Eintrags: $e');
+      return null;
+    }
+  }
+
+  /// Lädt mehrere Wiki-Einträge per IDs (mit Caching)
+  Future<List<WikiEntry>> getWikiEntriesByIds(List<String> ids) async {
+    final entries = <WikiEntry>[];
+    
+    for (final id in ids) {
+      final entry = await getWikiEntryById(id);
+      if (entry != null) {
+        entries.add(entry);
+      }
+    }
+    
+    return entries;
+  }
+
+  /// Lädt alle Wiki-Einträge für eine Szene
+  Future<List<WikiEntry>> getWikiEntriesForScene(Scene scene) async {
+    if (scene.linkedWikiEntryIds.isEmpty) {
+      return [];
+    }
+    return await getWikiEntriesByIds(scene.linkedWikiEntryIds);
+  }
+
+  /// Löscht den Wiki-Cache
+  void clearWikiCache() {
+    _wikiCache.clear();
+  }
+
+  // ============================================================================
   // DISPOSE
   // ============================================================================
 
   @override
   void dispose() {
+    _wikiCache.clear();
     super.dispose();
   }
 }
