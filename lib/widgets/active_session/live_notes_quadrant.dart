@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../theme/dnd_theme.dart';
 import '../../viewmodels/active_session_viewmodel.dart';
 import 'session_quadrant_base.dart';
+import '../ui_components/feedback/snackbar_helper.dart';
 
 /// Live-Notizen-Quadrant - Ermöglicht schnelle Notizen während der Session
 /// 
@@ -139,12 +140,9 @@ class _LiveNotesQuadrantState extends State<LiveNotesQuadrant> {
         });
         
         // Fehler-Feedback anzeigen
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fehler beim Speichern der Notizen: $e'),
-            backgroundColor: DnDTheme.errorRed,
-            duration: const Duration(seconds: 3),
-          ),
+        SnackBarHelper.showError(
+          context,
+          'Fehler beim Speichern der Notizen: $e',
         );
       }
     }

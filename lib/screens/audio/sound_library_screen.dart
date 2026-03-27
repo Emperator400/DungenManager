@@ -6,7 +6,7 @@ import '../../viewmodels/edit_sound_viewmodel.dart';
 import '../../models/sound.dart';
 import '../../theme/dnd_theme.dart';
 import '../../widgets/sound_scenes_tab.dart';
-import '../../widgets/audio/sound_player_widget.dart';
+import '../../widgets/audio/sound_mixer_widget.dart';
 import 'edit_sound_screen.dart';
 
 /// Enhanced Sound Library Screen mit Provider-Pattern und modernem D&D Design
@@ -768,11 +768,29 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen>
               
               const SizedBox(height: DnDTheme.md),
               
-              // Sound Player Widget
-              SoundPlayerWidget(
-                sound: sound,
-                showCloseButton: true,
-                onClose: () => Navigator.of(context).pop(),
+              // Sound Mixer Widget mit playerPreview-Konfiguration
+              // keepAlive: true damit der Sound weiterläuft nach Schließen des BottomSheets
+              SoundMixerWidget(
+                initialSounds: [sound],
+                config: SoundMixerConfig.playerPreview,
+                keepAlive: true,
+              ),
+              
+              const SizedBox(height: DnDTheme.md),
+              
+              // Close Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close, size: 16),
+                  label: const Text('Schließen'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: DnDTheme.stoneGrey,
+                    foregroundColor: Colors.white70,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                ),
               ),
               
               const SizedBox(height: DnDTheme.lg),

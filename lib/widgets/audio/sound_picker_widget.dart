@@ -4,6 +4,10 @@ import '../../models/sound.dart';
 import '../../viewmodels/sound_library_viewmodel.dart';
 import '../../theme/dnd_theme.dart';
 import '../../services/sound_service.dart';
+import '../ui_components/states/loading_state_widget.dart';
+import '../ui_components/states/empty_state_widget.dart';
+import '../ui_components/filter/unified_filter_chip.dart';
+import '../ui_components/chips/unified_info_chip.dart';
 
 /// Sound Picker Widget zum Auswählen mehrerer Sounds
 /// 
@@ -65,15 +69,15 @@ class _SoundPickerWidgetState extends State<SoundPickerWidget> {
             child: Consumer<SoundLibraryViewModel>(
               builder: (context, viewModel, child) {
                 if (viewModel.isLoadingSounds) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      color: DnDTheme.ancientGold,
-                    ),
-                  );
+                  return LoadingStateWidget.standard(color: DnDTheme.ancientGold);
                 }
 
                 if (viewModel.sounds.isEmpty) {
-                  return _buildEmptyState();
+                  return EmptyStateWidget.minimal(
+                    title: 'Keine Sounds gefunden',
+                    icon: Icons.music_note,
+                    iconColor: DnDTheme.mysticalPurple,
+                  );
                 }
 
                 return ListView.builder(
@@ -129,25 +133,10 @@ class _SoundPickerWidgetState extends State<SoundPickerWidget> {
             ),
           ),
           const Spacer(),
-          Consumer<SoundLibraryViewModel>(
-            builder: (context, viewModel, child) {
-              return Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: DnDTheme.sm,
-                  vertical: DnDTheme.xs,
-                ),
-                decoration: BoxDecoration(
-                  color: DnDTheme.mysticalPurple.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                ),
-                child: Text(
-                  '${_selectedSoundIds.length} ausgewählt',
-                  style: DnDTheme.bodyText2.copyWith(
-                    color: Colors.white,
-                  ),
-                ),
-              );
-            },
+          UnifiedInfoChip.count(
+            label: 'ausgewählt',
+            count: _selectedSoundIds.length,
+            color: DnDTheme.mysticalPurple,
           ),
         ],
       ),
@@ -241,36 +230,20 @@ class _SoundPickerWidgetState extends State<SoundPickerWidget> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                FilterChip(
-                  label: Text(
-                    'Alle',
-                    style: DnDTheme.bodyText2.copyWith(
-                      color: viewModel.selectedSoundType == null 
-                          ? Colors.white 
-                          : Colors.white70,
-                    ),
-                  ),
-                  backgroundColor: viewModel.selectedSoundType == null
-                      ? DnDTheme.ancientGold
-                      : DnDTheme.slateGrey,
-                  selected: viewModel.selectedSoundType == null,
+                UnifiedFilterChip<String>(
+                  value: 'all',
+                  label: 'Alle',
+                  isSelected: viewModel.selectedSoundType == null,
+                  selectedColor: DnDTheme.ancientGold,
                   onSelected: (_) => viewModel.setSoundTypeFilter(null),
                 ),
                 ...SoundType.values.map((type) => Padding(
                   padding: const EdgeInsets.only(left: DnDTheme.xs),
-                  child: FilterChip(
-                    label: Text(
-                      type.displayName,
-                      style: DnDTheme.bodyText2.copyWith(
-                        color: viewModel.selectedSoundType == type 
-                            ? Colors.white 
-                            : Colors.white70,
-                      ),
-                    ),
-                    backgroundColor: viewModel.selectedSoundType == type
-                        ? DnDTheme.ancientGold
-                        : DnDTheme.slateGrey,
-                    selected: viewModel.selectedSoundType == type,
+                  child: UnifiedFilterChip<String>(
+                    value: type.name,
+                    label: type.displayName,
+                    isSelected: viewModel.selectedSoundType == type,
+                    selectedColor: DnDTheme.ancientGold,
                     onSelected: (_) => viewModel.setSoundTypeFilter(type),
                   ),
                 )),
@@ -351,38 +324,6 @@ class _SoundPickerWidgetState extends State<SoundPickerWidget> {
               ),
               onPressed: () => _toggleSoundPlayback(sound),
               tooltip: 'Anhören',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(DnDTheme.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.music_note,
-              color: DnDTheme.mysticalPurple,
-              size: 48,
-            ),
-            const SizedBox(height: DnDTheme.md),
-            Text(
-              'Keine Sounds gefunden',
-              style: DnDTheme.headline3.copyWith(
-                color: DnDTheme.mysticalPurple,
-              ),
-            ),
-            const SizedBox(height: DnDTheme.sm),
-            Text(
-              'Versuche es mit anderen Filtern',
-              style: DnDTheme.bodyText2.copyWith(
-                color: Colors.white70,
-              ),
             ),
           ],
         ),

@@ -14,13 +14,13 @@ import '../../models/scene.dart';
 import '../../models/session.dart';
 import '../../models/sound.dart';
 import '../../models/wiki_entry.dart';
+import '../../services/sound_service.dart';
 import '../../theme/dnd_theme.dart';
 import '../../viewmodels/active_session_viewmodel.dart';
 import '../../viewmodels/edit_scene_viewmodel.dart';
 import '../../widgets/active_session/atmosphere_quadrant.dart';
 import '../../widgets/active_session/live_notes_quadrant.dart';
 import '../../widgets/active_session/quest_list_section.dart';
-import '../../widgets/audio/sound_player_widget.dart';
 import '../../widgets/lore_keeper/wiki_entry_popup_dialog.dart';
 import '../scenes/edit_scene_screen.dart';
 import 'encounter_setup_screen.dart' as encounter_setup;
@@ -887,7 +887,8 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     }
   }
 
-  /// Baut eine Reihe mit verknüpften Sounds mit voller Playback-Steuerung
+  /// Baut eine Reihe mit verknüpften Sounds mit Play-Buttons
+  /// Verwendet den einfachen SoundService (kein Multi-Channel)
   Widget _buildLinkedSoundsRow(Scene scene) {
     if (scene.linkedSoundIds.isEmpty) {
       return const SizedBox.shrink();
@@ -927,20 +928,158 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
         }
 
         final linkedSounds = snapshot.data!;
-        return Column(
-          children: linkedSounds.map((sound) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: SoundPlayerWidget(
-                sound: sound,
-                compactMode: true,
-                showCloseButton: false,
+        
+        // Sound-Liste mit Play-Buttons
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: DnDTheme.arcaneBlue.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+            border: Border.all(
+              color: DnDTheme.arcaneBlue.withValues(alpha: 0.3),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.music_note,
+                    color: DnDTheme.arcaneBlue,
+                    size: 14,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${linkedSounds.length} Sound${linkedSounds.length > 1 ? 's' : ''} verknüpft',
+                    style: DnDTheme.bodyText2.copyWith(
+                      color: Colors.white70,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
               ),
-            );
-          }).toList(),
+              const SizedBox(height: 6),
+              // Sound-Liste mit Play-Buttons
+              Column(
+                children: linkedSounds.map((sound) {
+                  return _buildSoundItem(sound);
+                }).toList(),
+              ),
+            ],
+          ),
         );
       },
     );
+  }
+
+  /// Baut ein einzelnes Sound-Item mit Play-Button
+  Widget _buildSoundItem(Sound sound) {
+    final isAmbiente = sound.soundType == SoundType.Ambiente;
+    final color = isAmbiente ? DnDTheme.arcaneBlue : DnDTheme.successGreen;
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          // Play-Button
+          GestureDetector(
+            onTap: () => _playSound(sound),
+            child: Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                border: Border.all(
+                  color: color.withValues(alpha: 0.5),
+                  width: 1,
+                ),
+              ),
+              child: Icon(
+                Icons.play_arrow,
+                color: color,
+                size: 18,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Sound-Info
+          Expanded(
+            child: Row(
+              children: [
+                Icon(
+                  isAmbiente ? Icons.waves : Icons.speaker,
+                  color: color,
+                  size: 14,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    sound.name,
+                    style: DnDTheme.bodyText2.copyWith(
+                      color: Colors.white,
+                      fontSize: 11,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Stop-Button
+          GestureDetector(
+            onTap: _stopSound,
+            child: Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: DnDTheme.errorRed.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                border: Border.all(
+                  color: DnDTheme.errorRed.withValues(alpha: 0.4),
+                  width: 1,
+                ),
+              ),
+              child: const Icon(
+                Icons.stop,
+                color: DnDTheme.errorRed,
+                size: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Spielt einen Sound ab
+  Future<void> _playSound(Sound sound) async {
+    try {
+      await SoundService.playSound(sound.filePath);
+    } catch (e) {
+      debugPrint('Fehler beim Abspielen: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Fehler beim Abspielen: ${sound.name}'),
+            backgroundColor: DnDTheme.errorRed,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Stoppt die Sound-Wiedergabe
+  Future<void> _stopSound() async {
+    try {
+      await SoundService.stopSound();
+    } catch (e) {
+      debugPrint('Fehler beim Stoppen: $e');
+    }
   }
 
   /// Lädt die Details der verknüpften Sounds

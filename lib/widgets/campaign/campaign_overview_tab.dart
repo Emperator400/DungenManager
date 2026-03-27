@@ -1,11 +1,11 @@
-// lib/widgets/campaign_overview_tab.dart
+// lib/widgets/campaign/campaign_overview_tab.dart
 import 'package:flutter/material.dart';
-import '../models/campaign.dart';
-import '../screens/bestiary/bestiary_screen.dart';
-import '../screens/lore/lore_keeper_screen.dart';
-import '../screens/quests/quest_library_screen.dart';
-import '../screens/items/item_library_screen.dart';
-import '../screens/audio/sound_library_screen.dart';
+import '../../models/campaign.dart';
+import '../../screens/bestiary/bestiary_screen.dart';
+import '../../screens/lore/lore_keeper_screen.dart';
+import '../../screens/quests/quest_library_screen.dart';
+import '../../screens/items/item_library_screen.dart';
+import '../../screens/audio/sound_library_screen.dart';
 
 
 class CampaignOverviewTab extends StatelessWidget {

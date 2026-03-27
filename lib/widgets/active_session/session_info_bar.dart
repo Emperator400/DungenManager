@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../theme/dnd_theme.dart';
 import '../../models/campaign.dart';
 import '../../models/session.dart';
+import '../ui_components/chips/unified_info_chip.dart';
 
 /// Zeigt Session-Informationen oben im Screen an
 /// Zeigt Kampagne-Name, Session-Laufzeit und Aktiv-Status
@@ -74,40 +75,9 @@ class SessionInfoBar extends StatelessWidget {
             ),
           ),
           // Status Badge
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 6,
-              vertical: 2,
-            ),
-            decoration: BoxDecoration(
-              gradient: DnDTheme.getMysticalGradient(
-                startColor: DnDTheme.arcaneBlue,
-                endColor: DnDTheme.mysticalPurple,
-              ),
-              borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-              border: Border.all(
-                color: DnDTheme.ancientGold.withValues(alpha: 0.5),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.timer,
-                  color: Colors.white,
-                  size: 12,
-                ),
-                const SizedBox(width: DnDTheme.xs),
-                Text(
-                  'Aktiv',
-                  style: DnDTheme.bodyText2.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 9,
-                  ),
-                ),
-              ],
-            ),
+          UnifiedInfoChip.status(
+            status: 'Aktiv',
+            icon: Icons.timer,
           ),
         ],
       ),

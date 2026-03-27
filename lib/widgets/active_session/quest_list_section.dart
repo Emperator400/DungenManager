@@ -3,6 +3,12 @@ import '../../models/quest.dart';
 import '../../theme/dnd_theme.dart';
 import '../../database/repositories/quest_model_repository.dart';
 import '../../database/core/database_connection.dart';
+import '../ui_components/states/loading_state_widget.dart';
+import '../ui_components/states/error_state_widget.dart';
+import '../ui_components/states/empty_state_widget.dart';
+import '../ui_components/filter/unified_filter_chip.dart';
+import '../ui_components/chips/unified_info_chip.dart';
+import '../ui_components/feedback/snackbar_helper.dart';
 
 /// Quest-Liste für die aktive Session
 /// 
@@ -95,37 +101,16 @@ class _QuestListSectionState extends State<QuestListSection> {
       widget.onQuestUpdated?.call();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(
-                  _getQuestStatusIcon(newStatus),
-                  color: Colors.white,
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '"${quest.title}" als ${_getQuestStatusText(newStatus)} markiert',
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: _getQuestStatusColor(newStatus),
-            duration: const Duration(seconds: 2),
-          ),
+        SnackBarHelper.showInfo(
+          context,
+          '"${quest.title}" als ${_getQuestStatusText(newStatus)} markiert',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fehler beim Aktualisieren: $e'),
-            backgroundColor: DnDTheme.errorRed,
-            duration: const Duration(seconds: 2),
-          ),
+        SnackBarHelper.showError(
+          context,
+          'Fehler beim Aktualisieren: $e',
         );
       }
     }
@@ -190,34 +175,10 @@ class _QuestListSectionState extends State<QuestListSection> {
   }
 
   Widget _buildStatusBadge(String label, int count, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '$count',
-            style: DnDTheme.bodyText2.copyWith(
-              color: color,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: DnDTheme.bodyText2.copyWith(
-              color: Colors.white70,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
+    return UnifiedInfoChip.count(
+      label: label,
+      count: count,
+      color: color,
     );
   }
 
@@ -228,64 +189,39 @@ class _QuestListSectionState extends State<QuestListSection> {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            _buildFilterChip(null, 'Alle', _quests.length),
-            const SizedBox(width: 8),
-            _buildFilterChip(QuestStatus.active, 'Aktiv', 
-                _quests.where((q) => q.status == QuestStatus.active).length),
-            const SizedBox(width: 8),
-            _buildFilterChip(QuestStatus.completed, 'Abgeschlossen',
-                _quests.where((q) => q.status == QuestStatus.completed).length),
-            const SizedBox(width: 8),
-            _buildFilterChip(QuestStatus.abandoned, 'Aufgegeben',
-                _quests.where((q) => q.status == QuestStatus.abandoned).length),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(QuestStatus? status, String label, int count) {
-    final isSelected = _selectedFilter == status;
-    
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedFilter = isSelected ? null : status;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected 
-              ? DnDTheme.mysticalPurple.withValues(alpha: 0.5)
-              : DnDTheme.slateGrey.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected 
-                ? DnDTheme.mysticalPurple 
-                : Colors.white24,
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: DnDTheme.bodyText1.copyWith(
-                color: isSelected ? Colors.white : Colors.white70,
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
+            UnifiedFilterChip<String>(
+              value: 'all',
+              label: 'Alle (${_quests.length})',
+              isSelected: _selectedFilter == null,
+              selectedColor: DnDTheme.mysticalPurple,
+              onSelected: (_) => setState(() => _selectedFilter = null),
             ),
-            const SizedBox(width: 6),
-            Text(
-              '($count)',
-              style: DnDTheme.bodyText1.copyWith(
-                color: isSelected ? DnDTheme.ancientGold : Colors.white54,
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
+            const SizedBox(width: 8),
+            UnifiedFilterChip<String>(
+              value: 'active',
+              label: 'Aktiv (${_quests.where((q) => q.status == QuestStatus.active).length})',
+              icon: Icons.flag,
+              isSelected: _selectedFilter == QuestStatus.active,
+              selectedColor: DnDTheme.ancientGold,
+              onSelected: (_) => setState(() => _selectedFilter = QuestStatus.active),
+            ),
+            const SizedBox(width: 8),
+            UnifiedFilterChip<String>(
+              value: 'completed',
+              label: 'Abgeschlossen (${_quests.where((q) => q.status == QuestStatus.completed).length})',
+              icon: Icons.check_circle,
+              isSelected: _selectedFilter == QuestStatus.completed,
+              selectedColor: DnDTheme.successGreen,
+              onSelected: (_) => setState(() => _selectedFilter = QuestStatus.completed),
+            ),
+            const SizedBox(width: 8),
+            UnifiedFilterChip<String>(
+              value: 'abandoned',
+              label: 'Aufgegeben (${_quests.where((q) => q.status == QuestStatus.abandoned).length})',
+              icon: Icons.remove_circle,
+              isSelected: _selectedFilter == QuestStatus.abandoned,
+              selectedColor: Colors.orange,
+              onSelected: (_) => setState(() => _selectedFilter = QuestStatus.abandoned),
             ),
           ],
         ),
@@ -295,65 +231,27 @@ class _QuestListSectionState extends State<QuestListSection> {
 
   Widget _buildContent() {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(
-          color: DnDTheme.mysticalPurple,
-        ),
-      );
+      return LoadingStateWidget.standard(color: DnDTheme.mysticalPurple);
     }
 
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, color: DnDTheme.errorRed, size: 32),
-            const SizedBox(height: 8),
-            Text(
-              'Fehler beim Laden',
-              style: DnDTheme.bodyText2.copyWith(color: DnDTheme.errorRed),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton.icon(
-              onPressed: _loadQuests,
-              icon: const Icon(Icons.refresh, size: 16),
-              label: const Text('Erneut versuchen'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: DnDTheme.arcaneBlue,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
+      return ErrorStateWidget.withRetry(
+        title: 'Fehler beim Laden',
+        message: _error,
+        onRetry: _loadQuests,
+        iconColor: DnDTheme.errorRed,
       );
     }
 
     final filteredQuests = _filteredQuests;
 
     if (filteredQuests.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.flag_outlined,
-              size: 32,
-              color: Colors.white38,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _selectedFilter == null 
-                  ? 'Keine Quests vorhanden'
-                  : 'Keine ${_getQuestStatusText(_selectedFilter!)}en Quests',
-              style: DnDTheme.bodyText2.copyWith(
-                color: Colors.white70,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
+      return EmptyStateWidget.minimal(
+        title: _selectedFilter == null 
+            ? 'Keine Quests vorhanden'
+            : 'Keine ${_getQuestStatusText(_selectedFilter!)}en Quests',
+        icon: Icons.flag_outlined,
+        iconColor: Colors.white38,
       );
     }
 

@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
-import '../database/core/database_connection.dart';
-import '../database/repositories/player_character_model_repository.dart';
-import '../models/campaign.dart';
-import '../models/player_character.dart';
-import '../screens/characters/edit_pc_screen.dart';
-import '../widgets/character_list/enhanced_hero_card_widget.dart';
-import '../widgets/character_list/character_list_helpers.dart';
-import '../theme/dnd_theme.dart';
+import '../../database/core/database_connection.dart';
+import '../../database/repositories/player_character_model_repository.dart';
+import '../../models/campaign.dart';
+import '../../models/player_character.dart';
+import '../../screens/characters/edit_pc_screen.dart';
+import '../character_list/enhanced_hero_card_widget.dart';
+import '../character_list/character_list_helpers.dart';
+import '../../theme/dnd_theme.dart';
 
 
 class CampaignHeroesTab extends StatefulWidget {

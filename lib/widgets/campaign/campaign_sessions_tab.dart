@@ -1,11 +1,11 @@
-// lib/widgets/campaign_sessions_tab.dart
+// lib/widgets/campaign/campaign_sessions_tab.dart
 import 'package:flutter/material.dart';
-import '../database/core/database_connection.dart';
-import '../database/repositories/session_model_repository.dart';
-import '../models/campaign.dart';
-import '../models/session.dart';
-import '../screens/session/edit_session_screen.dart';
-import '../screens/session/active_session_screen.dart';
+import '../../database/core/database_connection.dart';
+import '../../database/repositories/session_model_repository.dart';
+import '../../models/campaign.dart';
+import '../../models/session.dart';
+import '../../screens/session/edit_session_screen.dart';
+import '../../screens/session/active_session_screen.dart';
 
 class CampaignSessionsTab extends StatefulWidget {
   final Campaign campaign;

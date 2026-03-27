@@ -13,6 +13,7 @@ class SoundChannel {
   bool isPlaying;
   Duration currentPosition;
   Duration? totalDuration;
+  double playbackSpeed;
 
   SoundChannel({
     required this.id,
@@ -23,6 +24,7 @@ class SoundChannel {
     this.isPlaying = false,
     this.currentPosition = Duration.zero,
     this.totalDuration,
+    this.playbackSpeed = 1.0,
   });
 }
 
@@ -39,6 +41,9 @@ class MultiStreamSoundService extends ChangeNotifier {
   
   /// Master-Lautstärke (0.0 bis 1.0)
   double _masterVolume = 1.0;
+  
+  /// Flag ob der Service bereits disposed wurde
+  bool _isDisposed = false;
   
   /// Maximale Anzahl gleichzeitiger Sounds
   static const int maxChannels = 8;
@@ -113,26 +118,23 @@ class MultiStreamSoundService extends ChangeNotifier {
 
     // Player-Events überwachen
     player.onPlayerStateChanged.listen((state) {
-      if (_channels.containsKey(channelId)) {
-        _channels[channelId]!.isPlaying = state == PlayerState.playing;
-        notifyListeners();
-      }
+      if (_isDisposed || !_channels.containsKey(channelId)) return;
+      _channels[channelId]!.isPlaying = state == PlayerState.playing;
+      notifyListeners();
     });
 
     // Position-Updates überwachen
     player.onPositionChanged.listen((position) {
-      if (_channels.containsKey(channelId)) {
-        _channels[channelId]!.currentPosition = position;
-        notifyListeners();
-      }
+      if (_isDisposed || !_channels.containsKey(channelId)) return;
+      _channels[channelId]!.currentPosition = position;
+      notifyListeners();
     });
 
     // Dauer-Updates überwachen
     player.onDurationChanged.listen((duration) {
-      if (_channels.containsKey(channelId)) {
-        _channels[channelId]!.totalDuration = duration;
-        notifyListeners();
-      }
+      if (_isDisposed || !_channels.containsKey(channelId)) return;
+      _channels[channelId]!.totalDuration = duration;
+      notifyListeners();
     });
 
     // Auto-Play
@@ -209,6 +211,20 @@ class MultiStreamSoundService extends ChangeNotifier {
 
     channel.isLooping = isLooping;
     await channel.player.setReleaseMode(isLooping ? ReleaseMode.loop : ReleaseMode.release);
+    notifyListeners();
+  }
+
+  /// Setzt die Wiedergabegeschwindigkeit eines Kanals (0.5x bis 2.0x)
+  Future<void> setChannelSpeed(String channelId, double speed) async {
+    final channel = _channels[channelId];
+    if (channel == null) return;
+
+    // Speed auf gültigen Bereich begrenzen
+    final clampedSpeed = speed.clamp(0.5, 2.0);
+    channel.playbackSpeed = clampedSpeed;
+    
+    // Audioplayers verwendet setPlaybackRate für Geschwindigkeitsänderung
+    await channel.player.setPlaybackRate(clampedSpeed);
     notifyListeners();
   }
 
@@ -309,7 +325,13 @@ class MultiStreamSoundService extends ChangeNotifier {
 
   @override
   void dispose() {
-    clearAll();
+    _isDisposed = true;
+    // Erst alle Sounds stoppen ohne notifyListeners aufzurufen
+    for (final channel in _channels.values) {
+      channel.player.stop();
+      channel.player.dispose();
+    }
+    _channels.clear();
     super.dispose();
   }
 }

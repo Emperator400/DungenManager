@@ -1,13 +1,13 @@
-// lib/widgets/campaign_dnd_data_tab.dart
+// lib/widgets/campaign/campaign_dnd_data_tab.dart
 import 'package:flutter/material.dart';
-import '../database/core/database_connection.dart';
-import '../database/repositories/campaign_model_repository.dart';
-import '../database/repositories/creature_model_repository.dart';
-import '../models/campaign.dart';
-import '../models/official_monster.dart';
-import '../models/official_spell.dart';
-import '../models/creature.dart';
-import '../screens/bestiary/official_monsters_screen.dart';
+import '../../database/core/database_connection.dart';
+import '../../database/repositories/campaign_model_repository.dart';
+import '../../database/repositories/creature_model_repository.dart';
+import '../../models/campaign.dart';
+import '../../models/official_monster.dart';
+import '../../models/official_spell.dart';
+import '../../models/creature.dart';
+import '../../screens/bestiary/official_monsters_screen.dart';
 
 class CampaignDndDataTab extends StatefulWidget {
   final Campaign campaign;

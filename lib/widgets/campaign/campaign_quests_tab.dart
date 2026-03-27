@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../database/core/database_connection.dart';
-import '../database/repositories/quest_model_repository.dart';
-import '../models/campaign.dart';
-import '../models/quest.dart';
-import '../models/campaign_quest.dart';
-import '../screens/quests/add_quest_screen.dart';
-import '../screens/quests/edit_campaign_quest_screen.dart';
-import '../screens/quests/edit_quest_screen.dart';
-import '../viewmodels/edit_quest_viewmodel.dart';
-import '../theme/dnd_theme.dart';
+import '../../database/core/database_connection.dart';
+import '../../database/repositories/quest_model_repository.dart';
+import '../../models/campaign.dart';
+import '../../models/quest.dart';
+import '../../models/campaign_quest.dart';
+import '../../screens/quests/add_quest_screen.dart';
+import '../../screens/quests/edit_campaign_quest_screen.dart';
+import '../../screens/quests/edit_quest_screen.dart';
+import '../../viewmodels/edit_quest_viewmodel.dart';
+import '../../theme/dnd_theme.dart';
 
 class CampaignQuestsTab extends StatefulWidget {
   final Campaign campaign;

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/campaign.dart';
-import '../../widgets/campaign_quests_tab.dart';
+import '../../widgets/campaign/campaign_quests_tab.dart';
 import '../../theme/dnd_theme.dart';
 
 /// Screen zur Verwaltung von Quests innerhalb einer Kampagne

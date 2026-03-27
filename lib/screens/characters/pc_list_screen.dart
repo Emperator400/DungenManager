@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/campaign.dart';
 import '../../models/player_character.dart';
 import 'edit_pc_screen.dart';
-import '../../widgets/character_list/enhanced_hero_card_widget.dart';
+import '../../widgets/ui_components/cards/unified_hero_card.dart';
 import '../../widgets/character_list/character_list_helpers.dart';
 import '../../theme/dnd_theme.dart';
 import '../../viewmodels/character_editor_viewmodel.dart';
@@ -435,12 +435,13 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
         final pc = pcs[index];
         return Padding(
           padding: const EdgeInsets.only(bottom: DnDTheme.md),
-          child: EnhancedHeroCardWidget(
-            character: pc,
+          child: UnifiedHeroCard(
+            hero: pc,
             onTap: () => _editCharacter(context, pc),
             onEdit: () => _editCharacter(context, pc),
-            onFavoriteToggle: () => _toggleFavorite(pc),
+            onToggleFavorite: () => _toggleFavorite(pc),
             onQuickAction: () => _showQuickActions(context, pc),
+            onDelete: () => _showDeleteConfirmation(context, pc),
           ),
         );
       },

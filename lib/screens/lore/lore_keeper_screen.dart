@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/wiki_entry.dart';
 import '../../viewmodels/wiki_viewmodel.dart';
-import '../../widgets/lore_keeper/enhanced_wiki_entry_card_widget.dart';
+import '../../widgets/ui_components/cards/unified_wiki_entry_card.dart';
 import '../../widgets/lore_keeper/enhanced_wiki_filter_chips_widget.dart';
 import '../../widgets/lore_keeper/wiki_search_delegate.dart';
 import '../../theme/dnd_theme.dart';
@@ -458,10 +458,10 @@ class _WikiListContent extends StatelessWidget {
                     final entry = viewModel.filteredEntries[index];
                     return Padding(
                       padding: const EdgeInsets.only(bottom: DnDTheme.sm),
-                      child: EnhancedWikiEntryCardWidget(
+                      child: UnifiedWikiEntryCard(
                         entry: entry,
-                        viewModel: viewModel,
                         onTap: () => _navigateToEditScreen(context, entry),
+                        onEdit: () => _navigateToEditScreen(context, entry),
                         onDelete: () => _deleteEntry(context, entry),
                       ),
                     );
