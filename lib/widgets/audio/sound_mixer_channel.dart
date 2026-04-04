@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
+import '../../models/sound.dart';
 import '../../services/multi_stream_sound_service.dart';
-import '../../theme/dnd_theme.dart';
+import 'sound_mixer_widget.dart';
 
 /// Widget für einen einzelnen Sound-Kanal im Mixer
 /// 
-/// Zeigt:
+/// Zeigt basierend auf der [SoundMixerConfig]:
 /// - Play/Pause/Stop Buttons
 /// - Lautstärke-Slider
-/// - Loop-Toggle
+/// - Loop-Toggle (optional)
 /// - Sound-Name
-/// - Zeitdarstellung (Position / Dauer)
+/// - Zeitdarstellung (Position / Dauer) (optional)
 /// - Skip Forward/Backward Buttons (optional)
 /// - Entfernen-Button (optional)
 /// - Speed-Control (optional)
@@ -17,31 +18,15 @@ import '../../theme/dnd_theme.dart';
 class SoundMixerChannel extends StatefulWidget {
   final SoundChannel channel;
   final MultiStreamSoundService mixerService;
+  final SoundMixerConfig config;
   final VoidCallback? onRemove;
-  final bool compactMode;
-  
-  /// Zeigt Skip-Buttons (±10 Sekunden) an
-  final bool showSkipButtons;
-  
-  /// Zeigt detaillierte Sound-Info (Beschreibung, Kategorie) an
-  final bool showDetailedInfo;
-  
-  /// Zeigt Speed-Control (0.5x - 2.0x) an
-  final bool showSpeedControl;
-  
-  /// Zeigt großen zentralen Play-Button für bessere Usability im Preview-Modus
-  final bool showLargePlayButton;
 
   const SoundMixerChannel({
     super.key,
     required this.channel,
     required this.mixerService,
+    required this.config,
     this.onRemove,
-    this.compactMode = false,
-    this.showSkipButtons = false,
-    this.showDetailedInfo = false,
-    this.showSpeedControl = false,
-    this.showLargePlayButton = false,
   });
 
   @override
@@ -57,136 +42,200 @@ class _SoundMixerChannelState extends State<SoundMixerChannel> {
         final channel = widget.mixerService.getChannel(widget.channel.id);
         if (channel == null) return const SizedBox.shrink();
 
-        return Container(
-          margin: EdgeInsets.only(bottom: widget.compactMode ? 4 : 8),
-          padding: EdgeInsets.all(widget.compactMode ? 6 : 8),
-          decoration: BoxDecoration(
-            gradient: DnDTheme.getMysticalGradient(
-              startColor: DnDTheme.slateGrey.withValues(alpha: 0.8),
-              endColor: DnDTheme.stoneGrey.withValues(alpha: 0.6),
+        return _buildModernChannel(channel);
+      },
+    );
+  }
+
+  /// Modernes Spotify-inspiriertes Design
+  Widget _buildModernChannel(SoundChannel channel) {
+    final isCompact = widget.config.compactMode;
+    final padding = isCompact ? 8.0 : 16.0;
+    final marginBottom = isCompact ? 6.0 : 12.0;
+    final borderRadius = isCompact ? 8.0 : 12.0;
+    
+    return Container(
+      margin: EdgeInsets.only(bottom: marginBottom),
+      padding: EdgeInsets.all(padding),
+      decoration: BoxDecoration(
+        color: ModernAudioColors.surface,
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: Border.all(
+          color: channel.isPlaying 
+              ? ModernAudioColors.accentGreen.withValues(alpha: 0.4)
+              : ModernAudioColors.surfaceHighlight.withValues(alpha: 0.3),
+          width: 1,
+        ),
+        boxShadow: [
+          if (channel.isPlaying)
+            BoxShadow(
+              color: ModernAudioColors.accentGreen.withValues(alpha: 0.15),
+              blurRadius: 16,
+              spreadRadius: 0,
             ),
-            borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-            border: Border.all(
-              color: channel.isPlaying 
-                  ? DnDTheme.successGreen.withValues(alpha: 0.5)
-                  : DnDTheme.mysticalPurple.withValues(alpha: 0.3),
-              width: 1,
+        ],
+      ),
+      child: _buildChannelContent(channel),
+    );
+  }
+
+  /// Gemeinsamer Inhalt
+  Widget _buildChannelContent(SoundChannel channel) {
+    final isCompact = widget.config.compactMode;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header mit Name und Buttons
+        Row(
+          children: [
+            // Play/Pause Button
+            _buildPlayPauseButton(channel),
+            SizedBox(width: isCompact ? 4 : 6),
+            
+            // Stop Button
+            _buildStopButton(channel),
+            SizedBox(width: isCompact ? 4 : 6),
+            
+            // Sound-Name
+            Expanded(
+              child: _buildSoundName(channel),
             ),
+            
+            // Loop Toggle (nur wenn konfiguriert)
+            if (widget.config.showLoopToggle)
+              _buildLoopButton(channel),
+            
+            // Remove Button (nur wenn onRemove gesetzt ist)
+            if (widget.onRemove != null) ...[  
+              SizedBox(width: isCompact ? 2 : 4),
+              _buildRemoveButton(),
+            ],
+          ],
+        ),
+        
+        // Detaillierte Sound-Info (optional)
+        if (widget.config.showDetailedInfo && !isCompact) ...[  
+          const SizedBox(height: 4),
+          _buildDetailedInfo(channel),
+        ],
+        
+        // Zeitdarstellung und Fortschrittsbalken (optional)
+        if (widget.config.showTimeDisplay && !isCompact) ...[  
+          const SizedBox(height: 8),
+          _buildTimeDisplay(channel),
+        ],
+        
+        // Skip-Buttons (optional)
+        if (widget.config.showSkipButtons && !isCompact) ...[  
+          const SizedBox(height: 8),
+          _buildSkipButtons(channel),
+        ],
+        
+        // Speed-Control (optional)
+        if (widget.config.showSpeedControl && !isCompact) ...[  
+          const SizedBox(height: 8),
+          _buildSpeedControl(channel),
+        ],
+        
+        SizedBox(height: isCompact ? 4 : 8),
+        
+        // Lautstärke-Slider
+        _buildVolumeSlider(channel),
+        
+        // Großer zentraler Play-Button (optional für Preview-Modus)
+        if (widget.config.showLargePlayButton && !isCompact) ...[  
+          const SizedBox(height: 16),
+          _buildLargePlayButton(channel),
+        ],
+      ],
+    );
+  }
+
+  /// Sound-Name mit Typ-Anzeige
+  Widget _buildSoundName(SoundChannel channel) {
+    final isCompact = widget.config.compactMode;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          channel.sound.name,
+          style: TextStyle(
+            color: ModernAudioColors.textPrimary,
+            fontWeight: FontWeight.w600,
+            fontSize: isCompact ? 11 : 14,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        if (!isCompact) ...[
+          const SizedBox(height: 2),
+          Row(
             children: [
-              // Header mit Name und Buttons
-              Row(
-                children: [
-                  // Play/Pause Button
-                  _buildPlayPauseButton(channel),
-                  const SizedBox(width: 6),
-                  
-                  // Stop Button
-                  _buildStopButton(channel),
-                  const SizedBox(width: 6),
-                  
-                  // Sound-Name
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          channel.sound.name,
-                          style: DnDTheme.bodyText2.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: widget.compactMode ? 10 : 11,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (!widget.compactMode)
-                          Text(
-                            channel.sound.soundTypeDisplayName,
-                            style: DnDTheme.bodyText2.copyWith(
-                              color: Colors.white54,
-                              fontSize: 9,
-                            ),
-                          ),
-                      ],
-                    ),
+              // Sound-Typ Badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: channel.sound.soundType == SoundType.Ambiente
+                      ? ModernAudioColors.accentCyan.withValues(alpha: 0.2)
+                      : ModernAudioColors.accentGreen.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  channel.sound.soundTypeDisplayName,
+                  style: TextStyle(
+                    color: channel.sound.soundType == SoundType.Ambiente
+                        ? ModernAudioColors.accentCyan
+                        : ModernAudioColors.accentGreen,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
                   ),
-                  
-                  // Loop Toggle
-                  _buildLoopButton(channel),
-                  
-                  // Remove Button (nur wenn onRemove gesetzt ist)
-                  if (widget.onRemove != null) ...[
-                    const SizedBox(width: 4),
-                    _buildRemoveButton(),
-                  ],
-                ],
+                ),
               ),
-              
-              // Detaillierte Sound-Info (optional)
-              if (widget.showDetailedInfo && !widget.compactMode) ...[
-                const SizedBox(height: 4),
-                _buildDetailedInfo(channel),
-              ],
-              
-              // Zeitdarstellung und Fortschrittsbalken (nur im nicht-kompakten Modus)
-              if (!widget.compactMode) ...[
-                const SizedBox(height: 6),
-                _buildTimeDisplay(channel),
-              ],
-              
-              // Skip-Buttons (optional, nur im nicht-kompakten Modus)
-              if (widget.showSkipButtons && !widget.compactMode) ...[
-                const SizedBox(height: 4),
-                _buildSkipButtons(channel),
-              ],
-              
-              // Speed-Control (optional, nur im nicht-kompakten Modus)
-              if (widget.showSpeedControl && !widget.compactMode) ...[
-                const SizedBox(height: 6),
-                _buildSpeedControl(channel),
-              ],
-              
-              const SizedBox(height: 6),
-              
-              // Lautstärke-Slider
-              _buildVolumeSlider(channel),
-              
-              // Großer zentraler Play-Button (optional für Preview-Modus)
-              if (widget.showLargePlayButton && !widget.compactMode) ...[
-                const SizedBox(height: 12),
-                _buildLargePlayButton(channel),
+              if (channel.isLooping) ...[
+                const SizedBox(width: 6),
+                const Icon(
+                  Icons.loop,
+                  color: ModernAudioColors.accentGreen,
+                  size: 12,
+                ),
               ],
             ],
           ),
-        );
-      },
+        ],
+      ],
     );
   }
 
   /// Lautstärke-Slider
   Widget _buildVolumeSlider(SoundChannel channel) {
-    final isCompact = widget.compactMode;
+    final isCompact = widget.config.compactMode;
+    final iconSize = isCompact ? 14.0 : 18.0;
+    final trackHeight = isCompact ? 3.0 : 4.0;
+    final thumbRadius = isCompact ? 5.0 : 7.0;
+    final overlayRadius = isCompact ? 10.0 : 14.0;
+    final percentWidth = isCompact ? 32.0 : 40.0;
+    final percentFontSize = isCompact ? 9.0 : 12.0;
     
     return Row(
       children: [
         Icon(
           channel.volume == 0 ? Icons.volume_off : Icons.volume_up,
-          color: DnDTheme.mysticalPurple,
-          size: isCompact ? 12 : 14,
+          color: channel.volume > 0 ? ModernAudioColors.accentGreen : ModernAudioColors.textMuted,
+          size: iconSize,
         ),
-        const SizedBox(width: 6),
+        SizedBox(width: isCompact ? 6 : 8),
         Expanded(
           child: SliderTheme(
             data: SliderThemeData(
-              trackHeight: isCompact ? 2 : 3,
-              thumbShape: RoundSliderThumbShape(enabledThumbRadius: isCompact ? 4 : 6),
-              overlayShape: RoundSliderOverlayShape(overlayRadius: isCompact ? 8 : 10),
-              activeTrackColor: DnDTheme.mysticalPurple,
-              inactiveTrackColor: DnDTheme.slateGrey.withValues(alpha: 0.5),
-              thumbColor: DnDTheme.ancientGold,
+              trackHeight: trackHeight,
+              thumbShape: RoundSliderThumbShape(enabledThumbRadius: thumbRadius),
+              overlayShape: RoundSliderOverlayShape(overlayRadius: overlayRadius),
+              activeTrackColor: ModernAudioColors.accentGreen,
+              inactiveTrackColor: ModernAudioColors.progressBackground,
+              thumbColor: ModernAudioColors.textPrimary,
+              overlayColor: ModernAudioColors.accentGreen.withValues(alpha: 0.2),
             ),
             child: Slider(
               value: channel.volume,
@@ -198,12 +247,17 @@ class _SoundMixerChannelState extends State<SoundMixerChannel> {
             ),
           ),
         ),
-        const SizedBox(width: 4),
-        Text(
-          '${(channel.volume * 100).toInt()}%',
-          style: DnDTheme.bodyText2.copyWith(
-            color: Colors.white70,
-            fontSize: isCompact ? 8 : 9,
+        SizedBox(width: isCompact ? 4 : 8),
+        SizedBox(
+          width: percentWidth,
+          child: Text(
+            '${(channel.volume * 100).toInt()}%',
+            style: TextStyle(
+              color: ModernAudioColors.textSecondary,
+              fontSize: percentFontSize,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.right,
           ),
         ),
       ],
@@ -221,57 +275,42 @@ class _SoundMixerChannelState extends State<SoundMixerChannel> {
       progress = (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
     }
 
+    return _buildModernTimeDisplay(channel, progress, duration);
+  }
+
+  /// Moderne Zeitdarstellung (Spotify-Style)
+  Widget _buildModernTimeDisplay(SoundChannel channel, double progress, Duration? duration) {
     return Column(
       children: [
+        // Fortschrittsbalken
+        _buildModernProgressBar(channel, progress, duration),
+        const SizedBox(height: 6),
         // Zeit-Text
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              _formatDuration(position),
-              style: DnDTheme.bodyText2.copyWith(
-                color: DnDTheme.ancientGold,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
+              _formatDuration(channel.currentPosition),
+              style: const TextStyle(
+                color: ModernAudioColors.textSecondary,
+                fontSize: 11,
               ),
             ),
-            // Loop-Indikator wenn aktiv
-            if (channel.isLooping)
-              Row(
-                children: [
-                  Icon(
-                    Icons.loop,
-                    color: DnDTheme.arcaneBlue,
-                    size: 10,
-                  ),
-                  const SizedBox(width: 2),
-                  Text(
-                    'Loop',
-                    style: DnDTheme.bodyText2.copyWith(
-                      color: DnDTheme.arcaneBlue,
-                      fontSize: 9,
-                    ),
-                  ),
-                ],
-              ),
             Text(
               duration != null ? _formatDuration(duration) : '--:--',
-              style: DnDTheme.bodyText2.copyWith(
-                color: Colors.white70,
-                fontSize: 10,
+              style: const TextStyle(
+                color: ModernAudioColors.textMuted,
+                fontSize: 11,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 4),
-        // Klickbarer Fortschrittsbalken
-        _buildSeekableProgressBar(channel, progress, duration),
       ],
     );
   }
 
-  /// Klickbarer/ziehbarer Fortschrittsbalken
-  Widget _buildSeekableProgressBar(SoundChannel channel, double progress, Duration? duration) {
+  /// Moderner Fortschrittsbalken (Spotify-Style)
+  Widget _buildModernProgressBar(SoundChannel channel, double progress, Duration? duration) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final barWidth = constraints.maxWidth;
@@ -279,56 +318,59 @@ class _SoundMixerChannelState extends State<SoundMixerChannel> {
         return GestureDetector(
           onTapDown: (details) => _handleSeek(details, channel, duration, barWidth),
           onHorizontalDragUpdate: (details) => _handleDragSeek(details, channel, duration, barWidth),
-          child: Container(
-            height: 16, // Größer für bessere Touch-Zielgröße
-            width: double.infinity,
-            color: Colors.transparent, // Für Touch-Erkennung
-            child: Stack(
-              clipBehavior: Clip.none,
-              alignment: Alignment.centerLeft,
-              children: [
-                // Hintergrund-Balken
-                Container(
-                  height: 3,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: DnDTheme.slateGrey.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                // Fortschritts-Balken
-                Container(
-                  height: 3,
-                  width: barWidth * progress,
-                  decoration: BoxDecoration(
-                    color: channel.isPlaying ? DnDTheme.successGreen : DnDTheme.mysticalPurple,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                // Position-Indicator (kleiner Kreis) - korrekt positioniert
-                Positioned(
-                  left: (barWidth * progress) - 5, // 5 = halbe Breite des Indikators
-                  child: Container(
-                    width: 10,
-                    height: 10,
+          child: MouseRegion(
+            child: Container(
+              height: 20,
+              width: double.infinity,
+              color: Colors.transparent,
+              child: Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.centerLeft,
+                children: [
+                  // Hintergrund-Balken
+                  Container(
+                    height: 4,
+                    width: double.infinity,
                     decoration: BoxDecoration(
-                      color: DnDTheme.ancientGold,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          blurRadius: 2,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
+                      color: ModernAudioColors.progressBackground,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                ),
-              ],
+                  // Fortschritts-Balken mit Gradient
+                  Container(
+                    height: 4,
+                    width: barWidth * progress,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          ModernAudioColors.accentGreen,
+                          ModernAudioColors.accentGreenLight,
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  // Position-Indicator
+                  Positioned(
+                    left: (barWidth * progress) - 6,
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: ModernAudioColors.textPrimary,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -375,8 +417,9 @@ class _SoundMixerChannelState extends State<SoundMixerChannel> {
 
   /// Play/Pause Button
   Widget _buildPlayPauseButton(SoundChannel channel) {
-    final size = widget.compactMode ? 26.0 : 32.0;
-    final iconSize = widget.compactMode ? 14.0 : 18.0;
+    final isCompact = widget.config.compactMode;
+    final size = isCompact ? 28.0 : 40.0;
+    final iconSize = isCompact ? 14.0 : 22.0;
     
     return GestureDetector(
       onTap: () => widget.mixerService.togglePlayPause(channel.id),
@@ -384,25 +427,20 @@ class _SoundMixerChannelState extends State<SoundMixerChannel> {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          gradient: DnDTheme.getMysticalGradient(
-            startColor: channel.isPlaying 
-                ? DnDTheme.ancientGold.withValues(alpha: 0.4)
-                : DnDTheme.successGreen.withValues(alpha: 0.3),
-            endColor: channel.isPlaying 
-                ? DnDTheme.ancientGold.withValues(alpha: 0.2)
-                : DnDTheme.successGreen.withValues(alpha: 0.1),
-          ),
-          borderRadius: BorderRadius.circular(widget.compactMode ? 4 : 6),
-          border: Border.all(
-            color: channel.isPlaying 
-                ? DnDTheme.ancientGold.withValues(alpha: 0.6)
-                : DnDTheme.successGreen.withValues(alpha: 0.4),
-            width: 1,
-          ),
+          color: ModernAudioColors.accentGreen,
+          shape: BoxShape.circle,
+          boxShadow: [
+            if (channel.isPlaying)
+              BoxShadow(
+                color: ModernAudioColors.accentGreen.withValues(alpha: 0.4),
+                blurRadius: 12,
+                spreadRadius: 0,
+              ),
+          ],
         ),
         child: Icon(
           channel.isPlaying ? Icons.pause : Icons.play_arrow,
-          color: channel.isPlaying ? DnDTheme.ancientGold : DnDTheme.successGreen,
+          color: ModernAudioColors.background,
           size: iconSize,
         ),
       ),
@@ -411,8 +449,9 @@ class _SoundMixerChannelState extends State<SoundMixerChannel> {
 
   /// Stop Button
   Widget _buildStopButton(SoundChannel channel) {
-    final size = widget.compactMode ? 22.0 : 28.0;
-    final iconSize = widget.compactMode ? 12.0 : 16.0;
+    final isCompact = widget.config.compactMode;
+    final size = isCompact ? 24.0 : 36.0;
+    final iconSize = isCompact ? 12.0 : 18.0;
     
     return GestureDetector(
       onTap: () => widget.mixerService.stopSound(channel.id),
@@ -420,16 +459,12 @@ class _SoundMixerChannelState extends State<SoundMixerChannel> {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: DnDTheme.errorRed.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(widget.compactMode ? 4 : 6),
-          border: Border.all(
-            color: DnDTheme.errorRed.withValues(alpha: 0.4),
-            width: 1,
-          ),
+          color: ModernAudioColors.surfaceLight,
+          shape: BoxShape.circle,
         ),
         child: Icon(
           Icons.stop,
-          color: DnDTheme.errorRed,
+          color: ModernAudioColors.textSecondary,
           size: iconSize,
         ),
       ),
@@ -438,8 +473,9 @@ class _SoundMixerChannelState extends State<SoundMixerChannel> {
 
   /// Loop Toggle Button
   Widget _buildLoopButton(SoundChannel channel) {
-    final size = widget.compactMode ? 22.0 : 28.0;
-    final iconSize = widget.compactMode ? 12.0 : 16.0;
+    final isCompact = widget.config.compactMode;
+    final size = isCompact ? 24.0 : 36.0;
+    final iconSize = isCompact ? 12.0 : 18.0;
     
     return GestureDetector(
       onTap: () => widget.mixerService.setChannelLooping(channel.id, !channel.isLooping),
@@ -448,19 +484,15 @@ class _SoundMixerChannelState extends State<SoundMixerChannel> {
         height: size,
         decoration: BoxDecoration(
           color: channel.isLooping 
-              ? DnDTheme.arcaneBlue.withValues(alpha: 0.3)
-              : DnDTheme.slateGrey.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(widget.compactMode ? 4 : 6),
-          border: Border.all(
-            color: channel.isLooping 
-                ? DnDTheme.arcaneBlue.withValues(alpha: 0.6)
-                : Colors.white24,
-            width: 1,
-          ),
+              ? ModernAudioColors.accentGreen.withValues(alpha: 0.2)
+              : ModernAudioColors.surfaceLight,
+          shape: BoxShape.circle,
         ),
         child: Icon(
           Icons.loop,
-          color: channel.isLooping ? DnDTheme.arcaneBlue : Colors.white54,
+          color: channel.isLooping 
+              ? ModernAudioColors.accentGreen 
+              : ModernAudioColors.textMuted,
           size: iconSize,
         ),
       ),
@@ -469,8 +501,9 @@ class _SoundMixerChannelState extends State<SoundMixerChannel> {
 
   /// Remove Button
   Widget _buildRemoveButton() {
-    final size = widget.compactMode ? 20.0 : 24.0;
-    final iconSize = widget.compactMode ? 12.0 : 14.0;
+    final isCompact = widget.config.compactMode;
+    final size = isCompact ? 18.0 : 24.0;
+    final iconSize = isCompact ? 10.0 : 14.0;
     
     return GestureDetector(
       onTap: widget.onRemove,
@@ -478,12 +511,12 @@ class _SoundMixerChannelState extends State<SoundMixerChannel> {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: DnDTheme.errorRed.withValues(alpha: 0.1),
+          color: ModernAudioColors.surfaceLight,
           borderRadius: BorderRadius.circular(4),
         ),
         child: Icon(
           Icons.close,
-          color: Colors.white54,
+          color: ModernAudioColors.textMuted,
           size: iconSize,
         ),
       ),
@@ -494,44 +527,48 @@ class _SoundMixerChannelState extends State<SoundMixerChannel> {
   Widget _buildDetailedInfo(SoundChannel channel) {
     final sound = channel.sound;
     
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Beschreibung
-        if (sound.description.isNotEmpty) ...[
-          Text(
-            sound.description,
-            style: DnDTheme.bodyText2.copyWith(
-              color: Colors.white70,
-              fontSize: 9,
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: ModernAudioColors.surfaceLight,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (sound.description.isNotEmpty) ...[
+            Text(
+              sound.description,
+              style: const TextStyle(
+                color: ModernAudioColors.textSecondary,
+                fontSize: 11,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-        
-        // Kategorie
-        if (sound.categoryId != null) ...[
-          const SizedBox(height: 2),
-          Row(
-            children: [
-              Icon(
-                Icons.category,
-                color: DnDTheme.mysticalPurple,
-                size: 10,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                sound.categoryId!,
-                style: DnDTheme.bodyText2.copyWith(
-                  color: Colors.white54,
-                  fontSize: 8,
+          ],
+          if (sound.categoryId != null) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(
+                  Icons.folder_outlined,
+                  color: ModernAudioColors.textMuted,
+                  size: 12,
                 ),
-              ),
-            ],
-          ),
+                const SizedBox(width: 4),
+                Text(
+                  sound.categoryId!,
+                  style: const TextStyle(
+                    color: ModernAudioColors.textMuted,
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 
@@ -540,51 +577,36 @@ class _SoundMixerChannelState extends State<SoundMixerChannel> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // Skip Backward (-10s)
-        _buildSkipButton(
+        _buildModernSkipButton(
           icon: Icons.replay_10,
-          color: DnDTheme.arcaneBlue,
           onPressed: () => _skipBackward(channel),
         ),
-        
-        const SizedBox(width: 16),
-        
-        // Skip Forward (+10s)
-        _buildSkipButton(
+        const SizedBox(width: 24),
+        _buildModernSkipButton(
           icon: Icons.forward_10,
-          color: DnDTheme.arcaneBlue,
           onPressed: () => _skipForward(channel),
         ),
       ],
     );
   }
 
-  /// Einzelner Skip-Button
-  Widget _buildSkipButton({
+  Widget _buildModernSkipButton({
     required IconData icon,
-    required Color color,
     required VoidCallback onPressed,
   }) {
     return GestureDetector(
       onTap: onPressed,
       child: Container(
-        width: 36,
-        height: 36,
+        width: 44,
+        height: 44,
         decoration: BoxDecoration(
-          gradient: DnDTheme.getMysticalGradient(
-            startColor: color.withValues(alpha: 0.3),
-            endColor: color.withValues(alpha: 0.1),
-          ),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(
-            color: color.withValues(alpha: 0.5),
-            width: 1,
-          ),
+          color: ModernAudioColors.surfaceLight,
+          shape: BoxShape.circle,
         ),
         child: Icon(
           icon,
-          color: color,
-          size: 20,
+          color: ModernAudioColors.textPrimary,
+          size: 22,
         ),
       ),
     );
@@ -612,55 +634,50 @@ class _SoundMixerChannelState extends State<SoundMixerChannel> {
 
   /// Speed-Control (0.5x - 2.0x)
   Widget _buildSpeedControl(SoundChannel channel) {
-    // Verfügbare Geschwindigkeiten
     const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
     final currentSpeed = channel.playbackSpeed ?? 1.0;
     
     return Row(
       children: [
-        Icon(
+        const Icon(
           Icons.speed,
-          color: DnDTheme.ancientGold,
-          size: 14,
-        ),
-        const SizedBox(width: 6),
-        Text(
-          'Speed:',
-          style: DnDTheme.bodyText2.copyWith(
-            color: Colors.white70,
-            fontSize: 10,
-          ),
+          color: ModernAudioColors.textMuted,
+          size: 16,
         ),
         const SizedBox(width: 8),
+        const Text(
+          'Speed:',
+          style: TextStyle(
+            color: ModernAudioColors.textSecondary,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(width: 12),
         Expanded(
           child: Wrap(
-            spacing: 4,
-            runSpacing: 4,
+            spacing: 6,
+            runSpacing: 6,
             children: speeds.map((speed) {
               final isSelected = (currentSpeed - speed).abs() < 0.01;
               
               return GestureDetector(
                 onTap: () => widget.mixerService.setChannelSpeed(channel.id, speed),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: isSelected 
-                        ? DnDTheme.ancientGold.withValues(alpha: 0.3)
-                        : DnDTheme.slateGrey.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: isSelected 
-                          ? DnDTheme.ancientGold.withValues(alpha: 0.6)
-                          : Colors.white24,
-                      width: 1,
-                    ),
+                        ? ModernAudioColors.accentGreen
+                        : ModernAudioColors.surfaceLight,
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
                     '${speed}x',
-                    style: DnDTheme.bodyText2.copyWith(
-                      color: isSelected ? DnDTheme.ancientGold : Colors.white70,
-                      fontSize: 10,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    style: TextStyle(
+                      color: isSelected 
+                          ? ModernAudioColors.background
+                          : ModernAudioColors.textSecondary,
+                      fontSize: 11,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                     ),
                   ),
                 ),
@@ -678,38 +695,23 @@ class _SoundMixerChannelState extends State<SoundMixerChannel> {
       child: GestureDetector(
         onTap: () => widget.mixerService.togglePlayPause(channel.id),
         child: Container(
-          width: 72,
-          height: 72,
+          width: 80,
+          height: 80,
           decoration: BoxDecoration(
-            gradient: DnDTheme.getMysticalGradient(
-              startColor: channel.isPlaying 
-                  ? DnDTheme.ancientGold.withValues(alpha: 0.5)
-                  : DnDTheme.successGreen.withValues(alpha: 0.5),
-              endColor: channel.isPlaying 
-                  ? DnDTheme.ancientGold.withValues(alpha: 0.3)
-                  : DnDTheme.successGreen.withValues(alpha: 0.3),
-            ),
+            color: ModernAudioColors.accentGreen,
             shape: BoxShape.circle,
-            border: Border.all(
-              color: channel.isPlaying 
-                  ? DnDTheme.ancientGold.withValues(alpha: 0.8)
-                  : DnDTheme.successGreen.withValues(alpha: 0.8),
-              width: 3,
-            ),
             boxShadow: [
               BoxShadow(
-                color: channel.isPlaying 
-                    ? DnDTheme.ancientGold.withValues(alpha: 0.3)
-                    : DnDTheme.successGreen.withValues(alpha: 0.3),
-                blurRadius: 12,
-                spreadRadius: 2,
+                color: ModernAudioColors.accentGreen.withValues(alpha: 0.4),
+                blurRadius: 20,
+                spreadRadius: 4,
               ),
             ],
           ),
           child: Icon(
             channel.isPlaying ? Icons.pause : Icons.play_arrow,
-            color: channel.isPlaying ? DnDTheme.ancientGold : DnDTheme.successGreen,
-            size: 36,
+            color: ModernAudioColors.background,
+            size: 40,
           ),
         ),
       ),

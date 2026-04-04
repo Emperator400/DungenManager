@@ -127,13 +127,14 @@ class _QuestListSectionState extends State<QuestListSection> {
         ),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           // Header
           _buildHeader(),
           // Filter Chips
           _buildFilterChips(),
           // Content
-          Expanded(
+          Flexible(
             child: _buildContent(),
           ),
         ],

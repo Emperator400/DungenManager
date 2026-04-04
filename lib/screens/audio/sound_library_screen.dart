@@ -2,14 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../viewmodels/sound_library_viewmodel.dart';
-import '../../viewmodels/edit_sound_viewmodel.dart';
 import '../../models/sound.dart';
 import '../../theme/dnd_theme.dart';
 import '../../widgets/sound_scenes_tab.dart';
 import '../../widgets/audio/sound_mixer_widget.dart';
-import 'edit_sound_screen.dart';
+import '../../widgets/ui_components/filter/unified_filter_chip.dart';
+import '../../widgets/ui_components/states/loading_state_widget.dart';
+import '../../widgets/ui_components/states/empty_state_widget.dart';
 
-/// Enhanced Sound Library Screen mit Provider-Pattern und modernem D&D Design
+/// Sound Library Screen mit integriertem SoundMixerWidget
+/// 
+/// Zeigt alle Sounds in einer Liste an.
+/// Jeder Sound kann einzeln mit dem verbesserten SoundMixerWidget angehört werden.
 class SoundLibraryScreen extends StatefulWidget {
   const SoundLibraryScreen({super.key});
 
@@ -23,6 +27,9 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen>
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _sceneSearchController = TextEditingController();
+  
+  // Aktuell ausgewählter Sound für Vorschau
+  Sound? _selectedSoundForPreview;
 
   @override
   void initState() {
@@ -57,26 +64,22 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen>
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       title: Consumer<SoundLibraryViewModel>(
-        builder: (context, viewModel, child) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Sound & Atmosphäre',
-                style: DnDTheme.headline2.copyWith(
-                  color: DnDTheme.ancientGold,
-                ),
+        builder: (context, viewModel, child) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Sound & Atmosphäre',
+              style: DnDTheme.headline2.copyWith(color: DnDTheme.ancientGold),
+            ),
+            Text(
+              '${viewModel.soundCount} Sounds • ${viewModel.favoriteCount} Favoriten',
+              style: DnDTheme.bodyText2.copyWith(
+                color: Colors.white70,
+                fontSize: 12,
               ),
-              Text(
-                '${viewModel.soundCount} Sounds • ${viewModel.favoriteCount} Favoriten',
-                style: DnDTheme.bodyText2.copyWith(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          );
-        },
+            ),
+          ],
+        ),
       ),
       backgroundColor: DnDTheme.stoneGrey,
       foregroundColor: Colors.white,
@@ -97,457 +100,54 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen>
           color: Colors.white,
           fontWeight: FontWeight.bold,
         ),
-        unselectedLabelStyle: DnDTheme.bodyText1.copyWith(
-          color: Colors.white70,
-        ),
+        unselectedLabelStyle: DnDTheme.bodyText1.copyWith(color: Colors.white70),
         tabs: const [
-          Tab(
-            icon: Icon(Icons.music_note),
-            text: 'Sounds',
-          ),
-          Tab(
-            icon: Icon(Icons.movie_filter),
-            text: 'Szenen',
-          ),
+          Tab(icon: Icon(Icons.music_note), text: 'Sounds'),
+          Tab(icon: Icon(Icons.movie_filter), text: 'Szenen'),
         ],
       ),
       actions: [
         Consumer<SoundLibraryViewModel>(
-          builder: (context, viewModel, child) {
-            return Container(
-              margin: const EdgeInsets.only(right: DnDTheme.sm),
-              decoration: DnDTheme.getMysticalBorder(
-                borderColor: DnDTheme.arcaneBlue,
-                width: 2,
-              ),
-              child: PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: Colors.white),
-                color: DnDTheme.stoneGrey,
-                onSelected: _handleMenuAction,
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'reset_filters',
-                    child: Row(
-                      children: [
-                        Icon(Icons.refresh, color: DnDTheme.ancientGold, size: 20),
-                        const SizedBox(width: DnDTheme.sm),
-                        Text(
-                          'Filter zurücksetzen',
-                          style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'toggle_favorites',
-                    child: Row(
-                      children: [
-                        Icon(
-                          viewModel.showFavoritesOnly 
-                              ? Icons.favorite 
-                              : Icons.favorite_border,
-                          color: DnDTheme.errorRed,
-                          size: 20,
-                        ),
-                        const SizedBox(width: DnDTheme.sm),
-                        Text(
-                          viewModel.showFavoritesOnly 
-                              ? 'Alle anzeigen' 
-                              : 'Nur Favoriten',
-                          style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBody() {
-    return Consumer<SoundLibraryViewModel>(
-      builder: (context, viewModel, child) {
-        if (viewModel.hasError) {
-          return _buildErrorWidget(viewModel);
-        }
-
-        return TabBarView(
-          controller: _tabController,
-          children: [
-            _buildSoundsTab(viewModel),
-            _buildScenesTab(viewModel),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildSoundsTab(SoundLibraryViewModel viewModel) {
-    return Column(
-      children: [
-        // Search und Filter Bar
-        _buildSoundFilterBar(viewModel),
-        
-        // Sound Type Filter Chips
-        _buildSoundTypeFilterChips(viewModel),
-        
-        // Content
-        Expanded(
-          child: viewModel.isLoadingSounds
-              ? _buildLoadingWidget('Sounds werden geladen...')
-              : viewModel.sounds.isEmpty
-                  ? _buildEmptyState('Keine Sounds gefunden')
-                  : _buildSoundsList(viewModel),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildScenesTab(SoundLibraryViewModel viewModel) {
-    return Column(
-      children: [
-        // Search Bar für Szenen
-        _buildSceneSearchBar(viewModel),
-        
-        // Content
-        Expanded(
-          child: viewModel.isLoadingScenes
-              ? _buildLoadingWidget('Szenen werden geladen...')
-              : viewModel.scenes.isEmpty
-                  ? _buildEmptyState('Keine Szenen gefunden')
-                  : SoundScenesTab(), // Bestehendes Widget wiederverwenden
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSoundFilterBar(SoundLibraryViewModel viewModel) {
-    return Container(
-      padding: const EdgeInsets.all(DnDTheme.md),
-      decoration: BoxDecoration(
-        gradient: DnDTheme.getMysticalGradient(
-          startColor: DnDTheme.slateGrey,
-          endColor: DnDTheme.stoneGrey,
-        ),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-        border: Border.all(
-          color: DnDTheme.ancientGold.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _searchController,
-              style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'Sounds suchen...',
-                hintStyle: DnDTheme.bodyText2.copyWith(color: Colors.white54),
-                prefixIcon: Icon(Icons.search, color: DnDTheme.ancientGold),
-                suffixIcon: viewModel.soundSearchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: Icon(Icons.clear, color: DnDTheme.errorRed),
-                        onPressed: () {
-                          _searchController.clear();
-                          viewModel.setSoundSearchQuery('');
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                  borderSide: BorderSide(color: DnDTheme.mysticalPurple),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                  borderSide: BorderSide(
-                    color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                  borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
-                ),
-                filled: true,
-                fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
-              ),
-              onChanged: (value) => viewModel.setSoundSearchQuery(value),
+          builder: (context, viewModel, child) => Container(
+            margin: const EdgeInsets.only(right: DnDTheme.sm),
+            decoration: DnDTheme.getMysticalBorder(
+              borderColor: DnDTheme.arcaneBlue,
+              width: 2,
             ),
-          ),
-          const SizedBox(width: DnDTheme.sm),
-          Container(
-            decoration: BoxDecoration(
-              gradient: DnDTheme.getMysticalGradient(
-                startColor: DnDTheme.arcaneBlue,
-                endColor: DnDTheme.mysticalPurple,
-              ),
-              borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.sort, color: Colors.white),
-              onPressed: () => _showSortOptions(context),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSceneSearchBar(SoundLibraryViewModel viewModel) {
-    return Container(
-      padding: const EdgeInsets.all(DnDTheme.md),
-      decoration: BoxDecoration(
-        gradient: DnDTheme.getMysticalGradient(
-          startColor: DnDTheme.slateGrey,
-          endColor: DnDTheme.stoneGrey,
-        ),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-        border: Border.all(
-          color: DnDTheme.ancientGold.withValues(alpha: 0.3),
-        ),
-      ),
-      child: TextField(
-        controller: _sceneSearchController,
-        style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-        decoration: InputDecoration(
-          hintText: 'Szenen suchen...',
-          hintStyle: DnDTheme.bodyText2.copyWith(color: Colors.white54),
-          prefixIcon: Icon(Icons.search, color: DnDTheme.ancientGold),
-          suffixIcon: viewModel.sceneSearchQuery.isNotEmpty
-              ? IconButton(
-                  icon: Icon(Icons.clear, color: DnDTheme.errorRed),
-                  onPressed: () {
-                    _sceneSearchController.clear();
-                    viewModel.setSceneSearchQuery('');
-                  },
-                )
-              : null,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-            borderSide: BorderSide(color: DnDTheme.mysticalPurple),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-            borderSide: BorderSide(
-              color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
-            ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-            borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
-          ),
-          filled: true,
-          fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
-        ),
-        onChanged: (value) => viewModel.setSceneSearchQuery(value),
-      ),
-    );
-  }
-
-  Widget _buildSoundTypeFilterChips(SoundLibraryViewModel viewModel) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: DnDTheme.md, vertical: DnDTheme.sm),
-      child: Wrap(
-        spacing: DnDTheme.sm,
-        children: [
-          FilterChip(
-            label: Text(
-              'Alle',
-              style: DnDTheme.bodyText2.copyWith(
-                color: viewModel.selectedSoundType == null ? Colors.white : Colors.white70,
-              ),
-            ),
-            backgroundColor: viewModel.selectedSoundType == null
-                ? DnDTheme.ancientGold
-                : DnDTheme.slateGrey,
-            selected: viewModel.selectedSoundType == null,
-            onSelected: (_) => viewModel.setSoundTypeFilter(null),
-          ),
-          ...SoundType.values.map((type) => FilterChip(
-            label: Text(
-              type.displayName,
-              style: DnDTheme.bodyText2.copyWith(
-                color: viewModel.selectedSoundType == type ? Colors.white : Colors.white70,
-              ),
-            ),
-            backgroundColor: viewModel.selectedSoundType == type
-                ? DnDTheme.ancientGold
-                : DnDTheme.slateGrey,
-            selected: viewModel.selectedSoundType == type,
-            onSelected: (_) => viewModel.setSoundTypeFilter(type),
-          )),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSoundsList(SoundLibraryViewModel viewModel) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(DnDTheme.md),
-      itemCount: viewModel.sounds.length,
-      itemBuilder: (context, index) {
-        final sound = viewModel.sounds[index];
-        return _buildSoundCard(sound, viewModel);
-      },
-    );
-  }
-
-  Widget _buildSoundCard(Sound sound, SoundLibraryViewModel viewModel) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: DnDTheme.md),
-      decoration: BoxDecoration(
-        gradient: DnDTheme.getMysticalGradient(
-          startColor: DnDTheme.slateGrey,
-          endColor: DnDTheme.stoneGrey,
-        ),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-        border: Border.all(
-          color: sound.isFavorite 
-              ? DnDTheme.ancientGold.withValues(alpha: 0.5)
-              : DnDTheme.mysticalPurple.withValues(alpha: 0.3),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: sound.isFavorite 
-                ? DnDTheme.ancientGold.withValues(alpha: 0.1)
-                : DnDTheme.mysticalPurple.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(DnDTheme.md),
-        leading: Container(
-          decoration: BoxDecoration(
-            gradient: DnDTheme.getMysticalGradient(
-              startColor: sound.soundType == SoundType.Ambiente 
-                  ? DnDTheme.successGreen 
-                  : DnDTheme.arcaneBlue,
-              endColor: sound.soundType == SoundType.Ambiente 
-                  ? DnDTheme.successGreen.withValues(alpha: 0.5)
-                  : DnDTheme.arcaneBlue.withValues(alpha: 0.5),
-            ),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            sound.soundType == SoundType.Ambiente 
-                ? Icons.waves 
-                : Icons.volume_up,
-            color: Colors.white,
-            size: 24,
-          ),
-        ),
-        title: Text(
-          sound.name,
-          style: DnDTheme.bodyText1.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              sound.soundTypeDisplayName,
-              style: DnDTheme.bodyText2.copyWith(
-                color: Colors.white70,
-              ),
-            ),
-            if (sound.description.isNotEmpty) ...[
-              const SizedBox(height: DnDTheme.xs),
-              Text(
-                sound.description,
-                style: DnDTheme.bodyText2.copyWith(
-                  color: Colors.white54,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Direkter Play-Button
-            Container(
-              decoration: BoxDecoration(
-                gradient: DnDTheme.getMysticalGradient(
-                  startColor: DnDTheme.successGreen.withValues(alpha: 0.3),
-                  endColor: DnDTheme.successGreen.withValues(alpha: 0.1),
-                ),
-                borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                border: Border.all(
-                  color: DnDTheme.successGreen.withValues(alpha: 0.5),
-                ),
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.play_arrow, color: DnDTheme.successGreen),
-                onPressed: () => _playSound(sound),
-                tooltip: 'Abspielen',
-              ),
-            ),
-            
-            const SizedBox(width: DnDTheme.sm),
-            
-            if (sound.isFavorite)
-              Icon(
-                Icons.favorite,
-                color: DnDTheme.errorRed,
-                size: 20,
-              ),
-            const SizedBox(width: DnDTheme.xs),
-            IconButton(
-              icon: Icon(
-                sound.isFavorite ? Icons.favorite_border : Icons.favorite,
-                color: sound.isFavorite ? DnDTheme.errorRed : Colors.white54,
-              ),
-              onPressed: () => viewModel.toggleSoundFavorite(sound.id),
-              tooltip: sound.isFavorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten',
-            ),
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, color: Colors.white54),
+            child: PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: Colors.white),
               color: DnDTheme.stoneGrey,
-              onSelected: (action) => _handleSoundAction(action, sound),
+              onSelected: _handleMenuAction,
               itemBuilder: (context) => [
                 PopupMenuItem(
-                  value: 'play',
+                  value: 'reset_filters',
                   child: Row(
                     children: [
-                      Icon(Icons.play_arrow, color: DnDTheme.successGreen, size: 20),
+                      Icon(Icons.refresh, color: DnDTheme.ancientGold, size: 20),
                       const SizedBox(width: DnDTheme.sm),
                       Text(
-                        'Abspielen',
+                        'Filter zurücksetzen',
                         style: DnDTheme.bodyText1.copyWith(color: Colors.white),
                       ),
                     ],
                   ),
                 ),
                 PopupMenuItem(
-                  value: 'edit',
+                  value: 'toggle_favorites',
                   child: Row(
                     children: [
-                      Icon(Icons.edit, color: DnDTheme.arcaneBlue, size: 20),
-                      const SizedBox(width: DnDTheme.sm),
-                      Text(
-                        'Bearbeiten',
-                        style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                      Icon(
+                        viewModel.showFavoritesOnly 
+                            ? Icons.favorite 
+                            : Icons.favorite_border,
+                        color: DnDTheme.errorRed,
+                        size: 20,
                       ),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete, color: DnDTheme.errorRed, size: 20),
                       const SizedBox(width: DnDTheme.sm),
                       Text(
-                        'Löschen',
+                        viewModel.showFavoritesOnly 
+                            ? 'Alle anzeigen' 
+                            : 'Nur Favoriten',
                         style: DnDTheme.bodyText1.copyWith(color: Colors.white),
                       ),
                     ],
@@ -555,129 +155,474 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen>
                 ),
               ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(String message) {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.all(DnDTheme.lg),
-        decoration: DnDTheme.getDungeonWallDecoration(),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.music_note,
-              color: DnDTheme.mysticalPurple,
-              size: 48,
-            ),
-            const SizedBox(height: DnDTheme.md),
-            Text(
-              message,
-              style: DnDTheme.headline3.copyWith(
-                color: DnDTheme.mysticalPurple,
-              ),
-            ),
-            const SizedBox(height: DnDTheme.sm),
-            Text(
-              'Versuche es mit anderen Filtern',
-              style: DnDTheme.bodyText2.copyWith(
-                color: Colors.white70,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLoadingWidget(String message) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(
-            color: DnDTheme.ancientGold,
-            strokeWidth: 3,
           ),
-          const SizedBox(height: DnDTheme.md),
-          Text(
-            message,
-            style: DnDTheme.bodyText1.copyWith(
-              color: Colors.white70,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBody() => Consumer<SoundLibraryViewModel>(
+    builder: (context, viewModel, child) {
+      if (viewModel.hasError) return _buildErrorWidget(viewModel);
+
+      return TabBarView(
+        controller: _tabController,
+        children: [
+          _buildSoundsTab(viewModel),
+          _buildScenesTab(viewModel),
+        ],
+      );
+    },
+  );
+
+  Widget _buildSoundsTab(SoundLibraryViewModel viewModel) => Column(
+    children: [
+      // Suchleiste
+      _buildSearchBar(viewModel),
+      
+      // Filter-Chips
+      _buildFilterChips(viewModel),
+      
+      // Sound-Liste
+      Expanded(
+        child: viewModel.isLoadingSounds
+            ? LoadingStateWidget.standard(color: DnDTheme.ancientGold)
+            : viewModel.sounds.isEmpty
+                ? _buildEmptyState('Keine Sounds gefunden')
+                : _buildSoundList(viewModel),
+      ),
+      
+      // Sound-Vorschau mit SoundMixerWidget
+      if (_selectedSoundForPreview != null) _buildSoundPreview(),
+    ],
+  );
+
+  Widget _buildSearchBar(SoundLibraryViewModel viewModel) => Container(
+    padding: const EdgeInsets.all(DnDTheme.md),
+    decoration: BoxDecoration(
+      gradient: DnDTheme.getMysticalGradient(
+        startColor: DnDTheme.slateGrey,
+        endColor: DnDTheme.stoneGrey,
+      ),
+      borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+      border: Border.all(color: DnDTheme.ancientGold.withValues(alpha: 0.3)),
+    ),
+    child: TextField(
+      controller: _searchController,
+      style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+      decoration: InputDecoration(
+        hintText: 'Sounds suchen...',
+        hintStyle: DnDTheme.bodyText2.copyWith(color: Colors.white54),
+        prefixIcon: Icon(Icons.search, color: DnDTheme.ancientGold),
+        suffixIcon: viewModel.soundSearchQuery.isNotEmpty
+            ? IconButton(
+                icon: Icon(Icons.clear, color: DnDTheme.errorRed),
+                onPressed: () {
+                  _searchController.clear();
+                  viewModel.setSoundSearchQuery('');
+                },
+              )
+            : null,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+          borderSide: BorderSide(color: DnDTheme.mysticalPurple),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+          borderSide: BorderSide(
+            color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+          borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
+        ),
+        filled: true,
+        fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
+      ),
+      onChanged: (value) => viewModel.setSoundSearchQuery(value),
+    ),
+  );
+
+  Widget _buildFilterChips(SoundLibraryViewModel viewModel) => Container(
+    padding: const EdgeInsets.symmetric(
+      horizontal: DnDTheme.md,
+      vertical: DnDTheme.sm,
+    ),
+    child: SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          UnifiedFilterChip<String>(
+            value: 'all',
+            label: 'Alle',
+            isSelected: viewModel.selectedSoundType == null,
+            selectedColor: DnDTheme.ancientGold,
+            onSelected: (_) => viewModel.setSoundTypeFilter(null),
+          ),
+          ...SoundType.values.map((type) => Padding(
+            padding: const EdgeInsets.only(left: DnDTheme.xs),
+            child: UnifiedFilterChip<String>(
+              value: type.name,
+              label: type.displayName,
+              isSelected: viewModel.selectedSoundType == type,
+              selectedColor: type == SoundType.Ambiente 
+                  ? DnDTheme.arcaneBlue 
+                  : DnDTheme.successGreen,
+              onSelected: (_) => viewModel.setSoundTypeFilter(type),
+            ),
+          )),
+        ],
+      ),
+    ),
+  );
+
+  Widget _buildSoundList(SoundLibraryViewModel viewModel) => ListView.builder(
+    padding: const EdgeInsets.symmetric(horizontal: DnDTheme.md),
+    itemCount: viewModel.sounds.length,
+    itemBuilder: (context, index) {
+      final sound = viewModel.sounds[index];
+      final isSelected = _selectedSoundForPreview?.id == sound.id;
+      
+      return _buildSoundListItem(sound, isSelected, viewModel);
+    },
+  );
+
+  Widget _buildSoundListItem(
+    Sound sound, 
+    bool isSelected, 
+    SoundLibraryViewModel viewModel,
+  ) => Container(
+    margin: const EdgeInsets.only(bottom: DnDTheme.sm),
+    decoration: BoxDecoration(
+      gradient: DnDTheme.getMysticalGradient(
+        startColor: isSelected 
+            ? DnDTheme.ancientGold.withValues(alpha: 0.3)
+            : DnDTheme.slateGrey.withValues(alpha: 0.3),
+        endColor: DnDTheme.stoneGrey.withValues(alpha: 0.3),
+      ),
+      borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+      border: Border.all(
+        color: isSelected 
+            ? DnDTheme.ancientGold
+            : DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+        width: isSelected ? 2 : 1,
+      ),
+    ),
+    child: ListTile(
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: DnDTheme.md,
+        vertical: DnDTheme.xs,
+      ),
+      leading: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: isSelected ? DnDTheme.ancientGold : DnDTheme.arcaneBlue,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: (isSelected ? DnDTheme.ancientGold : DnDTheme.arcaneBlue)
+                  .withValues(alpha: 0.4),
+              blurRadius: 8,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: IconButton(
+          icon: Icon(
+            isSelected ? Icons.equalizer : Icons.play_arrow,
+            color: Colors.black,
+            size: 24,
+          ),
+          onPressed: () => _selectSoundForPreview(sound),
+        ),
+      ),
+      title: Row(
+        children: [
+          Expanded(
+            child: Text(
+              sound.name,
+              style: DnDTheme.bodyText1.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          // Typ-Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: DnDTheme.sm, vertical: 2),
+            decoration: BoxDecoration(
+              color: sound.soundType == SoundType.Ambiente 
+                  ? DnDTheme.arcaneBlue.withValues(alpha: 0.2)
+                  : DnDTheme.successGreen.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+              border: Border.all(
+                color: sound.soundType == SoundType.Ambiente 
+                    ? DnDTheme.arcaneBlue
+                    : DnDTheme.successGreen,
+                width: 1,
+              ),
+            ),
+            child: Text(
+              sound.soundTypeDisplayName,
+              style: DnDTheme.bodyText2.copyWith(
+                color: sound.soundType == SoundType.Ambiente 
+                    ? DnDTheme.arcaneBlue
+                    : DnDTheme.successGreen,
+                fontSize: 10,
+              ),
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildErrorWidget(SoundLibraryViewModel viewModel) {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.all(DnDTheme.lg),
-        decoration: DnDTheme.getDungeonWallDecoration(),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.error_outline,
-              color: DnDTheme.errorRed,
-              size: 48,
+      subtitle: sound.description.isNotEmpty
+          ? Text(
+              sound.description,
+              style: DnDTheme.bodyText2.copyWith(color: Colors.white54),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            )
+          : null,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Favorit-Button
+          IconButton(
+            icon: Icon(
+              sound.isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: sound.isFavorite ? DnDTheme.errorRed : Colors.white54,
+              size: 20,
             ),
-            const SizedBox(height: DnDTheme.md),
-            Text(
-              'Fehler',
-              style: DnDTheme.headline3.copyWith(
-                color: DnDTheme.errorRed,
-              ),
-            ),
-            const SizedBox(height: DnDTheme.sm),
-            Text(
-              viewModel.soundError ?? viewModel.sceneError ?? 'Unbekannter Fehler',
-              style: DnDTheme.bodyText2.copyWith(
-                color: Colors.white70,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: DnDTheme.md),
-            ElevatedButton.icon(
-              onPressed: () => viewModel.refresh(),
-              icon: const Icon(Icons.refresh),
-              label: const Text('Erneut versuchen'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: DnDTheme.arcaneBlue,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
+            onPressed: () => _toggleFavorite(sound, viewModel),
+            tooltip: sound.isFavorite 
+                ? 'Aus Favoriten entfernen' 
+                : 'Zu Favoriten hinzufügen',
+          ),
+          // Bearbeiten-Button
+          IconButton(
+            icon: Icon(Icons.edit, color: DnDTheme.arcaneBlue, size: 20),
+            onPressed: () => _navigateToEditSound(sound),
+            tooltip: 'Bearbeiten',
+          ),
+        ],
       ),
-    );
+    ),
+  );
+
+  /// Sound-Vorschau mit dem verbesserten SoundMixerWidget
+  Widget _buildSoundPreview() => Container(
+    decoration: BoxDecoration(
+      gradient: DnDTheme.getMysticalGradient(
+        startColor: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+        endColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
+          blurRadius: 10,
+          offset: const Offset(0, -2),
+        ),
+      ],
+    ),
+    child: SafeArea(
+      top: false,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header mit Close-Button
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: DnDTheme.md, vertical: DnDTheme.sm),
+            decoration: BoxDecoration(
+              color: DnDTheme.mysticalPurple.withValues(alpha: 0.2),
+              border: Border(
+                bottom: BorderSide(
+                  color: DnDTheme.ancientGold.withValues(alpha: 0.3),
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.music_note, color: DnDTheme.ancientGold, size: 16),
+                const SizedBox(width: DnDTheme.sm),
+                Expanded(
+                  child: Text(
+                    'Vorschau: ${_selectedSoundForPreview?.name ?? "Unbekannt"}',
+                    style: DnDTheme.bodyText2.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white54, size: 18),
+                  onPressed: _closePreview,
+                  tooltip: 'Vorschau schließen',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                ),
+              ],
+            ),
+          ),
+          
+          // SoundMixerWidget mit playerPreview Konfiguration
+          // Key verwenden um neues Widget zu erzwingen wenn sich der Sound ändert
+          Padding(
+            padding: const EdgeInsets.all(DnDTheme.sm),
+            child: SoundMixerWidget(
+              key: ValueKey(_selectedSoundForPreview?.id ?? 'no-sound'),
+              initialSounds: _selectedSoundForPreview != null 
+                  ? [_selectedSoundForPreview!] 
+                  : null,
+              config: SoundMixerConfig.playerPreviewConfig,
+              keepAlive: false,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _buildScenesTab(SoundLibraryViewModel viewModel) => Column(
+    children: [
+      // Search Bar für Szenen
+      _buildSceneSearchBar(viewModel),
+      
+      // Content
+      Expanded(
+        child: viewModel.isLoadingScenes
+            ? LoadingStateWidget.standard(color: DnDTheme.ancientGold)
+            : viewModel.scenes.isEmpty
+                ? _buildEmptyState('Keine Szenen gefunden')
+                : const SoundScenesTab(),
+      ),
+    ],
+  );
+
+  Widget _buildSceneSearchBar(SoundLibraryViewModel viewModel) => Container(
+    padding: const EdgeInsets.all(DnDTheme.md),
+    decoration: BoxDecoration(
+      gradient: DnDTheme.getMysticalGradient(
+        startColor: DnDTheme.slateGrey,
+        endColor: DnDTheme.stoneGrey,
+      ),
+      borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+      border: Border.all(color: DnDTheme.ancientGold.withValues(alpha: 0.3)),
+    ),
+    child: TextField(
+      controller: _sceneSearchController,
+      style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+      decoration: InputDecoration(
+        hintText: 'Szenen suchen...',
+        hintStyle: DnDTheme.bodyText2.copyWith(color: Colors.white54),
+        prefixIcon: Icon(Icons.search, color: DnDTheme.ancientGold),
+        suffixIcon: viewModel.sceneSearchQuery.isNotEmpty
+            ? IconButton(
+                icon: Icon(Icons.clear, color: DnDTheme.errorRed),
+                onPressed: () {
+                  _sceneSearchController.clear();
+                  viewModel.setSceneSearchQuery('');
+                },
+              )
+            : null,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+          borderSide: BorderSide(color: DnDTheme.mysticalPurple),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+          borderSide: BorderSide(
+            color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+          borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
+        ),
+        filled: true,
+        fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
+      ),
+      onChanged: (value) => viewModel.setSceneSearchQuery(value),
+    ),
+  );
+
+  Widget _buildEmptyState(String message) => EmptyStateWidget.minimal(
+    title: message,
+    icon: Icons.music_note,
+    iconColor: DnDTheme.mysticalPurple,
+  );
+
+  Widget _buildErrorWidget(SoundLibraryViewModel viewModel) => Center(
+    child: Container(
+      padding: const EdgeInsets.all(DnDTheme.lg),
+      decoration: DnDTheme.getDungeonWallDecoration(),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.error_outline, color: DnDTheme.errorRed, size: 48),
+          const SizedBox(height: DnDTheme.md),
+          Text(
+            'Fehler',
+            style: DnDTheme.headline3.copyWith(color: DnDTheme.errorRed),
+          ),
+          const SizedBox(height: DnDTheme.sm),
+          Text(
+            viewModel.soundError ?? viewModel.sceneError ?? 'Unbekannter Fehler',
+            style: DnDTheme.bodyText2.copyWith(color: Colors.white70),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: DnDTheme.md),
+          ElevatedButton.icon(
+            onPressed: () => viewModel.refresh(),
+            icon: const Icon(Icons.refresh),
+            label: const Text('Erneut versuchen'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DnDTheme.arcaneBlue,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _buildFloatingActionButton() => Consumer<SoundLibraryViewModel>(
+    builder: (context, viewModel, child) => Container(
+      decoration: DnDTheme.getMysticalBorder(
+        borderColor: DnDTheme.successGreen,
+        width: 3,
+      ),
+      child: FloatingActionButton.extended(
+        onPressed: () => _showAddSoundDialog(context),
+        backgroundColor: DnDTheme.successGreen,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text('Sound'),
+      ),
+    ),
+  );
+
+  // ===== Action Methods =====
+
+  void _selectSoundForPreview(Sound sound) {
+    setState(() {
+      _selectedSoundForPreview = sound;
+    });
   }
 
-  Widget _buildFloatingActionButton() {
-    return Consumer<SoundLibraryViewModel>(
-      builder: (context, viewModel, child) {
-        return Container(
-          decoration: DnDTheme.getMysticalBorder(
-            borderColor: DnDTheme.successGreen,
-            width: 3,
-          ),
-          child: FloatingActionButton.extended(
-            onPressed: () => _showAddSoundDialog(context),
-            backgroundColor: DnDTheme.successGreen,
-            foregroundColor: Colors.white,
-            icon: const Icon(Icons.add),
-            label: const Text('Sound'),
-          ),
-        );
-      },
-    );
+  void _closePreview() {
+    setState(() {
+      _selectedSoundForPreview = null;
+    });
   }
+
+  Future<void> _toggleFavorite(Sound sound, SoundLibraryViewModel viewModel) async =>
+      await viewModel.toggleSoundFavorite(sound.id);
+
+  void _navigateToEditSound(Sound sound) =>
+      Navigator.of(context).pushNamed('/edit-sound', arguments: sound);
 
   void _handleMenuAction(String action) {
     switch (action) {
@@ -688,169 +633,6 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen>
         _viewModel.toggleFavoritesFilter();
         break;
     }
-  }
-
-  void _handleSoundAction(String action, Sound sound) {
-    switch (action) {
-      case 'play':
-        _playSound(sound);
-        break;
-      case 'edit':
-        _navigateToEditSound(sound);
-        break;
-      case 'delete':
-        _showDeleteConfirmation(context, sound);
-        break;
-    }
-  }
-
-  /// Spielt einen Sound ab oder zeigt den Player an
-  Future<void> _playSound(Sound sound) async {
-    // Zeige den Player als BottomSheet
-    _showSoundPlayerBottomSheet(sound);
-  }
-  
-  /// Zeigt den Sound-Player als BottomSheet
-  void _showSoundPlayerBottomSheet(Sound sound) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(DnDTheme.md),
-        decoration: BoxDecoration(
-          gradient: DnDTheme.getMysticalGradient(
-            startColor: DnDTheme.dungeonBlack,
-            endColor: DnDTheme.stoneGrey,
-          ),
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(DnDTheme.radiusLarge),
-            topRight: Radius.circular(DnDTheme.radiusLarge),
-          ),
-          border: Border.all(
-            color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
-            width: 2,
-          ),
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle-Bar
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: DnDTheme.md),
-                decoration: BoxDecoration(
-                  color: DnDTheme.ancientGold.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              
-              // Titel
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.music_note,
-                    color: DnDTheme.ancientGold,
-                    size: 20,
-                  ),
-                  const SizedBox(width: DnDTheme.sm),
-                  Text(
-                    'Sound Player',
-                    style: DnDTheme.headline3.copyWith(
-                      color: DnDTheme.ancientGold,
-                    ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: DnDTheme.md),
-              
-              // Sound Mixer Widget mit playerPreview-Konfiguration
-              // keepAlive: true damit der Sound weiterläuft nach Schließen des BottomSheets
-              SoundMixerWidget(
-                initialSounds: [sound],
-                config: SoundMixerConfig.playerPreview,
-                keepAlive: true,
-              ),
-              
-              const SizedBox(height: DnDTheme.md),
-              
-              // Close Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close, size: 16),
-                  label: const Text('Schließen'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: DnDTheme.stoneGrey,
-                    foregroundColor: Colors.white70,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                  ),
-                ),
-              ),
-              
-              const SizedBox(height: DnDTheme.lg),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Navigiert zum Edit-Sound-Screen
-  Future<void> _navigateToEditSound(Sound sound) async {
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ChangeNotifierProvider(
-          create: (_) => EditSoundViewModel(),
-          child: EditSoundScreen(sound: sound),
-        ),
-      ),
-    );
-    
-    // Wenn ein Sound bearbeitet wurde, Liste aktualisieren
-    if (result == true && mounted) {
-      await _viewModel.loadSounds();
-    }
-  }
-
-  void _showSortOptions(BuildContext context) {
-    showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
-        title: Text(
-          'Sortierung',
-          style: DnDTheme.headline3.copyWith(
-            color: DnDTheme.ancientGold,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: Text(
-                'Name (A-Z)',
-                style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-              ),
-              onTap: () => Navigator.of(context).pop(),
-            ),
-            ListTile(
-              title: Text(
-                'Typ',
-                style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-              ),
-              onTap: () => Navigator.of(context).pop(),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   void _showAddSoundDialog(BuildContext context) {
@@ -867,9 +649,7 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen>
           backgroundColor: DnDTheme.stoneGrey,
           title: Text(
             'Sound hochladen',
-            style: DnDTheme.headline3.copyWith(
-              color: DnDTheme.ancientGold,
-            ),
+            style: DnDTheme.headline3.copyWith(color: DnDTheme.ancientGold),
           ),
           content: SingleChildScrollView(
             child: Column(
@@ -916,7 +696,9 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen>
                     decoration: BoxDecoration(
                       color: DnDTheme.successGreen.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                      border: Border.all(color: DnDTheme.successGreen.withValues(alpha: 0.3)),
+                      border: Border.all(
+                        color: DnDTheme.successGreen.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -988,15 +770,13 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen>
                     filled: true,
                     fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
                   ),
-                  items: SoundType.values.map((type) {
-                    return DropdownMenuItem<SoundType>(
-                      value: type,
-                      child: Text(
-                        type.displayName,
-                        style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                      ),
-                    );
-                  }).toList(),
+                  items: SoundType.values.map((type) => DropdownMenuItem<SoundType>(
+                    value: type,
+                    child: Text(
+                      type.displayName,
+                      style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                    ),
+                  )).toList(),
                   onChanged: (SoundType? value) {
                     if (value != null) {
                       setDialogState(() => selectedType = value);
@@ -1037,9 +817,7 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen>
           ),
           actions: [
             TextButton(
-              onPressed: isUploading ? null : () {
-                Navigator.of(context).pop();
-              },
+              onPressed: isUploading ? null : () => Navigator.of(context).pop(),
               child: Text(
                 'Abbrechen',
                 style: DnDTheme.bodyText1.copyWith(
@@ -1064,18 +842,19 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen>
                 
                 setDialogState(() => isUploading = true);
                 
-                // Sound hochladen mit dem gespeicherten Dateipfad
+                // Sound hochladen
                 final uploadedSound = await _viewModel.uploadSound(
                   selectedFilePath!,
                   selectedType,
-                  customName: nameController.text.isNotEmpty ? nameController.text : null,
+                  customName: nameController.text.isNotEmpty 
+                      ? nameController.text 
+                      : null,
                   description: descriptionController.text,
                 );
                 
                 setDialogState(() => isUploading = false);
                 
                 if (uploadedSound != null) {
-                  // Dialog schließen und Success-Message zeigen
                   Navigator.of(context).pop();
                   
                   if (!mounted) return;
@@ -1090,7 +869,6 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen>
                     ),
                   );
                 } else {
-                  // Error-Message zeigen
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
@@ -1111,56 +889,12 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen>
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                     )
                   : const Text('Hochladen'),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showDeleteConfirmation(BuildContext context, Sound sound) {
-    showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
-        title: Text(
-          'Sound löschen',
-          style: DnDTheme.headline3.copyWith(
-            color: DnDTheme.errorRed,
-          ),
-        ),
-        content: Text(
-          'Möchtest du "${sound.name}" wirklich löschen?',
-          style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(
-                color: DnDTheme.mysticalPurple,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _viewModel.deleteSound(sound.id);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.errorRed,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Löschen'),
-          ),
-        ],
       ),
     );
   }
@@ -1175,12 +909,5 @@ extension SoundTypeExtension on SoundType {
       case SoundType.Effekt:
         return 'Effekt';
     }
-  }
-}
-
-// Extension für Sound Display Name
-extension SoundExtension on Sound {
-  String get soundTypeDisplayName {
-    return soundType.displayName;
   }
 }

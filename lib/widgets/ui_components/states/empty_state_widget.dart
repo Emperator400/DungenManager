@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 /// Wiederverwendbarer Empty State Widget
@@ -107,45 +108,55 @@ class EmptyStateWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon ?? Icons.folder_open,
-              size: 64,
-              color: iconColor ?? Colors.grey[600],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: math.max(0, constraints.maxHeight - 48), // Padding abziehen, aber nie negativ
             ),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: iconColor ?? Colors.grey[600],
+            child: IntrinsicHeight(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    icon ?? Icons.folder_open,
+                    size: 64,
+                    color: iconColor ?? Colors.grey[600],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: iconColor ?? Colors.grey[600],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  if (message != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      message!,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[500],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                  if (showAction && action != null) ...[
+                    const SizedBox(height: 16),
+                    action!,
+                  ],
+                ],
               ),
-              textAlign: TextAlign.center,
             ),
-            if (message != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                message!,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[500],
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-            if (showAction && action != null) ...[
-              const SizedBox(height: 16),
-              action!,
-            ],
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

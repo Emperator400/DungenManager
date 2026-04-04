@@ -14,13 +14,14 @@ import '../../models/scene.dart';
 import '../../models/session.dart';
 import '../../models/sound.dart';
 import '../../models/wiki_entry.dart';
-import '../../services/sound_service.dart';
+//import '../../services/sound_service.dart';
 import '../../theme/dnd_theme.dart';
 import '../../viewmodels/active_session_viewmodel.dart';
 import '../../viewmodels/edit_scene_viewmodel.dart';
 import '../../widgets/active_session/atmosphere_quadrant.dart';
 import '../../widgets/active_session/live_notes_quadrant.dart';
 import '../../widgets/active_session/quest_list_section.dart';
+import '../../widgets/audio/sound_mixer_widget.dart';
 import '../../widgets/lore_keeper/wiki_entry_popup_dialog.dart';
 import '../scenes/edit_scene_screen.dart';
 import 'encounter_setup_screen.dart' as encounter_setup;
@@ -409,42 +410,47 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     );
   }
 
-  /// Baut die scrollbare rechte Sidebar mit Live-Notizen, Atmosphäre und Quests
-  Widget _buildScrollableSidebar(ActiveSessionViewModel viewModel) =>
-      Column(
-        children: [
-          // Live-Notizen (flexibel)
-          Expanded(
-            flex: 3,
-            child: _buildLiveNotesPanel(viewModel),
+    /// Baut die rechte Sidebar mit Live-Notizen, Atmosphäre und Quests
+    /// Verwendet scrollbares Layout - Atmosphäre passt sich dynamisch an Sound-Anzahl an
+    Widget _buildScrollableSidebar(ActiveSessionViewModel viewModel) =>
+        SingleChildScrollView(
+          child: Column(
+            children: [
+              // Live-Notizen
+              SizedBox(
+                height: 400,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _buildLiveNotesPanel(viewModel),
+                ),
+              ),
+
+              // Atmosphäre - dynamische Höhe basierend auf Sound-Anzahl
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: _buildAtmospherePanel(viewModel),
+              ),
+
+              // Quest-Liste
+              SizedBox(
+                height: 400,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: QuestListSection(
+                    key: ValueKey('quest_list_$_questUpdateCounter'),
+                    campaignId: viewModel.campaign.id,
+                    onQuestUpdated: () {
+                      // Counter erhöhen für UI-Update von ALLEN Quest-Anzeigen
+                      setState(() {
+                        _questUpdateCounter++;
+                      });
+                    },
+                  ),
+                ),
+              ),
+            ],
           ),
-
-          const SizedBox(height: 8),
-
-          // Atmosphäre (flexibel) - Sound Mixer
-          Expanded(
-            flex: 4,
-            child: _buildAtmospherePanel(viewModel),
-          ),
-
-          const SizedBox(height: 8),
-
-          // Quest-Liste (flexibel)
-          Expanded(
-            flex: 3,
-            child: QuestListSection(
-              key: ValueKey('quest_list_$_questUpdateCounter'),
-              campaignId: viewModel.campaign.id,
-              onQuestUpdated: () {
-                // Counter erhöhen für UI-Update von ALLEN Quest-Anzeigen
-                setState(() {
-                  _questUpdateCounter++;
-                });
-              },
-            ),
-          ),
-        ],
-      );
+        );
 
   Widget _buildSceneFlowWidget(ActiveSessionViewModel viewModel) {
     final scenes = viewModel.scenes;
@@ -887,200 +893,21 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     }
   }
 
-  /// Baut eine Reihe mit verknüpften Sounds mit Play-Buttons
-  /// Verwendet den einfachen SoundService (kein Multi-Channel)
-  Widget _buildLinkedSoundsRow(Scene scene) {
-    if (scene.linkedSoundIds.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return FutureBuilder<List<Sound>>(
-      future: _loadLinkedSounds(scene.linkedSoundIds),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Padding(
-            padding: EdgeInsets.all(4),
-            child: Center(
-              child: SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
-              ),
-            ),
-          );
-        }
-
-        if (snapshot.hasError) {
-          return Padding(
-            padding: const EdgeInsets.all(4),
-            child: Text(
-              'Fehler beim Laden der Sounds',
-              style: DnDTheme.bodyText2.copyWith(
-                color: DnDTheme.errorRed,
-                fontSize: 8,
-              ),
-            ),
-          );
-        }
-
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const SizedBox.shrink();
-        }
-
-        final linkedSounds = snapshot.data!;
-        
-        // Sound-Liste mit Play-Buttons
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          decoration: BoxDecoration(
-            color: DnDTheme.arcaneBlue.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-            border: Border.all(
-              color: DnDTheme.arcaneBlue.withValues(alpha: 0.3),
-              width: 1,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.music_note,
-                    color: DnDTheme.arcaneBlue,
-                    size: 14,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '${linkedSounds.length} Sound${linkedSounds.length > 1 ? 's' : ''} verknüpft',
-                    style: DnDTheme.bodyText2.copyWith(
-                      color: Colors.white70,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              // Sound-Liste mit Play-Buttons
-              Column(
-                children: linkedSounds.map((sound) {
-                  return _buildSoundItem(sound);
-                }).toList(),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  /// Baut ein einzelnes Sound-Item mit Play-Button
-  Widget _buildSoundItem(Sound sound) {
-    final isAmbiente = sound.soundType == SoundType.Ambiente;
-    final color = isAmbiente ? DnDTheme.arcaneBlue : DnDTheme.successGreen;
-    
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          // Play-Button
-          GestureDetector(
-            onTap: () => _playSound(sound),
-            child: Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                border: Border.all(
-                  color: color.withValues(alpha: 0.5),
-                  width: 1,
-                ),
-              ),
-              child: Icon(
-                Icons.play_arrow,
-                color: color,
-                size: 18,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Sound-Info
-          Expanded(
-            child: Row(
-              children: [
-                Icon(
-                  isAmbiente ? Icons.waves : Icons.speaker,
-                  color: color,
-                  size: 14,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    sound.name,
-                    style: DnDTheme.bodyText2.copyWith(
-                      color: Colors.white,
-                      fontSize: 11,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Stop-Button
-          GestureDetector(
-            onTap: _stopSound,
-            child: Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                color: DnDTheme.errorRed.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                border: Border.all(
-                  color: DnDTheme.errorRed.withValues(alpha: 0.4),
-                  width: 1,
-                ),
-              ),
-              child: const Icon(
-                Icons.stop,
-                color: DnDTheme.errorRed,
-                size: 14,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Spielt einen Sound ab
-  Future<void> _playSound(Sound sound) async {
-    try {
-      await SoundService.playSound(sound.filePath);
-    } catch (e) {
-      debugPrint('Fehler beim Abspielen: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fehler beim Abspielen: ${sound.name}'),
-            backgroundColor: DnDTheme.errorRed,
-            duration: const Duration(seconds: 2),
-          ),
-        );
+            /// Baut eine Reihe mit verknüpften Sounds mit Sound Mixer Widget
+    /// Verwendet Multi-Channel Sound Mixer für gleichzeitige Wiedergabe
+    Widget _buildLinkedSoundsRow(Scene scene) {
+      if (scene.linkedSoundIds.isEmpty) {
+        return const SizedBox.shrink();
       }
-    }
-  }
 
-  /// Stoppt die Sound-Wiedergabe
-  Future<void> _stopSound() async {
-    try {
-      await SoundService.stopSound();
-    } catch (e) {
-      debugPrint('Fehler beim Stoppen: $e');
+      // Sound Mixer Widget direkt verwenden (ohne AtmosphereQuadrant Wrapper)
+      return SoundMixerWidget(
+        initialSoundIds: scene.linkedSoundIds,
+        size: SoundMixerSize.compact, // Kompakte Version für Szenen-Detail
+      );
     }
-  }
+
+  
 
   /// Lädt die Details der verknüpften Sounds
   Future<List<Sound>> _loadLinkedSounds(List<String> soundIds) async {

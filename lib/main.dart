@@ -15,6 +15,7 @@ import 'package:provider/provider.dart';
 import 'screens/campaign/campaign_selection_screen.dart';
 import 'screens/navigation/all_screens_screen.dart';
 import 'screens/debug/screen_graph_visualization_screen.dart';
+import 'screens/debug/wigets_test_grund.dart';
 import 'inventory_demo_app.dart';
 import 'theme/dnd_theme.dart';
 import 'services/session_service.dart';
@@ -34,6 +35,7 @@ import 'database/repositories/wiki_entry_model_repository.dart';
 import 'database/repositories/encounter_model_repository.dart';
 import 'viewmodels/update_viewmodel.dart';
 import 'widgets/update_dialog.dart';
+import 'services/multi_stream_sound_service.dart';
 
 // ============================================================
 // APP KONFIGURATION
@@ -45,7 +47,7 @@ import 'widgets/update_dialog.dart';
 // ENTWICKLUNGS-MODUS: Setze auf `false` für Entwicklung
 // - Zeigt AppSelectionScreen mit allen Debug-Optionen
 // 
-const bool kIsProductionMode = true;
+const bool kIsProductionMode = false;
 // ============================================================
 
 /// Hauptfunktion der App
@@ -167,6 +169,10 @@ class DmApp extends StatelessWidget {
             viewModel.init();
             return viewModel;
           },
+        ),
+        // Multi-Stream Sound Service (Singleton für app-weiten Audio-Mixer)
+        ChangeNotifierProvider(
+          create: (_) => MultiStreamSoundService(),
         ),
       ],
       child: MaterialApp(
@@ -319,8 +325,17 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
                       ),
                     ),
                   ),
+                  const SizedBox(height: 16.0),
+                  _buildAppButton(
+                    "sound Mixer Test",
+                    Icons.music_note,
+                    DnDTheme.infoBlue,
+                    () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (context) => const WidgetTestGround()
+                     ),
+                    )
+                  ),
                   const SizedBox(height: 32.0),
-                  
                   // Hinweis
                   _buildInfoCard(),
                 ],
