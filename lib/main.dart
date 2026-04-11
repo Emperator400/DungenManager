@@ -36,6 +36,7 @@ import 'database/repositories/encounter_model_repository.dart';
 import 'viewmodels/update_viewmodel.dart';
 import 'widgets/update_dialog.dart';
 import 'services/multi_stream_sound_service.dart';
+import 'services/image_storage_service.dart';
 
 // ============================================================
 // APP KONFIGURATION
@@ -82,6 +83,10 @@ Future<void> _initializeDatabase() async {
     final migration = DatabaseMigration(dbConnection);
     await migration.runMigrations();
     print('✅ Datenbank-Migrationen erfolgreich ausgeführt');
+    
+    // Migriere alle bestehenden Bilder in den Update-sicheren Documents-Ordner
+    await ImageStorageService.migrateExistingImages();
+    
   } catch (e) {
     print('❌ Fehler beim Initialisieren der Datenbank: $e');
     rethrow;
@@ -97,7 +102,6 @@ Future<void> _configureAudio() async {
           category: AVAudioSessionCategory.playback,
           options: const {
             AVAudioSessionOptions.mixWithOthers,
-            AVAudioSessionOptions.allowBluetoothA2DP,
           },
         ),
         android: AudioContextAndroid(

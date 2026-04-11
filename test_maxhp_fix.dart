@@ -1,4 +1,4 @@
-import 'lib/database/database_helper.dart';
+import 'lib/database/legacy/database_helper_legacy_backup.dart';
 import 'lib/models/player_character.dart';
 import 'package:uuid/uuid.dart';
 
@@ -69,7 +69,7 @@ void main() async {
     
     // 5. Aus Datenbank laden
     print('\n5. Lade PlayerCharacter aus Datenbank...');
-    final loadedCharacter = await db.getPlayerCharacterById(id);
+    final loadedCharacter = await db.getPlayerCharacterById(id.toString());
     
     if (loadedCharacter != null) {
       print('Character geladen:');
@@ -91,7 +91,7 @@ void main() async {
     
     // 6. Aufräumen
     print('\n6. Räume Testdaten auf...');
-    await db.deletePlayerCharacter(testCharacter.id);
+    await db.deletePlayerCharacter(testCharacter.id.toString());
     print('Testcharacter gelöscht');
     
     print('\n===========================================');

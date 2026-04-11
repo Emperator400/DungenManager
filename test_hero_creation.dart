@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'lib/screens/enhanced_unified_character_editor_screen.dart';
+import 'lib/screens/characters/edit_pc_screen.dart';
 import 'lib/widgets/character_editor/character_editor_controller.dart';
 import 'lib/theme/dnd_theme.dart';
 import 'lib/viewmodels/character_editor_viewmodel.dart';
@@ -62,9 +62,9 @@ class HeroCreationTestScreen extends StatelessWidget {
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (context) => const EnhancedUnifiedCharacterEditorScreen(
-                          characterType: CharacterType.player,
-                          campaignId: 'test-campaign-123',
+                        builder: (context) => const EditPcScreen(
+                          // characterType: CharacterType.player, // TODO: Anpassen an neue API falls nötig
+                          // campaignId: 'test-campaign-123', // TODO: Anpassen an neue API falls nötig
                         ),
                       ),
                     );
@@ -95,8 +95,8 @@ class HeroCreationTestScreen extends StatelessWidget {
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (context) => const EnhancedUnifiedCharacterEditorScreen(
-                          characterType: CharacterType.npc,
+                        builder: (context) => const EditPcScreen(
+                          // characterType: CharacterType.npc, // TODO: Anpassen an neue API falls nötig
                         ),
                       ),
                     );
@@ -127,8 +127,8 @@ class HeroCreationTestScreen extends StatelessWidget {
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (context) => const EnhancedUnifiedCharacterEditorScreen(
-                          characterType: CharacterType.monster,
+                        builder: (context) => const EditPcScreen(
+                          // characterType: CharacterType.monster, // TODO: Anpassen an neue API falls nötig
                         ),
                       ),
                     );

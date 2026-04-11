@@ -1,11 +1,13 @@
 // lib/widgets/campaign/campaign_sessions_tab.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../database/core/database_connection.dart';
 import '../../database/repositories/session_model_repository.dart';
 import '../../models/campaign.dart';
 import '../../models/session.dart';
 import '../../screens/session/edit_session_screen.dart';
 import '../../screens/session/active_session_screen.dart';
+import '../../viewmodels/active_session_viewmodel.dart';
 
 class CampaignSessionsTab extends StatefulWidget {
   final Campaign campaign;
@@ -102,7 +104,13 @@ class CampaignSessionsTabState extends State<CampaignSessionsTab> {
                 title: Text(session.title, style: const TextStyle(fontWeight: FontWeight.bold)),
                 onTap: () {
                   Navigator.of(context).push(MaterialPageRoute(
-                  builder: (ctx) => ActiveSessionScreen(session: session, campaign: widget.campaign),
+                  builder: (ctx) => ChangeNotifierProvider<ActiveSessionViewModel>(
+                    create: (context) => ActiveSessionViewModel(
+                      session: session,
+                      campaign: widget.campaign,
+                    ),
+                    child: ActiveSessionScreen(session: session, campaign: widget.campaign),
+                  ),
                   ));
                 },
                 // Das Trailing ist jetzt ein Pop-up-Menü für mehr Aktionen

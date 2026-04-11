@@ -218,6 +218,7 @@ class SoundService {
       }
       
       // Sound abspielen
+      await player.setReleaseMode(ReleaseMode.stop);
       await player.play(DeviceFileSource(filePath));
       print('✅ Sound wird abgespielt: $filePath');
       return true;

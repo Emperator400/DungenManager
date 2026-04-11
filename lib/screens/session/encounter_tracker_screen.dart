@@ -63,22 +63,21 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
       if (participant.characterId != null) {
         final charKey = 'char_${participant.characterId}';
         if (widget.initialInitiativeValues!.containsKey(charKey)) {
-          setState(() {
-            _initiativeValues[participant.id] = 
-                widget.initialInitiativeValues![charKey]!;
-          });
+          _initiativeValues[participant.id] = widget.initialInitiativeValues![charKey]!;
         }
       }
       // Prüfe ob es ein Monster/Creature ist
       if (participant.creatureId != null) {
         final monsterKey = 'monster_${participant.creatureId}';
         if (widget.initialInitiativeValues!.containsKey(monsterKey)) {
-          setState(() {
-            _initiativeValues[participant.id] = 
-                widget.initialInitiativeValues![monsterKey]!;
-          });
+          _initiativeValues[participant.id] = widget.initialInitiativeValues![monsterKey]!;
         }
       }
+    }
+    
+    // Nach dem Laden der initialen Werte direkt sortieren
+    if (_initiativeValues.isNotEmpty) {
+      _sortParticipantsByInitiative();
     }
   }
 
@@ -96,7 +95,19 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
     final random = Random();
     setState(() {
       for (final participant in _viewModel.participants) {
-        final roll = random.nextInt(20) + 1;
+        int modifier = 0;
+        
+        // Versuche, den DEX-Modifikator zu ermitteln
+        final character = _viewModel.getCharacterForParticipant(participant);
+        final creature = _viewModel.getCreatureForParticipant(participant);
+        
+        if (character != null) {
+          modifier = (character.dexterity - 10) ~/ 2;
+        } else if (creature != null) {
+          modifier = (creature.dexterity - 10) ~/ 2;
+        }
+
+        final roll = random.nextInt(20) + 1 + modifier;
         _initiativeValues[participant.id] = roll;
         if (_initiativeControllers.containsKey(participant.id)) {
           _initiativeControllers[participant.id]!.text = roll.toString();
@@ -107,26 +118,23 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
   }
 
   void _sortParticipantsByInitiative() {
-    // Initiative-Werte sortieren
-    final sortedIds = _initiativeValues.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    
-    // Teilnehmer nach Initiative sortieren
-    final sortedParticipants = <EncounterParticipant>[];
-    for (final entry in sortedIds) {
-      final participant = _viewModel.participants.firstWhere(
-        (p) => p.id == entry.key,
-        orElse: () => _viewModel.participants.first,
-      );
-      sortedParticipants.add(participant);
+    try {
+      // Sortiere direkt im ViewModel, damit viewModel.nextTurn() die Reihenfolge beachtet
+      _viewModel.participants.sort((a, b) {
+        // 1. Tote ans Ende
+        if (a.isDead && b.isAlive) return 1;
+        if (a.isAlive && b.isDead) return -1;
+        
+        // 2. Nach Initiative sortieren (absteigend)
+        final initA = _initiativeValues[a.id] ?? 0;
+        final initB = _initiativeValues[b.id] ?? 0;
+        return initB.compareTo(initA);
+      });
+    } catch (e) {
+      debugPrint('Hinweis: Teilnehmer konnten nicht im ViewModel sortiert werden: $e');
     }
     
-    // Tote Teilnehmer ans Ende
-    sortedParticipants.sort((a, b) {
-      if (a.isDead && b.isAlive) return 1;
-      if (a.isAlive && b.isDead) return -1;
-      return 0;
-    });
+    setState(() {});
   }
 
   @override
@@ -322,23 +330,16 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
   }
 
   Widget _buildParticipantsList(EncounterTrackerViewModel viewModel) {
-    // Sortiere Teilnehmer: Aktiver zuerst, dann nach Initiative
     final sortedParticipants = List<EncounterParticipant>.from(viewModel.participants);
     
-    // Nach Initiative sortieren falls vorhanden
-    if (_initiativeValues.isNotEmpty) {
-      sortedParticipants.sort((a, b) {
-        final initA = _initiativeValues[a.id] ?? 0;
-        final initB = _initiativeValues[b.id] ?? 0;
-        return initB.compareTo(initA);
-      });
-    }
-    
-    // Tote ans Ende
+    // Zur Sicherheit visuell sortieren, falls das in-place Sortieren im ViewModel fehlschlug
     sortedParticipants.sort((a, b) {
       if (a.isDead && b.isAlive) return 1;
       if (a.isAlive && b.isDead) return -1;
-      return 0;
+      
+      final initA = _initiativeValues[a.id] ?? 0;
+      final initB = _initiativeValues[b.id] ?? 0;
+      return initB.compareTo(initA);
     });
 
     return ListView.builder(
@@ -1182,10 +1183,21 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
             IconButton(
               icon: const Icon(Icons.casino, color: DnDTheme.ancientGold),
               onPressed: () {
-                final roll = Random().nextInt(20) + 1;
+                int modifier = 0;
+                
+                final character = _viewModel.getCharacterForParticipant(participant);
+                final creature = _viewModel.getCreatureForParticipant(participant);
+                
+                if (character != null) {
+                  modifier = (character.dexterity - 10) ~/ 2;
+                } else if (creature != null) {
+                  modifier = (creature.dexterity - 10) ~/ 2;
+                }
+                
+                final roll = Random().nextInt(20) + 1 + modifier;
                 controller.text = roll.toString();
               },
-              tooltip: 'Würfeln (d20)',
+              tooltip: 'Würfeln (W20 + DEX)',
             ),
           ],
         ),

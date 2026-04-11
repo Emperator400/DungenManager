@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
 import '../migrations/refactoring_migration_v2.dart';
 import '../migrations/database_migration.dart';
 
@@ -28,17 +30,45 @@ class DatabaseConnection {
     _database = await _initDatabase();
     return _database!;
   }
+
+  /// Holt den sicheren Speicherpfad für die Datenbank in Dokumente/DungenManager/saves/
+  Future<String> _getCustomDatabasePath() async {
+    // Holt den "Dokumente"-Ordner des Benutzers (bzw. App-Docs auf Mobile)
+    final Directory documentsDir = await getApplicationDocumentsDirectory();
+    final String savesDirPath = join(documentsDir.path, 'DungenManager', 'saves');
+    final Directory savesDir = Directory(savesDirPath);
+    
+    // Erstelle die Ordnerstruktur, falls sie noch nicht existiert
+    if (!await savesDir.exists()) {
+      await savesDir.create(recursive: true);
+    }
+    
+    final String newPath = join(savesDirPath, 'dnd_helper_v2.db');
+    final String oldPath = join(await getDatabasesPath(), 'dnd_helper_v2.db');
+    
+    final File newDbFile = File(newPath);
+    final File oldDbFile = File(oldPath);
+    
+    // Automatischer Daten-Umzug: Falls die DB am neuen sicheren Ort fehlt, am alten aber existiert
+    if (!await newDbFile.exists() && await oldDbFile.exists()) {
+      print('📦 [DatabaseConnection] Migriere bestehende Datenbank an neuen, sicheren Ort...');
+      await oldDbFile.copy(newPath);
+      print('✅ [DatabaseConnection] Datenbank erfolgreich nach $newPath kopiert');
+    }
+    
+    return newPath;
+  }
   
   /// Initialisiert die Datenbankverbindung
   Future<Database> _initDatabase() async {
-    final path = join(await getDatabasesPath(), 'dnd_helper_v2.db');
+    final path = await _getCustomDatabasePath();
     print('📁 [DatabaseConnection] Datenbank-Pfad: $path');
     
     _migration = RefactoringMigrationV2(this);
     
     final db = await openDatabase(
       path,
-      version: 17,
+      version: 18,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       singleInstance: true,
@@ -487,6 +517,7 @@ class DatabaseConnection {
         linked_encounter_id TEXT,
         linked_character_ids TEXT DEFAULT '[]',
         linked_sound_ids TEXT DEFAULT '[]',
+        sound_volumes TEXT DEFAULT '{}',
         scene_data TEXT DEFAULT '{}',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
@@ -966,6 +997,26 @@ class DatabaseConnection {
         print('⚠️ Konnte Encounter-Tabellen nicht migrieren: $e');
       }
     }
+
+    if (oldVersion < 18 && newVersion >= 18) {
+      print('🔄 Füge sound_volumes Spalte zu scenes Tabelle hinzu (v17 → v18)...');
+      try {
+        final tableInfo = await db.rawQuery('PRAGMA table_info(scenes)');
+        final existingColumns = tableInfo.map((column) => column['name'] as String).toSet();
+        
+        // sound_volumes hinzufügen
+        if (!existingColumns.contains('sound_volumes')) {
+          await db.execute('ALTER TABLE scenes ADD COLUMN sound_volumes TEXT DEFAULT "{}"');
+          print('✅ sound_volumes Spalte hinzugefügt');
+        } else {
+          print('ℹ️ sound_volumes Spalte existiert bereits');
+        }
+        
+        print('✅ scenes Tabelle aktualisiert (Version 18)');
+      } catch (e) {
+        print('⚠️ Konnte sound_volumes Spalte nicht hinzufügen: $e');
+      }
+    }
   }
   
   /// Schließt die Datenbankverbindung
@@ -979,7 +1030,7 @@ class DatabaseConnection {
   /// Setzt die Datenbank zurück
   Future<void> reset() async {
     await close();
-    final path = join(await getDatabasesPath(), 'dnd_helper_v2.db');
+    final path = await _getCustomDatabasePath();
     await deleteDatabase(path);
     _database = await _initDatabase();
     print('✅ Datenbank wurde zurückgesetzt');
@@ -999,7 +1050,7 @@ class DatabaseConnection {
   /// Löscht die Datenbank-Datei
   Future<void> deleteDatabaseFile() async {
     await close();
-    final path = join(await getDatabasesPath(), 'dnd_helper_v2.db');
+    final path = await _getCustomDatabasePath();
     await deleteDatabase(path);
     print('✅ Datenbank-Datei wurde gelöscht');
   }

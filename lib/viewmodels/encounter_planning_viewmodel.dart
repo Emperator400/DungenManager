@@ -10,6 +10,19 @@ import '../models/encounter_participant.dart';
 import '../models/player_character.dart';
 import '../models/creature.dart';
 
+/// Repräsentiert eine einzigartige Monster-Instanz im Kampf
+class MonsterInstance {
+  final String instanceId;
+  final String baseMonsterId;
+  final int number;
+
+  MonsterInstance({
+    required this.instanceId,
+    required this.baseMonsterId,
+    required this.number,
+  });
+}
+
 /// ViewModel für Encounter-Planung
 /// 
 /// Verwaltet das Zusammenstellen von Encounters mit Helden und Monstern.
@@ -27,7 +40,8 @@ class EncounterPlanningViewModel extends ChangeNotifier {
   List<PlayerCharacter> _availableCharacters = [];
   List<Creature> _availableMonsters = [];
   List<String> _selectedCharacterIds = [];
-  List<String> _selectedMonsterIds = [];
+  List<MonsterInstance> _monsterInstances = [];
+  final Map<String, int> _monsterNumberTracker = {};
 
   // Encounter-Daten
   String _encounterTitle = '';
@@ -67,14 +81,34 @@ class EncounterPlanningViewModel extends ChangeNotifier {
   List<PlayerCharacter> get selectedCharacters => _availableCharacters
       .where((c) => _selectedCharacterIds.contains(c.id))
       .toList();
-  List<Creature> get selectedMonsters => _availableMonsters
-      .where((m) => _selectedMonsterIds.contains(m.id))
-      .toList();
+      
+  List<Creature> get selectedMonsters {
+    return _monsterInstances.map((instance) {
+      final baseMonster = _availableMonsters.firstWhere(
+        (m) => m.id == instance.baseMonsterId,
+        orElse: () => _availableMonsters.first,
+      );
+      
+      // Finde heraus, ob es mehrere dieser Art gibt, um sie zu nummerieren
+      final hasMultiple = _monsterInstances.where((i) => i.baseMonsterId == instance.baseMonsterId).length > 1;
+      final newName = hasMultiple ? '${baseMonster.name} ${instance.number}' : baseMonster.name;
+      
+      // Nutze die Repository-Maps für einen tiefen Klon mit neuer ID, 
+      // da Creature.copyWith die 'id' nicht zur Modifikation anbietet.
+      final map = _creatureRepo.toDatabaseMap(baseMonster);
+      final modifiedMap = Map<String, dynamic>.from(map);
+      modifiedMap['id'] = instance.instanceId; // Überschreibe ID mit Instanz-ID für den Tracker
+      modifiedMap['name'] = newName;
+      
+      return _creatureRepo.fromDatabaseMap(modifiedMap);
+    }).toList();
+  }
+  
   String get encounterTitle => _encounterTitle;
   String get encounterDescription => _encounterDescription;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  int get totalParticipants => _selectedCharacterIds.length + _selectedMonsterIds.length;
+  int get totalParticipants => _selectedCharacterIds.length + _monsterInstances.length;
   bool get canStartEncounter => totalParticipants > 0 && _encounterTitle.isNotEmpty;
 
   // ===== DATEN LADEN =====
@@ -82,7 +116,7 @@ class EncounterPlanningViewModel extends ChangeNotifier {
   /// Lädt alle verfügbaren Helden und Monster
   Future<void> loadData() async {
     print('');
-    print('🎯🎯🎯 [EncounterPlanningViewModel] loadData() aufgerufen 🎯🎯🎯');
+    print('🎯🎯🎯 [EncounterPlanningViewModel] loadData() aufgerufen');
     print('🎯 [EncounterPlanningViewModel] campaignId: $campaignId, sceneId: $sceneId');
     _setLoading(true);
     _clearError();
@@ -139,9 +173,7 @@ class EncounterPlanningViewModel extends ChangeNotifier {
           }
           // Prüfen ob es ein Monster ist
           else if (_availableMonsters.any((m) => m.id == id)) {
-            if (!_selectedMonsterIds.contains(id)) {
-              _selectedMonsterIds.add(id);
-            }
+            addMonster(id);
           }
         }
       }
@@ -151,9 +183,7 @@ class EncounterPlanningViewModel extends ChangeNotifier {
         for (final monsterId in preselectedMonsterIds) {
           // Prüfen ob das Monster existiert
           if (_availableMonsters.any((m) => m.id == monsterId)) {
-            if (!_selectedMonsterIds.contains(monsterId)) {
-              _selectedMonsterIds.add(monsterId);
-            }
+            addMonster(monsterId);
           }
         }
       }
@@ -196,13 +226,19 @@ class EncounterPlanningViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Wählt ein Monster aus oder ab
-  void toggleMonsterSelection(String monsterId) {
-    if (_selectedMonsterIds.contains(monsterId)) {
-      _selectedMonsterIds.remove(monsterId);
-    } else {
-      _selectedMonsterIds.add(monsterId);
-    }
+  /// Fügt ein weiteres Monster derselben Art hinzu
+  void addMonster(String baseMonsterId) {
+    final count = (_monsterNumberTracker[baseMonsterId] ?? 0) + 1;
+    _monsterNumberTracker[baseMonsterId] = count;
+    
+    // Generiere eindeutige ID für diese spezifische Goblin-Instanz
+    final instanceId = 'inst_${baseMonsterId}_${count}_${DateTime.now().millisecondsSinceEpoch}';
+    
+    _monsterInstances.add(MonsterInstance(
+      instanceId: instanceId,
+      baseMonsterId: baseMonsterId,
+      number: count,
+    ));
     notifyListeners();
   }
 
@@ -211,9 +247,9 @@ class EncounterPlanningViewModel extends ChangeNotifier {
     return _selectedCharacterIds.contains(characterId);
   }
 
-  /// Prüft ob ein Monster ausgewählt ist
-  bool isMonsterSelected(String monsterId) {
-    return _selectedMonsterIds.contains(monsterId);
+  /// Gibt zurück, wie oft ein bestimmtes Monster bereits hinzugefügt wurde
+  int getMonsterCount(String baseMonsterId) {
+    return _monsterInstances.where((m) => m.baseMonsterId == baseMonsterId).length;
   }
 
   /// Entfernt einen Charakter aus der Auswahl
@@ -222,16 +258,17 @@ class EncounterPlanningViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Entfernt ein Monster aus der Auswahl
-  void removeMonster(String monsterId) {
-    _selectedMonsterIds.remove(monsterId);
+  /// Entfernt eine spezifische Monster-Instanz aus der Auswahl
+  void removeMonster(String instanceId) {
+    _monsterInstances.removeWhere((m) => m.instanceId == instanceId);
     notifyListeners();
   }
 
   /// Leert die gesamte Auswahl
   void clearSelection() {
     _selectedCharacterIds.clear();
-    _selectedMonsterIds.clear();
+    _monsterInstances.clear();
+    _monsterNumberTracker.clear();
     notifyListeners();
   }
 
@@ -285,9 +322,9 @@ class EncounterPlanningViewModel extends ChangeNotifier {
       final roll = _random.nextInt(20) + 1;
       _initiativeValues[_charKey(characterId)] = roll;
     }
-    for (final monsterId in _selectedMonsterIds) {
+    for (final instance in _monsterInstances) {
       final roll = _random.nextInt(20) + 1;
-      _initiativeValues[_monsterKey(monsterId)] = roll;
+      _initiativeValues[_monsterKey(instance.instanceId)] = roll;
     }
     notifyListeners();
   }
@@ -346,8 +383,8 @@ class EncounterPlanningViewModel extends ChangeNotifier {
         return false;
       }
     }
-    for (final monsterId in _selectedMonsterIds) {
-      if (!_initiativeValues.containsKey(_monsterKey(monsterId))) {
+    for (final instance in _monsterInstances) {
+      if (!_initiativeValues.containsKey(_monsterKey(instance.instanceId))) {
         return false;
       }
     }
@@ -361,10 +398,10 @@ class EncounterPlanningViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Entfernt Initiative wenn Monster entfernt wird
-  void removeMonsterWithInitiative(String monsterId) {
-    _selectedMonsterIds.remove(monsterId);
-    _initiativeValues.remove(_monsterKey(monsterId));
+  /// Entfernt Initiative wenn eine Monster-Instanz entfernt wird
+  void removeMonsterWithInitiative(String instanceId) {
+    _monsterInstances.removeWhere((m) => m.instanceId == instanceId);
+    _initiativeValues.remove(_monsterKey(instanceId));
     notifyListeners();
   }
 
@@ -413,18 +450,21 @@ class EncounterPlanningViewModel extends ChangeNotifier {
       }
 
       // Monster als Teilnehmer hinzufügen
-      for (final monsterId in _selectedMonsterIds) {
-        final monster = _availableMonsters.firstWhere(
-          (m) => m.id == monsterId,
+      for (final instance in _monsterInstances) {
+        final baseMonster = _availableMonsters.firstWhere(
+          (m) => m.id == instance.baseMonsterId,
         );
+        
+        final hasMultiple = _monsterInstances.where((i) => i.baseMonsterId == instance.baseMonsterId).length > 1;
+        final participantName = hasMultiple ? '${baseMonster.name} ${instance.number}' : baseMonster.name;
 
         final participant = EncounterParticipant(
           encounterId: savedEncounter.id,
-          name: monster.name,
+          name: participantName,
           type: ParticipantType.enemy,
-          currentHp: monster.maxHp,
-          maxHp: monster.maxHp,
-          creatureId: monster.id, // WICHTIG: Referenz zum ursprünglichen Monster speichern
+          currentHp: baseMonster.maxHp,
+          maxHp: baseMonster.maxHp,
+          creatureId: baseMonster.id, // WICHTIG: Referenz zum ursprünglichen Monster speichern
         );
 
         final savedParticipant = await _participantRepo.create(participant);

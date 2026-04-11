@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/campaign.dart';
 import '../../models/session.dart';
 import '../../viewmodels/session_list_for_campaign_viewmodel.dart';
+import '../../viewmodels/active_session_viewmodel.dart';
 import '../session/edit_session_screen.dart' show EditSessionScreen;
 import '../session/active_session_screen.dart' show ActiveSessionScreen;
 import 'edit_campaign_screen.dart' show EditCampaignScreen;
@@ -264,9 +265,15 @@ class _SessionListForCampaignScreenState extends State<SessionListForCampaignScr
   void _openSession(Session session) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (ctx) => ActiveSessionScreen(
-          session: session,
-          campaign: widget.campaign,
+        builder: (ctx) => ChangeNotifierProvider<ActiveSessionViewModel>(
+          create: (context) => ActiveSessionViewModel(
+            session: session,
+            campaign: widget.campaign,
+          ),
+          child: ActiveSessionScreen(
+            session: session,
+            campaign: widget.campaign,
+          ),
         ),
       ),
     );

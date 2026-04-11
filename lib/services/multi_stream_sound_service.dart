@@ -196,7 +196,7 @@ class MultiStreamSoundService extends ChangeNotifier {
       _channels[channelId] = channel;
 
       // Loop-Setting konfigurieren
-      await player.setReleaseMode(isLooping ? ReleaseMode.loop : ReleaseMode.release);
+      await player.setReleaseMode(isLooping ? ReleaseMode.loop : ReleaseMode.stop);
 
       // Lautstärke setzen
       _updateChannelVolume(channel);
@@ -373,7 +373,7 @@ class MultiStreamSoundService extends ChangeNotifier {
     if (channel == null) return;
 
     channel.isLooping = isLooping;
-    await channel.player.setReleaseMode(isLooping ? ReleaseMode.loop : ReleaseMode.release);
+    await channel.player.setReleaseMode(isLooping ? ReleaseMode.loop : ReleaseMode.stop);
     _safeNotifyListeners();
   }
 

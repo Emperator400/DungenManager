@@ -143,7 +143,7 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
   }
 
   void _addMonster(Creature monster) {
-    _viewModel.toggleMonsterSelection(monster.id);
+    _viewModel.addMonster(monster.id);
   }
 
   Future<void> _loadSounds() async {
@@ -520,8 +520,8 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
       );
 
   Widget _buildMonsterList() {
-    final monsters =
-        _viewModel.availableMonsters.where((m) => !_viewModel.isMonsterSelected(m.id)).toList();
+    // Monster nicht mehr ausblenden, damit sie mehrfach geklickt werden können
+    final monsters = _viewModel.availableMonsters.toList();
 
     if (monsters.isEmpty) {
       return Center(
@@ -594,6 +594,9 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
   Widget _buildMonsterTile(Creature monster, {bool isDragging = false}) {
     final crText = monster.challengeRating?.toString() ?? '?';
     final typeText = monster.type ?? 'Unbekannt';
+    
+    // Zeigt an, wie oft das Monster bereits hinzugefügt wurde
+    final count = _viewModel.getMonsterCount(monster.id);
 
     return Card(
       color: Colors.red[900],
@@ -601,8 +604,33 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            const Icon(Icons.shield, color: Colors.white),
-            const SizedBox(width: 12),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.shield, color: Colors.white),
+                if (count > 0 && !isDragging)
+                  Positioned(
+                    right: -8,
+                    top: -8,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        count.toString(),
+                        style: TextStyle(
+                          color: Colors.red[900],
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

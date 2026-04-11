@@ -361,15 +361,13 @@ class _SoundPickerWidgetState extends State<SoundPickerWidget> {
           const SizedBox(width: DnDTheme.md),
           Expanded(
             child: ElevatedButton(
-              onPressed: _selectedSoundIds.isEmpty 
-                  ? null 
-                  : () => Navigator.of(context).pop(_selectedSoundIds.toList()),
+              onPressed: () => Navigator.of(context).pop(_selectedSoundIds.toList()),
               style: ElevatedButton.styleFrom(
                 backgroundColor: DnDTheme.successGreen,
                 padding: const EdgeInsets.symmetric(vertical: DnDTheme.md),
               ),
               child: Text(
-                '${_selectedSoundIds.length} Sounds hinzufügen',
+                _selectedSoundIds.isEmpty ? 'Alle entfernen' : '${_selectedSoundIds.length} Sounds anwenden',
                 style: TextStyle(color: Colors.white),
               ),
             ),

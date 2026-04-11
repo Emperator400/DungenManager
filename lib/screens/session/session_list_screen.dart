@@ -9,6 +9,7 @@ import '../../database/repositories/creature_model_repository.dart';
 import '../../database/repositories/player_character_model_repository.dart';
 import '../../theme/dnd_theme.dart';
 import 'edit_session_screen.dart';
+import '../../viewmodels/active_session_viewmodel.dart';
 import 'active_session_screen.dart';
 
 /// Enhanced Screen für die Session-Liste einer Kampagne mit modernem Design
@@ -601,9 +602,15 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
   void _openSession(Session session) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => ActiveSessionScreen(
-          session: session,
-          campaign: widget.campaign,
+        builder: (context) => ChangeNotifierProvider<ActiveSessionViewModel>(
+          create: (context) => ActiveSessionViewModel(
+            session: session,
+            campaign: widget.campaign,
+          ),
+          child: ActiveSessionScreen(
+            session: session,
+            campaign: widget.campaign,
+          ),
         ),
       ),
     );

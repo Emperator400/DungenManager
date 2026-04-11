@@ -35,6 +35,7 @@ class Scene {
   List<String> linkedWikiEntryIds;
   List<String> linkedQuestIds;
   final List<String> linkedSoundIds; // Welche Sounds sollen abgespielt werden?
+  final Map<String, double> soundVolumes; // Speichert individuelle Lautstärken pro Sound
   final String? linkedEncounterId; // Optional: Ein Encounter pro Scene
   final List<String> linkedCharacterIds; // Welche Charaktere sind beteiligt?
   final Map<String, dynamic> sceneData; // Flexible Zusatzdaten (DM-Notizen, Ziele, etc.)
@@ -54,6 +55,7 @@ class Scene {
     List<String>? linkedWikiEntryIds,
     List<String>? linkedQuestIds,
     List<String>? linkedSoundIds,
+    Map<String, double>? soundVolumes,
     this.linkedEncounterId,
     List<String>? linkedCharacterIds,
     Map<String, dynamic>? sceneData,
@@ -63,6 +65,7 @@ class Scene {
         linkedWikiEntryIds = linkedWikiEntryIds ?? [],
         linkedQuestIds = linkedQuestIds ?? [],
         linkedSoundIds = linkedSoundIds ?? [],
+        soundVolumes = soundVolumes ?? const {},
         linkedCharacterIds = linkedCharacterIds ?? [],
         sceneData = sceneData ?? {},
         createdAt = createdAt ?? DateTime.now(),
@@ -82,6 +85,7 @@ class Scene {
     List<String>? linkedWikiEntryIds,
     List<String>? linkedQuestIds,
     List<String>? linkedSoundIds,
+    Map<String, double>? soundVolumes,
     String? linkedEncounterId,
     List<String>? linkedCharacterIds,
     Map<String, dynamic>? sceneData,
@@ -101,6 +105,7 @@ class Scene {
       linkedWikiEntryIds: linkedWikiEntryIds ?? List<String>.from(this.linkedWikiEntryIds),
       linkedQuestIds: linkedQuestIds ?? List<String>.from(this.linkedQuestIds),
       linkedSoundIds: linkedSoundIds ?? List<String>.from(this.linkedSoundIds),
+      soundVolumes: soundVolumes ?? Map<String, double>.from(this.soundVolumes),
       linkedEncounterId: linkedEncounterId ?? this.linkedEncounterId,
       linkedCharacterIds: linkedCharacterIds ?? this.linkedCharacterIds,
       sceneData: sceneData ?? this.sceneData,
@@ -123,6 +128,7 @@ class Scene {
       'linkedWikiEntryIds': jsonEncode(linkedWikiEntryIds),
       'linkedQuestIds': jsonEncode(linkedQuestIds),
       'linkedSoundIds': jsonEncode(linkedSoundIds),
+      'soundVolumes': jsonEncode(soundVolumes),
       'createdAt': createdAt.millisecondsSinceEpoch,
       'updatedAt': updatedAt.millisecondsSinceEpoch,
     };
@@ -151,6 +157,8 @@ class Scene {
             : null,
         linkedWikiEntryIds: _parseStringList(map['linkedWikiEntryIds']),
         linkedQuestIds: _parseStringList(map['linkedQuestIds']),
+        linkedSoundIds: _parseStringList(map['linkedSoundIds']),
+        soundVolumes: _parseSoundVolumes(map['soundVolumes']),
         createdAt: ModelParsingHelper.safeDateTime(map, 'createdAt', DateTime.now()),
         updatedAt: ModelParsingHelper.safeDateTime(map, 'updatedAt', DateTime.now()),
       );
@@ -242,6 +250,42 @@ class Scene {
     
     return [];
   }
+  
+  /// Hilfsmethode zum Parsen der Lautstärken (JSON zu Map<String, double>)
+  static Map<String, double> _parseSoundVolumes(dynamic data) {
+    final Map<String, double> result = {};
+    if (data == null) return result;
+    
+    if (data is Map) {
+      data.forEach((key, value) {
+        if (key != null && value != null) {
+          try {
+            result[key.toString()] = (value as num).toDouble();
+          } catch (_) {}
+        }
+      });
+      return result;
+    }
+    
+    if (data is String) {
+      if (data.trim().isEmpty) return result;
+      try {
+        final decoded = jsonDecode(data);
+        if (decoded is Map) {
+          decoded.forEach((key, value) {
+            if (key != null && value != null) {
+              try {
+                result[key.toString()] = (value as num).toDouble();
+              } catch (_) {}
+            }
+          });
+        }
+      } catch (e) {
+        // Fallback bei Parsing-Fehlern
+      }
+    }
+    return result;
+  }
 
   // ========== DATABASE MIGRATION METHODS ==========
 
@@ -262,6 +306,7 @@ class Scene {
       'linked_wiki_entry_ids': jsonEncode(linkedWikiEntryIds),
       'linked_quest_ids': jsonEncode(linkedQuestIds),
       'linked_sound_ids': jsonEncode(linkedSoundIds),
+      'sound_volumes': jsonEncode(soundVolumes),
       'linked_encounter_id': linkedEncounterId,
       'linked_character_ids': jsonEncode(linkedCharacterIds),
       'scene_data': jsonEncode(sceneData),
@@ -298,6 +343,7 @@ class Scene {
         linkedWikiEntryIds: _parseStringList(map['linked_wiki_entry_ids'] ?? map['linkedWikiEntryIds']),
         linkedQuestIds: _parseStringList(map['linked_quest_ids'] ?? map['linkedQuestIds']),
         linkedSoundIds: _parseStringList(map['linked_sound_ids'] ?? map['linkedSoundIds']),
+        soundVolumes: _parseSoundVolumes(map['sound_volumes'] ?? map['soundVolumes']),
         linkedEncounterId: ModelParsingHelper.safeStringOrNull(map, 'linked_encounter_id', ModelParsingHelper.safeStringOrNull(map, 'linkedEncounterId', null)),
         linkedCharacterIds: _parseStringList(map['linked_character_ids'] ?? map['linkedCharacterIds']),
         sceneData: _parseMapData(map['scene_data'] ?? map['sceneData']),

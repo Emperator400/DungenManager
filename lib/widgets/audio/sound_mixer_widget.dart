@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/sound.dart';
@@ -297,11 +298,17 @@ class SoundMixerWidget extends StatefulWidget {
   /// Optional: Liste von Sound-Objekten die direkt geladen werden sollen
   final List<Sound>? initialSounds;
   
+  /// Optional: Gespeicherte Lautstärken der Sounds (Map von Sound-ID zu Lautstärke)
+  final Map<String, double>? initialVolumes;
+  
   /// Konfiguration für das Widget-Verhalten (überschreibt size wenn angegeben)
   final SoundMixerConfig? config;
   
   /// Callback wenn sich die Liste der aktiven Sounds ändert
-  final VoidCallback? onSoundsChanged;
+  final Function(List<String> activeSoundIds)? onSoundsChanged;
+  
+  /// Callback wenn sich die Lautstärken der aktiven Sounds ändern
+  final Function(Map<String, double> volumes)? onVolumesChanged;
   
   /// Wenn true, wird der SoundService beim dispose nicht disposed (für Preview-Modus)
   /// Sounds laufen dann weiter nach Schließen des Widgets
@@ -312,8 +319,10 @@ class SoundMixerWidget extends StatefulWidget {
     this.size = SoundMixerSize.full,
     this.initialSoundIds,
     this.initialSounds,
+    this.initialVolumes,
     this.config,
     this.onSoundsChanged,
+    this.onVolumesChanged,
     this.keepAlive = false,
   });
 
@@ -326,13 +335,40 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
   bool _isInitialized = false;
   bool _isDisposed = false;
   late SoundMixerConfig _config;
+  Map<String, double> _lastVolumes = {};
+  Timer? _volumeDebounce;
 
   @override
   void initState() {
     super.initState();
     _mixerService = MultiStreamSoundService();
+    _mixerService.addListener(_checkVolumeChanges);
     _updateConfig();
     _initializeMixer();
+  }
+
+  /// Prüft, ob sich die Lautstärken geändert haben und triggert den Callback (mit Debounce)
+  void _checkVolumeChanges() {
+    if (widget.onVolumesChanged == null || _isDisposed) return;
+    
+    bool changed = false;
+    final currentVolumes = <String, double>{};
+    
+    for (final channel in _mixerService.channels) {
+      currentVolumes[channel.sound.id] = channel.volume;
+      if (_lastVolumes[channel.sound.id] != channel.volume) {
+        changed = true;
+      }
+    }
+    
+    if (changed || _lastVolumes.length != currentVolumes.length) {
+      _lastVolumes = currentVolumes;
+      
+      _volumeDebounce?.cancel();
+      _volumeDebounce = Timer(const Duration(milliseconds: 500), () {
+        if (!_isDisposed) widget.onVolumesChanged!(currentVolumes);
+      });
+    }
   }
 
   void _updateConfig() {
@@ -352,6 +388,11 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
     if (!_listEquals(oldWidget.initialSounds, widget.initialSounds)) {
       _updateInitialSounds();
     }
+    
+    // Prüfen ob sich die initialSoundIds geändert haben (wichtig bei asynchronem Laden aus der Datenbank)
+    if (!_stringListEquals(oldWidget.initialSoundIds, widget.initialSoundIds)) {
+      _updateInitialSoundIds();
+    }
   }
   
   /// Prüft ob zwei Listen von Sounds gleich sind
@@ -361,6 +402,17 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
     if (a.length != b.length) return false;
     for (int i = 0; i < a.length; i++) {
       if (a[i].id != b[i].id) return false;
+    }
+    return true;
+  }
+  
+  /// Prüft ob zwei Listen von Strings (IDs) gleich sind
+  bool _stringListEquals(List<String>? a, List<String>? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
     }
     return true;
   }
@@ -379,10 +431,43 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
         if (sound.isValid) {
           await _mixerService.addSound(
             sound,
-            volume: 0.8,
+            volume: widget.initialVolumes?[sound.id] ?? 0.8,
             isLooping: sound.soundType == SoundType.Ambiente,
             autoPlay: false,
           );
+        }
+      }
+    }
+    
+    if (_isDisposed) return;
+    setState(() {});
+  }
+
+  /// Aktualisiert die Sounds wenn sich initialSoundIds ändert (z.B. nach DB-Load)
+  Future<void> _updateInitialSoundIds() async {
+    if (_isDisposed) return;
+    
+    if (widget.initialSoundIds != null && widget.initialSoundIds!.isNotEmpty) {
+      final soundRepo = context.read<SoundModelRepository>();
+      
+      for (final soundId in widget.initialSoundIds!) {
+        if (_isDisposed) return;
+        // Überspringen wenn bereits geladen
+        if (_mixerService.hasSound(soundId)) continue;
+        
+        try {
+          final sound = await soundRepo.findById(soundId);
+          if (_isDisposed) return;
+          if (sound != null && sound.isValid) {
+            await _mixerService.addSound(
+              sound,
+              volume: widget.initialVolumes?[soundId] ?? 0.8,
+              isLooping: sound.soundType == SoundType.Ambiente,
+              autoPlay: false,
+            );
+          }
+        } catch (e) {
+          debugPrint('Fehler beim Nachladen des Sounds $soundId: $e');
         }
       }
     }
@@ -399,7 +484,7 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
         if (sound.isValid) {
           await _mixerService.addSound(
             sound,
-            volume: 0.8,
+            volume: widget.initialVolumes?[sound.id] ?? 0.8,
             isLooping: sound.soundType == SoundType.Ambiente,
             autoPlay: false,
           );
@@ -422,7 +507,7 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
           if (sound != null && sound.isValid) {
             await _mixerService.addSound(
               sound,
-              volume: 0.8,
+              volume: widget.initialVolumes?[soundId] ?? 0.8,
               isLooping: true,
               autoPlay: false,
             );
@@ -442,6 +527,8 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
   @override
   void dispose() {
     _isDisposed = true;
+    _volumeDebounce?.cancel();
+    _mixerService.removeListener(_checkVolumeChanges);
     
     // Wenn keepAlive true ist, nur Sounds stoppen aber Service nicht disposen
     // (für Preview-Modus, damit Sounds weiterlaufen können)
@@ -587,7 +674,6 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
           GestureDetector(
             onTap: () {
               _mixerService.stopAll();
-              widget.onSoundsChanged?.call();
             },
             child: Container(
               padding: EdgeInsets.all(isCompact ? 6 : 10),
@@ -654,7 +740,6 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
                 max: 1.0,
                 onChanged: (value) {
                   _mixerService.setMasterVolume(value);
-                  widget.onSoundsChanged?.call();
                 },
               ),
             ),
@@ -866,10 +951,13 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
       ),
     );
 
-    // Neue Sounds hinzufügen
-    if (result != null && result.isNotEmpty) {
+    // Sounds hinzufügen oder abwählen (auch wenn Liste nun leer ist!)
+    if (result != null) {
+      // Direkt die vom Picker erstellte Liste speichern, da der Mixer asynchron lädt
+      widget.onSoundsChanged?.call(result);
+      
+      // Erst danach den Mixer die Dateien laden lassen
       await _addSoundsToMixer(result, activeSoundIds, filterType);
-      widget.onSoundsChanged?.call();
     }
   }
 
@@ -897,7 +985,7 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
         if (sound != null && sound.isValid) {
           await _mixerService.addSound(
             sound,
-            volume: 0.8,
+            volume: widget.initialVolumes?[soundId] ?? 0.8,
             isLooping: sound.soundType == SoundType.Ambiente,
             autoPlay: false, // Nicht automatisch abspielen
           );
@@ -911,6 +999,13 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
   /// Entfernt einen Kanal aus dem Mixer
   Future<void> _removeChannel(String channelId) async {
     await _mixerService.removeSound(channelId);
-    widget.onSoundsChanged?.call();
+    
+    // Sicherstellen, dass die ID wirklich aus der Liste gefiltert ist, bevor wir speichern
+    final remainingIds = _mixerService.channels
+        .map((c) => c.sound.id)
+        .where((id) => id != channelId)
+        .toList();
+        
+    widget.onSoundsChanged?.call(remainingIds);
   }
 }

@@ -149,7 +149,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
           const SizedBox(height: 16),
 
           // Status-Anzeige
-          if (viewModel.isDownloading || viewModel.isExtracting)
+          if (viewModel.isDownloading || viewModel.isExtracting || viewModel.isBackingUp)
             _buildProgressIndicator(viewModel),
 
           // Fehlermeldung
@@ -197,7 +197,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
             ),
 
           // Release Notes - immer anzeigen
-          if (!viewModel.isDownloading && !viewModel.isExtracting)
+          if (!viewModel.isDownloading && !viewModel.isExtracting && !viewModel.isBackingUp)
             Flexible(
               child: Container(
                 constraints: const BoxConstraints(maxHeight: 500),
@@ -311,7 +311,9 @@ class _UpdateDialogState extends State<UpdateDialog> {
 
   Widget _buildProgressIndicator(UpdateViewModel viewModel) {
     String statusText;
-    if (viewModel.isDownloading) {
+    if (viewModel.isBackingUp) {
+      statusText = 'Daten werden gesichert...';
+    } else if (viewModel.isDownloading) {
       statusText = 'Wird heruntergeladen...';
     } else if (viewModel.isExtracting) {
       statusText = 'Wird entpackt...';
@@ -387,7 +389,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
           ),
         ),
       ]);
-    } else if (viewModel.isDownloading || viewModel.isExtracting) {
+    } else if (viewModel.isDownloading || viewModel.isExtracting || viewModel.isBackingUp) {
       // Download/Extraktion läuft
       actions.add(
         TextButton(

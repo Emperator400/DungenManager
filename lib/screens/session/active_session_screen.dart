@@ -18,7 +18,6 @@ import '../../models/wiki_entry.dart';
 import '../../theme/dnd_theme.dart';
 import '../../viewmodels/active_session_viewmodel.dart';
 import '../../viewmodels/edit_scene_viewmodel.dart';
-import '../../widgets/active_session/atmosphere_quadrant.dart';
 import '../../widgets/active_session/live_notes_quadrant.dart';
 import '../../widgets/active_session/quest_list_section.dart';
 import '../../widgets/audio/sound_mixer_widget.dart';
@@ -58,6 +57,10 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
 
   @override
   void dispose() {
+    // Sicherstellen, dass alle verbleibenden Hintergrund-Sounds (z. B. Previews
+    // aus dem Sound Picker oder Encounter) gestoppt werden, wenn der Screen schließt.
+    _viewModel.stopSessionSound();
+    
     _viewModel.dispose();
     super.dispose();
   }
@@ -194,7 +197,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                 // Main Content - 2 Column Layout
                 Expanded(
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Linke Seite: Szenen-Ablauf (volle Höhe)
                       Expanded(
@@ -396,17 +399,78 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     // Hole verknüpfte Sounds der aktiven Szene
     final activeSceneId = viewModel.currentSession.activeSceneId;
     List<String> linkedSoundIds = [];
+    Map<String, double> soundVolumes = {};
 
     if (activeSceneId != null) {
-      final activeScene = viewModel.scenes.firstWhere(
-        (scene) => scene.id == activeSceneId,
-        orElse: () => throw Exception('Scene nicht gefunden'),
-      );
-      linkedSoundIds = activeScene.linkedSoundIds;
+      final sceneIndex = viewModel.scenes.indexWhere((scene) => scene.id == activeSceneId);
+      if (sceneIndex != -1) {
+        linkedSoundIds = viewModel.scenes[sceneIndex].linkedSoundIds;
+        soundVolumes = viewModel.scenes[sceneIndex].soundVolumes;
+      }
     }
 
-    return AtmosphereQuadrant(
-      initialSoundIds: linkedSoundIds,
+    return Container(
+      decoration: BoxDecoration(
+        color: DnDTheme.slateGrey.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        border: Border.all(
+          color: DnDTheme.arcaneBlue.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Eigener Header für das Atmosphäre Panel
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: DnDTheme.arcaneBlue.withValues(alpha: 0.2),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(DnDTheme.radiusMedium),
+                topRight: Radius.circular(DnDTheme.radiusMedium),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.music_note, color: DnDTheme.arcaneBlue, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Atmosphäre',
+                  style: DnDTheme.bodyText1.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // SoundMixer direkt einbinden, damit onSoundsChanged funktioniert
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: SoundMixerWidget(
+              key: ValueKey('atmosphere_${activeSceneId ?? "none"}'),
+              initialSoundIds: linkedSoundIds,
+              initialVolumes: soundVolumes,
+              config: const SoundMixerConfig(
+                compactMode: false,
+                showAddButtons: true,
+                showMasterVolume: true,
+                showStopAllButton: true,
+                showChannelCounter: false,
+                readOnly: false,
+                showDivider: true,
+                showHeader: false, // Header haben wir selbst gebaut
+              ),
+              onSoundsChanged: activeSceneId != null 
+                  ? (soundIds) => viewModel.updateSceneSounds(activeSceneId, soundIds)
+                  : null,
+              onVolumesChanged: activeSceneId != null
+                  ? (volumes) => viewModel.updateSceneSoundVolumes(activeSceneId, volumes)
+                  : null,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -900,10 +964,21 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
         return const SizedBox.shrink();
       }
 
+    final Map<String, double> soundVolumes = scene.soundVolumes;
+
       // Sound Mixer Widget direkt verwenden (ohne AtmosphereQuadrant Wrapper)
       return SoundMixerWidget(
+        // WICHTIG: Eindeutiger Key pro Szene
+        size: SoundMixerSize.minimal,
+        key: ValueKey('mixer_${scene.id}'),
         initialSoundIds: scene.linkedSoundIds,
-        size: SoundMixerSize.compact, // Kompakte Version für Szenen-Detail
+      initialVolumes: soundVolumes,
+        onSoundsChanged: (soundIds) {
+          context.read<ActiveSessionViewModel>().updateSceneSounds(scene.id, soundIds);
+        },
+      onVolumesChanged: (volumes) {
+        context.read<ActiveSessionViewModel>().updateSceneSoundVolumes(scene.id, volumes);
+      },
       );
     }
 

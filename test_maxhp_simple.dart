@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'lib/database/database_helper.dart';
+import 'lib/database/legacy/database_helper_legacy_backup.dart';
 
 void main() async {
   print('Einfacher Test: maxhp Spalte in player_characters Tabelle');

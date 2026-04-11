@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 import '../models/sound.dart';
 import '../database/repositories/sound_model_repository.dart';
 import '../database/core/database_connection.dart';
@@ -77,6 +80,7 @@ class SoundLibraryViewModel extends ChangeNotifier {
 
   /// Initialisiert das ViewModel und lädt alle Daten
   Future<void> initialize() async {
+    await _migrateExistingSoundsToSecureFolder();
     await Future.wait([
       loadSounds(),
       loadScenes(),
@@ -86,6 +90,42 @@ class SoundLibraryViewModel extends ChangeNotifier {
   // ============================================================================
   // SOUND MANAGEMENT
   // ============================================================================
+
+  /// Migriert bestehende Sounds in den sicheren Dokumente-Ordner (Update-sicher)
+  Future<void> _migrateExistingSoundsToSecureFolder() async {
+    if (_soundRepository == null) return;
+    
+    try {
+      final Directory documentsDir = await getApplicationDocumentsDirectory();
+      final String securePath = path.join(documentsDir.path, 'DungenManager', 'sounds');
+      final Directory secureDir = Directory(securePath);
+
+      if (!await secureDir.exists()) {
+        await secureDir.create(recursive: true);
+      }
+
+      final allSounds = await _soundRepository!.findAll();
+
+      for (var sound in allSounds) {
+        final File oldFile = File(sound.filePath);
+        
+        // Wenn die Datei existiert und NOCH NICHT im sicheren Ordner liegt
+        if (await oldFile.exists() && !sound.filePath.contains(securePath)) {
+          final String fileName = path.basename(sound.filePath);
+          final String newFilePath = path.join(securePath, fileName);
+          
+          if (!await File(newFilePath).exists()) {
+            await oldFile.copy(newFilePath);
+          }
+          
+          // Pfad in der DB aktualisieren
+          await _soundRepository!.update(sound.copyWith(filePath: newFilePath));
+        }
+      }
+    } catch (e) {
+      print('⚠️ Fehler bei der Sound-Migration: $e');
+    }
+  }
 
   /// Lädt alle Sounds aus der Datenbank über neues Repository
   /// 
@@ -275,10 +315,34 @@ class SoundLibraryViewModel extends ChangeNotifier {
       );
 
       if (sound != null) {
+        // NEU: Datei in den sicheren Ordner (Dokumente/DungenManager/sounds) verschieben
+        try {
+          final Directory documentsDir = await getApplicationDocumentsDirectory();
+          final String securePath = path.join(documentsDir.path, 'DungenManager', 'sounds');
+          final Directory secureDir = Directory(securePath);
+          
+          if (!await secureDir.exists()) {
+            await secureDir.create(recursive: true);
+          }
+          
+          final File sourceFile = File(sound.filePath);
+          if (await sourceFile.exists()) {
+            final String fileName = path.basename(sound.filePath);
+            final String newFilePath = path.join(securePath, '${DateTime.now().millisecondsSinceEpoch}_$fileName');
+            
+            await sourceFile.copy(newFilePath);
+            try { await sourceFile.delete(); } catch (_) {} // Alte Datei aufräumen falls möglich
+            
+            sound = sound.copyWith(filePath: newFilePath);
+          }
+        } catch (e) {
+          print('⚠️ Fehler beim Sichern der Audio-Datei: $e');
+        }
+
         // In Datenbank speichern
         Sound? savedSound;
         if (_soundRepository != null) {
-          savedSound = await _soundRepository!.create(sound);
+          savedSound = await _soundRepository!.create(sound!);
         }
         
         if (savedSound != null) {

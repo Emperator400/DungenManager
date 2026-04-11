@@ -1,4 +1,4 @@
-import 'lib/database/database_helper.dart';
+import 'lib/database/legacy/database_helper_legacy_backup.dart';
 import 'lib/models/player_character.dart';
 
 void main() async {
