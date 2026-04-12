@@ -47,6 +47,7 @@ class _CharacterInventoryHandlerState extends State<CharacterInventoryHandler> {
     return FutureBuilder<List<InventoryItem>>(
       future: _loadInventory(),
       builder: (context, snapshot) {
+        if (snapshot.hasError) return Center(child: Text('Fehler: ${snapshot.error}'));
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }

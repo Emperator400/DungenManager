@@ -392,7 +392,7 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
     return FutureBuilder<Set<String>>(
       future: _loadAllSceneCharacters(session),
       builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
           return const SizedBox.shrink();
         }
 
@@ -400,7 +400,7 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
         return FutureBuilder<Map<String, dynamic>>(
           future: _loadCharacterDetails(characterIds.toList()),
           builder: (context, charSnapshot) {
-            if (!charSnapshot.hasData || charSnapshot.data!.isEmpty) {
+            if (charSnapshot.hasError || !charSnapshot.hasData || charSnapshot.data!.isEmpty) {
               return const SizedBox.shrink();
             }
 

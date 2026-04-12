@@ -130,6 +130,7 @@ class _SoundsTabState extends State<SoundsTab> {
       body: FutureBuilder<List<Sound>>(
         future: _soundsFuture,
         builder: (context, snapshot) {
+          if (snapshot.hasError) return Center(child: Text('Fehler beim Laden: ${snapshot.error}'));
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           final sounds = snapshot.data!;
           if (sounds.isEmpty) return const Center(child: Text("Keine Sounds in der Bibliothek."));

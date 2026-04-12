@@ -42,6 +42,7 @@ class _LinkWikiEntriesScreenState extends State<LinkWikiEntriesScreen> {
       body: FutureBuilder<List<WikiEntry>>(
         future: _entriesFuture,
         builder: (context, snapshot) {
+          if (snapshot.hasError) return Center(child: Text('Fehler beim Laden: ${snapshot.error}'));
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           
           final allEntries = snapshot.data!;

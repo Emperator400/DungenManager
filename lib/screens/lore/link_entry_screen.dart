@@ -38,6 +38,7 @@ class _LinkEntryToSceneScreenState extends State<LinkEntryToSceneScreen> {
       body: FutureBuilder<List<WikiEntry>>(
         future: _wikiRepository.findAll(),
         builder: (context, snapshot) {
+          if (snapshot.hasError) return Center(child: Text('Fehler beim Laden: ${snapshot.error}'));
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           final entries = snapshot.data!;
           return ListView.builder(
