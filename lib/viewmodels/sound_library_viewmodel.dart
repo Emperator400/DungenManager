@@ -123,7 +123,7 @@ class SoundLibraryViewModel extends ChangeNotifier {
         }
       }
     } catch (e) {
-      print('⚠️ Fehler bei der Sound-Migration: $e');
+      debugPrint('⚠️ Fehler bei der Sound-Migration: $e');
     }
   }
 
@@ -336,7 +336,7 @@ class SoundLibraryViewModel extends ChangeNotifier {
             sound = sound.copyWith(filePath: newFilePath);
           }
         } catch (e) {
-          print('⚠️ Fehler beim Sichern der Audio-Datei: $e');
+          debugPrint('⚠️ Fehler beim Sichern der Audio-Datei: $e');
         }
 
         // In Datenbank speichern

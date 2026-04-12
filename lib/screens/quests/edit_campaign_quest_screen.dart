@@ -43,12 +43,12 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
       
       await _questRepository.update(updatedQuest);
       
-      print('✅ [EditCampaignQuestScreen] Quest erfolgreich aktualisiert');
+      debugPrint('✅ [EditCampaignQuestScreen] Quest erfolgreich aktualisiert');
       
       setState(() => _isLoading = false);
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
-      print('❌ [EditCampaignQuestScreen] Fehler beim Speichern: $e');
+      debugPrint('❌ [EditCampaignQuestScreen] Fehler beim Speichern: $e');
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -115,12 +115,12 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
       try {
         await _questRepository.delete(widget.campaignQuest.quest.id.toString());
         
-        print('✅ [EditCampaignQuestScreen] Quest erfolgreich gelöscht');
+        debugPrint('✅ [EditCampaignQuestScreen] Quest erfolgreich gelöscht');
         
         setState(() => _isLoading = false);
         if (mounted) Navigator.of(context).pop(true);
       } catch (e) {
-        print('❌ [EditCampaignQuestScreen] Fehler beim Löschen: $e');
+        debugPrint('❌ [EditCampaignQuestScreen] Fehler beim Löschen: $e');
         setState(() => _isLoading = false);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

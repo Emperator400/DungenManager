@@ -29,7 +29,7 @@ class PlayerCharacterService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Fehler bei Skills-Deserialisierung: $e');
+        debugPrint('Fehler bei Skills-Deserialisierung: $e');
       }
     }
     return [];
@@ -62,7 +62,7 @@ class PlayerCharacterService {
               return Attack.fromMap(attackMap as Map<String, dynamic>);
             } catch (e) {
               if (kDebugMode) {
-                print('Fehler bei Attack-Konvertierung: $e');
+                debugPrint('Fehler bei Attack-Konvertierung: $e');
               }
               return null;
             }
@@ -72,7 +72,7 @@ class PlayerCharacterService {
           .toList();
     } catch (e) {
       if (kDebugMode) {
-        print('Fehler bei Attacken-Deserialisierung: $e');
+        debugPrint('Fehler bei Attacken-Deserialisierung: $e');
       }
       return [];
     }
@@ -105,7 +105,7 @@ class PlayerCharacterService {
               return InventoryItem.fromMap(itemMap as Map<String, dynamic>);
             } catch (e) {
               if (kDebugMode) {
-                print('Fehler bei InventoryItem-Konvertierung: $e');
+                debugPrint('Fehler bei InventoryItem-Konvertierung: $e');
               }
               return null;
             }
@@ -115,7 +115,7 @@ class PlayerCharacterService {
           .toList();
     } catch (e) {
       if (kDebugMode) {
-        print('Fehler bei Inventory-Deserialisierung: $e');
+        debugPrint('Fehler bei Inventory-Deserialisierung: $e');
       }
       return [];
     }

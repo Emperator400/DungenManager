@@ -1,4 +1,5 @@
 // Dart Core
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 
 // Eigene Projekte
@@ -223,7 +224,7 @@ class QuestRewardService {
     // final updatedPlayer = player.copyWith(gold: player.gold + amount);
     // await _dbHelper.updatePlayerCharacter(updatedPlayer);
     
-    print('Spieler ${player.name} erhält $amount Gold');
+    debugPrint('Spieler ${player.name} erhält $amount Gold');
   }
 
   /// Fügt Erfahrungspunkte zum Spieler hinzu
@@ -235,7 +236,7 @@ class QuestRewardService {
     // final updatedPlayer = player.addExperience(amount);
     // await _dbHelper.updatePlayerCharacter(updatedPlayer);
     
-    print('Spieler ${player.name} erhält $amount Erfahrungspunkte');
+    debugPrint('Spieler ${player.name} erhält $amount Erfahrungspunkte');
   }
 
   /// Berechnet die Gesamtwerte aller Belohnungen einer Quest
@@ -408,7 +409,7 @@ class QuestRewardService {
     // die Belohnungsverteilung rückgängig machen
     // Dies wäre komplex, da es den Spieler-Zustand wiederherstellen müsste
     
-    print('Rollback der Belohnungsverteilung für Quest $questId und Spieler $playerId');
+    debugPrint('Rollback der Belohnungsverteilung für Quest $questId und Spieler $playerId');
     return true; // Platzhalter
   }
 }

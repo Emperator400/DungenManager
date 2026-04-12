@@ -324,7 +324,7 @@ class BestiaryViewModel extends ChangeNotifier {
             importCount++;
           }
         } catch (e) {
-          print('Fehler beim Import von "${monsterData['name']}": $e');
+          debugPrint('Fehler beim Import von "${monsterData['name']}": $e');
         }
       }
       
@@ -426,7 +426,7 @@ class BestiaryViewModel extends ChangeNotifier {
     await _executeWithErrorHandling(() async {
       // TODO: Implementiere Migration mit neuer Repository-Architektur
       // Die alte migrateCreaturesToUnifiedSchema Methode existiert nicht mehr
-      print('Migration ist vorübergehend deaktiviert - muss mit neuer Architektur implementiert werden');
+      debugPrint('Migration ist vorübergehend deaktiviert - muss mit neuer Architektur implementiert werden');
     });
   }
 
@@ -437,7 +437,7 @@ class BestiaryViewModel extends ChangeNotifier {
     await _executeWithErrorHandling(() async {
       // TODO: Implementiere Synchronisation mit neuer Repository-Architektur
       // Die alte syncOfficialMonstersToCreatures Methode existiert nicht mehr
-      print('Synchronisation ist vorübergehend deaktiviert - muss mit neuer Architektur implementiert werden');
+      debugPrint('Synchronisation ist vorübergehend deaktiviert - muss mit neuer Architektur implementiert werden');
     });
   }
 

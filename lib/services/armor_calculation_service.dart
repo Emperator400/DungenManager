@@ -1,4 +1,5 @@
 // Dart Core
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 
 // Eigene Projekte
@@ -70,16 +71,16 @@ class ArmorCalculationService {
     int baseArmorClass = 10,
   }) async {
     try {
-      print('🛡️ [ArmorCalculationService] Berechne AC für Character: $characterId');
-      print('🛡️ [ArmorCalculationService] Dexterity: $dexterity, Basis-AC: $baseArmorClass');
+      debugPrint('🛡️ [ArmorCalculationService] Berechne AC für Character: $characterId');
+      debugPrint('🛡️ [ArmorCalculationService] Dexterity: $dexterity, Basis-AC: $baseArmorClass');
 
       // Dexterity Modifier berechnen
       final dexModifier = _calculateModifier(dexterity);
-      print('🛡️ [ArmorCalculationService] Dexterity Modifier: $dexModifier');
+      debugPrint('🛡️ [ArmorCalculationService] Dexterity Modifier: $dexModifier');
 
       // Ausgerüstete Items laden
       final equippedItems = await _loadEquippedItems(characterId);
-      print('🛡️ [ArmorCalculationService] ${equippedItems.length} ausgerüstete Items gefunden');
+      debugPrint('🛡️ [ArmorCalculationService] ${equippedItems.length} ausgerüstete Items gefunden');
 
       // Rüstung und Schild extrahieren
       final armorData = _findArmorInSlot(equippedItems, EquipSlot.chest);
@@ -122,7 +123,7 @@ class ArmorCalculationService {
           }
           
           armorName = armorItem.name;
-          print('🛡️ [ArmorCalculationService] Rüstung: ${armorItem.name}, AC: $acValue');
+          debugPrint('🛡️ [ArmorCalculationService] Rüstung: ${armorItem.name}, AC: $acValue');
         }
       }
 
@@ -134,7 +135,7 @@ class ArmorCalculationService {
         if (acValue != null && acValue > 0) {
           shieldBonus = acValue;
           shieldName = shieldItem.name;
-          print('🛡️ [ArmorCalculationService] Schild: ${shieldItem.name}, AC Bonus: $acValue');
+          debugPrint('🛡️ [ArmorCalculationService] Schild: ${shieldItem.name}, AC Bonus: $acValue');
         }
       }
 
@@ -169,7 +170,7 @@ class ArmorCalculationService {
         shieldName: shieldName,
       );
 
-      print('🛡️ [ArmorCalculationService] Ergebnis: $totalAc ($formula)');
+      debugPrint('🛡️ [ArmorCalculationService] Ergebnis: $totalAc ($formula)');
 
       return ArmorClassResult(
         totalAc: totalAc,
@@ -182,7 +183,7 @@ class ArmorCalculationService {
         formula: formula,
       );
     } catch (e) {
-      print('❌ [ArmorCalculationService] Fehler: $e');
+      debugPrint('❌ [ArmorCalculationService] Fehler: $e');
       // Fallback: Basis-AC + Dex Modifier
       final dexModifier = _calculateModifier(dexterity);
       return ArmorClassResult(
@@ -217,7 +218,7 @@ class ArmorCalculationService {
         }
       }
     } catch (e) {
-      print('❌ [ArmorCalculationService] Fehler beim Laden der Items: $e');
+      debugPrint('❌ [ArmorCalculationService] Fehler beim Laden der Items: $e');
     }
 
     return result;
@@ -404,36 +405,36 @@ class ArmorCalculationService {
     bool isMediumArmor = false;
     bool hasArmorEquipped = false;
 
-    print('🛡️ [ArmorCalculationService] calculateArmorClassSync gestartet');
-    print('🛡️ [ArmorCalculationService] Dex: $dexterity, DexMod: $dexModifier, Basis-AC: $baseArmorClass');
-    print('🛡️ [ArmorCalculationService] ${equippedItems.length} Items zum Prüfen');
+    debugPrint('🛡️ [ArmorCalculationService] calculateArmorClassSync gestartet');
+    debugPrint('🛡️ [ArmorCalculationService] Dex: $dexterity, DexMod: $dexModifier, Basis-AC: $baseArmorClass');
+    debugPrint('🛡️ [ArmorCalculationService] ${equippedItems.length} Items zum Prüfen');
 
     for (final (slot, item) in equippedItems) {
       if (item == null) {
-        print('🛡️ [ArmorCalculationService] Slot $slot: null Item, überspringen');
+        debugPrint('🛡️ [ArmorCalculationService] Slot $slot: null Item, überspringen');
         continue;
       }
 
-      print('🛡️ [ArmorCalculationService] Slot $slot: ${item.name} (Type: ${item.itemType}, acFormula: ${item.acFormula})');
+      debugPrint('🛡️ [ArmorCalculationService] Slot $slot: ${item.name} (Type: ${item.itemType}, acFormula: ${item.acFormula})');
 
       // Rüstung im Chest-Slot
       if (slot == EquipSlot.chest && item.itemType == ItemType.Armor) {
         final acValue = _parseAcFormula(item.acFormula);
-        print('🛡️ [ArmorCalculationService] Rüstung erkannt! ${item.name}, AC-Wert: $acValue');
+        debugPrint('🛡️ [ArmorCalculationService] Rüstung erkannt! ${item.name}, AC-Wert: $acValue');
         
         if (acValue != null && acValue > 0) {
           totalAc = acValue;
           hasArmorEquipped = true;
           isHeavyArmor = _isHeavyArmor(item);
           isMediumArmor = _isMediumArmor(item);
-          print('🛡️ [ArmorCalculationService] Heavy: $isHeavyArmor, Medium: $isMediumArmor');
+          debugPrint('🛡️ [ArmorCalculationService] Heavy: $isHeavyArmor, Medium: $isMediumArmor');
         }
       }
 
       // Schild im OffHand-Slot
       if (slot == EquipSlot.offHand && item.itemType == ItemType.Shield) {
         final acValue = _parseAcFormula(item.acFormula);
-        print('🛡️ [ArmorCalculationService] Schild erkannt! ${item.name}, AC-Bonus: $acValue');
+        debugPrint('🛡️ [ArmorCalculationService] Schild erkannt! ${item.name}, AC-Bonus: $acValue');
         
         if (acValue != null && acValue > 0) {
           totalAc += acValue;
@@ -445,25 +446,25 @@ class ArmorCalculationService {
     if (hasArmorEquipped) {
       if (isHeavyArmor) {
         // Heavy Armor: Kein Dex-Modifier
-        print('🛡️ [ArmorCalculationService] Heavy Armor - KEIN Dex-Bonus');
+        debugPrint('🛡️ [ArmorCalculationService] Heavy Armor - KEIN Dex-Bonus');
         // totalAc bleibt wie ist
       } else if (isMediumArmor) {
         // Medium Armor: Dex max +2
         final effectiveDex = dexModifier > 2 ? 2 : dexModifier;
         totalAc += effectiveDex;
-        print('🛡️ [ArmorCalculationService] Medium Armor - Dex-Bonus max +2: $effectiveDex');
+        debugPrint('🛡️ [ArmorCalculationService] Medium Armor - Dex-Bonus max +2: $effectiveDex');
       } else {
         // Light Armor: Voller Dex-Modifier
         totalAc += dexModifier;
-        print('🛡️ [ArmorCalculationService] Light Armor - voller Dex-Bonus: $dexModifier');
+        debugPrint('🛡️ [ArmorCalculationService] Light Armor - voller Dex-Bonus: $dexModifier');
       }
     } else {
       // Keine Rüstung: Basis-AC + Dex
       totalAc = baseArmorClass + dexModifier;
-      print('🛡️ [ArmorCalculationService] Keine Rüstung - Basis + Dex: $baseArmorClass + $dexModifier');
+      debugPrint('🛡️ [ArmorCalculationService] Keine Rüstung - Basis + Dex: $baseArmorClass + $dexModifier');
     }
 
-    print('🛡️ [ArmorCalculationService] Finale AC: $totalAc');
+    debugPrint('🛡️ [ArmorCalculationService] Finale AC: $totalAc');
     return totalAc;
   }
 }

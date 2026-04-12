@@ -14,7 +14,8 @@
       "Bash(sed -n '38,80p' \"D:\\\\Programieren\\\\DungenManager\\\\lib\\\\screens\\\\lore\\\\link_wiki_entries_screen.dart\")",
       "Bash(sed -n '388,420p' \"D:\\\\Programieren\\\\DungenManager\\\\lib\\\\screens\\\\session\\\\session_list_screen.dart\")",
       "Bash(sed -n '44,70p' \"D:\\\\Programieren\\\\DungenManager\\\\lib\\\\widgets\\\\character_inventory_handler.dart\")",
-      "Bash(sed -n '127,160p' \"D:\\\\Programieren\\\\DungenManager\\\\lib\\\\widgets\\\\sounds_tab.dart\")"
+      "Bash(sed -n '127,160p' \"D:\\\\Programieren\\\\DungenManager\\\\lib\\\\widgets\\\\sounds_tab.dart\")",
+      "Bash(find lib/ -name \"*.dart\" -exec sed -i \"s/\\\\bprint\\(/debugPrint\\(/g\" {} \\\\;)"
     ]
   }
 }

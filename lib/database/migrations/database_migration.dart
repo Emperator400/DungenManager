@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:sqflite/sqflite.dart';
 import '../core/database_connection.dart';
@@ -80,7 +81,7 @@ class DatabaseMigration {
   // Füge creature_id Spalte zu encounter_participants hinzu (für Loot-Verteilung)
   await _addCreatureIdColumn(db);
   
-  print('Database migration completed successfully');
+  debugPrint('Database migration completed successfully');
   }
   
   /// Erstellt die PlayerCharacter-Tabelle
@@ -115,9 +116,9 @@ class DatabaseMigration {
         await db.execute(indexSql);
       }
       
-      print('Created player_characters table with indexes');
+      debugPrint('Created player_characters table with indexes');
     } else {
-      print('PlayerCharacters table already exists');
+      debugPrint('PlayerCharacters table already exists');
     }
   }
 
@@ -153,9 +154,9 @@ class DatabaseMigration {
       await db.execute('CREATE INDEX idx_inventory_items_name ON inventory_items(name)');
       await db.execute('CREATE INDEX idx_inventory_items_is_equipped ON inventory_items(is_equipped)');
 
-      print('Created inventory_items table with indexes');
+      debugPrint('Created inventory_items table with indexes');
     } else {
-      print('InventoryItems table already exists');
+      debugPrint('InventoryItems table already exists');
     }
   }
 
@@ -208,9 +209,9 @@ class DatabaseMigration {
       await db.execute('CREATE INDEX idx_items_item_type ON items(item_type)');
       await db.execute('CREATE INDEX idx_items_rarity ON items(rarity)');
 
-      print('Created items table with indexes');
+      debugPrint('Created items table with indexes');
     } else {
-      print('Items table already exists');
+      debugPrint('Items table already exists');
     }
   }
 
@@ -245,9 +246,9 @@ class DatabaseMigration {
       await db.execute('CREATE INDEX idx_sounds_is_favorite ON sounds(is_favorite)');
       await db.execute('CREATE INDEX idx_sounds_category_id ON sounds(category_id)');
 
-      print('Created sounds table with indexes');
+      debugPrint('Created sounds table with indexes');
     } else {
-      print('Sounds table already exists');
+      debugPrint('Sounds table already exists');
     }
   }
 
@@ -277,9 +278,9 @@ class DatabaseMigration {
         await db.execute(indexSql);
       }
       
-      print('Created campaigns table with indexes');
+      debugPrint('Created campaigns table with indexes');
     } else {
-      print('Campaigns table already exists');
+      debugPrint('Campaigns table already exists');
     }
   }
 
@@ -301,9 +302,9 @@ class DatabaseMigration {
       await db.execute('CREATE INDEX idx_quests_difficulty ON quests(difficulty)');
       await db.execute('CREATE INDEX idx_quests_priority ON quests(priority)');
 
-      print('Created quests table with indexes');
+      debugPrint('Created quests table with indexes');
     } else {
-      print('Quests table already exists');
+      debugPrint('Quests table already exists');
     }
   }
 
@@ -366,9 +367,9 @@ class DatabaseMigration {
       await db.execute('CREATE INDEX idx_creatures_challenge_rating ON creatures(challenge_rating)');
       await db.execute('CREATE INDEX idx_creatures_campaign_id ON creatures(campaign_id)');
 
-      print('Created creatures table with indexes');
+      debugPrint('Created creatures table with indexes');
     } else {
-      print('Creatures table already exists');
+      debugPrint('Creatures table already exists');
     }
   }
   
@@ -383,13 +384,13 @@ class DatabaseMigration {
         await db.execute(
           'ALTER TABLE campaigns ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0',
         );
-        print('Added is_favorite column to campaigns table');
+        debugPrint('Added is_favorite column to campaigns table');
       } else {
-        print('is_favorite column already exists');
+        debugPrint('is_favorite column already exists');
       }
     } catch (e) {
       // Wenn die Tabelle noch nicht existiert, wird sie von _createCampaignTable erstellt
-      print('Note: Could not add is_favorite column (table might not exist yet): $e');
+      debugPrint('Note: Could not add is_favorite column (table might not exist yet): $e');
     }
   }
 
@@ -402,7 +403,7 @@ class DatabaseMigration {
       );
       
       if (tableExists.isEmpty) {
-        print('Note: player_characters table does not exist yet');
+        debugPrint('Note: player_characters table does not exist yet');
         return;
       }
       
@@ -414,12 +415,12 @@ class DatabaseMigration {
         await db.execute(
           'ALTER TABLE player_characters ADD COLUMN equipment TEXT',
         );
-        print('Added equipment column to player_characters table');
+        debugPrint('Added equipment column to player_characters table');
       } else {
-        print('equipment column already exists in player_characters table');
+        debugPrint('equipment column already exists in player_characters table');
       }
     } catch (e) {
-      print('Error adding equipment column: $e');
+      debugPrint('Error adding equipment column: $e');
     }
   }
 
@@ -432,7 +433,7 @@ class DatabaseMigration {
       );
       
       if (tableExists.isEmpty) {
-        print('Note: player_characters table does not exist yet');
+        debugPrint('Note: player_characters table does not exist yet');
         return;
       }
       
@@ -444,12 +445,12 @@ class DatabaseMigration {
         await db.execute(
           "ALTER TABLE player_characters ADD COLUMN saving_throw_proficiencies TEXT DEFAULT '[]'",
         );
-        print('Added saving_throw_proficiencies column to player_characters table');
+        debugPrint('Added saving_throw_proficiencies column to player_characters table');
       } else {
-        print('saving_throw_proficiencies column already exists in player_characters table');
+        debugPrint('saving_throw_proficiencies column already exists in player_characters table');
       }
     } catch (e) {
-      print('Error adding saving_throw_proficiencies column: $e');
+      debugPrint('Error adding saving_throw_proficiencies column: $e');
     }
   }
 
@@ -462,7 +463,7 @@ class DatabaseMigration {
       );
       
       if (tableExists.isEmpty) {
-        print('Note: player_characters table does not exist yet');
+        debugPrint('Note: player_characters table does not exist yet');
         return;
       }
       
@@ -474,9 +475,9 @@ class DatabaseMigration {
         await db.execute(
           "ALTER TABLE player_characters ADD COLUMN hit_dice TEXT DEFAULT 'd8'",
         );
-        print('Added hit_dice column to player_characters table');
+        debugPrint('Added hit_dice column to player_characters table');
       } else {
-        print('hit_dice column already exists in player_characters table');
+        debugPrint('hit_dice column already exists in player_characters table');
       }
       
       // hit_dice_count Spalte hinzufügen
@@ -485,9 +486,9 @@ class DatabaseMigration {
         await db.execute(
           'ALTER TABLE player_characters ADD COLUMN hit_dice_count INTEGER DEFAULT 1',
         );
-        print('Added hit_dice_count column to player_characters table');
+        debugPrint('Added hit_dice_count column to player_characters table');
       } else {
-        print('hit_dice_count column already exists in player_characters table');
+        debugPrint('hit_dice_count column already exists in player_characters table');
       }
       
       // hit_dice_remaining Spalte hinzufügen
@@ -496,12 +497,12 @@ class DatabaseMigration {
         await db.execute(
           'ALTER TABLE player_characters ADD COLUMN hit_dice_remaining INTEGER DEFAULT 1',
         );
-        print('Added hit_dice_remaining column to player_characters table');
+        debugPrint('Added hit_dice_remaining column to player_characters table');
       } else {
-        print('hit_dice_remaining column already exists in player_characters table');
+        debugPrint('hit_dice_remaining column already exists in player_characters table');
       }
     } catch (e) {
-      print('Error adding hit dice columns: $e');
+      debugPrint('Error adding hit dice columns: $e');
     }
   }
 
@@ -514,7 +515,7 @@ class DatabaseMigration {
       );
       
       if (tableExists.isEmpty) {
-        print('Note: items table does not exist yet');
+        debugPrint('Note: items table does not exist yet');
         return;
       }
       
@@ -526,12 +527,12 @@ class DatabaseMigration {
         await db.execute(
           'ALTER TABLE items ADD COLUMN damage_type TEXT',
         );
-        print('Added damage_type column to items table');
+        debugPrint('Added damage_type column to items table');
       } else {
-        print('damage_type column already exists in items table');
+        debugPrint('damage_type column already exists in items table');
       }
     } catch (e) {
-      print('Error adding damage_type column: $e');
+      debugPrint('Error adding damage_type column: $e');
     }
   }
 
@@ -544,7 +545,7 @@ class DatabaseMigration {
       );
       
       if (tableExists.isEmpty) {
-        print('Note: scenes table does not exist yet');
+        debugPrint('Note: scenes table does not exist yet');
         return;
       }
       
@@ -556,12 +557,12 @@ class DatabaseMigration {
         await db.execute(
           'ALTER TABLE scenes ADD COLUMN linked_sound_ids TEXT DEFAULT "[]"',
         );
-        print('Added linked_sound_ids column to scenes table');
+        debugPrint('Added linked_sound_ids column to scenes table');
       } else {
-        print('linked_sound_ids column already exists in scenes table');
+        debugPrint('linked_sound_ids column already exists in scenes table');
       }
     } catch (e) {
-      print('Error adding linked_sound_ids column: $e');
+      debugPrint('Error adding linked_sound_ids column: $e');
     }
   }
 
@@ -574,7 +575,7 @@ class DatabaseMigration {
       );
       
       if (tableExists.isEmpty) {
-        print('Note: sessions table does not exist yet');
+        debugPrint('Note: sessions table does not exist yet');
         return;
       }
       
@@ -582,16 +583,16 @@ class DatabaseMigration {
       final hasLinkedSoundIds = tableInfo.any((column) => column['name'] == 'linkedSoundIds');
       
       if (!hasLinkedSoundIds) {
-        print('Migrating sessions table: adding linkedSoundIds column');
+        debugPrint('Migrating sessions table: adding linkedSoundIds column');
         await db.execute(
           'ALTER TABLE sessions ADD COLUMN linkedSoundIds TEXT DEFAULT ""',
         );
-        print('Successfully added linkedSoundIds column to sessions table');
+        debugPrint('Successfully added linkedSoundIds column to sessions table');
       } else {
-        print('linkedSoundIds column already exists in sessions table');
+        debugPrint('linkedSoundIds column already exists in sessions table');
       }
     } catch (e) {
-      print('Error migrating sessions table: $e');
+      debugPrint('Error migrating sessions table: $e');
     }
   }
 
@@ -630,9 +631,9 @@ class DatabaseMigration {
       await db.execute('CREATE INDEX idx_scenes_is_completed ON scenes(is_completed)');
       await db.execute('CREATE INDEX idx_scenes_linked_encounter_id ON scenes(linked_encounter_id)');
 
-      print('Created scenes table with indexes (including linked_character_ids and linked_sound_ids)');
+      debugPrint('Created scenes table with indexes (including linked_character_ids and linked_sound_ids)');
     } else {
-      print('Scenes table already exists');
+      debugPrint('Scenes table already exists');
     }
   }
 
@@ -668,9 +669,9 @@ class DatabaseMigration {
       await db.execute('CREATE INDEX idx_sessions_started_at ON sessions(startedAt)');
       await db.execute('CREATE INDEX idx_sessions_active_scene_id ON sessions(activeSceneId)');
 
-      print('Created sessions table with indexes (using camelCase with linkedSoundIds)');
+      debugPrint('Created sessions table with indexes (using camelCase with linkedSoundIds)');
     } else {
-      print('Sessions table already exists');
+      debugPrint('Sessions table already exists');
     }
   }
 
@@ -699,9 +700,9 @@ class DatabaseMigration {
       await db.execute('CREATE INDEX idx_encounters_scene_id ON encounters(scene_id)');
       await db.execute('CREATE INDEX idx_encounters_status ON encounters(status)');
 
-      print('Created encounters table with indexes (using scene_id)');
+      debugPrint('Created encounters table with indexes (using scene_id)');
     } else {
-      print('Encounters table already exists');
+      debugPrint('Encounters table already exists');
     }
   }
 
@@ -731,9 +732,9 @@ class DatabaseMigration {
       await db.execute('CREATE INDEX idx_encounter_participants_type ON encounter_participants(type)');
       await db.execute('CREATE INDEX idx_encounter_participants_character_id ON encounter_participants(character_id)');
 
-      print('Created encounter_participants table with indexes (using snake_case)');
+      debugPrint('Created encounter_participants table with indexes (using snake_case)');
     } else {
-      print('EncounterParticipants table already exists');
+      debugPrint('EncounterParticipants table already exists');
     }
   }
 
@@ -763,9 +764,9 @@ class DatabaseMigration {
       await db.execute('CREATE INDEX idx_session_quest_progress_quest_id ON session_quest_progress(questId)');
       await db.execute('CREATE INDEX idx_session_quest_progress_status ON session_quest_progress(status)');
 
-      print('Created session_quest_progress table with indexes');
+      debugPrint('Created session_quest_progress table with indexes');
     } else {
-      print('SessionQuestProgress table already exists');
+      debugPrint('SessionQuestProgress table already exists');
     }
   }
 
@@ -796,15 +797,15 @@ class DatabaseMigration {
       await db.execute('CREATE INDEX idx_session_character_tracking_session_id ON session_character_tracking(sessionId)');
       await db.execute('CREATE INDEX idx_session_character_tracking_character_id ON session_character_tracking(characterId)');
 
-      print('Created session_character_tracking table with indexes');
+      debugPrint('Created session_character_tracking table with indexes');
     } else {
-      print('SessionCharacterTracking table already exists');
+      debugPrint('SessionCharacterTracking table already exists');
     }
   }
 
   /// Migration v10 -> v11: Scene als Hauptsäule
   Future<void> _migrateToV11(Database db) async {
-    print('Running migration v10 -> v11: Scene as central hub');
+    debugPrint('Running migration v10 -> v11: Scene as central hub');
     
     try {
       // 1. Scenes Tabelle erweitern
@@ -816,9 +817,9 @@ class DatabaseMigration {
       // 3. SceneQuestStatus Tabelle erstellen
       await _createSceneQuestStatusTable(db);
       
-      print('Migration v10 -> v11 completed successfully');
+      debugPrint('Migration v10 -> v11 completed successfully');
     } catch (e) {
-      print('Migration v10 -> v11 failed: $e');
+      debugPrint('Migration v10 -> v11 failed: $e');
       // Kein Abbruch bei Fehlern, da die Tabelle vielleicht noch nicht existiert
     }
   }
@@ -832,7 +833,7 @@ class DatabaseMigration {
       );
       
       if (tableExists.isEmpty) {
-        print('Note: scenes table does not exist yet');
+        debugPrint('Note: scenes table does not exist yet');
         return;
       }
       
@@ -841,19 +842,19 @@ class DatabaseMigration {
       // linked_encounter_id hinzufügen
       if (!tableInfo.any((column) => column['name'] == 'linked_encounter_id')) {
         await db.execute('ALTER TABLE scenes ADD COLUMN linked_encounter_id TEXT');
-        print('Added linked_encounter_id column to scenes table');
+        debugPrint('Added linked_encounter_id column to scenes table');
       }
       
       // linked_character_ids hinzufügen
       if (!tableInfo.any((column) => column['name'] == 'linked_character_ids')) {
         await db.execute('ALTER TABLE scenes ADD COLUMN linked_character_ids TEXT DEFAULT "[]"');
-        print('Added linked_character_ids column to scenes table');
+        debugPrint('Added linked_character_ids column to scenes table');
       }
       
       // scene_data hinzufügen
       if (!tableInfo.any((column) => column['name'] == 'scene_data')) {
         await db.execute('ALTER TABLE scenes ADD COLUMN scene_data TEXT DEFAULT "{}"');
-        print('Added scene_data column to scenes table');
+        debugPrint('Added scene_data column to scenes table');
       }
       
       // Index für linked_encounter_id erstellen
@@ -864,7 +865,7 @@ class DatabaseMigration {
       }
       
     } catch (e) {
-      print('Error adding scene fields: $e');
+      debugPrint('Error adding scene fields: $e');
     }
   }
 
@@ -877,7 +878,7 @@ class DatabaseMigration {
       );
       
       if (tableExists.isEmpty) {
-        print('Note: encounters table does not exist yet');
+        debugPrint('Note: encounters table does not exist yet');
         return;
       }
       
@@ -887,7 +888,7 @@ class DatabaseMigration {
       
       // Wenn scene_id bereits existiert, nichts zu tun
       if (hasSceneId) {
-        print('encounters table already has scene_id column');
+        debugPrint('encounters table already has scene_id column');
         return;
       }
       
@@ -899,7 +900,7 @@ class DatabaseMigration {
         // 3. Alte Tabelle löschen
         // 4. Neue Tabelle umbenennen
         
-        print('Migrating encounters from session_id to scene_id');
+        debugPrint('Migrating encounters from session_id to scene_id');
         
         // 1. Erstelle temporäre Tabelle
         await db.execute('''
@@ -935,11 +936,11 @@ class DatabaseMigration {
         await db.execute('CREATE INDEX idx_encounters_scene_id ON encounters(scene_id)');
         await db.execute('CREATE INDEX idx_encounters_status ON encounters(status)');
         
-        print('Successfully migrated encounters table to use scene_id');
+        debugPrint('Successfully migrated encounters table to use scene_id');
       }
       
     } catch (e) {
-      print('Error restructuring encounters table: $e');
+      debugPrint('Error restructuring encounters table: $e');
     }
   }
 
@@ -967,9 +968,9 @@ class DatabaseMigration {
       await db.execute('CREATE INDEX idx_scene_quest_status_quest_id ON scene_quest_status(quest_id)');
       await db.execute('CREATE INDEX idx_scene_quest_status_status ON scene_quest_status(status)');
 
-      print('Created scene_quest_status table with indexes');
+      debugPrint('Created scene_quest_status table with indexes');
     } else {
-      print('SceneQuestStatus table already exists');
+      debugPrint('SceneQuestStatus table already exists');
     }
   }
   
@@ -1008,9 +1009,9 @@ class DatabaseMigration {
         await db.insert('campaigns', campaignMap);
       }
       
-      print('Seeded ${sampleCampaigns.length} sample campaigns');
+      debugPrint('Seeded ${sampleCampaigns.length} sample campaigns');
     } else {
-      print('Sample data already exists ($campaignCount campaigns)');
+      debugPrint('Sample data already exists ($campaignCount campaigns)');
     }
   }
   
@@ -1084,13 +1085,13 @@ class DatabaseMigration {
       );
       
       if (tableExists.isEmpty) {
-        print('Note: encounters table does not exist yet');
+        debugPrint('Note: encounters table does not exist yet');
         return;
       }
       
       final tableInfo = await db.rawQuery('PRAGMA table_info(encounters)');
       final columnNames = tableInfo.map((c) => c['name'] as String).toList();
-      print('Encounters table columns: $columnNames');
+      debugPrint('Encounters table columns: $columnNames');
       
       final hasSceneId = columnNames.contains('scene_id');
       final hasSessionId = columnNames.contains('sessionId');
@@ -1100,38 +1101,38 @@ class DatabaseMigration {
       if (hasSessionId) {
         final sessionIdColumn = tableInfo.firstWhere((c) => c['name'] == 'sessionId');
         sessionIdHasNotNull = sessionIdColumn['notnull'] == 1;
-        print('sessionId has NOT NULL constraint: $sessionIdHasNotNull');
+        debugPrint('sessionId has NOT NULL constraint: $sessionIdHasNotNull');
       }
       
-      print('Encounters table check: hasSceneId=$hasSceneId, hasSessionId=$hasSessionId, sessionIdHasNotNull=$sessionIdHasNotNull');
+      debugPrint('Encounters table check: hasSceneId=$hasSceneId, hasSessionId=$hasSessionId, sessionIdHasNotNull=$sessionIdHasNotNull');
       
       // Wenn sessionId noch NOT NULL hat, müssen wir die Tabelle neu erstellen
       // da SQLite NOT NULL Constraints nicht entfernen kann
       if (sessionIdHasNotNull || !hasSceneId) {
-        print('Need to recreate encounters table (sessionId NOT NULL or scene_id missing)');
+        debugPrint('Need to recreate encounters table (sessionId NOT NULL or scene_id missing)');
         await _recreateEncountersTableWithSceneId(db);
         return;
       }
       
       // Wenn scene_id bereits existiert und sessionId kein NOT NULL hat, ist alles gut
       if (hasSceneId) {
-        print('encounters table already has scene_id column and sessionId is nullable - OK');
+        debugPrint('encounters table already has scene_id column and sessionId is nullable - OK');
         return;
       }
       
     } catch (e) {
-      print('Error ensuring scene_id column: $e');
+      debugPrint('Error ensuring scene_id column: $e');
     }
   }
 
   /// Erstellt die encounters Tabelle komplett neu mit scene_id
   Future<void> _recreateEncountersTableWithSceneId(Database db) async {
-    print('Recreating encounters table with scene_id...');
+    debugPrint('Recreating encounters table with scene_id...');
     
     try {
       // 1. Backup der alten Daten
       final existingData = await db.rawQuery('SELECT * FROM encounters');
-      print('Found ${existingData.length} existing encounters to migrate');
+      debugPrint('Found ${existingData.length} existing encounters to migrate');
       
       // 2. Alte Tabelle löschen
       await db.execute('DROP TABLE IF EXISTS encounters');
@@ -1155,9 +1156,9 @@ class DatabaseMigration {
       await db.execute('CREATE INDEX idx_encounters_scene_id ON encounters(scene_id)');
       await db.execute('CREATE INDEX idx_encounters_status ON encounters(status)');
       
-      print('Successfully recreated encounters table with scene_id');
+      debugPrint('Successfully recreated encounters table with scene_id');
     } catch (e) {
-      print('Error recreating encounters table: $e');
+      debugPrint('Error recreating encounters table: $e');
     }
   }
 
@@ -1170,33 +1171,33 @@ class DatabaseMigration {
       );
       
       if (tableExists.isEmpty) {
-        print('Note: encounter_participants table does not exist yet');
+        debugPrint('Note: encounter_participants table does not exist yet');
         return;
       }
       
       final tableInfo = await db.rawQuery('PRAGMA table_info(encounter_participants)');
       final columnNames = tableInfo.map((c) => c['name'] as String).toList();
-      print('Encounter participants table columns: $columnNames');
+      debugPrint('Encounter participants table columns: $columnNames');
       
       final hasEncounterId = columnNames.contains('encounter_id');
       
       // Wenn encounter_id fehlt, Tabelle neu erstellen
       if (!hasEncounterId) {
-        print('Need to recreate encounter_participants table (encounter_id missing)');
+        debugPrint('Need to recreate encounter_participants table (encounter_id missing)');
         await _recreateEncounterParticipantsTable(db);
         return;
       }
       
-      print('encounter_participants table has encounter_id column - OK');
+      debugPrint('encounter_participants table has encounter_id column - OK');
       
     } catch (e) {
-      print('Error ensuring encounter_participants columns: $e');
+      debugPrint('Error ensuring encounter_participants columns: $e');
     }
   }
 
   /// Erstellt die encounter_participants Tabelle komplett neu
   Future<void> _recreateEncounterParticipantsTable(Database db) async {
-    print('Recreating encounter_participants table...');
+    debugPrint('Recreating encounter_participants table...');
     
     try {
       // 1. Alte Tabelle löschen
@@ -1222,9 +1223,9 @@ class DatabaseMigration {
       await db.execute('CREATE INDEX idx_encounter_participants_type ON encounter_participants(type)');
       await db.execute('CREATE INDEX idx_encounter_participants_character_id ON encounter_participants(character_id)');
       
-      print('Successfully recreated encounter_participants table');
+      debugPrint('Successfully recreated encounter_participants table');
     } catch (e) {
-      print('Error recreating encounter_participants table: $e');
+      debugPrint('Error recreating encounter_participants table: $e');
     }
   }
 
@@ -1237,7 +1238,7 @@ class DatabaseMigration {
       );
       
       if (tableExists.isEmpty) {
-        print('Note: encounter_participants table does not exist yet');
+        debugPrint('Note: encounter_participants table does not exist yet');
         return;
       }
       
@@ -1249,12 +1250,12 @@ class DatabaseMigration {
         await db.execute(
           'ALTER TABLE encounter_participants ADD COLUMN creature_id TEXT',
         );
-        print('Added creature_id column to encounter_participants table');
+        debugPrint('Added creature_id column to encounter_participants table');
       } else {
-        print('creature_id column already exists in encounter_participants table');
+        debugPrint('creature_id column already exists in encounter_participants table');
       }
     } catch (e) {
-      print('Error adding creature_id column: $e');
+      debugPrint('Error adding creature_id column: $e');
     }
   }
 }

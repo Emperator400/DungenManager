@@ -640,17 +640,17 @@ class _EnhancedInventoryTabWidgetState extends State<EnhancedInventoryTabWidget>
   /// - Nicht ausgerüstet: Öffnet Equip-Dialog
   /// - Bereits ausgerüstet: Legt Item sofort ab
   void _handleInventoryItemTap(DisplayInventoryItem displayItem, CharacterEditorViewModel viewModel) {
-    print('👆 [EnhancedInventoryTabWidget] Item angeklickt: ${displayItem.item.name}');
-    print('  - isEquipped: ${displayItem.inventoryItem.isEquipped}');
-    print('  - equipSlot: ${displayItem.inventoryItem.equipSlot}');
+    debugPrint('👆 [EnhancedInventoryTabWidget] Item angeklickt: ${displayItem.item.name}');
+    debugPrint('  - isEquipped: ${displayItem.inventoryItem.isEquipped}');
+    debugPrint('  - equipSlot: ${displayItem.inventoryItem.equipSlot}');
     
     if (displayItem.inventoryItem.isEquipped) {
       // Item ist bereits ausgerüstet → Ablegen
-      print('👆 [EnhancedInventoryTabWidget] Item ist ausgerüstet → lege ab');
+      debugPrint('👆 [EnhancedInventoryTabWidget] Item ist ausgerüstet → lege ab');
       _handleUnequipItem(displayItem, viewModel);
     } else {
       // Item ist nicht ausgerüstet → Equip-Dialog zeigen
-      print('👆 [EnhancedInventoryTabWidget] Item ist nicht ausgerüstet → zeige Equip-Dialog');
+      debugPrint('👆 [EnhancedInventoryTabWidget] Item ist nicht ausgerüstet → zeige Equip-Dialog');
       _showEquipDialog(displayItem, viewModel);
     }
   }
@@ -767,10 +767,10 @@ class _EnhancedInventoryTabWidgetState extends State<EnhancedInventoryTabWidget>
 
   /// Erstellt ein Fallback-Item wenn die Details nicht gefunden wurden
   Item _createFallbackItem(InventoryItem invItem) {
-    print('=== FALLBACK ITEM CREATED ===');
-    print('InventoryItem ID: ${invItem.id}');
-    print('Item ID: ${invItem.itemId}');
-    print('Inventory Name: ${invItem.name}');
+    debugPrint('=== FALLBACK ITEM CREATED ===');
+    debugPrint('InventoryItem ID: ${invItem.id}');
+    debugPrint('Item ID: ${invItem.itemId}');
+    debugPrint('Inventory Name: ${invItem.name}');
     
     return Item(
       id: invItem.itemId,

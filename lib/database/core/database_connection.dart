@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
@@ -21,12 +22,12 @@ class DatabaseConnection {
   
   /// Datenbank-Instanz
   Future<Database> get database async {
-    print('🔌 [DatabaseConnection] database getter aufgerufen');
+    debugPrint('🔌 [DatabaseConnection] database getter aufgerufen');
     if (_database != null) {
-      print('✅ [DatabaseConnection] Datenbank bereits initialisiert');
+      debugPrint('✅ [DatabaseConnection] Datenbank bereits initialisiert');
       return _database!;
     }
-    print('⏳ [DatabaseConnection] Initialisiere Datenbank...');
+    debugPrint('⏳ [DatabaseConnection] Initialisiere Datenbank...');
     _database = await _initDatabase();
     return _database!;
   }
@@ -51,9 +52,9 @@ class DatabaseConnection {
     
     // Automatischer Daten-Umzug: Falls die DB am neuen sicheren Ort fehlt, am alten aber existiert
     if (!await newDbFile.exists() && await oldDbFile.exists()) {
-      print('📦 [DatabaseConnection] Migriere bestehende Datenbank an neuen, sicheren Ort...');
+      debugPrint('📦 [DatabaseConnection] Migriere bestehende Datenbank an neuen, sicheren Ort...');
       await oldDbFile.copy(newPath);
-      print('✅ [DatabaseConnection] Datenbank erfolgreich nach $newPath kopiert');
+      debugPrint('✅ [DatabaseConnection] Datenbank erfolgreich nach $newPath kopiert');
     }
     
     return newPath;
@@ -62,7 +63,7 @@ class DatabaseConnection {
   /// Initialisiert die Datenbankverbindung
   Future<Database> _initDatabase() async {
     final path = await _getCustomDatabasePath();
-    print('📁 [DatabaseConnection] Datenbank-Pfad: $path');
+    debugPrint('📁 [DatabaseConnection] Datenbank-Pfad: $path');
     
     _migration = RefactoringMigrationV2(this);
     
@@ -75,7 +76,7 @@ class DatabaseConnection {
     );
     
     // TEMPORÄR DEAKTIVIERT - Verursacht Freeze
-    print('⚠️ [DatabaseConnection] Migrationen vorübergehend deaktiviert');
+    debugPrint('⚠️ [DatabaseConnection] Migrationen vorübergehend deaktiviert');
     // await _runDatabaseMigrations(db);
     
     return db;
@@ -83,11 +84,11 @@ class DatabaseConnection {
   
   /// Erstellt die Tabellen bei der ersten Installation
   Future<void> _onCreate(Database db, int version) async {
-    print('📦 Erstelle Datenbank-Tabellen...');
+    debugPrint('📦 Erstelle Datenbank-Tabellen...');
     
     await _createAllTables(db);
     
-    print('✅ Alle Datenbank-Tabellen erstellt');
+    debugPrint('✅ Alle Datenbank-Tabellen erstellt');
   }
   
   /// Erstellt alle Tabellen der Datenbank
@@ -142,7 +143,7 @@ class DatabaseConnection {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_wiki_entries_parent_id ON wiki_entries(parent_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_wiki_entries_is_favorite ON wiki_entries(is_favorite)');
     
-    print('✅ wiki_entries Tabelle erstellt');
+    debugPrint('✅ wiki_entries Tabelle erstellt');
   }
   
   /// Erstellt die campaigns Tabelle
@@ -173,7 +174,7 @@ class DatabaseConnection {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_campaigns_status ON campaigns(status)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_campaigns_dungeon_master ON campaigns(dungeon_master_id)');
     
-    print('✅ campaigns Tabelle erstellt');
+    debugPrint('✅ campaigns Tabelle erstellt');
   }
   
   /// Erstellt die player_characters Tabelle
@@ -235,7 +236,7 @@ class DatabaseConnection {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_player_characters_class ON player_characters(class_name)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_player_characters_race ON player_characters(race_name)');
     
-    print('✅ player_characters Tabelle erstellt');
+    debugPrint('✅ player_characters Tabelle erstellt');
   }
   
   /// Erstellt die inventory_items Tabelle
@@ -264,7 +265,7 @@ class DatabaseConnection {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_inventory_items_name ON inventory_items(name)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_inventory_items_is_equipped ON inventory_items(is_equipped)');
     
-    print('✅ inventory_items Tabelle erstellt');
+    debugPrint('✅ inventory_items Tabelle erstellt');
   }
   
   /// Erstellt die items Tabelle
@@ -309,7 +310,7 @@ class DatabaseConnection {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_items_item_type ON items(item_type)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_items_rarity ON items(rarity)');
     
-    print('✅ items Tabelle erstellt');
+    debugPrint('✅ items Tabelle erstellt');
   }
   
   /// Erstellt die creatures Tabelle
@@ -362,7 +363,7 @@ class DatabaseConnection {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_creatures_source_type ON creatures(source_type)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_creatures_is_favorite ON creatures(is_favorite)');
     
-    print('✅ creatures Tabelle erstellt');
+    debugPrint('✅ creatures Tabelle erstellt');
   }
   
   /// Erstellt die official_monsters Tabelle
@@ -415,7 +416,7 @@ class DatabaseConnection {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_monsters_cr ON official_monsters(challenge_rating)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_monsters_type ON official_monsters(type)');
     
-    print('✅ official_monsters Tabelle erstellt');
+    debugPrint('✅ official_monsters Tabelle erstellt');
   }
   
   /// Erstellt die official_spells Tabelle
@@ -441,7 +442,7 @@ class DatabaseConnection {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_spells_name ON official_spells(name)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_spells_level ON official_spells(level)');
     
-    print('✅ official_spells Tabelle erstellt');
+    debugPrint('✅ official_spells Tabelle erstellt');
   }
 
   /// Erstellt die sounds Tabelle
@@ -468,7 +469,7 @@ class DatabaseConnection {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_sounds_is_favorite ON sounds(is_favorite)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_sounds_category_id ON sounds(category_id)');
     
-    print('✅ sounds Tabelle erstellt');
+    debugPrint('✅ sounds Tabelle erstellt');
   }
 
   /// Erstellt die sessions Tabelle
@@ -496,7 +497,7 @@ class DatabaseConnection {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_sessions_campaign_id ON sessions(campaignId)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(createdAt)');
 
-    print('✅ sessions Tabelle erstellt');
+    debugPrint('✅ sessions Tabelle erstellt');
   }
 
   /// Erstellt die scenes Tabelle
@@ -530,7 +531,7 @@ class DatabaseConnection {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_scenes_scene_type ON scenes(scene_type)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_scenes_is_completed ON scenes(is_completed)');
 
-    print('✅ scenes Tabelle erstellt');
+    debugPrint('✅ scenes Tabelle erstellt');
   }
 
   /// Erstellt die encounters Tabelle
@@ -553,7 +554,7 @@ class DatabaseConnection {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_encounters_scene_id ON encounters(scene_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_encounters_status ON encounters(status)');
 
-    print('✅ encounters Tabelle erstellt');
+    debugPrint('✅ encounters Tabelle erstellt');
   }
 
   /// Erstellt die encounter_participants Tabelle
@@ -577,7 +578,7 @@ class DatabaseConnection {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_encounter_participants_type ON encounter_participants(type)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_encounter_participants_character_id ON encounter_participants(character_id)');
 
-    print('✅ encounter_participants Tabelle erstellt');
+    debugPrint('✅ encounter_participants Tabelle erstellt');
   }
 
   /// Erstellt die session_quest_progress Tabelle
@@ -601,7 +602,7 @@ class DatabaseConnection {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_session_quest_progress_quest_id ON session_quest_progress(questId)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_session_quest_progress_status ON session_quest_progress(status)');
 
-    print('✅ session_quest_progress Tabelle erstellt');
+    debugPrint('✅ session_quest_progress Tabelle erstellt');
   }
 
   /// Erstellt die session_character_tracking Tabelle
@@ -626,7 +627,7 @@ class DatabaseConnection {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_session_character_tracking_session_id ON session_character_tracking(sessionId)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_session_character_tracking_character_id ON session_character_tracking(characterId)');
 
-    print('✅ session_character_tracking Tabelle erstellt');
+    debugPrint('✅ session_character_tracking Tabelle erstellt');
   }
 
   /// Erstellt die scene_quest_status Tabelle
@@ -648,7 +649,7 @@ class DatabaseConnection {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_scene_quest_status_quest_id ON scene_quest_status(quest_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_scene_quest_status_status ON scene_quest_status(status)');
 
-    print('✅ scene_quest_status Tabelle erstellt');
+    debugPrint('✅ scene_quest_status Tabelle erstellt');
   }
 
   /// Erstellt die quests Tabelle
@@ -689,7 +690,7 @@ class DatabaseConnection {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_quests_difficulty ON quests(difficulty)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_quests_priority ON quests(priority)');
 
-    print('✅ quests Tabelle erstellt');
+    debugPrint('✅ quests Tabelle erstellt');
   }
 
   /// Erstellt die sound_scenes Tabelle
@@ -708,7 +709,7 @@ class DatabaseConnection {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_sound_scenes_name ON sound_scenes(name)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_sound_scenes_is_favorite ON sound_scenes(is_favorite)');
 
-    print('✅ sound_scenes Tabelle erstellt');
+    debugPrint('✅ sound_scenes Tabelle erstellt');
   }
 
   /// Erstellt die sound_scene_items Tabelle (Junction Table für Sound-Zuordnung)
@@ -733,23 +734,23 @@ class DatabaseConnection {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_sound_scene_items_sound_id ON sound_scene_items(sound_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_sound_scene_items_sort_order ON sound_scene_items(sort_order)');
 
-    print('✅ sound_scene_items Tabelle erstellt');
+    debugPrint('✅ sound_scene_items Tabelle erstellt');
   }
   
   /// Aktualisiert das Datenbankschema
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    print('🔄 Datenbank-Upgrade von Version $oldVersion auf $newVersion...');
+    debugPrint('🔄 Datenbank-Upgrade von Version $oldVersion auf $newVersion...');
     
     if (oldVersion < 6 && newVersion >= 6) {
-      print('🔄 Füge Bestiarum-Tabellen hinzu (v5 → v6)...');
+      debugPrint('🔄 Füge Bestiarum-Tabellen hinzu (v5 → v6)...');
       await _createCreaturesTable(db);
       await _createOfficialMonstersTable(db);
       await _createOfficialSpellsTable(db);
-      print('✅ Bestiarum-Tabellen erstellt (Version 6)');
+      debugPrint('✅ Bestiarum-Tabellen erstellt (Version 6)');
     }
     
     if (oldVersion < 7 && newVersion >= 7) {
-      print('🔄 Füge equipment Spalte zu player_characters hinzu (v6 → v7)...');
+      debugPrint('🔄 Füge equipment Spalte zu player_characters hinzu (v6 → v7)...');
       try {
         final tableInfo = await db.rawQuery('PRAGMA table_info(player_characters)');
         final hasEquipment = tableInfo.any((column) => column['name'] == 'equipment');
@@ -758,39 +759,39 @@ class DatabaseConnection {
           await db.execute(
             'ALTER TABLE player_characters ADD COLUMN equipment TEXT',
           );
-          print('✅ equipment Spalte hinzugefügt');
+          debugPrint('✅ equipment Spalte hinzugefügt');
         } else {
-          print('ℹ️ equipment Spalte existiert bereits');
+          debugPrint('ℹ️ equipment Spalte existiert bereits');
         }
       } catch (e) {
-        print('⚠️ Konnte equipment Spalte nicht hinzufügen: $e');
+        debugPrint('⚠️ Konnte equipment Spalte nicht hinzufügen: $e');
       }
     }
     
     if (oldVersion < 8 && newVersion >= 8) {
-      print('🔄 Füge sounds Tabelle hinzu (v7 → v8)...');
+      debugPrint('🔄 Füge sounds Tabelle hinzu (v7 → v8)...');
       await _createSoundsTable(db);
-      print('✅ sounds Tabelle erstellt (Version 8)');
+      debugPrint('✅ sounds Tabelle erstellt (Version 8)');
     }
     
     if (oldVersion < 9 && newVersion >= 9) {
-      print('🔄 Füge Session-Management Tabellen hinzu (v8 → v9)...');
+      debugPrint('🔄 Füge Session-Management Tabellen hinzu (v8 → v9)...');
       await _createSessionsTable(db);
       await _createEncountersTable(db);
       await _createEncounterParticipantsTable(db);
       await _createSessionQuestProgressTable(db);
       await _createSessionCharacterTrackingTable(db);
-      print('✅ Session-Management Tabellen erstellt (Version 9)');
+      debugPrint('✅ Session-Management Tabellen erstellt (Version 9)');
     }
     
     if (oldVersion < 10 && newVersion >= 10) {
-      print('🔄 Füge scenes Tabelle hinzu (v9 → v10)...');
+      debugPrint('🔄 Füge scenes Tabelle hinzu (v9 → v10)...');
       await _createScenesTable(db);
-      print('✅ scenes Tabelle erstellt (Version 10)');
+      debugPrint('✅ scenes Tabelle erstellt (Version 10)');
     }
     
     if (oldVersion < 11 && newVersion >= 11) {
-      print('🔄 Füge neue Spalten zu scenes Tabelle hinzu (v10 → v11)...');
+      debugPrint('🔄 Füge neue Spalten zu scenes Tabelle hinzu (v10 → v11)...');
       try {
         final tableInfo = await db.rawQuery('PRAGMA table_info(scenes)');
         final existingColumns = tableInfo.map((column) => column['name'] as String).toSet();
@@ -798,47 +799,47 @@ class DatabaseConnection {
         // linked_encounter_id hinzufügen
         if (!existingColumns.contains('linked_encounter_id')) {
           await db.execute('ALTER TABLE scenes ADD COLUMN linked_encounter_id TEXT');
-          print('✅ linked_encounter_id Spalte hinzugefügt');
+          debugPrint('✅ linked_encounter_id Spalte hinzugefügt');
         } else {
-          print('ℹ️ linked_encounter_id Spalte existiert bereits');
+          debugPrint('ℹ️ linked_encounter_id Spalte existiert bereits');
         }
         
         // linked_character_ids hinzufügen
         if (!existingColumns.contains('linked_character_ids')) {
           await db.execute('ALTER TABLE scenes ADD COLUMN linked_character_ids TEXT DEFAULT "[]"');
-          print('✅ linked_character_ids Spalte hinzugefügt');
+          debugPrint('✅ linked_character_ids Spalte hinzugefügt');
         } else {
-          print('ℹ️ linked_character_ids Spalte existiert bereits');
+          debugPrint('ℹ️ linked_character_ids Spalte existiert bereits');
         }
         
         // scene_data hinzufügen
         if (!existingColumns.contains('scene_data')) {
           await db.execute('ALTER TABLE scenes ADD COLUMN scene_data TEXT DEFAULT "{}"');
-          print('✅ scene_data Spalte hinzugefügt');
+          debugPrint('✅ scene_data Spalte hinzugefügt');
         } else {
-          print('ℹ️ scene_data Spalte existiert bereits');
+          debugPrint('ℹ️ scene_data Spalte existiert bereits');
         }
         
-        print('✅ scenes Tabelle aktualisiert (Version 11)');
+        debugPrint('✅ scenes Tabelle aktualisiert (Version 11)');
       } catch (e) {
-        print('⚠️ Konnte scenes Spalten nicht hinzufügen: $e');
+        debugPrint('⚠️ Konnte scenes Spalten nicht hinzufügen: $e');
       }
     }
     
     if (oldVersion < 12 && newVersion >= 12) {
-      print('🔄 Füge scene_quest_status Tabelle hinzu (v11 → v12)...');
+      debugPrint('🔄 Füge scene_quest_status Tabelle hinzu (v11 → v12)...');
       await _createSceneQuestStatusTable(db);
-      print('✅ scene_quest_status Tabelle erstellt (Version 12)');
+      debugPrint('✅ scene_quest_status Tabelle erstellt (Version 12)');
     }
     
     if (oldVersion < 13 && newVersion >= 13) {
-      print('🔄 Füge quests Tabelle hinzu (v12 → v13)...');
+      debugPrint('🔄 Füge quests Tabelle hinzu (v12 → v13)...');
       await _createQuestsTable(db);
-      print('✅ quests Tabelle erstellt (Version 13)');
+      debugPrint('✅ quests Tabelle erstellt (Version 13)');
     }
     
     if (oldVersion < 14 && newVersion >= 14) {
-      print('🔄 Füge linked_sound_ids Spalte zu scenes Tabelle hinzu (v13 → v14)...');
+      debugPrint('🔄 Füge linked_sound_ids Spalte zu scenes Tabelle hinzu (v13 → v14)...');
       try {
         final tableInfo = await db.rawQuery('PRAGMA table_info(scenes)');
         final existingColumns = tableInfo.map((column) => column['name'] as String).toSet();
@@ -846,19 +847,19 @@ class DatabaseConnection {
         // linked_sound_ids hinzufügen
         if (!existingColumns.contains('linked_sound_ids')) {
           await db.execute('ALTER TABLE scenes ADD COLUMN linked_sound_ids TEXT DEFAULT "[]"');
-          print('✅ linked_sound_ids Spalte hinzugefügt');
+          debugPrint('✅ linked_sound_ids Spalte hinzugefügt');
         } else {
-          print('ℹ️ linked_sound_ids Spalte existiert bereits');
+          debugPrint('ℹ️ linked_sound_ids Spalte existiert bereits');
         }
         
-        print('✅ scenes Tabelle aktualisiert (Version 14)');
+        debugPrint('✅ scenes Tabelle aktualisiert (Version 14)');
       } catch (e) {
-        print('⚠️ Konnte linked_sound_ids Spalte nicht hinzufügen: $e');
+        debugPrint('⚠️ Konnte linked_sound_ids Spalte nicht hinzufügen: $e');
       }
     }
     
     if (oldVersion < 15 && newVersion >= 15) {
-      print('🔄 Füge saving_throw_proficiencies Spalte zu player_characters hinzu (v14 → v15)...');
+      debugPrint('🔄 Füge saving_throw_proficiencies Spalte zu player_characters hinzu (v14 → v15)...');
       try {
         final tableInfo = await db.rawQuery('PRAGMA table_info(player_characters)');
         final existingColumns = tableInfo.map((column) => column['name'] as String).toSet();
@@ -866,19 +867,19 @@ class DatabaseConnection {
         // saving_throw_proficiencies hinzufügen
         if (!existingColumns.contains('saving_throw_proficiencies')) {
           await db.execute('ALTER TABLE player_characters ADD COLUMN saving_throw_proficiencies TEXT DEFAULT "[]"');
-          print('✅ saving_throw_proficiencies Spalte hinzugefügt');
+          debugPrint('✅ saving_throw_proficiencies Spalte hinzugefügt');
         } else {
-          print('ℹ️ saving_throw_proficiencies Spalte existiert bereits');
+          debugPrint('ℹ️ saving_throw_proficiencies Spalte existiert bereits');
         }
         
-        print('✅ player_characters Tabelle aktualisiert (Version 15)');
+        debugPrint('✅ player_characters Tabelle aktualisiert (Version 15)');
       } catch (e) {
-        print('⚠️ Konnte saving_throw_proficiencies Spalte nicht hinzufügen: $e');
+        debugPrint('⚠️ Konnte saving_throw_proficiencies Spalte nicht hinzufügen: $e');
       }
     }
     
     if (oldVersion < 16 && newVersion >= 16) {
-      print('🔄 Füge armor_category Spalte zu items hinzu (v15 → v16)...');
+      debugPrint('🔄 Füge armor_category Spalte zu items hinzu (v15 → v16)...');
       try {
         final tableInfo = await db.rawQuery('PRAGMA table_info(items)');
         final existingColumns = tableInfo.map((column) => column['name'] as String).toSet();
@@ -886,19 +887,19 @@ class DatabaseConnection {
         // armor_category hinzufügen
         if (!existingColumns.contains('armor_category')) {
           await db.execute('ALTER TABLE items ADD COLUMN armor_category TEXT');
-          print('✅ armor_category Spalte hinzugefügt');
+          debugPrint('✅ armor_category Spalte hinzugefügt');
         } else {
-          print('ℹ️ armor_category Spalte existiert bereits');
+          debugPrint('ℹ️ armor_category Spalte existiert bereits');
         }
         
-        print('✅ items Tabelle aktualisiert (Version 16)');
+        debugPrint('✅ items Tabelle aktualisiert (Version 16)');
       } catch (e) {
-        print('⚠️ Konnte armor_category Spalte nicht hinzufügen: $e');
+        debugPrint('⚠️ Konnte armor_category Spalte nicht hinzufügen: $e');
       }
     }
     
     if (oldVersion < 17 && newVersion >= 17) {
-      print('🔄 Migriere encounters und encounter_participants zu snake_case (v16 → v17)...');
+      debugPrint('🔄 Migriere encounters und encounter_participants zu snake_case (v16 → v17)...');
       try {
         // Prüfe ob encounters Tabelle das alte Schema hat
         final encountersInfo = await db.rawQuery('PRAGMA table_info(encounters)');
@@ -906,7 +907,7 @@ class DatabaseConnection {
         
         // Wenn sessionId existiert, müssen wir migrieren
         if (encounterColumns.contains('sessionId')) {
-          print('🔄 Migriere encounters Tabelle...');
+          debugPrint('🔄 Migriere encounters Tabelle...');
           
           // 1. Erstelle neue Tabelle
           await db.execute('''
@@ -942,7 +943,7 @@ class DatabaseConnection {
           await db.execute('CREATE INDEX IF NOT EXISTS idx_encounters_scene_id ON encounters(scene_id)');
           await db.execute('CREATE INDEX IF NOT EXISTS idx_encounters_status ON encounters(status)');
           
-          print('✅ encounters Tabelle migriert');
+          debugPrint('✅ encounters Tabelle migriert');
         }
         
         // Prüfe ob encounter_participants Tabelle das alte Schema hat
@@ -951,7 +952,7 @@ class DatabaseConnection {
         
         // Wenn encounterId existiert, müssen wir migrieren
         if (participantColumns.contains('encounterId')) {
-          print('🔄 Migriere encounter_participants Tabelle...');
+          debugPrint('🔄 Migriere encounter_participants Tabelle...');
           
           // 1. Erstelle neue Tabelle
           await db.execute('''
@@ -989,17 +990,17 @@ class DatabaseConnection {
           await db.execute('CREATE INDEX IF NOT EXISTS idx_encounter_participants_type ON encounter_participants(type)');
           await db.execute('CREATE INDEX IF NOT EXISTS idx_encounter_participants_character_id ON encounter_participants(character_id)');
           
-          print('✅ encounter_participants Tabelle migriert');
+          debugPrint('✅ encounter_participants Tabelle migriert');
         }
         
-        print('✅ Encounter-Tabellen migriert (Version 17)');
+        debugPrint('✅ Encounter-Tabellen migriert (Version 17)');
       } catch (e) {
-        print('⚠️ Konnte Encounter-Tabellen nicht migrieren: $e');
+        debugPrint('⚠️ Konnte Encounter-Tabellen nicht migrieren: $e');
       }
     }
 
     if (oldVersion < 18 && newVersion >= 18) {
-      print('🔄 Füge sound_volumes Spalte zu scenes Tabelle hinzu (v17 → v18)...');
+      debugPrint('🔄 Füge sound_volumes Spalte zu scenes Tabelle hinzu (v17 → v18)...');
       try {
         final tableInfo = await db.rawQuery('PRAGMA table_info(scenes)');
         final existingColumns = tableInfo.map((column) => column['name'] as String).toSet();
@@ -1007,14 +1008,14 @@ class DatabaseConnection {
         // sound_volumes hinzufügen
         if (!existingColumns.contains('sound_volumes')) {
           await db.execute('ALTER TABLE scenes ADD COLUMN sound_volumes TEXT DEFAULT "{}"');
-          print('✅ sound_volumes Spalte hinzugefügt');
+          debugPrint('✅ sound_volumes Spalte hinzugefügt');
         } else {
-          print('ℹ️ sound_volumes Spalte existiert bereits');
+          debugPrint('ℹ️ sound_volumes Spalte existiert bereits');
         }
         
-        print('✅ scenes Tabelle aktualisiert (Version 18)');
+        debugPrint('✅ scenes Tabelle aktualisiert (Version 18)');
       } catch (e) {
-        print('⚠️ Konnte sound_volumes Spalte nicht hinzufügen: $e');
+        debugPrint('⚠️ Konnte sound_volumes Spalte nicht hinzufügen: $e');
       }
     }
   }
@@ -1033,7 +1034,7 @@ class DatabaseConnection {
     final path = await _getCustomDatabasePath();
     await deleteDatabase(path);
     _database = await _initDatabase();
-    print('✅ Datenbank wurde zurückgesetzt');
+    debugPrint('✅ Datenbank wurde zurückgesetzt');
   }
   
   /// Führt Datenbank-Migrationen aus
@@ -1041,9 +1042,9 @@ class DatabaseConnection {
     try {
       final migration = DatabaseMigration(this);
       await migration.runMigrations();
-      print('✅ Datenbank-Migrationen erfolgreich ausgeführt');
+      debugPrint('✅ Datenbank-Migrationen erfolgreich ausgeführt');
     } catch (e) {
-      print('⚠️ Fehler bei Datenbank-Migrationen: $e');
+      debugPrint('⚠️ Fehler bei Datenbank-Migrationen: $e');
     }
   }
   
@@ -1052,7 +1053,7 @@ class DatabaseConnection {
     await close();
     final path = await _getCustomDatabasePath();
     await deleteDatabase(path);
-    print('✅ Datenbank-Datei wurde gelöscht');
+    debugPrint('✅ Datenbank-Datei wurde gelöscht');
   }
   
   /// Führt die Refactoring-Migration manuell aus

@@ -52,34 +52,34 @@ class CharacterInventoryHandler {
 
   Future<void> loadInventory() async {
     try {
-      print('=== LOAD INVENTORY DEBUG ===');
-      print('CharacterType: ${controller.characterType}');
-      print('ViewModel verfügbar: ${_viewModel != null}');
+      debugPrint('=== LOAD INVENTORY DEBUG ===');
+      debugPrint('CharacterType: ${controller.characterType}');
+      debugPrint('ViewModel verfügbar: ${_viewModel != null}');
       
       // Wenn ViewModel verfügbar ist, lade darüber
       if (_viewModel != null) {
         if (controller.characterType == CharacterType.player) {
           final pcId = controller.pcToEdit?.id;
           if (pcId != null) {
-            print('Lade Player Character Inventory: $pcId');
+            debugPrint('Lade Player Character Inventory: $pcId');
             await _viewModel!.initWithPlayerCharacter(pcId);
           }
         } else {
           final creatureId = controller.creatureToEdit?.id;
           if (creatureId != null) {
-            print('Lade Creature Inventory: $creatureId');
+            debugPrint('Lade Creature Inventory: $creatureId');
             await _viewModel!.initWithCreature(creatureId);
           }
         }
       } else {
-        print('WARNUNG: Kein ViewModel verfügbar!');
+        debugPrint('WARNUNG: Kein ViewModel verfügbar!');
       }
       
       onInventoryChanged();
-      print('Inventar neu geladen');
+      debugPrint('Inventar neu geladen');
     } catch (e) {
-      print('=== LOAD INVENTORY ERROR ===');
-      print('Error: $e');
+      debugPrint('=== LOAD INVENTORY ERROR ===');
+      debugPrint('Error: $e');
       
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -178,16 +178,16 @@ class CharacterInventoryHandler {
 
   Future<void> removeItem(DisplayInventoryItem displayItem) async {
     try {
-      print('=== REMOVE ITEM DEBUG ===');
-      print('InventoryItem ID: ${displayItem.inventoryItem.id}');
-      print('InventoryItem Name: ${displayItem.inventoryItem.name}');
-      print('Repository: ${_inventoryRepository.runtimeType}');
+      debugPrint('=== REMOVE ITEM DEBUG ===');
+      debugPrint('InventoryItem ID: ${displayItem.inventoryItem.id}');
+      debugPrint('InventoryItem Name: ${displayItem.inventoryItem.name}');
+      debugPrint('Repository: ${_inventoryRepository.runtimeType}');
       
       await _inventoryRepository.delete(displayItem.inventoryItem.id);
-      print('Item erfolgreich gelöscht');
+      debugPrint('Item erfolgreich gelöscht');
       
       await loadInventory();
-      print('Inventar neu geladen');
+      debugPrint('Inventar neu geladen');
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -195,9 +195,9 @@ class CharacterInventoryHandler {
         );
       }
     } catch (e, stackTrace) {
-      print('=== REMOVE ITEM ERROR ===');
-      print('Error: $e');
-      print('StackTrace: $stackTrace');
+      debugPrint('=== REMOVE ITEM ERROR ===');
+      debugPrint('Error: $e');
+      debugPrint('StackTrace: $stackTrace');
       
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

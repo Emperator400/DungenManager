@@ -1,4 +1,5 @@
 // Dart Core
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 
 // Eigene Projekte
@@ -53,18 +54,18 @@ class InventoryService {
         );
       }
 
-      print('📦 [InventoryService] Lade Inventar für Character: $characterId');
+      debugPrint('📦 [InventoryService] Lade Inventar für Character: $characterId');
       final items = await _inventoryRepository.getByOwnerId(characterId);
-      print('📦 [InventoryService] ${items.length} Items geladen');
+      debugPrint('📦 [InventoryService] ${items.length} Items geladen');
       
       // Debug: Zeige alle geladenen Items mit ihrem Equipment-Status
       for (final item in items) {
-        print('  - ${item.name} (ID: ${item.id}): isEquipped=${item.isEquipped}, equipSlot=${item.equipSlot}');
+        debugPrint('  - ${item.name} (ID: ${item.id}): isEquipped=${item.isEquipped}, equipSlot=${item.equipSlot}');
       }
       
       return items;
     } catch (e) {
-      print('❌ [InventoryService] Fehler beim Laden des Inventars: $e');
+      debugPrint('❌ [InventoryService] Fehler beim Laden des Inventars: $e');
       throw Exception('Fehler beim Laden des Inventars: $e');
     }
   }
@@ -142,13 +143,13 @@ class InventoryService {
     required EquipSlot equipSlot,
   }) async {
     try {
-      print('⚔️ [InventoryService] Rüste Item aus: inventoryItemId=$inventoryItemId, slot=$equipSlot');
+      debugPrint('⚔️ [InventoryService] Rüste Item aus: inventoryItemId=$inventoryItemId, slot=$equipSlot');
       
       // Inventory Item holen
       final inventoryItems = await loadInventory(characterId);
       final inventoryItem = inventoryItems.firstWhere((item) => item.id == inventoryItemId);
       
-      print('⚔️ [InventoryService] Item gefunden: ${inventoryItem.name} (aktuell: isEquipped=${inventoryItem.isEquipped}, equipSlot=${inventoryItem.equipSlot})');
+      debugPrint('⚔️ [InventoryService] Item gefunden: ${inventoryItem.name} (aktuell: isEquipped=${inventoryItem.isEquipped}, equipSlot=${inventoryItem.equipSlot})');
       
       // Item-Daten holen
       final item = await getItemById(inventoryItem.itemId);
@@ -157,7 +158,7 @@ class InventoryService {
       }
 
       // Prüfen, ob bereits etwas im Slot ausgerüstet ist
-      print('⚔️ [InventoryService] Prüfe ob Slot $equipSlot belegt ist...');
+      debugPrint('⚔️ [InventoryService] Prüfe ob Slot $equipSlot belegt ist...');
       await _unequipSlot(characterId, equipSlot);
 
       // Item ausrüsten
@@ -166,11 +167,11 @@ class InventoryService {
         equipSlot: equipSlot,
       );
 
-      print('⚔️ [InventoryService] Aktualisiere Item in Datenbank: isEquipped=true, equipSlot=$equipSlot');
+      debugPrint('⚔️ [InventoryService] Aktualisiere Item in Datenbank: isEquipped=true, equipSlot=$equipSlot');
       await _inventoryRepository.update(updatedItem);
-      print('⚔️ [InventoryService] Item erfolgreich ausgerüstet');
+      debugPrint('⚔️ [InventoryService] Item erfolgreich ausgerüstet');
     } catch (e) {
-      print('❌ [InventoryService] Fehler beim Ausrüsten: $e');
+      debugPrint('❌ [InventoryService] Fehler beim Ausrüsten: $e');
       throw Exception('Fehler beim Ausrüsten: $e');
     }
   }
@@ -178,23 +179,23 @@ class InventoryService {
   /// Legt ein Item ab (unequip) über neues Repository
   Future<void> unequipItem(String inventoryItemId, String characterId) async {
     try {
-      print('📥 [InventoryService] Lege Item ab: inventoryItemId=$inventoryItemId');
+      debugPrint('📥 [InventoryService] Lege Item ab: inventoryItemId=$inventoryItemId');
       
       final inventoryItems = await loadInventory(characterId);
       final inventoryItem = inventoryItems.firstWhere((item) => item.id == inventoryItemId);
 
-      print('📥 [InventoryService] Item gefunden: ${inventoryItem.name} (aktuell: isEquipped=${inventoryItem.isEquipped}, equipSlot=${inventoryItem.equipSlot})');
+      debugPrint('📥 [InventoryService] Item gefunden: ${inventoryItem.name} (aktuell: isEquipped=${inventoryItem.isEquipped}, equipSlot=${inventoryItem.equipSlot})');
 
       final updatedItem = inventoryItem.copyWith(
         isEquipped: false,
         equipSlot: null,
       );
 
-      print('📥 [InventoryService] Aktualisiere Item in Datenbank: isEquipped=false, equipSlot=null');
+      debugPrint('📥 [InventoryService] Aktualisiere Item in Datenbank: isEquipped=false, equipSlot=null');
       await _inventoryRepository.update(updatedItem);
-      print('📥 [InventoryService] Item erfolgreich abgelegt');
+      debugPrint('📥 [InventoryService] Item erfolgreich abgelegt');
     } catch (e) {
-      print('❌ [InventoryService] Fehler beim Ablegen: $e');
+      debugPrint('❌ [InventoryService] Fehler beim Ablegen: $e');
       throw Exception('Fehler beim Ablegen: $e');
     }
   }
@@ -211,7 +212,7 @@ class InventoryService {
       }
     } catch (e) {
       // Wenn Fehler beim Ablegen, fortfahren - nicht kritisch
-      print('Warnung: Fehler beim Ablegen von Items in Slot $equipSlot: $e');
+      debugPrint('Warnung: Fehler beim Ablegen von Items in Slot $equipSlot: $e');
     }
   }
 

@@ -3,6 +3,7 @@
 /// Unterstützt Windows und Linux mit automatischem Download und Entpacken.
 library;
 
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -166,7 +167,7 @@ class UpdateService {
       }
 
       if (downloadUrl == null) {
-        print('⚠️ Kein passendes Asset für Plattform gefunden: $platformSuffix');
+        debugPrint('⚠️ Kein passendes Asset für Plattform gefunden: $platformSuffix');
         // Fallback: Nimm das erste ZIP
         for (final asset in assets) {
           final name = (asset['name'] as String).toLowerCase();
@@ -186,7 +187,7 @@ class UpdateService {
         isPrerelease: data['prerelease'] as bool? ?? false,
       );
     } catch (e) {
-      print('❌ Fehler beim Parsen des Releases: $e');
+      debugPrint('❌ Fehler beim Parsen des Releases: $e');
       return null;
     }
   }
@@ -307,10 +308,10 @@ class UpdateService {
         _setProgress(extractedFiles / totalFiles);
       }
 
-      print('✅ Update entpackt nach: ${extractDir.path}');
+      debugPrint('✅ Update entpackt nach: ${extractDir.path}');
       return extractDir.path;
     } catch (e) {
-      print('❌ Fehler beim Entpacken: $e');
+      debugPrint('❌ Fehler beim Entpacken: $e');
       _lastError = e.toString();
       _setStatus(UpdateStatus.error);
       return null;
@@ -330,7 +331,7 @@ class UpdateService {
       }
       return false;
     } catch (e) {
-      print('❌ Fehler beim Öffnen des Ordners: $e');
+      debugPrint('❌ Fehler beim Öffnen des Ordners: $e');
       return false;
     }
   }
@@ -345,7 +346,7 @@ class UpdateService {
       }
       return false;
     } catch (e) {
-      print('❌ Fehler beim Öffnen der Releases-Seite: $e');
+      debugPrint('❌ Fehler beim Öffnen der Releases-Seite: $e');
       return false;
     }
   }
@@ -370,10 +371,10 @@ class UpdateService {
       final updateDir = Directory(p.join(appDir.path, 'DungenManager', 'updates'));
       if (await updateDir.exists()) {
         await updateDir.delete(recursive: true);
-        print('🗑️ Update-Dateien bereinigt');
+        debugPrint('🗑️ Update-Dateien bereinigt');
       }
     } catch (e) {
-      print('⚠️ Fehler beim Bereinigen: $e');
+      debugPrint('⚠️ Fehler beim Bereinigen: $e');
     }
   }
 

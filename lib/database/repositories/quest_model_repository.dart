@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../core/database_connection.dart';
 import '../../models/quest.dart';
 import '../../models/quest_reward.dart';
@@ -379,7 +380,7 @@ class QuestModelRepository extends ModelRepository<Quest> {
         final result = await updateStatus(questId, status);
         results.add(result);
       } catch (e) {
-        print('Error setting status for quest $questId: $e');
+        debugPrint('Error setting status for quest $questId: $e');
       }
     }
     
@@ -402,7 +403,7 @@ class QuestModelRepository extends ModelRepository<Quest> {
           results.add(result);
         }
       } catch (e) {
-        print('Error setting favorite status for quest $questId: $e');
+        debugPrint('Error setting favorite status for quest $questId: $e');
       }
     }
     

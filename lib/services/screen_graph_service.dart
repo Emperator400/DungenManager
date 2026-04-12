@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'package:collection/collection.dart';
 import '../models/screen_node.dart';
@@ -12,7 +13,7 @@ class ScreenGraphService {
     // Alle .dart Dateien im screens Verzeichnis finden
     final directory = Directory(basePath);
     if (!await directory.exists()) {
-      print('Verzeichnis nicht gefunden: $basePath');
+      debugPrint('Verzeichnis nicht gefunden: $basePath');
       return screens;
     }
     

@@ -38,15 +38,15 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
 
   Future<List<CampaignQuest>> _loadQuestsData() async {
     try {
-      print('📋 [CampaignQuestsTab] Lade Quests für Kampagne: ${widget.campaign.id}');
+      debugPrint('📋 [CampaignQuestsTab] Lade Quests für Kampagne: ${widget.campaign.id}');
       
       // Lade alle Quests aus der Datenbank
       final allQuests = await _questRepository.findAll();
-      print('📋 [CampaignQuestsTab] ${allQuests.length} Quests insgesamt gefunden');
+      debugPrint('📋 [CampaignQuestsTab] ${allQuests.length} Quests insgesamt gefunden');
       
       // Filtere Quests, die zur Kampagne gehören
       final campaignQuests = allQuests.where((q) => q.campaignId == widget.campaign.id).toList();
-      print('📋 [CampaignQuestsTab] ${campaignQuests.length} Quests für diese Kampagne gefunden');
+      debugPrint('📋 [CampaignQuestsTab] ${campaignQuests.length} Quests für diese Kampagne gefunden');
       
       // Konvertiere zu CampaignQuest Objekten
       return campaignQuests.map((q) => CampaignQuest(
@@ -55,7 +55,7 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
         status: q.status,  // Status aus dem Quest übernehmen
       )).toList();
     } catch (e) {
-      print('❌ Fehler beim Laden der CampaignQuests: $e');
+      debugPrint('❌ Fehler beim Laden der CampaignQuests: $e');
       return <CampaignQuest>[];
     }
   }

@@ -1,4 +1,5 @@
 // Dart Core
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 
 // Eigene Projekte
@@ -64,7 +65,7 @@ class QuestDataService {
             .toList();
       }
     } catch (e) {
-      print('Fehler bei der Verarbeitung der Quest-Belohnungen: $e');
+      debugPrint('Fehler bei der Verarbeitung der Quest-Belohnungen: $e');
       
       // Fallback: Altes String-basiertes Format
       if (rewardsData is String) {
@@ -94,7 +95,7 @@ class QuestDataService {
     try {
       return jsonEncode(rewards.map((reward) => reward.toMap()).toList());
     } catch (e) {
-      print('Fehler bei der Serialisierung der Quest-Belohnungen: $e');
+      debugPrint('Fehler bei der Serialisierung der Quest-Belohnungen: $e');
       return '';
     }
   }

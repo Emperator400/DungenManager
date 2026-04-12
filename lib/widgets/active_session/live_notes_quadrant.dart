@@ -36,9 +36,9 @@ class _LiveNotesQuadrantState extends State<LiveNotesQuadrant> {
   @override
   void initState() {
     super.initState();
-    print('🟢 [LiveNotes] initState aufgerufen');
-    print('🟢 [LiveNotes] Session ID: ${widget.viewModel.currentSession.id}');
-    print('🟢 [LiveNotes] Aktuelle LiveNotes: "${widget.viewModel.currentSession.liveNotes}"');
+    debugPrint('🟢 [LiveNotes] initState aufgerufen');
+    debugPrint('🟢 [LiveNotes] Session ID: ${widget.viewModel.currentSession.id}');
+    debugPrint('🟢 [LiveNotes] Aktuelle LiveNotes: "${widget.viewModel.currentSession.liveNotes}"');
     
     _controller = TextEditingController(text: widget.viewModel.currentSession.liveNotes);
     _lastSavedText = widget.viewModel.currentSession.liveNotes;
@@ -106,11 +106,11 @@ class _LiveNotesQuadrantState extends State<LiveNotesQuadrant> {
 
   /// Speichert die Notizen in der Datenbank
   Future<void> _saveNotes(String notes) async {
-    print('🔵 [LiveNotes] _saveNotes aufgerufen');
-    print('🔵 [LiveNotes] hasUnsavedChanges: $_hasUnsavedChanges, isSaving: $_isSaving');
+    debugPrint('🔵 [LiveNotes] _saveNotes aufgerufen');
+    debugPrint('🔵 [LiveNotes] hasUnsavedChanges: $_hasUnsavedChanges, isSaving: $_isSaving');
     
     if (!_hasUnsavedChanges || _isSaving) {
-      print('🔵 [LiveNotes] Speichern übersprungen (keine Änderungen oder bereits am Speichern)');
+      debugPrint('🔵 [LiveNotes] Speichern übersprungen (keine Änderungen oder bereits am Speichern)');
       return;
     }
     
@@ -119,7 +119,7 @@ class _LiveNotesQuadrantState extends State<LiveNotesQuadrant> {
     });
     
     try {
-      print('🔵 [LiveNotes] Rufe viewModel.updateLiveNotes auf...');
+      debugPrint('🔵 [LiveNotes] Rufe viewModel.updateLiveNotes auf...');
       await widget.viewModel.updateLiveNotes(notes);
       _lastSavedText = notes;
       _hasUnsavedChanges = false;
@@ -130,9 +130,9 @@ class _LiveNotesQuadrantState extends State<LiveNotesQuadrant> {
         });
       }
       
-      print('✅ [LiveNotes] Notizen erfolgreich gespeichert');
+      debugPrint('✅ [LiveNotes] Notizen erfolgreich gespeichert');
     } catch (e) {
-      print('❌ [LiveNotes] Fehler beim Speichern: $e');
+      debugPrint('❌ [LiveNotes] Fehler beim Speichern: $e');
       
       if (mounted) {
         setState(() {

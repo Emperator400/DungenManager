@@ -154,10 +154,10 @@ class UpdateViewModel extends ChangeNotifier {
         }
       }
 
-      print('✅ Pre-Update Backup erstellt unter: $backupPath');
+      debugPrint('✅ Pre-Update Backup erstellt unter: $backupPath');
       return true;
     } catch (e) {
-      print('⚠️ Fehler beim Erstellen des Backups: $e');
+      debugPrint('⚠️ Fehler beim Erstellen des Backups: $e');
       return false;
     } finally {
       _isBackingUp = false;

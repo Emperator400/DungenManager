@@ -331,13 +331,13 @@ class EditItemViewModel extends ChangeNotifier {
   /// 
   /// HINWEIS: Verwendet jetzt das neue ItemModelRepository
   Future<bool> saveItem() async {
-    print('📝 [EditItemViewModel] saveItem() aufgerufen');
-    print('📝 [EditItemViewModel] Item: ${_item?.name}, ID: ${_item?.id}');
-    print('📝 [EditItemViewModel] Item gültig: $isValid');
+    debugPrint('📝 [EditItemViewModel] saveItem() aufgerufen');
+    debugPrint('📝 [EditItemViewModel] Item: ${_item?.name}, ID: ${_item?.id}');
+    debugPrint('📝 [EditItemViewModel] Item gültig: $isValid');
     
     if (!isValid) {
       _errorMessage = 'Bitte füllen Sie alle Pflichtfelder aus';
-      print('❌ [EditItemViewModel] Ungültig: $_errorMessage');
+      debugPrint('❌ [EditItemViewModel] Ungültig: $_errorMessage');
       notifyListeners();
       return false;
     }
@@ -348,13 +348,13 @@ class EditItemViewModel extends ChangeNotifier {
     try {
       if (_item!.id.isEmpty || _item!.id.startsWith('new_')) {
         // Create new item
-        print('🆕 [EditItemViewModel] Erstelle neues Item...');
+        debugPrint('🆕 [EditItemViewModel] Erstelle neues Item...');
         
         // Entferne das "new_" Präfix VOR dem Speichern, damit die DB die saubere ID bekommt
         String finalId = _item!.id;
         if (_item!.id.startsWith('new_')) {
           finalId = _item!.id.substring(4);
-          print('🔄 [EditItemViewModel] "new_" Präfix entfernt vor dem Speichern: $finalId');
+          debugPrint('🔄 [EditItemViewModel] "new_" Präfix entfernt vor dem Speichern: $finalId');
           _item = Item(
             id: finalId,
             name: _item!.name,
@@ -369,15 +369,15 @@ class EditItemViewModel extends ChangeNotifier {
         }
         
         final savedItem = await _itemRepository.create(_item!);
-        print('✅ [EditItemViewModel] Item erstellt: ${savedItem?.name}, ID: ${savedItem?.id}');
+        debugPrint('✅ [EditItemViewModel] Item erstellt: ${savedItem?.name}, ID: ${savedItem?.id}');
         if (savedItem != null) {
           _item = savedItem;
         }
       } else {
         // Update existing item
-        print('🔄 [EditItemViewModel] Aktualisiere existierendes Item: ${_item!.id}');
+        debugPrint('🔄 [EditItemViewModel] Aktualisiere existierendes Item: ${_item!.id}');
         final updatedItem = await _itemRepository.update(_item!);
-        print('✅ [EditItemViewModel] Item aktualisiert: ${updatedItem?.name}, ID: ${updatedItem?.id}');
+        debugPrint('✅ [EditItemViewModel] Item aktualisiert: ${updatedItem?.name}, ID: ${updatedItem?.id}');
         if (updatedItem != null) {
           _item = updatedItem;
         }
@@ -385,12 +385,12 @@ class EditItemViewModel extends ChangeNotifier {
       
       _hasUnsavedChanges = false;
       _setLoading(false);
-      print('✅ [EditItemViewModel] Speichern erfolgreich!');
+      debugPrint('✅ [EditItemViewModel] Speichern erfolgreich!');
       
       return true;
     } catch (e) {
       _errorMessage = 'Fehler beim Speichern: ${e.toString()}';
-      print('❌ [EditItemViewModel] Fehler beim Speichern: $e');
+      debugPrint('❌ [EditItemViewModel] Fehler beim Speichern: $e');
       _setLoading(false);
       return false;
     }

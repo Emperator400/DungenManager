@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'quest.dart';
 import '../utils/model_parsing_helper.dart';
 
@@ -31,7 +32,7 @@ class CampaignQuest {
         notes: ModelParsingHelper.safeStringOrNull(campaignQuestMap, 'notes', null),
       );
     } catch (e) {
-      print('Fehler beim Parsen der CampaignQuest: $e');
+      debugPrint('Fehler beim Parsen der CampaignQuest: $e');
       // Fallback zu minimal gültiger CampaignQuest
       return CampaignQuest(
         campaignId: ModelParsingHelper.safeString(campaignQuestMap, 'campaignId', ''),

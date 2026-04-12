@@ -519,7 +519,7 @@ class CampaignModelRepository extends ModelRepository<Campaign> {
         final result = await updateStatus(campaignId, status);
         results.add(result);
       } catch (e) {
-        print('Error setting status for campaign $campaignId: $e');
+        debugPrint('Error setting status for campaign $campaignId: $e');
       }
     }
     

@@ -228,7 +228,7 @@ class EditPCViewModel extends ChangeNotifier {
     final effectiveAc = effectiveArmorClassSync;
     if (effectiveAc != _armorClass) {
       _armorClass = effectiveAc;
-      print('🛡️ [EditPCViewModel] AC aktualisiert: $effectiveAc');
+      debugPrint('🛡️ [EditPCViewModel] AC aktualisiert: $effectiveAc');
     }
   }
 
@@ -567,24 +567,24 @@ class EditPCViewModel extends ChangeNotifier {
       _error = null;
       notifyListeners();
       
-      print('=== SAVE CHARACTER START ===');
-      print('Campaign ID: $_campaignId');
-      print('Name: $_name');
-      print('Player Name: $_playerName');
+      debugPrint('=== SAVE CHARACTER START ===');
+      debugPrint('Campaign ID: $_campaignId');
+      debugPrint('Name: $_name');
+      debugPrint('Player Name: $_playerName');
       
       if (_selectedClass == null || _selectedRace == null) {
         final errorMsg = 'Klasse und Rasse müssen ausgewählt werden';
-        print('FEHLER: $errorMsg');
+        debugPrint('FEHLER: $errorMsg');
         throw Exception(errorMsg);
       }
 
       if (_name.isEmpty || _playerName.isEmpty) {
         final errorMsg = 'Name und Spielername müssen ausgefüllt werden';
-        print('FEHLER: $errorMsg');
+        debugPrint('FEHLER: $errorMsg');
         throw Exception(errorMsg);
       }
 
-      print('Erstelle PlayerCharacter...');
+      debugPrint('Erstelle PlayerCharacter...');
       final pc = PlayerCharacter.create(
         campaignId: _campaignId,
         name: _name,
@@ -633,39 +633,39 @@ class EditPCViewModel extends ChangeNotifier {
         version: '1.0',
       );
       
-      print('PlayerCharacter erstellt mit ID: ${pc.id}');
+      debugPrint('PlayerCharacter erstellt mit ID: ${pc.id}');
 
       if (_pcToEdit != null) {
         // Update existing character
-        print('Update existing character: ${_pcToEdit!.id}');
+        debugPrint('Update existing character: ${_pcToEdit!.id}');
         final updatePc = pc.copyWith(id: _pcToEdit!.id);
-        print('Update PC ID: ${updatePc.id}');
+        debugPrint('Update PC ID: ${updatePc.id}');
         final savedPc = await _pcRepository.update(updatePc);
-        print('Character erfolgreich aktualisiert: ${savedPc.id}');
+        debugPrint('Character erfolgreich aktualisiert: ${savedPc.id}');
         if (savedPc != null) {
           _pcToEdit = savedPc;
         }
       } else {
         // Create new character
-        print('Create new character...');
-        print('PC Repository: $_pcRepository');
+        debugPrint('Create new character...');
+        debugPrint('PC Repository: $_pcRepository');
         final savedPc = await _pcRepository.create(pc);
-        print('Character erfolgreich erstellt mit ID: ${savedPc.id}');
+        debugPrint('Character erfolgreich erstellt mit ID: ${savedPc.id}');
         if (savedPc != null) {
           _pcToEdit = savedPc;
-          print('PC nach Speichern gesetzt: ${_pcToEdit?.id}');
+          debugPrint('PC nach Speichern gesetzt: ${_pcToEdit?.id}');
         } else {
-          print('WARNUNG: savedPc ist null!');
+          debugPrint('WARNUNG: savedPc ist null!');
         }
       }
       
-      print('=== SAVE CHARACTER SUCCESS ===');
+      debugPrint('=== SAVE CHARACTER SUCCESS ===');
     } catch (e, stackTrace) {
       _error = e.toString();
-      print('=== SAVE CHARACTER FEHLER ===');
-      print('Fehler: $e');
-      print('Stack Trace: $stackTrace');
-      print('============================');
+      debugPrint('=== SAVE CHARACTER FEHLER ===');
+      debugPrint('Fehler: $e');
+      debugPrint('Stack Trace: $stackTrace');
+      debugPrint('============================');
       notifyListeners();
       rethrow;
     } finally {
@@ -681,11 +681,11 @@ class EditPCViewModel extends ChangeNotifier {
   /// Lädt das Inventar eines Charakters über neues Repository mit echten Item-Daten
   Future<void> _loadInventory(String characterId) async {
     try {
-      print('=== LOAD INVENTORY START ===');
-      print('Character ID: $characterId');
+      debugPrint('=== LOAD INVENTORY START ===');
+      debugPrint('Character ID: $characterId');
       
       final inventoryItems = await _inventoryRepository.findByCharacter(characterId);
-      print('${inventoryItems.length} Inventory-Items gefunden');
+      debugPrint('${inventoryItems.length} Inventory-Items gefunden');
       
       final displayItems = <DisplayInventoryItem>[];
       
@@ -694,14 +694,14 @@ class EditPCViewModel extends ChangeNotifier {
           // Lade echtes Item aus der Datenbank
           final item = await _itemRepository.findById(invItem.itemId);
           
-          print('  Item geladen: ${item?.name ?? invItem.name} (ID: ${invItem.itemId})');
+          debugPrint('  Item geladen: ${item?.name ?? invItem.name} (ID: ${invItem.itemId})');
           
           displayItems.add(DisplayInventoryItem(
             inventoryItem: invItem,
             item: item ?? _createFallbackItem(invItem),
           ));
         } catch (e) {
-          print('  FEHLER beim Laden von Item ${invItem.itemId}: $e');
+          debugPrint('  FEHLER beim Laden von Item ${invItem.itemId}: $e');
           // Fallback auf InventoryItem-Daten
           displayItems.add(DisplayInventoryItem(
             inventoryItem: invItem,
@@ -711,15 +711,15 @@ class EditPCViewModel extends ChangeNotifier {
       }
       
       _inventory = displayItems;
-      print('${_inventory.length} Display-Items erstellt');
+      debugPrint('${_inventory.length} Display-Items erstellt');
       
       // Lade Equipment basierend auf Inventory-Items
       _loadEquipment();
       
       notifyListeners();
     } catch (e) {
-      print('=== LOAD INVENTORY ERROR ===');
-      print('Fehler: $e');
+      debugPrint('=== LOAD INVENTORY ERROR ===');
+      debugPrint('Fehler: $e');
       _error = e.toString();
       notifyListeners();
     }
@@ -729,7 +729,7 @@ class EditPCViewModel extends ChangeNotifier {
   /// WICHTIG: Baut Equipment direkt aus InventoryItems.isEquipped auf
   /// anstatt aus der veralteten equipment Map
   void _loadEquipment() {
-    print('=== LOAD EQUIPMENT START ===');
+    debugPrint('=== LOAD EQUIPMENT START ===');
     _equipment = Equipment.empty();
     
     // Durchlaufe alle InventoryItems und finde ausgerüstete Items
@@ -743,15 +743,15 @@ class EditPCViewModel extends ChangeNotifier {
         if (equipmentSlot != null) {
           // Rüste das Item aus
           _equipment = _equipment.equip(equipmentSlot, displayItem);
-          print('  Item ausgerüstet: ${displayItem.item.name} in ${equipmentSlot.name} (Slot: ${invItem.equipSlot})');
+          debugPrint('  Item ausgerüstet: ${displayItem.item.name} in ${equipmentSlot.name} (Slot: ${invItem.equipSlot})');
         } else {
-          print('  ⚠️ Kein passender EquipmentSlot für ${invItem.equipSlot}');
+          debugPrint('  ⚠️ Kein passender EquipmentSlot für ${invItem.equipSlot}');
         }
       }
     }
     
-    print('Equipment erfolgreich geladen: ${_equipment.getEquippedItems().length} Items ausgerüstet');
-    print('=== LOAD EQUIPMENT END ===');
+    debugPrint('Equipment erfolgreich geladen: ${_equipment.getEquippedItems().length} Items ausgerüstet');
+    debugPrint('=== LOAD EQUIPMENT END ===');
   }
   
   /// Konvertiert EquipSlot zu EquipmentSlot
@@ -860,7 +860,7 @@ class EditPCViewModel extends ChangeNotifier {
 
   /// Rüstet ein Item in einem Slot aus
   Future<void> equipItem(EquipmentSlot slot, DisplayInventoryItem item) async {
-    print('🎯 [EditPCViewModel] equipItem aufgerufen: slot=$slot, item=${item.item.name}');
+    debugPrint('🎯 [EditPCViewModel] equipItem aufgerufen: slot=$slot, item=${item.item.name}');
     
     try {
       // Prüfe ob der Item-Typ für den Slot geeignet ist
@@ -884,9 +884,9 @@ class EditPCViewModel extends ChangeNotifier {
       _updateEffectiveArmorClass();
       
       notifyListeners();
-      print('✅ [EditPCViewModel] Item ${item.item.name} erfolgreich in $slot ausgerüstet');
+      debugPrint('✅ [EditPCViewModel] Item ${item.item.name} erfolgreich in $slot ausgerüstet');
     } catch (e) {
-      print('❌ [EditPCViewModel] Fehler beim Ausrüsten: $e');
+      debugPrint('❌ [EditPCViewModel] Fehler beim Ausrüsten: $e');
       _error = e.toString();
       notifyListeners();
       rethrow;
@@ -895,7 +895,7 @@ class EditPCViewModel extends ChangeNotifier {
 
   /// Legt ein Item ab (entfernt es aus dem Slot)
   Future<void> unequipItem(EquipmentSlot slot) async {
-    print('🎯 [EditPCViewModel] unequipItem aufgerufen: slot=$slot');
+    debugPrint('🎯 [EditPCViewModel] unequipItem aufgerufen: slot=$slot');
     
     try {
       final equippedItem = _equipment.getItem(slot);
@@ -906,7 +906,7 @@ class EditPCViewModel extends ChangeNotifier {
       // WICHTIG: Entferne Equipment-Flag vom InventoryItem in der Datenbank!
       if (equippedItem != null && equippedItem.inventoryItemId != null) {
         await _updateInventoryItemEquipment(equippedItem.inventoryItemId!, null);
-        print('✅ [EditPCViewModel] Item ${equippedItem.itemName} erfolgreich aus $slot abgelegt');
+        debugPrint('✅ [EditPCViewModel] Item ${equippedItem.itemName} erfolgreich aus $slot abgelegt');
       }
       
       // Aktualisiere die effektive AC
@@ -914,7 +914,7 @@ class EditPCViewModel extends ChangeNotifier {
       
       notifyListeners();
     } catch (e) {
-      print('❌ [EditPCViewModel] Fehler beim Ablegen: $e');
+      debugPrint('❌ [EditPCViewModel] Fehler beim Ablegen: $e');
       _error = e.toString();
       notifyListeners();
       rethrow;
@@ -931,10 +931,10 @@ class EditPCViewModel extends ChangeNotifier {
           equipSlot: equipSlot,
         );
         await _inventoryRepository.update(updatedItem);
-        print('💾 [EditPCViewModel] InventoryItem $inventoryItemId in Datenbank aktualisiert: equipSlot=$equipSlot');
+        debugPrint('💾 [EditPCViewModel] InventoryItem $inventoryItemId in Datenbank aktualisiert: equipSlot=$equipSlot');
       }
     } catch (e) {
-      print('❌ [EditPCViewModel] Fehler beim Aktualisieren des InventoryItems: $e');
+      debugPrint('❌ [EditPCViewModel] Fehler beim Aktualisieren des InventoryItems: $e');
       throw Exception('Fehler beim Aktualisieren des InventoryItems: $e');
     }
   }

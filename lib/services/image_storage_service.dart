@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
@@ -33,14 +34,14 @@ class ImageStorageService {
         return newFilePath;
       }
     } catch (e) {
-      print('⚠️ Fehler beim Sichern des Bildes: $e');
+      debugPrint('⚠️ Fehler beim Sichern des Bildes: $e');
     }
     return originalPath; // Fallback: Alten Pfad behalten, falls Kopieren fehlschlägt
   }
 
   /// Migriert alle bestehenden Bilder von Charakteren, Wikis und Quests in den sicheren Ordner
   static Future<void> migrateExistingImages() async {
-    print('🔄 Starte Bild-Migration in sicheren Ordner...');
+    debugPrint('🔄 Starte Bild-Migration in sicheren Ordner...');
     final dbConnection = DatabaseConnection.instance;
     
     try {
@@ -52,7 +53,7 @@ class ImageStorageService {
           final newPath = await saveImageToSecureFolder(char.imagePath!);
           if (newPath != null && newPath != char.imagePath) {
             await pcRepo.update(char.copyWith(imagePath: newPath));
-            print('✅ Bild für Charakter gesichert.');
+            debugPrint('✅ Bild für Charakter gesichert.');
           }
         }
       }
@@ -65,7 +66,7 @@ class ImageStorageService {
           final newPath = await saveImageToSecureFolder(wiki.imageUrl!);
           if (newPath != null && newPath != wiki.imageUrl) {
             await wikiRepo.update(wiki.copyWith(imageUrl: newPath));
-            print('✅ Bild für Wiki-Eintrag gesichert.');
+            debugPrint('✅ Bild für Wiki-Eintrag gesichert.');
           }
         }
       }
@@ -79,15 +80,15 @@ class ImageStorageService {
           final newPath = await saveImageToSecureFolder(quest.imageUrl!);
           if (newPath != null && newPath != quest.imageUrl) {
             await questRepo.update(quest.copyWith(imageUrl: newPath));
-            print('✅ Bild für Quest gesichert.');
+            debugPrint('✅ Bild für Quest gesichert.');
           }
         }
       }
       */
       
     } catch (e) {
-      print('⚠️ Fehler bei der generellen Bild-Migration: $e');
+      debugPrint('⚠️ Fehler bei der generellen Bild-Migration: $e');
     }
-    print('✅ Bild-Migration abgeschlossen.');
+    debugPrint('✅ Bild-Migration abgeschlossen.');
   }
 }

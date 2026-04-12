@@ -1,4 +1,5 @@
 // lib/services/sound_scene_service.dart
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import '../database/core/database_connection.dart';
 import '../models/sound_scene.dart';
@@ -27,10 +28,10 @@ class SoundSceneService {
         await _insertSoundSceneItem(db, item);
       }
       
-      print('✅ SoundScene erstellt: ${scene.name}');
+      debugPrint('✅ SoundScene erstellt: ${scene.name}');
       return scene;
     } catch (e) {
-      print('❌ Fehler beim Erstellen der SoundScene: $e');
+      debugPrint('❌ Fehler beim Erstellen der SoundScene: $e');
       return null;
     }
   }
@@ -48,10 +49,10 @@ class SoundSceneService {
         whereArgs: [scene.id],
       );
       
-      print('✅ SoundScene aktualisiert: ${scene.name}');
+      debugPrint('✅ SoundScene aktualisiert: ${scene.name}');
       return true;
     } catch (e) {
-      print('❌ Fehler beim Aktualisieren der SoundScene: $e');
+      debugPrint('❌ Fehler beim Aktualisieren der SoundScene: $e');
       return false;
     }
   }
@@ -68,10 +69,10 @@ class SoundSceneService {
         whereArgs: [id],
       );
       
-      print('✅ SoundScene gelöscht: $id');
+      debugPrint('✅ SoundScene gelöscht: $id');
       return true;
     } catch (e) {
-      print('❌ Fehler beim Löschen der SoundScene: $e');
+      debugPrint('❌ Fehler beim Löschen der SoundScene: $e');
       return false;
     }
   }
@@ -88,7 +89,7 @@ class SoundSceneService {
       
       return maps.map((map) => SoundScene.fromDatabaseMap(map)).toList();
     } catch (e) {
-      print('❌ Fehler beim Laden der SoundScenes: $e');
+      debugPrint('❌ Fehler beim Laden der SoundScenes: $e');
       return [];
     }
   }
@@ -112,7 +113,7 @@ class SoundSceneService {
       
       return scenes;
     } catch (e) {
-      print('❌ Fehler beim Laden der SoundScenes mit Items: $e');
+      debugPrint('❌ Fehler beim Laden der SoundScenes mit Items: $e');
       return [];
     }
   }
@@ -134,7 +135,7 @@ class SoundSceneService {
       final items = await _getItemsForScene(db, id);
       return SoundScene.fromDatabaseMapWithItems(maps.first, items);
     } catch (e) {
-      print('❌ Fehler beim Laden der SoundScene: $e');
+      debugPrint('❌ Fehler beim Laden der SoundScene: $e');
       return null;
     }
   }
@@ -171,10 +172,10 @@ class SoundSceneService {
       // UpdatedAt der Szene aktualisieren
       await _updateSceneTimestamp(db, sceneId);
       
-      print('✅ Sound zu Szene hinzugefügt: $soundId -> $sceneId');
+      debugPrint('✅ Sound zu Szene hinzugefügt: $soundId -> $sceneId');
       return item;
     } catch (e) {
-      print('❌ Fehler beim Hinzufügen des Sounds zur Szene: $e');
+      debugPrint('❌ Fehler beim Hinzufügen des Sounds zur Szene: $e');
       return null;
     }
   }
@@ -193,10 +194,10 @@ class SoundSceneService {
       // UpdatedAt der Szene aktualisieren
       await _updateSceneTimestamp(db, sceneId);
       
-      print('✅ Sound aus Szene entfernt: $soundId -> $sceneId');
+      debugPrint('✅ Sound aus Szene entfernt: $soundId -> $sceneId');
       return true;
     } catch (e) {
-      print('❌ Fehler beim Entfernen des Sounds aus der Szene: $e');
+      debugPrint('❌ Fehler beim Entfernen des Sounds aus der Szene: $e');
       return false;
     }
   }
@@ -216,10 +217,10 @@ class SoundSceneService {
       // UpdatedAt der Szene aktualisieren
       await _updateSceneTimestamp(db, item.soundSceneId);
       
-      print('✅ SoundSceneItem aktualisiert: ${item.id}');
+      debugPrint('✅ SoundSceneItem aktualisiert: ${item.id}');
       return true;
     } catch (e) {
-      print('❌ Fehler beim Aktualisieren des SoundSceneItems: $e');
+      debugPrint('❌ Fehler beim Aktualisieren des SoundSceneItems: $e');
       return false;
     }
   }
@@ -244,7 +245,7 @@ class SoundSceneService {
       
       return true;
     } catch (e) {
-      print('❌ Fehler beim Ändern des Favoriten-Status: $e');
+      debugPrint('❌ Fehler beim Ändern des Favoriten-Status: $e');
       return false;
     }
   }
@@ -270,7 +271,7 @@ class SoundSceneService {
       
       return scenes;
     } catch (e) {
-      print('❌ Fehler bei der Suche nach SoundScenes: $e');
+      debugPrint('❌ Fehler bei der Suche nach SoundScenes: $e');
       return [];
     }
   }

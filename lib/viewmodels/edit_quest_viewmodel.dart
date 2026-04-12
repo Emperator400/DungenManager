@@ -38,9 +38,9 @@ class EditQuestViewModel extends ChangeNotifier {
 
   /// Initialisiert das ViewModel mit einem existierenden Quest oder erstellt einen neuen
   void initialize(Quest? quest, {String? campaignId}) {
-    print('📋 [EditQuestViewModel] initialize aufgerufen');
-    print('📋 [EditQuestViewModel] übergebener Quest: $quest');
-    print('📋 [EditQuestViewModel] campaignId: $campaignId');
+    debugPrint('📋 [EditQuestViewModel] initialize aufgerufen');
+    debugPrint('📋 [EditQuestViewModel] übergebener Quest: $quest');
+    debugPrint('📋 [EditQuestViewModel] campaignId: $campaignId');
     
     _currentCampaignId = campaignId;
     _hasUnsavedChanges = false;
@@ -48,35 +48,35 @@ class EditQuestViewModel extends ChangeNotifier {
     
     if (quest != null && quest.id >= 0) {
       // Lade Quest aus der Datenbank wenn eine ID vorhanden ist
-      print('📋 [EditQuestViewModel] Lade Quest aus Datenbank (ID: ${quest.id})');
+      debugPrint('📋 [EditQuestViewModel] Lade Quest aus Datenbank (ID: ${quest.id})');
       _questRepository.findById(quest.id.toString()).then((loadedQuest) {
-        print('📋 [EditQuestViewModel] Geladener Quest: $loadedQuest');
+        debugPrint('📋 [EditQuestViewModel] Geladener Quest: $loadedQuest');
         if (loadedQuest != null) {
           _quest = loadedQuest;
-          print('📋 [EditQuestViewModel] Quest erfolgreich geladen');
+          debugPrint('📋 [EditQuestViewModel] Quest erfolgreich geladen');
         } else {
-          print('⚠️ [EditQuestViewModel] Quest nicht in Datenbank gefunden, verwende übergebenen Quest');
+          debugPrint('⚠️ [EditQuestViewModel] Quest nicht in Datenbank gefunden, verwende übergebenen Quest');
           _quest = quest;
         }
-        print('📋 [EditQuestViewModel] Finaler Quest: $_quest');
+        debugPrint('📋 [EditQuestViewModel] Finaler Quest: $_quest');
         notifyListeners();
       }).catchError((e) {
-        print('❌ [EditQuestViewModel] Fehler beim Laden: $e');
-        print('❌ [EditQuestViewModel] StackTrace: ${StackTrace.current}');
+        debugPrint('❌ [EditQuestViewModel] Fehler beim Laden: $e');
+        debugPrint('❌ [EditQuestViewModel] StackTrace: ${StackTrace.current}');
         // Fallback: verwende übergebenen Quest
         _quest = quest;
-        print('📋 [EditQuestViewModel] Finaler Quest (Fallback): $_quest');
+        debugPrint('📋 [EditQuestViewModel] Finaler Quest (Fallback): $_quest');
         notifyListeners();
       });
     } else {
       // Erstelle neuen Quest
-      print('📋 [EditQuestViewModel] Erstelle neuen Quest');
+      debugPrint('📋 [EditQuestViewModel] Erstelle neuen Quest');
       _quest = quest ?? Quest.create(
         title: '',
         description: '',
         campaignId: campaignId,
       );
-      print('📋 [EditQuestViewModel] Finaler Quest: $_quest');
+      debugPrint('📋 [EditQuestViewModel] Finaler Quest: $_quest');
       notifyListeners();
     }
   }
@@ -214,10 +214,10 @@ class EditQuestViewModel extends ChangeNotifier {
   /// 
   /// HINWEIS: Verwendet jetzt das neue QuestModelRepository
   Future<bool> saveQuest() async {
-    print('💾 [EditQuestViewModel] saveQuest aufgerufen');
-    print('💾 [EditQuestViewModel] isValid: $isValid');
-    print('💾 [EditQuestViewModel] Quest ID: ${_quest?.id}');
-    print('💾 [EditQuestViewModel] Quest Titel: ${_quest?.title}');
+    debugPrint('💾 [EditQuestViewModel] saveQuest aufgerufen');
+    debugPrint('💾 [EditQuestViewModel] isValid: $isValid');
+    debugPrint('💾 [EditQuestViewModel] Quest ID: ${_quest?.id}');
+    debugPrint('💾 [EditQuestViewModel] Quest Titel: ${_quest?.title}');
     
     if (!isValid) {
       _errorMessage = 'Bitte füllen Sie alle Pflichtfelder aus';
@@ -231,24 +231,24 @@ class EditQuestViewModel extends ChangeNotifier {
       try {
         // Setze campaignId wenn noch nicht gesetzt
         if (_currentCampaignId != null && _quest!.campaignId == null) {
-          print('💾 [EditQuestViewModel] Setze campaignId: $_currentCampaignId');
+          debugPrint('💾 [EditQuestViewModel] Setze campaignId: $_currentCampaignId');
           _quest = _quest!.copyWith(campaignId: _currentCampaignId);
         }
         
         if (_quest!.id < 0) {
-        print('💾 [EditQuestViewModel] Erstelle neuen Quest (ID: ${_quest!.id})');
+        debugPrint('💾 [EditQuestViewModel] Erstelle neuen Quest (ID: ${_quest!.id})');
         // Create new quest
         final savedQuest = await _questRepository.create(_quest!);
-        print('💾 [EditQuestViewModel] Gespeicherter Quest: $savedQuest');
+        debugPrint('💾 [EditQuestViewModel] Gespeicherter Quest: $savedQuest');
         if (savedQuest != null) {
           _quest = savedQuest;
-          print('💾 [EditQuestViewModel] Neue Quest ID: ${_quest!.id}');
+          debugPrint('💾 [EditQuestViewModel] Neue Quest ID: ${_quest!.id}');
         }
       } else {
-        print('💾 [EditQuestViewModel] Aktualisiere Quest (ID: ${_quest!.id})');
+        debugPrint('💾 [EditQuestViewModel] Aktualisiere Quest (ID: ${_quest!.id})');
         // Update existing quest
         final updatedQuest = await _questRepository.update(_quest!);
-        print('💾 [EditQuestViewModel] Aktualisierter Quest: $updatedQuest');
+        debugPrint('💾 [EditQuestViewModel] Aktualisierter Quest: $updatedQuest');
         if (updatedQuest != null) {
           _quest = updatedQuest;
         }
@@ -256,12 +256,12 @@ class EditQuestViewModel extends ChangeNotifier {
       
       _hasUnsavedChanges = false;
       _setLoading(false);
-      print('💾 [EditQuestViewModel] Quest erfolgreich gespeichert');
+      debugPrint('💾 [EditQuestViewModel] Quest erfolgreich gespeichert');
       
       return true;
     } catch (e) {
-      print('❌ [EditQuestViewModel] Fehler beim Speichern: $e');
-      print('❌ [EditQuestViewModel] StackTrace: ${StackTrace.current}');
+      debugPrint('❌ [EditQuestViewModel] Fehler beim Speichern: $e');
+      debugPrint('❌ [EditQuestViewModel] StackTrace: ${StackTrace.current}');
       _errorMessage = 'Fehler beim Speichern: ${e.toString()}';
       _setLoading(false);
       return false;

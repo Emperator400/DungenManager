@@ -1,4 +1,5 @@
 // lib/game_data/dnd_data_importer.dart
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../database/core/database_connection.dart';
@@ -45,7 +46,7 @@ class DndDataImporter {
       
       return results;
     } catch (e) {
-      print('Fehler beim Import der D&D-Daten: $e');
+      debugPrint('Fehler beim Import der D&D-Daten: $e');
       rethrow;
     }
   }
@@ -53,7 +54,7 @@ class DndDataImporter {
   // --- Monster Import ---
   Future<int> importMonsters() async {
     try {
-      print('Starte Monster-Import...');
+      debugPrint('Starte Monster-Import...');
       
       // Bestehende Daten löschen
       final db = await _db.database;
@@ -62,7 +63,7 @@ class DndDataImporter {
       // Daten von 5e.tools herunterladen
       final response = await http.get(Uri.parse('${baseUrl}bestiary.json'));
       if (response.statusCode != 200) {
-        print('Externe Daten nicht verfügbar, verwende Demo-Daten');
+        debugPrint('Externe Daten nicht verfügbar, verwende Demo-Daten');
         return await importDemoMonsters();
       }
       
@@ -85,20 +86,20 @@ class DndDataImporter {
             await db.insert('official_monsters', monster.toMap());
             importedCount++;
           } catch (e) {
-            print('Fehler beim Import des Monsters "${monsterData['name']}": $e');
+            debugPrint('Fehler beim Import des Monsters "${monsterData['name']}": $e');
           }
         }
         
-        print('Monster-Import Fortschritt: $importedCount/${monsters.length}');
+        debugPrint('Monster-Import Fortschritt: $importedCount/${monsters.length}');
         
         // Kleine Pause zwischen Batches um Speicher freizugeben
         await Future.delayed(const Duration(milliseconds: 10));
       }
       
-      print('Monster-Import abgeschlossen: $importedCount Monster importiert');
+      debugPrint('Monster-Import abgeschlossen: $importedCount Monster importiert');
       return importedCount;
     } catch (e) {
-      print('Fehler beim Monster-Import, verwende Demo-Daten: $e');
+      debugPrint('Fehler beim Monster-Import, verwende Demo-Daten: $e');
       return await importDemoMonsters();
     }
   }
@@ -106,7 +107,7 @@ class DndDataImporter {
   // --- Spells Import ---
   Future<int> importSpells() async {
     try {
-      print('Starte Spells-Import...');
+      debugPrint('Starte Spells-Import...');
       
       // Bestehende Daten löschen
       final db = await _db.database;
@@ -115,7 +116,7 @@ class DndDataImporter {
       // Daten von 5e.tools herunterladen
       final response = await http.get(Uri.parse('${baseUrl}spells.json'));
       if (response.statusCode != 200) {
-        print('Externe Daten nicht verfügbar, verwende Demo-Daten');
+        debugPrint('Externe Daten nicht verfügbar, verwende Demo-Daten');
         return await importDemoSpells();
       }
       
@@ -135,18 +136,18 @@ class DndDataImporter {
             await db.insert('official_spells', spell.toMap());
             importedCount++;
           } catch (e) {
-            print('Fehler beim Import des Spells "${spellData['name']}": $e');
+            debugPrint('Fehler beim Import des Spells "${spellData['name']}": $e');
           }
         }
         
-        print('Spells-Import Fortschritt: $importedCount/${spells.length}');
+        debugPrint('Spells-Import Fortschritt: $importedCount/${spells.length}');
         await Future.delayed(const Duration(milliseconds: 10));
       }
       
-      print('Spells-Import abgeschlossen: $importedCount Spells importiert');
+      debugPrint('Spells-Import abgeschlossen: $importedCount Spells importiert');
       return importedCount;
     } catch (e) {
-      print('Fehler beim Spells-Import, verwende Demo-Daten: $e');
+      debugPrint('Fehler beim Spells-Import, verwende Demo-Daten: $e');
       return await importDemoSpells();
     }
   }
@@ -154,7 +155,7 @@ class DndDataImporter {
   // --- Klassen Import ---
   Future<int> importClasses() async {
     try {
-      print('Starte Klassen-Import...');
+      debugPrint('Starte Klassen-Import...');
       
       // Bestehende Daten löschen
       final db = await _db.database;
@@ -163,7 +164,7 @@ class DndDataImporter {
       // Daten von 5e.tools herunterladen
       final response = await http.get(Uri.parse('${baseUrl}classes.json'));
       if (response.statusCode != 200) {
-        print('Externe Daten nicht verfügbar, verwende Demo-Daten');
+        debugPrint('Externe Daten nicht verfügbar, verwende Demo-Daten');
         return await importDemoClasses();
       }
       
@@ -178,14 +179,14 @@ class DndDataImporter {
           await db.insert('official_classes', classMap);
           importedCount++;
         } catch (e) {
-          print('Fehler beim Import der Klasse "${classData['name']}": $e');
+          debugPrint('Fehler beim Import der Klasse "${classData['name']}": $e');
         }
       }
       
-      print('Klassen-Import abgeschlossen: $importedCount Klassen importiert');
+      debugPrint('Klassen-Import abgeschlossen: $importedCount Klassen importiert');
       return importedCount;
     } catch (e) {
-      print('Fehler beim Klassen-Import, verwende Demo-Daten: $e');
+      debugPrint('Fehler beim Klassen-Import, verwende Demo-Daten: $e');
       return await importDemoClasses();
     }
   }
@@ -193,7 +194,7 @@ class DndDataImporter {
   // --- Völker Import ---
   Future<int> importRaces() async {
     try {
-      print('Starte Völker-Import...');
+      debugPrint('Starte Völker-Import...');
       
       // Bestehende Daten löschen
       final db = await _db.database;
@@ -202,7 +203,7 @@ class DndDataImporter {
       // Daten von 5e.tools herunterladen
       final response = await http.get(Uri.parse('${baseUrl}races.json'));
       if (response.statusCode != 200) {
-        print('Externe Daten nicht verfügbar, verwende Demo-Daten');
+        debugPrint('Externe Daten nicht verfügbar, verwende Demo-Daten');
         return await importDemoRaces();
       }
       
@@ -217,14 +218,14 @@ class DndDataImporter {
           await db.insert('official_races', raceMap);
           importedCount++;
         } catch (e) {
-          print('Fehler beim Import des Volkes "${raceData['name']}": $e');
+          debugPrint('Fehler beim Import des Volkes "${raceData['name']}": $e');
         }
       }
       
-      print('Völker-Import abgeschlossen: $importedCount Völker importiert');
+      debugPrint('Völker-Import abgeschlossen: $importedCount Völker importiert');
       return importedCount;
     } catch (e) {
-      print('Fehler beim Völker-Import, verwende Demo-Daten: $e');
+      debugPrint('Fehler beim Völker-Import, verwende Demo-Daten: $e');
       return await importDemoRaces();
     }
   }
@@ -232,7 +233,7 @@ class DndDataImporter {
   // --- Items Import ---
   Future<int> importItems() async {
     try {
-      print('Starte Items-Import...');
+      debugPrint('Starte Items-Import...');
       
       // Bestehende Daten löschen
       final db = await _db.database;
@@ -241,7 +242,7 @@ class DndDataImporter {
       // Daten von 5e.tools herunterladen
       final response = await http.get(Uri.parse('${baseUrl}items.json'));
       if (response.statusCode != 200) {
-        print('Externe Daten nicht verfügbar, verwende Demo-Daten');
+        debugPrint('Externe Daten nicht verfügbar, verwende Demo-Daten');
         return await importDemoItems();
       }
       
@@ -261,18 +262,18 @@ class DndDataImporter {
             await db.insert('official_items', itemMap);
             importedCount++;
           } catch (e) {
-            print('Fehler beim Import des Items "${itemData['name']}": $e');
+            debugPrint('Fehler beim Import des Items "${itemData['name']}": $e');
           }
         }
         
-        print('Items-Import Fortschritt: $importedCount/${items.length}');
+        debugPrint('Items-Import Fortschritt: $importedCount/${items.length}');
         await Future.delayed(const Duration(milliseconds: 10));
       }
       
-      print('Items-Import abgeschlossen: $importedCount Items importiert');
+      debugPrint('Items-Import abgeschlossen: $importedCount Items importiert');
       return importedCount;
     } catch (e) {
-      print('Fehler beim Items-Import, verwende Demo-Daten: $e');
+      debugPrint('Fehler beim Items-Import, verwende Demo-Daten: $e');
       return await importDemoItems();
     }
   }
@@ -280,7 +281,7 @@ class DndDataImporter {
   // --- Orte Import ---
   Future<int> importLocations() async {
     try {
-      print('Starte Orte-Import...');
+      debugPrint('Starte Orte-Import...');
       
       // Bestehende Daten löschen
       final db = await _db.database;
@@ -289,7 +290,7 @@ class DndDataImporter {
       // Daten von 5e.tools herunterladen
       final response = await http.get(Uri.parse('${baseUrl}locations.json'));
       if (response.statusCode != 200) {
-        print('Externe Daten nicht verfügbar, verwende Demo-Daten');
+        debugPrint('Externe Daten nicht verfügbar, verwende Demo-Daten');
         return await importDemoLocations();
       }
       
@@ -304,14 +305,14 @@ class DndDataImporter {
           await db.insert('official_locations', locationMap);
           importedCount++;
         } catch (e) {
-          print('Fehler beim Import des Ortes "${locationData['name']}": $e');
+          debugPrint('Fehler beim Import des Ortes "${locationData['name']}": $e');
         }
       }
       
-      print('Orte-Import abgeschlossen: $importedCount Orte importiert');
+      debugPrint('Orte-Import abgeschlossen: $importedCount Orte importiert');
       return importedCount;
     } catch (e) {
-      print('Fehler beim Orte-Import, verwende Demo-Daten: $e');
+      debugPrint('Fehler beim Orte-Import, verwende Demo-Daten: $e');
       return await importDemoLocations();
     }
   }
@@ -484,7 +485,7 @@ class DndDataImporter {
   
   Future<int> importDemoMonsters() async {
     try {
-      print('Starte Demo-Monster-Import...');
+      debugPrint('Starte Demo-Monster-Import...');
       
       // Bestehende Daten löschen
       final db = await _db.database;
@@ -498,21 +499,21 @@ class DndDataImporter {
           await db.insert('official_monsters', monster.toMap());
           importedCount++;
         } catch (e) {
-          print('Fehler beim Import des Demo-Monsters "${monsterData['name']}": $e');
+          debugPrint('Fehler beim Import des Demo-Monsters "${monsterData['name']}": $e');
         }
       }
       
-      print('Demo-Monster-Import abgeschlossen: $importedCount Monster importiert');
+      debugPrint('Demo-Monster-Import abgeschlossen: $importedCount Monster importiert');
       return importedCount;
     } catch (e) {
-      print('Fehler beim Demo-Monster-Import: $e');
+      debugPrint('Fehler beim Demo-Monster-Import: $e');
       return 0;
     }
   }
 
   Future<int> importDemoSpells() async {
     try {
-      print('Starte Demo-Spells-Import...');
+      debugPrint('Starte Demo-Spells-Import...');
       
       // Bestehende Daten löschen
       final db = await _db.database;
@@ -525,21 +526,21 @@ class DndDataImporter {
           await db.insert('official_spells', spellData);
           importedCount++;
         } catch (e) {
-          print('Fehler beim Import der Demo-Spells "${spellData['name']}": $e');
+          debugPrint('Fehler beim Import der Demo-Spells "${spellData['name']}": $e');
         }
       }
       
-      print('Demo-Spells-Import abgeschlossen: $importedCount Spells importiert');
+      debugPrint('Demo-Spells-Import abgeschlossen: $importedCount Spells importiert');
       return importedCount;
     } catch (e) {
-      print('Fehler beim Demo-Spells-Import: $e');
+      debugPrint('Fehler beim Demo-Spells-Import: $e');
       return 0;
     }
   }
 
   Future<int> importDemoClasses() async {
     try {
-      print('Starte Demo-Klassen-Import...');
+      debugPrint('Starte Demo-Klassen-Import...');
       
       // Bestehende Daten löschen
       final db = await _db.database;
@@ -552,21 +553,21 @@ class DndDataImporter {
           await db.insert('official_classes', classData);
           importedCount++;
         } catch (e) {
-          print('Fehler beim Import der Demo-Klasse "${classData['name']}": $e');
+          debugPrint('Fehler beim Import der Demo-Klasse "${classData['name']}": $e');
         }
       }
       
-      print('Demo-Klassen-Import abgeschlossen: $importedCount Klassen importiert');
+      debugPrint('Demo-Klassen-Import abgeschlossen: $importedCount Klassen importiert');
       return importedCount;
     } catch (e) {
-      print('Fehler beim Demo-Klassen-Import: $e');
+      debugPrint('Fehler beim Demo-Klassen-Import: $e');
       return 0;
     }
   }
 
   Future<int> importDemoRaces() async {
     try {
-      print('Starte Demo-Völker-Import...');
+      debugPrint('Starte Demo-Völker-Import...');
       
       // Bestehende Daten löschen
       final db = await _db.database;
@@ -579,21 +580,21 @@ class DndDataImporter {
           await db.insert('official_races', raceData);
           importedCount++;
         } catch (e) {
-          print('Fehler beim Import der Demo-Volkes "${raceData['name']}": $e');
+          debugPrint('Fehler beim Import der Demo-Volkes "${raceData['name']}": $e');
         }
       }
       
-      print('Demo-Völker-Import abgeschlossen: $importedCount Völker importiert');
+      debugPrint('Demo-Völker-Import abgeschlossen: $importedCount Völker importiert');
       return importedCount;
     } catch (e) {
-      print('Fehler beim Demo-Völker-Import: $e');
+      debugPrint('Fehler beim Demo-Völker-Import: $e');
       return 0;
     }
   }
 
   Future<int> importDemoItems() async {
     try {
-      print('Starte Demo-Items-Import...');
+      debugPrint('Starte Demo-Items-Import...');
       
       // Bestehende Daten löschen
       final db = await _db.database;
@@ -606,21 +607,21 @@ class DndDataImporter {
           await db.insert('official_items', itemData);
           importedCount++;
         } catch (e) {
-          print('Fehler beim Import der Demo-Items "${itemData['name']}": $e');
+          debugPrint('Fehler beim Import der Demo-Items "${itemData['name']}": $e');
         }
       }
       
-      print('Demo-Items-Import abgeschlossen: $importedCount Items importiert');
+      debugPrint('Demo-Items-Import abgeschlossen: $importedCount Items importiert');
       return importedCount;
     } catch (e) {
-      print('Fehler beim Demo-Items-Import: $e');
+      debugPrint('Fehler beim Demo-Items-Import: $e');
       return 0;
     }
   }
 
   Future<int> importDemoLocations() async {
     try {
-      print('Starte Demo-Orte-Import...');
+      debugPrint('Starte Demo-Orte-Import...');
       
       // Bestehende Daten löschen
       final db = await _db.database;
@@ -633,14 +634,14 @@ class DndDataImporter {
           await db.insert('official_locations', locationData);
           importedCount++;
         } catch (e) {
-          print('Fehler beim Import der Demo-Ortes "${locationData['name']}": $e');
+          debugPrint('Fehler beim Import der Demo-Ortes "${locationData['name']}": $e');
         }
       }
       
-      print('Demo-Orte-Import abgeschlossen: $importedCount Orte importiert');
+      debugPrint('Demo-Orte-Import abgeschlossen: $importedCount Orte importiert');
       return importedCount;
     } catch (e) {
-      print('Fehler beim Demo-Orte-Import: $e');
+      debugPrint('Fehler beim Demo-Orte-Import: $e');
       return 0;
     }
   }

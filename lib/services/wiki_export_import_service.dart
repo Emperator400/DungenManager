@@ -442,7 +442,7 @@ class WikiExportImportService {
       return existing.any((e) => e.campaignId == entry.campaignId);
     } catch (e) {
       if (kDebugMode) {
-        print('Fehler bei Existenzprüfung: $e');
+        debugPrint('Fehler bei Existenzprüfung: $e');
       }
       return false;
     }
@@ -468,7 +468,7 @@ class WikiExportImportService {
       return await _wikiLinkRepository.getLinksByEntryId(entryId);
     } catch (e) {
       if (kDebugMode) {
-        print('Fehler beim Abrufen der Links für $entryId: $e');
+        debugPrint('Fehler beim Abrufen der Links für $entryId: $e');
       }
       return <WikiLink>[];
     }
@@ -482,7 +482,7 @@ class WikiExportImportService {
       return await _wikiLinkRepository.getLinksByEntryIds(entryIds);
     } catch (e) {
       if (kDebugMode) {
-        print('Fehler beim Abrufen der Links: $e');
+        debugPrint('Fehler beim Abrufen der Links: $e');
       }
       return <WikiLink>[];
     }

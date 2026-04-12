@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import '../core/database_connection.dart';
 import '../entities/player_character_entity.dart';
@@ -327,7 +328,7 @@ class PlayerCharacterRepository extends BaseRepository<PlayerCharacterEntity> {
         results.add(updated);
       } catch (e) {
         // Log error but continue with other characters
-        print('Error adding character $characterId to campaign: $e');
+        debugPrint('Error adding character $characterId to campaign: $e');
       }
     }
     

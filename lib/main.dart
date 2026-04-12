@@ -70,25 +70,25 @@ Future<void> _initializeDatabase() async {
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
-    print('🗄️ SQLite FFI für Desktop initialisiert');
+    debugPrint('🗄️ SQLite FFI für Desktop initialisiert');
   }
   
   // Initialisiere Datenbank und führe Migrationen aus
   try {
     final dbConnection = DatabaseConnection.instance;
     await dbConnection.database;
-    print('✅ Datenbank-Verbindung erfolgreich getestet');
+    debugPrint('✅ Datenbank-Verbindung erfolgreich getestet');
     
     // Führe Datenbank-Migrationen aus
     final migration = DatabaseMigration(dbConnection);
     await migration.runMigrations();
-    print('✅ Datenbank-Migrationen erfolgreich ausgeführt');
+    debugPrint('✅ Datenbank-Migrationen erfolgreich ausgeführt');
     
     // Migriere alle bestehenden Bilder in den Update-sicheren Documents-Ordner
     await ImageStorageService.migrateExistingImages();
     
   } catch (e) {
-    print('❌ Fehler beim Initialisieren der Datenbank: $e');
+    debugPrint('❌ Fehler beim Initialisieren der Datenbank: $e');
     rethrow;
   }
 }
@@ -113,9 +113,9 @@ Future<void> _configureAudio() async {
         ),
       ),
     );
-    print('Audio Kontext erfolgreich konfiguriert');
+    debugPrint('Audio Kontext erfolgreich konfiguriert');
   } catch (e) {
-    print('Fehler bei der Audio-Konfiguration: $e');
+    debugPrint('Fehler bei der Audio-Konfiguration: $e');
   }
 }
 

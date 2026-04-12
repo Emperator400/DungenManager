@@ -31,7 +31,7 @@ class ServiceLocator {
   void registerService<T>(T Function() factory) {
     _serviceFactories[T] = factory;
     if (kDebugMode) {
-      print('🔧 Service registriert: $T');
+      debugPrint('🔧 Service registriert: $T');
     }
   }
 
@@ -54,7 +54,7 @@ class ServiceLocator {
     _sessionService.setDependency(T, instance);
     
     if (kDebugMode) {
-      print('🔧 Service erstellt: $T');
+      debugPrint('🔧 Service erstellt: $T');
     }
     
     return instance;
@@ -64,20 +64,20 @@ class ServiceLocator {
   Future<void> initializeCoreServices() async {
     if (_isInitialized) {
       if (kDebugMode) {
-        print('🔧 Core-Services bereits initialisiert');
+        debugPrint('🔧 Core-Services bereits initialisiert');
       }
       return;
     }
 
     if (kDebugMode) {
-      print('🔧 Initialisiere Core-Services...');
+      debugPrint('🔧 Initialisiere Core-Services...');
     }
 
     try {
       // 1. Database Connection initialisieren (Singleton)
       final dbConnection = DatabaseConnection.instance;
       if (kDebugMode) {
-        print('  ✅ Database Connection erstellt');
+        debugPrint('  ✅ Database Connection erstellt');
       }
 
       // 2. Repositories registrieren und initialisieren
@@ -86,7 +86,7 @@ class ServiceLocator {
       );
       await getService<CampaignModelRepository>();
       if (kDebugMode) {
-        print('  ✅ Campaign Model Repository erstellt');
+        debugPrint('  ✅ Campaign Model Repository erstellt');
       }
 
       registerService<PlayerCharacterModelRepository>(
@@ -94,7 +94,7 @@ class ServiceLocator {
       );
       await getService<PlayerCharacterModelRepository>();
       if (kDebugMode) {
-        print('  ✅ Player Character Model Repository erstellt');
+        debugPrint('  ✅ Player Character Model Repository erstellt');
       }
 
       registerService<CreatureRepository>(
@@ -102,7 +102,7 @@ class ServiceLocator {
       );
       await getService<CreatureRepository>();
       if (kDebugMode) {
-        print('  ✅ Creature Repository erstellt');
+        debugPrint('  ✅ Creature Repository erstellt');
       }
 
       // 3. ViewModels registrieren und initialisieren
@@ -114,18 +114,18 @@ class ServiceLocator {
       );
       await getService<CampaignViewModel>();
       if (kDebugMode) {
-        print('  ✅ Campaign ViewModel erstellt');
+        debugPrint('  ✅ Campaign ViewModel erstellt');
       }
 
       _isInitialized = true;
       
       if (kDebugMode) {
-        print('✅ Alle Core-Services erfolgreich initialisiert');
+        debugPrint('✅ Alle Core-Services erfolgreich initialisiert');
       }
     } catch (e) {
       _isInitialized = false;
       if (kDebugMode) {
-        print('⚠️ Fehler bei der Service-Initialisierung: $e');
+        debugPrint('⚠️ Fehler bei der Service-Initialisierung: $e');
       }
       rethrow;
     }
@@ -145,7 +145,7 @@ class ServiceLocator {
     _serviceFactories.clear();
     _isInitialized = false;
     if (kDebugMode) {
-      print('🔧 Service Locator zurückgesetzt');
+      debugPrint('🔧 Service Locator zurückgesetzt');
     }
   }
 }

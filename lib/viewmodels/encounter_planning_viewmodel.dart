@@ -115,48 +115,48 @@ class EncounterPlanningViewModel extends ChangeNotifier {
 
   /// Lädt alle verfügbaren Helden und Monster
   Future<void> loadData() async {
-    print('');
-    print('🎯🎯🎯 [EncounterPlanningViewModel] loadData() aufgerufen');
-    print('🎯 [EncounterPlanningViewModel] campaignId: $campaignId, sceneId: $sceneId');
+    debugPrint('');
+    debugPrint('🎯🎯🎯 [EncounterPlanningViewModel] loadData() aufgerufen');
+    debugPrint('🎯 [EncounterPlanningViewModel] campaignId: $campaignId, sceneId: $sceneId');
     _setLoading(true);
     _clearError();
 
     try {
       // Helden der Kampagne laden
-      print('🎯 [EncounterPlanningViewModel] Lade Helden für Kampagne...');
+      debugPrint('🎯 [EncounterPlanningViewModel] Lade Helden für Kampagne...');
       final characters = await _characterRepo.findByCampaign(campaignId);
-      print('🎯 [EncounterPlanningViewModel] ${characters.length} Helden geladen');
+      debugPrint('🎯 [EncounterPlanningViewModel] ${characters.length} Helden geladen');
       _availableCharacters = characters;
 
       // Monster aus Bestiarium laden (custom und official)
-      print('🎯 [EncounterPlanningViewModel] Lade alle Kreaturen aus Datenbank...');
+      debugPrint('🎯 [EncounterPlanningViewModel] Lade alle Kreaturen aus Datenbank...');
       
       // ERST: Direkte SQL-Abfrage zum Debuggen
       final rawResults = await _creatureRepo.rawQuery('SELECT id, name, is_player, source_type FROM creatures LIMIT 10');
-      print('🎯 [EncounterPlanningViewModel] RAW SQL Ergebnis (${rawResults.length} Einträge):');
+      debugPrint('🎯 [EncounterPlanningViewModel] RAW SQL Ergebnis (${rawResults.length} Einträge):');
       for (final row in rawResults) {
-        print('🎯   - ID: ${row['id']}, Name: ${row['name']}, is_player: ${row['is_player']}, source_type: ${row['source_type']}');
+        debugPrint('🎯   - ID: ${row['id']}, Name: ${row['name']}, is_player: ${row['is_player']}, source_type: ${row['source_type']}');
       }
       
       final allCreatures = await _creatureRepo.findAll();
-      print('🎯 [EncounterPlanningViewModel] ${allCreatures.length} Kreaturen insgesamt geladen');
+      debugPrint('🎯 [EncounterPlanningViewModel] ${allCreatures.length} Kreaturen insgesamt geladen');
       
       // Debug: Zeige Details jeder Kreatur
       for (final creature in allCreatures) {
-        print('🎯 [EncounterPlanningViewModel] Kreatur: ${creature.name}, sourceType: "${creature.sourceType}", isPlayer: ${creature.isPlayer}');
+        debugPrint('🎯 [EncounterPlanningViewModel] Kreatur: ${creature.name}, sourceType: "${creature.sourceType}", isPlayer: ${creature.isPlayer}');
       }
       
       // Debug: Zeige sourceTypes
       final sourceTypes = allCreatures.map((c) => c.sourceType).toSet();
-      print('🎯 [EncounterPlanningViewModel] Gefundene sourceTypes: $sourceTypes');
+      debugPrint('🎯 [EncounterPlanningViewModel] Gefundene sourceTypes: $sourceTypes');
       
       // Alle Kreaturen, die keine Spieler sind, als Monster verfügbar machen
       // Das schließt custom, official, und alle anderen sourceTypes ein
       _availableMonsters = allCreatures.where((c) => 
         c.isPlayer == false || c.isPlayer == null
       ).toList();
-      print('🎯 [EncounterPlanningViewModel] ${_availableMonsters.length} Monster nach Filterung verfügbar (isPlayer == false)');
-      print('');
+      debugPrint('🎯 [EncounterPlanningViewModel] ${_availableMonsters.length} Monster nach Filterung verfügbar (isPlayer == false)');
+      debugPrint('');
 
       // Vorausgewählte Charaktere und Monster von der Scene übernehmen
       // WICHTIG: preselectedCharacterIds kann sowohl PCs als auch Monster enthalten

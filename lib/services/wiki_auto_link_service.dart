@@ -107,7 +107,7 @@ class WikiAutoLinkService {
       return null;
     } catch (e) {
       if (kDebugMode) {
-        print('Fehler bei Suche nach Charakter-Eintrag: $e');
+        debugPrint('Fehler bei Suche nach Charakter-Eintrag: $e');
       }
       return null;
     }
@@ -125,7 +125,7 @@ class WikiAutoLinkService {
       return null;
     } catch (e) {
       if (kDebugMode) {
-        print('Fehler bei Suche nach Kreatur-Eintrag: $e');
+        debugPrint('Fehler bei Suche nach Kreatur-Eintrag: $e');
       }
       return null;
     }
@@ -143,7 +143,7 @@ class WikiAutoLinkService {
       return null;
     } catch (e) {
       if (kDebugMode) {
-        print('Fehler bei Suche nach Kampagnen-Eintrag: $e');
+        debugPrint('Fehler bei Suche nach Kampagnen-Eintrag: $e');
       }
       return null;
     }
@@ -428,7 +428,7 @@ class WikiAutoLinkService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Fehler bei Auto-Links für Charakter: $e');
+        debugPrint('Fehler bei Auto-Links für Charakter: $e');
       }
     }
   }
@@ -452,7 +452,7 @@ class WikiAutoLinkService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Fehler bei Auto-Links für Kreatur: $e');
+        debugPrint('Fehler bei Auto-Links für Kreatur: $e');
       }
     }
   }
@@ -467,7 +467,7 @@ class WikiAutoLinkService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Fehler bei Auto-Links für Kampagne: $e');
+        debugPrint('Fehler bei Auto-Links für Kampagne: $e');
       }
     }
   }
@@ -489,7 +489,7 @@ class WikiAutoLinkService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Fehler bei Auto-Link-Erstellung: $e');
+        debugPrint('Fehler bei Auto-Link-Erstellung: $e');
       }
     }
   }
@@ -506,7 +506,7 @@ class WikiAutoLinkService {
       return places.map((place) => place.title).toList();
     } catch (e) {
       if (kDebugMode) {
-        print('Fehler bei Orte-Suche: $e');
+        debugPrint('Fehler bei Orte-Suche: $e');
       }
       return <String>[];
     }
@@ -603,7 +603,7 @@ class WikiAutoLinkService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Fehler beim Löschen der Auto-Links: $e');
+        debugPrint('Fehler beim Löschen der Auto-Links: $e');
       }
     }
   }

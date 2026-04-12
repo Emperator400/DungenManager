@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../core/database_connection.dart';
 import '../../models/creature.dart';
 import '../../services/creature_helper_service.dart';
@@ -9,7 +10,7 @@ import 'model_repository.dart';
 /// das seine eigene Serialisierung über toDatabaseMap() und fromDatabaseMap() bereitstellt.
 class CreatureRepository extends ModelRepository<Creature> {
   CreatureRepository(DatabaseConnection connection) : super(connection) {
-    print('CreatureRepository initialisiert');
+    debugPrint('CreatureRepository initialisiert');
   }
   
   @override
@@ -282,7 +283,7 @@ class CreatureRepository extends ModelRepository<Creature> {
           results.add(result);
         }
       } catch (e) {
-        print('Error setting favorite status for creature $creatureId: $e');
+        debugPrint('Error setting favorite status for creature $creatureId: $e');
       }
     }
     

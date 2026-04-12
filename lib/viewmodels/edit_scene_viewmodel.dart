@@ -100,7 +100,7 @@ class EditSceneViewModel extends ChangeNotifier {
         // Bearbeiten einer existierenden Scene
         _scene = scene;
         _isEditingExistingScene = true;
-        print('✏️ [EditSceneViewModel] Initialisiere als BEARBEITEN (existierende Scene)');
+        debugPrint('✏️ [EditSceneViewModel] Initialisiere als BEARBEITEN (existierende Scene)');
       } else if (sessionId != null) {
         // Erstellen einer neuen Scene
         _isEditingExistingScene = false;
@@ -117,7 +117,7 @@ class EditSceneViewModel extends ChangeNotifier {
           name: '',
           description: '',
         );
-        print('➕ [EditSceneViewModel] Initialisiere als NEU (neue Scene)');
+        debugPrint('➕ [EditSceneViewModel] Initialisiere als NEU (neue Scene)');
       } else {
         // Fallback: Neue Scene ohne sessionId
         _isEditingExistingScene = false;
@@ -127,7 +127,7 @@ class EditSceneViewModel extends ChangeNotifier {
           name: '',
           description: '',
         );
-        print('➕ [EditSceneViewModel] Initialisiere als NEU (Fallback ohne sessionId)');
+        debugPrint('➕ [EditSceneViewModel] Initialisiere als NEU (Fallback ohne sessionId)');
       }
       
       _resetUnsavedChanges();
@@ -145,13 +145,13 @@ class EditSceneViewModel extends ChangeNotifier {
 
   /// Speichert die aktuelle Scene
   Future<bool> saveScene() async {
-    print('💾 [EditSceneViewModel] saveScene() aufgerufen');
-    print('💾 [EditSceneViewModel] Scene: $_scene');
-    print('💾 [EditSceneViewModel] isEditing: $isEditing');
-    print('💾 [EditSceneViewModel] hasValidScene: ${_hasValidScene()}');
+    debugPrint('💾 [EditSceneViewModel] saveScene() aufgerufen');
+    debugPrint('💾 [EditSceneViewModel] Scene: $_scene');
+    debugPrint('💾 [EditSceneViewModel] isEditing: $isEditing');
+    debugPrint('💾 [EditSceneViewModel] hasValidScene: ${_hasValidScene()}');
     
     if (_scene == null || !_hasValidScene()) {
-      print('❌ [EditSceneViewModel] Ungültige Scene-Daten');
+      debugPrint('❌ [EditSceneViewModel] Ungültige Scene-Daten');
       _setError('Ungültige Scene-Daten');
       return false;
     }
@@ -159,35 +159,35 @@ class EditSceneViewModel extends ChangeNotifier {
     try {
       _setLoading(true);
       _clearError();
-      print('✅ [EditSceneViewModel] Starte Speichern...');
+      debugPrint('✅ [EditSceneViewModel] Starte Speichern...');
       
       // Aktualisiere updatedAt
       _scene = _scene!.copyWith(updatedAt: DateTime.now());
       
       // Speichern in der Datenbank
       if (isEditing) {
-        print('✏️ [EditSceneViewModel] Aktualisiere existierende Scene...');
+        debugPrint('✏️ [EditSceneViewModel] Aktualisiere existierende Scene...');
         final updatedScene = await _sceneRepository.update(_scene!);
         if (updatedScene != null) {
           _scene = updatedScene;
         }
-        print('✅ [EditSceneViewModel] Scene aktualisiert');
+        debugPrint('✅ [EditSceneViewModel] Scene aktualisiert');
       } else {
-        print('➕ [EditSceneViewModel] Erstelle neue Scene...');
+        debugPrint('➕ [EditSceneViewModel] Erstelle neue Scene...');
         final createdScene = await _sceneRepository.create(_scene!);
         if (createdScene != null) {
           _scene = createdScene;
           // Nach dem ersten Speichern: Als existierende Scene markieren
           _isEditingExistingScene = true;
         }
-        print('✅ [EditSceneViewModel] Scene erstellt');
+        debugPrint('✅ [EditSceneViewModel] Scene erstellt');
       }
       
       _resetUnsavedChanges();
-      print('✅ [EditSceneViewModel] Speichern erfolgreich');
+      debugPrint('✅ [EditSceneViewModel] Speichern erfolgreich');
       return true;
     } catch (e) {
-      print('❌ [EditSceneViewModel] FEHLER beim Speichern: $e');
+      debugPrint('❌ [EditSceneViewModel] FEHLER beim Speichern: $e');
       if (e is ServiceException) {
         _setError(e.message);
       } else {
@@ -624,7 +624,7 @@ class EditSceneViewModel extends ChangeNotifier {
       _linkedEncounter = encounter;
       notifyListeners();
     } catch (e) {
-      print('Fehler beim Laden des Encounters: $e');
+      debugPrint('Fehler beim Laden des Encounters: $e');
       _linkedEncounter = null;
       notifyListeners();
     }
@@ -649,13 +649,13 @@ class EditSceneViewModel extends ChangeNotifier {
 
       // WICHTIG: Szene zuerst speichern falls sie noch nicht in der DB existiert
       if (!_isEditingExistingScene) {
-        print('⚠️ [EditSceneViewModel] Szene muss erst gespeichert werden...');
+        debugPrint('⚠️ [EditSceneViewModel] Szene muss erst gespeichert werden...');
         final saved = await saveScene();
         if (!saved) {
           _setError('Szene konnte nicht gespeichert werden');
           return null;
         }
-        print('✅ [EditSceneViewModel] Szene gespeichert, ID: ${_scene!.id}');
+        debugPrint('✅ [EditSceneViewModel] Szene gespeichert, ID: ${_scene!.id}');
       }
 
       // Encounter erstellen
@@ -681,7 +681,7 @@ class EditSceneViewModel extends ChangeNotifier {
       _resetUnsavedChanges(); // Änderungen wurden gespeichert
       _safeNotifyListeners();
 
-      print('✅ [EditSceneViewModel] Encounter erstellt: ${savedEncounter.title}');
+      debugPrint('✅ [EditSceneViewModel] Encounter erstellt: ${savedEncounter.title}');
       return savedEncounter;
     } catch (e) {
       _setError('Fehler beim Erstellen des Encounters: ${e.toString()}');
@@ -715,7 +715,7 @@ class EditSceneViewModel extends ChangeNotifier {
       _markAsUnsaved();
       _safeNotifyListeners();
 
-      print('✅ [EditSceneViewModel] Encounter gelöscht');
+      debugPrint('✅ [EditSceneViewModel] Encounter gelöscht');
       return true;
     } catch (e) {
       _setError('Fehler beim Löschen des Encounters: ${e.toString()}');

@@ -53,7 +53,7 @@ class SessionService {
   void set<T>(String key, T value) {
     _sessionData[key] = value;
     if (kDebugMode) {
-      print('💾 Session: $key = $value');
+      debugPrint('💾 Session: $key = $value');
     }
   }
 
@@ -66,7 +66,7 @@ class SessionService {
   void remove(String key) {
     _sessionData.remove(key);
     if (kDebugMode) {
-      print('💾 Session: $key entfernt');
+      debugPrint('💾 Session: $key entfernt');
     }
   }
 
@@ -79,7 +79,7 @@ class SessionService {
   void setDependency<T>(Type type, T instance) {
     _dependencies[type] = instance;
     if (kDebugMode) {
-      print('📦 Dependency registriert: $type');
+      debugPrint('📦 Dependency registriert: $type');
     }
   }
 
@@ -98,7 +98,7 @@ class SessionService {
     _sessionData.clear();
     _dependencies.clear();
     if (kDebugMode) {
-      print('💾 Session gelöscht');
+      debugPrint('💾 Session gelöscht');
     }
   }
 
@@ -118,7 +118,7 @@ class SessionService {
   void setActiveSession(Session session) {
     _activeSession = session;
     if (kDebugMode) {
-      print('🎮 Aktive Session: ${session.title}');
+      debugPrint('🎮 Aktive Session: ${session.title}');
     }
   }
   
@@ -130,7 +130,7 @@ class SessionService {
     _questProgress.clear();
     _characterTracking.clear();
     if (kDebugMode) {
-      print('🎮 Aktive Session gelöscht');
+      debugPrint('🎮 Aktive Session gelöscht');
     }
   }
   
@@ -140,7 +140,7 @@ class SessionService {
   void addEncounter(Encounter encounter) {
     _encounters.add(encounter);
     if (kDebugMode) {
-      print('⚔️ Encounter hinzugefügt: ${encounter.title}');
+      debugPrint('⚔️ Encounter hinzugefügt: ${encounter.title}');
     }
   }
   
@@ -149,7 +149,7 @@ class SessionService {
     _encounters.removeWhere((e) => e.id == encounterId);
     _participants.removeWhere((p) => p.encounterId == encounterId);
     if (kDebugMode) {
-      print('⚔️ Encounter entfernt: $encounterId');
+      debugPrint('⚔️ Encounter entfernt: $encounterId');
     }
   }
   
@@ -159,7 +159,7 @@ class SessionService {
     if (index != -1) {
       _encounters[index] = updatedEncounter;
       if (kDebugMode) {
-        print('⚔️ Encounter aktualisiert: ${updatedEncounter.title}');
+        debugPrint('⚔️ Encounter aktualisiert: ${updatedEncounter.title}');
       }
     }
   }
@@ -175,7 +175,7 @@ class SessionService {
   void addParticipant(EncounterParticipant participant) {
     _participants.add(participant);
     if (kDebugMode) {
-      print('👤 Teilnehmer hinzugefügt: ${participant.name}');
+      debugPrint('👤 Teilnehmer hinzugefügt: ${participant.name}');
     }
   }
   
@@ -183,7 +183,7 @@ class SessionService {
   void removeParticipant(String participantId) {
     _participants.removeWhere((p) => p.id == participantId);
     if (kDebugMode) {
-      print('👤 Teilnehmer entfernt: $participantId');
+      debugPrint('👤 Teilnehmer entfernt: $participantId');
     }
   }
   
@@ -193,7 +193,7 @@ class SessionService {
     if (index != -1) {
       _participants[index] = updatedParticipant;
       if (kDebugMode) {
-        print('👤 Teilnehmer aktualisiert: ${updatedParticipant.name}');
+        debugPrint('👤 Teilnehmer aktualisiert: ${updatedParticipant.name}');
       }
     }
   }
@@ -209,7 +209,7 @@ class SessionService {
   void addQuestProgress(SessionQuestProgress questProgress) {
     _questProgress.add(questProgress);
     if (kDebugMode) {
-      print('📜 Quest-Fortschritt hinzugefügt: Quest ID ${questProgress.questId}');
+      debugPrint('📜 Quest-Fortschritt hinzugefügt: Quest ID ${questProgress.questId}');
     }
   }
   
@@ -217,7 +217,7 @@ class SessionService {
   void removeQuestProgress(String progressId) {
     _questProgress.removeWhere((q) => q.id == progressId);
     if (kDebugMode) {
-      print('📜 Quest-Fortschritt entfernt: $progressId');
+      debugPrint('📜 Quest-Fortschritt entfernt: $progressId');
     }
   }
   
@@ -227,7 +227,7 @@ class SessionService {
     if (index != -1) {
       _questProgress[index] = updatedProgress;
       if (kDebugMode) {
-        print('📜 Quest-Fortschritt aktualisiert: Quest ID ${updatedProgress.questId}');
+        debugPrint('📜 Quest-Fortschritt aktualisiert: Quest ID ${updatedProgress.questId}');
       }
     }
   }
@@ -247,7 +247,7 @@ class SessionService {
   void addCharacterTracking(SessionCharacterTracking tracking) {
     _characterTracking.add(tracking);
     if (kDebugMode) {
-      print('🎭 Character-Tracking hinzugefügt: ${tracking.characterName}');
+      debugPrint('🎭 Character-Tracking hinzugefügt: ${tracking.characterName}');
     }
   }
   
@@ -255,7 +255,7 @@ class SessionService {
   void removeCharacterTracking(String trackingId) {
     _characterTracking.removeWhere((c) => c.id == trackingId);
     if (kDebugMode) {
-      print('🎭 Character-Tracking entfernt: $trackingId');
+      debugPrint('🎭 Character-Tracking entfernt: $trackingId');
     }
   }
   
@@ -265,7 +265,7 @@ class SessionService {
     if (index != -1) {
       _characterTracking[index] = updatedTracking;
       if (kDebugMode) {
-        print('🎭 Character-Tracking aktualisiert: ${updatedTracking.characterName}');
+        debugPrint('🎭 Character-Tracking aktualisiert: ${updatedTracking.characterName}');
       }
     }
   }
@@ -291,11 +291,11 @@ class SessionService {
     // Hier würde die Datenbank-Implementierung folgen
     // vorerst nur Log-Ausgabe
     if (kDebugMode) {
-      print('💾 Session gespeichert: ${_activeSession?.title}');
-      print('   - Encounters: ${_encounters.length}');
-      print('   - Teilnehmer: ${_participants.length}');
-      print('   - Quests: ${_questProgress.length}');
-      print('   - Charaktere: ${_characterTracking.length}');
+      debugPrint('💾 Session gespeichert: ${_activeSession?.title}');
+      debugPrint('   - Encounters: ${_encounters.length}');
+      debugPrint('   - Teilnehmer: ${_participants.length}');
+      debugPrint('   - Quests: ${_questProgress.length}');
+      debugPrint('   - Charaktere: ${_characterTracking.length}');
     }
   }
 }

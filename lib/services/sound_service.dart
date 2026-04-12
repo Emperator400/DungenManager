@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -95,7 +96,7 @@ class SoundService {
       }
       return false;
     } catch (e) {
-      print('Fehler beim Löschen der Sound-Datei: $e');
+      debugPrint('Fehler beim Löschen der Sound-Datei: $e');
       return false;
     }
   }
@@ -148,10 +149,10 @@ class SoundService {
       
       if (await soundsDir.exists()) {
         await soundsDir.delete(recursive: true);
-        print('Alle Sounds wurden gelöscht');
+        debugPrint('Alle Sounds wurden gelöscht');
       }
     } catch (e) {
-      print('Fehler beim Löschen aller Sounds: $e');
+      debugPrint('Fehler beim Löschen aller Sounds: $e');
     }
   }
   
@@ -174,7 +175,7 @@ class SoundService {
       
       return totalSize;
     } catch (e) {
-      print('Fehler beim Berechnen der Sounds-Größe: $e');
+      debugPrint('Fehler beim Berechnen der Sounds-Größe: $e');
       return 0;
     }
   }
@@ -213,17 +214,17 @@ class SoundService {
       // Prüfen ob Datei existiert
       final file = File(filePath);
       if (!await file.exists()) {
-        print('Sound-Datei existiert nicht: $filePath');
+        debugPrint('Sound-Datei existiert nicht: $filePath');
         return false;
       }
       
       // Sound abspielen
       await player.setReleaseMode(ReleaseMode.stop);
       await player.play(DeviceFileSource(filePath));
-      print('✅ Sound wird abgespielt: $filePath');
+      debugPrint('✅ Sound wird abgespielt: $filePath');
       return true;
     } catch (e) {
-      print('❌ Fehler beim Abspielen des Sounds: $e');
+      debugPrint('❌ Fehler beim Abspielen des Sounds: $e');
       return false;
     }
   }
@@ -233,9 +234,9 @@ class SoundService {
     try {
       final player = _getAudioPlayer();
       await player.stop();
-      print('⏹️ Sound gestoppt');
+      debugPrint('⏹️ Sound gestoppt');
     } catch (e) {
-      print('❌ Fehler beim Stoppen des Sounds: $e');
+      debugPrint('❌ Fehler beim Stoppen des Sounds: $e');
     }
   }
   
@@ -244,9 +245,9 @@ class SoundService {
     try {
       final player = _getAudioPlayer();
       await player.pause();
-      print('⏸️ Sound pausiert');
+      debugPrint('⏸️ Sound pausiert');
     } catch (e) {
-      print('❌ Fehler beim Pausieren des Sounds: $e');
+      debugPrint('❌ Fehler beim Pausieren des Sounds: $e');
     }
   }
   
@@ -254,15 +255,15 @@ class SoundService {
   static Future<void> setVolume(double volume) async {
     try {
       if (volume < 0.0 || volume > 1.0) {
-        print('⚠️ Lautstärke muss zwischen 0.0 und 1.0 sein');
+        debugPrint('⚠️ Lautstärke muss zwischen 0.0 und 1.0 sein');
         return;
       }
       
       final player = _getAudioPlayer();
       await player.setVolume(volume);
-      print('🔊 Lautstärke gesetzt auf: $volume');
+      debugPrint('🔊 Lautstärke gesetzt auf: $volume');
     } catch (e) {
-      print('❌ Fehler beim Setzen der Lautstärke: $e');
+      debugPrint('❌ Fehler beim Setzen der Lautstärke: $e');
     }
   }
   
@@ -274,7 +275,7 @@ class SoundService {
       final player = _getAudioPlayer();
       return player.state == PlayerState.playing;
     } catch (e) {
-      print('❌ Fehler beim Prüfen des Playback-Status: $e');
+      debugPrint('❌ Fehler beim Prüfen des Playback-Status: $e');
       return false;
     }
   }
@@ -296,9 +297,9 @@ class SoundService {
     try {
       final player = _getAudioPlayer();
       await player.seek(position);
-      print('⏩ Zur Position gesprungen: $position');
+      debugPrint('⏩ Zur Position gesprungen: $position');
     } catch (e) {
-      print('❌ Fehler beim Springen zur Position: $e');
+      debugPrint('❌ Fehler beim Springen zur Position: $e');
     }
   }
   
@@ -308,10 +309,10 @@ class SoundService {
       if (_audioPlayer != null) {
         await _audioPlayer!.dispose();
         _audioPlayer = null;
-        print('🗑️ AudioPlayer freigegeben');
+        debugPrint('🗑️ AudioPlayer freigegeben');
       }
     } catch (e) {
-      print('❌ Fehler beim Freigeben des AudioPlayers: $e');
+      debugPrint('❌ Fehler beim Freigeben des AudioPlayers: $e');
     }
   }
 }

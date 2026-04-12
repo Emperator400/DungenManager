@@ -253,7 +253,7 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
             icon: const Icon(Icons.add),
             label: const Text('Held hinzufügen'),
             onPressed: () async {
-              print('DEBUG: FloatingActionButton pressed - Opening Enhanced Edit PC Screen');
+              debugPrint('DEBUG: FloatingActionButton pressed - Opening Enhanced Edit PC Screen');
               try {
                 await Navigator.of(context).push(
                   MaterialPageRoute<void>(
@@ -262,11 +262,11 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
                     ),
                   ),
                 );
-                print('DEBUG: Enhanced Edit PC Screen closed');
+                debugPrint('DEBUG: Enhanced Edit PC Screen closed');
                 await _refreshCharacterList();
-                print('DEBUG: Character list refreshed successfully');
+                debugPrint('DEBUG: Character list refreshed successfully');
               } catch (e) {
-                print('DEBUG: Error opening Enhanced Edit PC Screen: $e');
+                debugPrint('DEBUG: Error opening Enhanced Edit PC Screen: $e');
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(

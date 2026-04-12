@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../services/uuid_service.dart';
 import '../utils/string_list_parser.dart';
 import '../utils/model_parsing_helper.dart';
@@ -236,7 +237,7 @@ class CampaignSettings {
       // Fallback: leere Map
       return {};
     } catch (e) {
-      print('Fehler beim Parsen von customRules: $e');
+      debugPrint('Fehler beim Parsen von customRules: $e');
       return {};
     }
   }
@@ -279,7 +280,7 @@ class CampaignSettings {
         return MapEntry(key, value.toString());
       }).toString();
     } catch (e) {
-      print('Fehler beim JSON-Encoding von customRules: $e');
+      debugPrint('Fehler beim JSON-Encoding von customRules: $e');
       return '{}';
     }
   }
@@ -513,7 +514,7 @@ class Campaign {
         stats: CampaignStats.fromMap(statsMap),
       );
     } catch (e) {
-      print('Fehler beim Parsen der Kampagne: $e');
+      debugPrint('Fehler beim Parsen der Kampagne: $e');
       // Fallback zu minimal gültiger Kampagne
       return Campaign.create(
         title: ModelParsingHelper.safeString(map, 'title', 'Fehlerhafte Kampagne'),
@@ -566,7 +567,7 @@ class Campaign {
         stats: CampaignStats.fromDatabaseMap(statsMap),
       );
     } catch (e) {
-      print('Fehler beim Parsen der Kampagne: $e');
+      debugPrint('Fehler beim Parsen der Kampagne: $e');
       // Fallback zu minimal gültiger Kampagne
       return Campaign.create(
         title: map['title'] as String? ?? 'Fehlerhafte Kampagne',
@@ -626,7 +627,7 @@ class Campaign {
       
       return result;
     } catch (e) {
-      print('Fehler beim Parsen des JSON-Strings: $e');
+      debugPrint('Fehler beim Parsen des JSON-Strings: $e');
       return {};
     }
   }
@@ -643,7 +644,7 @@ class Campaign {
         return MapEntry(key, value.toString());
       }).toString();
     } catch (e) {
-      print('Fehler beim JSON-Encoding: $e');
+      debugPrint('Fehler beim JSON-Encoding: $e');
       return '{}';
     }
   }

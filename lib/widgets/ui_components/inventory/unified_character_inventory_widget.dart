@@ -274,10 +274,10 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
         
         // DEBUG: Prüfe ob das Item gefunden wird
         if (equippedItem != null) {
-          print('📦 [EquipmentGrid] Slot $slot belegt mit: ${equippedItem.item.name}');
-          print('  - InventoryItem ID: ${equippedItem.inventoryItem.id}');
-          print('  - isEquipped: ${equippedItem.inventoryItem.isEquipped}');
-          print('  - equipSlot: ${equippedItem.inventoryItem.equipSlot}');
+          debugPrint('📦 [EquipmentGrid] Slot $slot belegt mit: ${equippedItem.item.name}');
+          debugPrint('  - InventoryItem ID: ${equippedItem.inventoryItem.id}');
+          debugPrint('  - isEquipped: ${equippedItem.inventoryItem.isEquipped}');
+          debugPrint('  - equipSlot: ${equippedItem.inventoryItem.equipSlot}');
         }
         
         return _buildEquipmentSlot(slot, equippedItem);

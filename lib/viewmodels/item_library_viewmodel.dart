@@ -71,20 +71,20 @@ class ItemLibraryViewModel extends ChangeNotifier {
   /// 
   /// HINWEIS: Verwendet jetzt das neue ItemModelRepository
   Future<void> loadItems() async {
-    print('📚 [ItemLibraryViewModel] loadItems() aufgerufen');
+    debugPrint('📚 [ItemLibraryViewModel] loadItems() aufgerufen');
     await _executeWithErrorHandling(() async {
       if (_itemRepository != null) {
         _items = await _itemRepository!.findAll();
-        print('📚 [ItemLibraryViewModel] ${_items.length} Items geladen');
+        debugPrint('📚 [ItemLibraryViewModel] ${_items.length} Items geladen');
         for (var item in _items) {
-          print('  - ${item.name} (ID: ${item.id})');
+          debugPrint('  - ${item.name} (ID: ${item.id})');
         }
       } else {
         _items = [];
-        print('⚠️ [ItemLibraryViewModel] Repository ist null');
+        debugPrint('⚠️ [ItemLibraryViewModel] Repository ist null');
       }
       _applyFiltersAndSort();
-      print('✅ [ItemLibraryViewModel] Filter angewendet: ${_filteredItems.length} Items');
+      debugPrint('✅ [ItemLibraryViewModel] Filter angewendet: ${_filteredItems.length} Items');
     });
   }
 

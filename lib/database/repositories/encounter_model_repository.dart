@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../core/database_connection.dart';
 import '../../models/encounter.dart';
 import 'model_repository.dart';
@@ -8,7 +9,7 @@ import 'model_repository.dart';
 /// das seine eigene Serialisierung über toDatabaseMap() und fromDatabaseMap() bereitstellt.
 class EncounterModelRepository extends ModelRepository<Encounter> {
   EncounterModelRepository(DatabaseConnection connection) : super(connection) {
-    print('EncounterModelRepository initialisiert');
+    debugPrint('EncounterModelRepository initialisiert');
   }
   
   @override
@@ -17,17 +18,17 @@ class EncounterModelRepository extends ModelRepository<Encounter> {
   @override
   Map<String, dynamic> toDatabaseMap(Encounter encounter) {
     final map = encounter.toDatabaseMap();
-    print('toDatabaseMap aufgerufen für Encounter: ${encounter.title}');
-    print('  ID: ${encounter.id}');
-    print('  Scene ID: ${encounter.sceneId}');
+    debugPrint('toDatabaseMap aufgerufen für Encounter: ${encounter.title}');
+    debugPrint('  ID: ${encounter.id}');
+    debugPrint('  Scene ID: ${encounter.sceneId}');
     return map;
   }
 
   @override
   Encounter fromDatabaseMap(Map<String, dynamic> map) {
-    print('fromDatabaseMap aufgerufen');
-    print('  ID: ${map['id']}');
-    print('  Title: ${map['title']}');
+    debugPrint('fromDatabaseMap aufgerufen');
+    debugPrint('  ID: ${map['id']}');
+    debugPrint('  Title: ${map['title']}');
     return Encounter.fromDatabaseMap(map);
   }
 

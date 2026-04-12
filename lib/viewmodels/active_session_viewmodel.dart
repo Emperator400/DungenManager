@@ -89,12 +89,12 @@ class ActiveSessionViewModel extends ChangeNotifier {
 
   /// Lädt alle Scenes für die aktuelle Session
   Future<void> _loadScenes() async {
-    print('🔄 [ActiveSessionViewModel] _loadScenes() aufgerufen für Session: ${_currentSession.id}');
+    debugPrint('🔄 [ActiveSessionViewModel] _loadScenes() aufgerufen für Session: ${_currentSession.id}');
     await _executeWithErrorHandling(() async {
       _setLoading(true);
-      print('📊 [ActiveSessionViewModel] Rufe findBySession auf...');
+      debugPrint('📊 [ActiveSessionViewModel] Rufe findBySession auf...');
       final scenes = await _sceneRepository.findBySession(_currentSession.id);
-      print('✅ [ActiveSessionViewModel] ${scenes.length} Scenes geladen');
+      debugPrint('✅ [ActiveSessionViewModel] ${scenes.length} Scenes geladen');
       // Sortiere nach orderIndex
       _scenes = scenes..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
       _setLoading(false);
@@ -318,7 +318,7 @@ class ActiveSessionViewModel extends ChangeNotifier {
     try {
       return await _soundRepository.findAll();
     } catch (e) {
-      print('Fehler beim Laden der Sounds: $e');
+      debugPrint('Fehler beim Laden der Sounds: $e');
       return [];
     }
   }
@@ -335,7 +335,7 @@ class ActiveSessionViewModel extends ChangeNotifier {
       _sessionSounds = allSounds.where((sound) => _currentSession.linkedSoundIds.contains(sound.id)).toList();
       notifyListeners();
     } catch (e) {
-      print('Fehler beim Laden der Session-Sounds: $e');
+      debugPrint('Fehler beim Laden der Session-Sounds: $e');
     }
   }
 
@@ -375,7 +375,7 @@ class ActiveSessionViewModel extends ChangeNotifier {
       await SoundService.playSound(filePath);
       notifyListeners();
     } catch (e) {
-      print('Fehler beim Abspielen des Sounds: $e');
+      debugPrint('Fehler beim Abspielen des Sounds: $e');
       rethrow;
     }
   }
@@ -386,7 +386,7 @@ class ActiveSessionViewModel extends ChangeNotifier {
       await SoundService.pauseSound();
       notifyListeners();
     } catch (e) {
-      print('Fehler beim Pausieren: $e');
+      debugPrint('Fehler beim Pausieren: $e');
     }
   }
 
@@ -396,7 +396,7 @@ class ActiveSessionViewModel extends ChangeNotifier {
       await SoundService.stopSound();
       notifyListeners();
     } catch (e) {
-      print('Fehler beim Stoppen: $e');
+      debugPrint('Fehler beim Stoppen: $e');
     }
   }
 
@@ -406,7 +406,7 @@ class ActiveSessionViewModel extends ChangeNotifier {
       await SoundService.setVolume(volume);
       notifyListeners();
     } catch (e) {
-      print('Fehler beim Setzen der Lautstärke: $e');
+      debugPrint('Fehler beim Setzen der Lautstärke: $e');
     }
   }
 
@@ -451,18 +451,18 @@ class ActiveSessionViewModel extends ChangeNotifier {
   /// 
   /// HINWEIS: Verwendet jetzt das neue SessionModelRepository
   Future<void> updateLiveNotes(String newNotes) async {
-    print('📝 [ActiveSessionViewModel] updateLiveNotes aufgerufen');
-    print('📝 [ActiveSessionViewModel] Session ID: ${_currentSession.id}');
-    print('📝 [ActiveSessionViewModel] Neue Notizen Länge: ${newNotes.length}');
+    debugPrint('📝 [ActiveSessionViewModel] updateLiveNotes aufgerufen');
+    debugPrint('📝 [ActiveSessionViewModel] Session ID: ${_currentSession.id}');
+    debugPrint('📝 [ActiveSessionViewModel] Neue Notizen Länge: ${newNotes.length}');
     
     await _executeWithErrorHandling(() async {
       _currentSession = _currentSession.copyWith(
         liveNotes: newNotes,
       );
       
-      print('📝 [ActiveSessionViewModel] Speichere in Datenbank...');
+      debugPrint('📝 [ActiveSessionViewModel] Speichere in Datenbank...');
       final updatedSession = await _sessionRepository.update(_currentSession);
-      print('📝 [ActiveSessionViewModel] Gespeichert! LiveNotes aus DB: "${updatedSession.liveNotes}"');
+      debugPrint('📝 [ActiveSessionViewModel] Gespeichert! LiveNotes aus DB: "${updatedSession.liveNotes}"');
       
       _currentSession = updatedSession;
       notifyListeners();
@@ -535,16 +535,16 @@ class ActiveSessionViewModel extends ChangeNotifier {
 
   /// Lädt die Session-Daten neu aus der Datenbank
   Future<void> reloadSession() async {
-    print('🔄 [ActiveSessionViewModel] reloadSession aufgerufen');
+    debugPrint('🔄 [ActiveSessionViewModel] reloadSession aufgerufen');
     await _executeWithErrorHandling(() async {
       final freshSession = await _sessionRepository.findById(_currentSession.id);
       if (freshSession != null) {
-        print('🔄 [ActiveSessionViewModel] Session neu geladen, LiveNotes: "${freshSession.liveNotes}"');
+        debugPrint('🔄 [ActiveSessionViewModel] Session neu geladen, LiveNotes: "${freshSession.liveNotes}"');
         _currentSession = freshSession;
         await _loadSessionSounds();
         notifyListeners();
       } else {
-        print('⚠️ [ActiveSessionViewModel] Session nicht in DB gefunden!');
+        debugPrint('⚠️ [ActiveSessionViewModel] Session nicht in DB gefunden!');
       }
     });
   }
@@ -567,7 +567,7 @@ class ActiveSessionViewModel extends ChangeNotifier {
       }
       return entry;
     } catch (e) {
-      print('Fehler beim Laden des Wiki-Eintrags: $e');
+      debugPrint('Fehler beim Laden des Wiki-Eintrags: $e');
       return null;
     }
   }

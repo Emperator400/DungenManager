@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import '../core/database_connection.dart';
 
@@ -27,26 +28,26 @@ abstract class ModelRepository<T> {
   
   /// Erstellt eine neue Entität in der Datenbank
   Future<T> create(T model) async {
-    print('💾 [ModelRepository] CREATE aufgerufen für Tabelle: $tableName');
+    debugPrint('💾 [ModelRepository] CREATE aufgerufen für Tabelle: $tableName');
     
     final db = await _connection.database;
     final modelMap = toDatabaseMap(model);
-    print('💾 [ModelRepository] Model zu speichern: $modelMap');
+    debugPrint('💾 [ModelRepository] Model zu speichern: $modelMap');
     
     final rowId = await db.insert(tableName, modelMap);
-    print('💾 [ModelRepository] Insert rowid: $rowId');
+    debugPrint('💾 [ModelRepository] Insert rowid: $rowId');
     
     // Hole das eingefügte Model aus der Datenbank zurück
     // Dies stellt sicher, dass alle Felder korrekt serialisiert wurden
     if (model is dynamic) {
       try {
         final modelId = model.id;
-        print('💾 [ModelRepository] Model ID: $modelId (${modelId.runtimeType})');
+        debugPrint('💾 [ModelRepository] Model ID: $modelId (${modelId.runtimeType})');
         
         // Unterscheide zwischen int und String IDs
         if (modelId is int) {
           // Bei int IDs: Hole das Model aus der DB
-          print('💾 [ModelRepository] Hole Model mit int ID aus DB');
+          debugPrint('💾 [ModelRepository] Hole Model mit int ID aus DB');
           final maps = await db.query(
             tableName,
             where: 'id = ?',
@@ -55,14 +56,14 @@ abstract class ModelRepository<T> {
           );
           if (maps.isNotEmpty) {
             final result = fromDatabaseMap(maps.first);
-            print('💾 [ModelRepository] Model erfolgreich aus DB geholt');
+            debugPrint('💾 [ModelRepository] Model erfolgreich aus DB geholt');
             return result;
           }
           // Fallback wenn nicht gefunden (sollte nicht passieren)
           return model;
         } else if (modelId is String) {
           // Bei String IDs: Hole das Model aus der DB
-          print('💾 [ModelRepository] Hole Model mit String ID aus DB');
+          debugPrint('💾 [ModelRepository] Hole Model mit String ID aus DB');
           final maps = await db.query(
             tableName,
             where: 'id = ?',
@@ -71,20 +72,20 @@ abstract class ModelRepository<T> {
           );
           if (maps.isNotEmpty) {
             final result = fromDatabaseMap(maps.first);
-            print('💾 [ModelRepository] Model erfolgreich aus DB geholt');
+            debugPrint('💾 [ModelRepository] Model erfolgreich aus DB geholt');
             return result;
           }
           // Fallback wenn nicht gefunden (sollte nicht passieren)
-          print('💾 [ModelRepository] Warnung: Model nicht in DB gefunden, gib Original zurück');
+          debugPrint('💾 [ModelRepository] Warnung: Model nicht in DB gefunden, gib Original zurück');
           return model;
         }
         
         // Fallback: Kein ID-Typ erkannt
-        print('💾 [ModelRepository] Unbekannter ID-Typ, gib Original zurück');
+        debugPrint('💾 [ModelRepository] Unbekannter ID-Typ, gib Original zurück');
         return model;
       } catch (e) {
         // Fallback bei Fehler
-        print('💾 [ModelRepository] Fehler beim Lesen aus DB: $e, gib Original zurück');
+        debugPrint('💾 [ModelRepository] Fehler beim Lesen aus DB: $e, gib Original zurück');
         return model;
       }
     }
@@ -94,7 +95,7 @@ abstract class ModelRepository<T> {
   
   /// Findet eine Entität anhand ihrer ID
   Future<T?> findById(String id) async {
-    print('💾 [ModelRepository] FIND BY ID aufgerufen: $id');
+    debugPrint('💾 [ModelRepository] FIND BY ID aufgerufen: $id');
     
     final db = await _connection.database;
     final maps = await db.query(
@@ -104,7 +105,7 @@ abstract class ModelRepository<T> {
       limit: 1,
     );
     
-    print('💾 [ModelRepository] ${maps.length} Einträge gefunden');
+    debugPrint('💾 [ModelRepository] ${maps.length} Einträge gefunden');
     if (maps.isEmpty) return null;
     return fromDatabaseMap(maps.first);
   }
@@ -115,7 +116,7 @@ abstract class ModelRepository<T> {
     int? limit,
     int? offset,
   }) async {
-    print('💾 [ModelRepository] FIND ALL aufgerufen für Tabelle: $tableName');
+    debugPrint('💾 [ModelRepository] FIND ALL aufgerufen für Tabelle: $tableName');
     
     try {
       final db = await _connection.database;
@@ -126,7 +127,7 @@ abstract class ModelRepository<T> {
         offset: offset,
       );
       
-      print('💾 [ModelRepository] ${maps.length} Einträge gefunden');
+      debugPrint('💾 [ModelRepository] ${maps.length} Einträge gefunden');
       
       // Parse jedes Map einzeln und fange Exceptions ab
       final result = <T>[];
@@ -135,16 +136,16 @@ abstract class ModelRepository<T> {
           final model = fromDatabaseMap(maps[i]);
           result.add(model);
         } catch (e) {
-          print('⚠️ [ModelRepository] Fehler beim Parsen von Eintrag $i: $e');
-          print('⚠️ [ModelRepository] Problematische Daten: ${maps[i]}');
+          debugPrint('⚠️ [ModelRepository] Fehler beim Parsen von Eintrag $i: $e');
+          debugPrint('⚠️ [ModelRepository] Problematische Daten: ${maps[i]}');
           // Überspringe fehlerhafte Einträge statt abzubrechen
         }
       }
       
-      print('💾 [ModelRepository] ${result.length} erfolgreich geparste Einträge');
+      debugPrint('💾 [ModelRepository] ${result.length} erfolgreich geparste Einträge');
       return result;
     } catch (e) {
-      print('❌ [ModelRepository] Kritischer Fehler in findAll(): $e');
+      debugPrint('❌ [ModelRepository] Kritischer Fehler in findAll(): $e');
       rethrow;
     }
   }

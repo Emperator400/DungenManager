@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../services/quest_data_service.dart';
 import '../services/uuid_service.dart';
 import '../utils/model_parsing_helper.dart';
@@ -68,7 +69,7 @@ class Quest {
     final now = DateTime.now();
     // Generiere eine negative ID für neue Quests (damit Repository weiß, dass es ein neuer Eintrag ist)
     final tempId = -(UuidService().generateId().hashCode.abs() + 1);
-    print('🆔 [Quest.create] Generierte temporäre ID: $tempId');
+    debugPrint('🆔 [Quest.create] Generierte temporäre ID: $tempId');
     return Quest(
       id: tempId,
       title: title,
@@ -119,7 +120,7 @@ class Quest {
         linkedWikiEntryIds: QuestDataService.parseStringList(map['linked_wiki_entry_ids']),
       );
     } catch (e) {
-      print('Fehler beim Parsen der Quest: $e');
+      debugPrint('Fehler beim Parsen der Quest: $e');
       // Fallback zu minimal gültiger Quest
       return Quest.create(
         title: map['title'] as String? ?? 'Fehlerhafte Quest',
@@ -131,7 +132,7 @@ class Quest {
   /// Factory für Datenbank-Map mit sicherem Parsing (Neu)
   factory Quest.fromDatabaseMap(Map<String, dynamic> map) {
     try {
-      print('📋 [Quest.fromDatabaseMap] Map: $map');
+      debugPrint('📋 [Quest.fromDatabaseMap] Map: $map');
       return Quest(
         id: int.tryParse(map['id']?.toString() ?? '0') ?? 0,
         title: map['title'] as String? ?? '',
@@ -166,7 +167,7 @@ class Quest {
         linkedWikiEntryIds: _deserializeStringList(map['linked_wiki_entry_ids'] as String?),
       );
     } catch (e) {
-      print('Fehler beim Parsen der Quest: $e');
+      debugPrint('Fehler beim Parsen der Quest: $e');
       // Fallback zu minimal gültiger Quest
       return Quest.create(
         title: map['title'] as String? ?? 'Fehlerhafte Quest',
@@ -268,7 +269,7 @@ class Quest {
       
       return result;
     } catch (e) {
-      print('Fehler beim Deserialisieren der Rewards: $e');
+      debugPrint('Fehler beim Deserialisieren der Rewards: $e');
       return [];
     }
   }
@@ -292,7 +293,7 @@ class Quest {
       }).join(',');
       return '[$json]';
     } catch (e) {
-      print('Fehler beim Serialisieren der Rewards: $e');
+      debugPrint('Fehler beim Serialisieren der Rewards: $e');
       return null;
     }
   }

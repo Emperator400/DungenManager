@@ -499,11 +499,11 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
             characterIds.addAll(scene.linkedCharacterIds);
           }
         } catch (e) {
-          print('Fehler beim Laden von Scene $sceneId: $e');
+          debugPrint('Fehler beim Laden von Scene $sceneId: $e');
         }
       }
     } catch (e) {
-      print('Fehler beim Laden der Scene-Charaktere: $e');
+      debugPrint('Fehler beim Laden der Scene-Charaktere: $e');
     }
     
     return characterIds;
@@ -546,7 +546,7 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
         }
       }
     } catch (e) {
-      print('Fehler beim Laden der Charakterdetails: $e');
+      debugPrint('Fehler beim Laden der Charakterdetails: $e');
     }
     
     return result;

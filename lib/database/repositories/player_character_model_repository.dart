@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../core/database_connection.dart';
 import '../../models/player_character.dart';
 import '../../models/inventory_item.dart';
@@ -11,7 +12,7 @@ import 'model_repository.dart';
 /// Es ersetzt das Entity-basierte System.
 class PlayerCharacterModelRepository extends ModelRepository<PlayerCharacter> {
   PlayerCharacterModelRepository(DatabaseConnection connection) : super(connection) {
-    print('PlayerCharacterModelRepository initialisiert');
+    debugPrint('PlayerCharacterModelRepository initialisiert');
   }
   
   @override
@@ -20,18 +21,18 @@ class PlayerCharacterModelRepository extends ModelRepository<PlayerCharacter> {
   @override
   Map<String, dynamic> toDatabaseMap(PlayerCharacter character) {
     final map = character.toDatabaseMap();
-    print('toDatabaseMap aufgerufen für Character: ${character.name}');
-    print('  ID: ${character.id}');
-    print('  Campaign ID: ${character.campaignId}');
-    print('  Map Keys: ${map.keys.join(', ')}');
+    debugPrint('toDatabaseMap aufgerufen für Character: ${character.name}');
+    debugPrint('  ID: ${character.id}');
+    debugPrint('  Campaign ID: ${character.campaignId}');
+    debugPrint('  Map Keys: ${map.keys.join(', ')}');
     return map;
   }
 
   @override
   PlayerCharacter fromDatabaseMap(Map<String, dynamic> map) {
-    print('fromDatabaseMap aufgerufen');
-    print('  ID: ${map['id']}');
-    print('  Name: ${map['name']}');
+    debugPrint('fromDatabaseMap aufgerufen');
+    debugPrint('  ID: ${map['id']}');
+    debugPrint('  Name: ${map['name']}');
     return PlayerCharacter.fromDatabaseMap(map);
   }
 
@@ -326,7 +327,7 @@ class PlayerCharacterModelRepository extends ModelRepository<PlayerCharacter> {
         }
       } catch (e) {
         // Log error but continue with other characters
-        print('Error adding character $characterId to campaign: $e');
+        debugPrint('Error adding character $characterId to campaign: $e');
       }
     }
     
@@ -349,7 +350,7 @@ class PlayerCharacterModelRepository extends ModelRepository<PlayerCharacter> {
           results.add(result);
         }
       } catch (e) {
-        print('Error setting favorite status for character $characterId: $e');
+        debugPrint('Error setting favorite status for character $characterId: $e');
       }
     }
     

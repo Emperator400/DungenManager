@@ -4,6 +4,7 @@
 /// und verhindert Runtime Exceptions bei Datenbank-Operationen.
 library model_parsing_helper;
 
+import 'package:flutter/foundation.dart';
 import '../services/uuid_service.dart';
 
 class ModelParsingHelper {
@@ -14,7 +15,7 @@ class ModelParsingHelper {
       if (value == null) return defaultValue;
       return value as T;
     } catch (e) {
-      print('Warning: Failed to parse $key as $T from map: $e');
+      debugPrint('Warning: Failed to parse $key as $T from map: $e');
       return defaultValue;
     }
   }
@@ -29,7 +30,7 @@ class ModelParsingHelper {
       if (value is String) return int.tryParse(value) ?? defaultValue;
       return defaultValue;
     } catch (e) {
-      print('Warning: Failed to parse $key as int from map: $e');
+      debugPrint('Warning: Failed to parse $key as int from map: $e');
       return defaultValue;
     }
   }
@@ -44,7 +45,7 @@ class ModelParsingHelper {
       if (value is String) return double.tryParse(value) ?? defaultValue;
       return defaultValue;
     } catch (e) {
-      print('Warning: Failed to parse $key as double from map: $e');
+      debugPrint('Warning: Failed to parse $key as double from map: $e');
       return defaultValue;
     }
   }
@@ -62,7 +63,7 @@ class ModelParsingHelper {
       }
       return defaultValue;
     } catch (e) {
-      print('Warning: Failed to parse $key as bool from map: $e');
+      debugPrint('Warning: Failed to parse $key as bool from map: $e');
       return defaultValue;
     }
   }
@@ -74,7 +75,7 @@ class ModelParsingHelper {
       if (value == null) return defaultValue;
       return value.toString();
     } catch (e) {
-      print('Warning: Failed to parse $key as string from map: $e');
+      debugPrint('Warning: Failed to parse $key as string from map: $e');
       return defaultValue;
     }
   }
@@ -87,7 +88,7 @@ class ModelParsingHelper {
       if (value == '') return null;
       return value.toString();
     } catch (e) {
-      print('Warning: Failed to parse $key as nullable string from map: $e');
+      debugPrint('Warning: Failed to parse $key as nullable string from map: $e');
       return defaultValue;
     }
   }
@@ -105,7 +106,7 @@ class ModelParsingHelper {
       }
       return defaultValue;
     } catch (e) {
-      print('Warning: Failed to parse $key as nullable int from map: $e');
+      debugPrint('Warning: Failed to parse $key as nullable int from map: $e');
       return defaultValue;
     }
   }
@@ -137,10 +138,10 @@ class ModelParsingHelper {
         }
       }
       
-      print('Warning: Unknown enum value $stringValue for $key, using default');
+      debugPrint('Warning: Unknown enum value $stringValue for $key, using default');
       return defaultValue;
     } catch (e) {
-      print('Warning: Failed to parse $key as enum from map: $e');
+      debugPrint('Warning: Failed to parse $key as enum from map: $e');
       return defaultValue;
     }
   }
@@ -169,7 +170,7 @@ class ModelParsingHelper {
       
       return defaultValue;
     } catch (e) {
-      print('Warning: Failed to parse $key as DateTime from map: $e');
+      debugPrint('Warning: Failed to parse $key as DateTime from map: $e');
       return defaultValue;
     }
   }
@@ -197,7 +198,7 @@ class ModelParsingHelper {
       
       return defaultValue;
     } catch (e) {
-      print('Warning: Failed to parse $key as nullable DateTime from map: $e');
+      debugPrint('Warning: Failed to parse $key as nullable DateTime from map: $e');
       return defaultValue;
     }
   }
@@ -227,7 +228,7 @@ class ModelParsingHelper {
       
       return defaultValue;
     } catch (e) {
-      print('Warning: Failed to parse $key as Duration from map: $e');
+      debugPrint('Warning: Failed to parse $key as Duration from map: $e');
       return defaultValue;
     }
   }
@@ -252,7 +253,7 @@ class ModelParsingHelper {
       
       return [];
     } catch (e) {
-      print('Warning: Failed to parse $key as string list from map: $e');
+      debugPrint('Warning: Failed to parse $key as string list from map: $e');
       return [];
     }
   }
@@ -270,7 +271,7 @@ class ModelParsingHelper {
   static bool hasRequiredKeys(Map<String, dynamic> map, List<String> requiredKeys) {
     for (final key in requiredKeys) {
       if (!map.containsKey(key) || map[key] == null) {
-        print('Error: Missing required key: $key');
+        debugPrint('Error: Missing required key: $key');
         return false;
       }
     }
@@ -279,6 +280,6 @@ class ModelParsingHelper {
 
   /// Logs parsing errors with context
   static void logParsingError(String modelName, String field, dynamic value, Exception error) {
-    print('Error parsing $modelName.$field with value $value: $error');
+    debugPrint('Error parsing $modelName.$field with value $value: $error');
   }
 }

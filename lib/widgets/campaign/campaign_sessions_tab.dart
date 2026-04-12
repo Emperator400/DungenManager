@@ -40,7 +40,7 @@ class CampaignSessionsTabState extends State<CampaignSessionsTab> {
       // In einer echten Implementierung würde dies die Datenbank abfragen
       return <Session>[];
     } catch (e) {
-      print('Fehler beim Laden der Sessions: $e');
+      debugPrint('Fehler beim Laden der Sessions: $e');
       return <Session>[];
     }
   }

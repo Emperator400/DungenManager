@@ -73,7 +73,7 @@ class _LiveNotesWidgetState extends State<LiveNotesWidget> {
       _currentSession = updatedSession;
       _notesSaveStatus = SaveStatus.saved;
     });
-    print("Live notes auto-saved!");
+    debugPrint("Live notes auto-saved!");
   }
 
   Widget _buildSaveStatusIndicator() {
