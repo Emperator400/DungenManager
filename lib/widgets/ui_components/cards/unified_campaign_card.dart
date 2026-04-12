@@ -58,7 +58,7 @@ class UnifiedCampaignCard extends UnifiedCardBase {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: UnifiedCardTheme.getIconBackgroundColor('campaign').withOpacity(0.3),
+                        color: UnifiedCardTheme.getIconBackgroundColor('campaign').withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),

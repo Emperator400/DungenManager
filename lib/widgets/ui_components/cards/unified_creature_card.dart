@@ -127,7 +127,7 @@ class UnifiedCreatureCard extends UnifiedCardBase {
             subtitle: _buildSubtitle(),
             leadingIcon: _getSourceIcon(creature.sourceType),
             iconColor: _getSourceColor(creature.sourceType),
-            iconBackgroundColor: _getSourceColor(creature.sourceType).withOpacity(0.2),
+            iconBackgroundColor: _getSourceColor(creature.sourceType).withValues(alpha: 0.2),
             additionalInfo: [
               if (creature.sourceType == 'official')
                 UnifiedInfoChip.tag(

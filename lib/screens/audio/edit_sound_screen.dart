@@ -343,7 +343,7 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
       prefixIcon: Icon(icon, color: DnDTheme.mysticalPurple),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(color: DnDTheme.mysticalPurple.withOpacity(0.3)),
+        borderSide: BorderSide(color: DnDTheme.mysticalPurple.withValues(alpha: 0.3)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8.0),

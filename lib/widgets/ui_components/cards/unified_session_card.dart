@@ -223,11 +223,11 @@ class UnifiedSessionCard extends UnifiedCardBase {
                   width: 64,
                   height: 64,
                   decoration: BoxDecoration(
-                    color: Colors.amber.withOpacity(0.1),
+                    color: Colors.amber.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.amber.withOpacity(0.3),
+                        color: Colors.amber.withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -357,10 +357,10 @@ class UnifiedSessionCard extends UnifiedCardBase {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.amber.withOpacity(0.1),
+        color: Colors.amber.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.amber.withOpacity(0.3),
+          color: Colors.amber.withValues(alpha: 0.3),
           width: 1,
         ),
       ),

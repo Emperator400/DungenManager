@@ -219,9 +219,9 @@ class CharacterEditorHelpers {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -230,7 +230,7 @@ class CharacterEditorHelpers {
             label,
             style: TextStyle(
               fontSize: 10,
-              color: color.withOpacity(0.8),
+              color: color.withValues(alpha: 0.8),
               fontWeight: FontWeight.w500,
             ),
           ),

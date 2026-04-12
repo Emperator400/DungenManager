@@ -27,7 +27,7 @@ abstract class FilterSectionBase extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -114,8 +114,8 @@ abstract class FilterSectionBase extends StatelessWidget {
       selected: isSelected,
       onSelected: (_) => onTap(),
       backgroundColor: Colors.grey[200],
-      selectedColor: selectedColor?.withOpacity(0.2) ?? 
-                  Theme.of(context).primaryColor.withOpacity(0.2),
+      selectedColor: selectedColor?.withValues(alpha: 0.2) ?? 
+                  Theme.of(context).primaryColor.withValues(alpha: 0.2),
       checkmarkColor: checkmarkColor ?? Theme.of(context).primaryColor,
       labelStyle: TextStyle(
         color: isSelected 

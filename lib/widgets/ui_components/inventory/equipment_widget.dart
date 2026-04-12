@@ -314,7 +314,7 @@ class EquipmentWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(DnDTheme.sm),
       decoration: BoxDecoration(
-        color: DnDTheme.slateGrey.withOpacity(0.5),
+        color: DnDTheme.slateGrey.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
       ),
       child: Row(
@@ -368,7 +368,7 @@ class EquipmentWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(DnDTheme.sm),
       decoration: BoxDecoration(
-        color: DnDTheme.slateGrey.withOpacity(0.3),
+        color: DnDTheme.slateGrey.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
       ),
       child: Text(
@@ -417,7 +417,7 @@ class EquipmentWidget extends StatelessWidget {
               Icon(
                 Icons.inventory_2_outlined,
                 size: 48,
-                color: DnDTheme.mysticalPurple.withOpacity(0.6),
+                color: DnDTheme.mysticalPurple.withValues(alpha: 0.6),
               ),
               const SizedBox(height: DnDTheme.md),
               Text(

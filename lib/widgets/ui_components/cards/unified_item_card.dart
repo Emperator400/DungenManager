@@ -95,7 +95,7 @@ class UnifiedItemCard extends StatelessWidget {
           color: ItemColorHelper.getItemTypeColor(item.itemType),
           borderRadius: BorderRadius.circular(isCompact ? 6 : 8),
           border: Border.all(
-            color: rarityColor.withOpacity(0.5),
+            color: rarityColor.withValues(alpha: 0.5),
             width: 1,
           ),
         ),
@@ -119,7 +119,7 @@ class UnifiedItemCard extends StatelessWidget {
                         child: CircularProgressIndicator(
                           strokeWidth: 1.5,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white.withOpacity(0.7),
+                            Colors.white.withValues(alpha: 0.7),
                           ),
                         ),
                       ),
@@ -150,7 +150,7 @@ class UnifiedItemCard extends StatelessWidget {
         Text(
           ItemColorHelper.getItemTypeDisplayName(item.itemType),
           style: DnDTheme.caption.copyWith(
-            color: DnDTheme.mysticalPurple.withOpacity(0.7),
+            color: DnDTheme.mysticalPurple.withValues(alpha: 0.7),
             fontSize: isCompact ? 6 : 7,
             fontWeight: FontWeight.w500,
           ),
@@ -169,7 +169,7 @@ class UnifiedItemCard extends StatelessWidget {
             Text(
               '${item.weight} lbs',
               style: DnDTheme.caption.copyWith(
-                color: DnDTheme.stoneGrey.withOpacity(0.8),
+                color: DnDTheme.stoneGrey.withValues(alpha: 0.8),
                 fontSize: isCompact ? 5 : 6,
               ),
             ),
@@ -183,7 +183,7 @@ class UnifiedItemCard extends StatelessWidget {
                   vertical: isCompact ? 0.25 : 0.5
                 ),
                 decoration: BoxDecoration(
-                  color: DnDTheme.emeraldGreen.withOpacity(0.8),
+                  color: DnDTheme.emeraldGreen.withValues(alpha: 0.8),
                   borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
                   border: Border.all(
                     color: DnDTheme.ancientGold,
@@ -218,7 +218,7 @@ class UnifiedItemCard extends StatelessWidget {
   /// Decoration für die Karte
   BoxDecoration _buildDecoration(Color rarityColor) {
     return BoxDecoration(
-      color: DnDTheme.slateGrey.withOpacity(0.3),
+      color: DnDTheme.slateGrey.withValues(alpha: 0.3),
       borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
       border: Border.all(
         color: isSelected ? DnDTheme.ancientGold : rarityColor,
@@ -227,13 +227,13 @@ class UnifiedItemCard extends StatelessWidget {
       boxShadow: [
         if (isSelected)
           BoxShadow(
-            color: DnDTheme.ancientGold.withOpacity(0.5),
+            color: DnDTheme.ancientGold.withValues(alpha: 0.5),
             blurRadius: 12,
             spreadRadius: 2,
           )
         else
           BoxShadow(
-            color: rarityColor.withOpacity(0.3),
+            color: rarityColor.withValues(alpha: 0.3),
             blurRadius: 8,
             spreadRadius: 1,
           ),
@@ -296,11 +296,11 @@ class UnifiedItemListTile extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: isSelected 
-            ? DnDTheme.ancientGold.withOpacity(0.1)
-            : DnDTheme.slateGrey.withOpacity(0.2),
+            ? DnDTheme.ancientGold.withValues(alpha: 0.1)
+            : DnDTheme.slateGrey.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
         border: Border.all(
-          color: isSelected ? DnDTheme.ancientGold : rarityColor.withOpacity(0.3),
+          color: isSelected ? DnDTheme.ancientGold : rarityColor.withValues(alpha: 0.3),
           width: isSelected ? 2 : 1,
         ),
       ),
@@ -313,7 +313,7 @@ class UnifiedItemListTile extends StatelessWidget {
             color: ItemColorHelper.getItemTypeColor(item.itemType),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: rarityColor.withOpacity(0.5),
+              color: rarityColor.withValues(alpha: 0.5),
             ),
           ),
           child: Icon(
@@ -335,7 +335,7 @@ class UnifiedItemListTile extends StatelessWidget {
             Text(
               ItemColorHelper.getItemTypeDisplayName(item.itemType),
               style: DnDTheme.caption.copyWith(
-                color: DnDTheme.mysticalPurple.withOpacity(0.7),
+                color: DnDTheme.mysticalPurple.withValues(alpha: 0.7),
               ),
             ),
             if (item.description != null && item.description!.isNotEmpty)

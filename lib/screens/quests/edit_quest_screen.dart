@@ -112,8 +112,8 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              DnDTheme.dungeonBlack.withOpacity(0.95),
-              DnDTheme.dungeonBlack.withOpacity(0.85),
+              DnDTheme.dungeonBlack.withValues(alpha: 0.95),
+              DnDTheme.dungeonBlack.withValues(alpha: 0.85),
             ],
           ),
         ),
@@ -143,19 +143,19 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            DnDTheme.dungeonBlack.withOpacity(0.95),
-            DnDTheme.dungeonBlack.withOpacity(0.85),
+            DnDTheme.dungeonBlack.withValues(alpha: 0.95),
+            DnDTheme.dungeonBlack.withValues(alpha: 0.85),
           ],
         ),
         border: Border(
           bottom: BorderSide(
-            color: DnDTheme.ancientGold.withOpacity(0.3),
+            color: DnDTheme.ancientGold.withValues(alpha: 0.3),
             width: 2,
           ),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.4),
+            color: Colors.black.withValues(alpha: 0.4),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -165,7 +165,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
@@ -197,7 +197,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
                 Text(
                   viewModel.quest != null ? 'Details ändern' : 'Erstelle eine neue Quest',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withValues(alpha: 0.8),
                     fontSize: 14,
                   ),
                 ),
@@ -210,7 +210,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
               decoration: BoxDecoration(
                 color: DnDTheme.ancientGold,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.3)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -287,18 +287,18 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            DnDTheme.dungeonBlack.withOpacity(0.85),
-            DnDTheme.dungeonBlack.withOpacity(0.75),
+            DnDTheme.dungeonBlack.withValues(alpha: 0.85),
+            DnDTheme.dungeonBlack.withValues(alpha: 0.75),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: DnDTheme.arcaneBlue.withOpacity(0.5),
+          color: DnDTheme.arcaneBlue.withValues(alpha: 0.5),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: DnDTheme.arcaneBlue.withOpacity(0.3),
+            color: DnDTheme.arcaneBlue.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -364,18 +364,18 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            DnDTheme.dungeonBlack.withOpacity(0.85),
-            DnDTheme.dungeonBlack.withOpacity(0.75),
+            DnDTheme.dungeonBlack.withValues(alpha: 0.85),
+            DnDTheme.dungeonBlack.withValues(alpha: 0.75),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: DnDTheme.arcaneBlue.withOpacity(0.5),
+          color: DnDTheme.arcaneBlue.withValues(alpha: 0.5),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: DnDTheme.arcaneBlue.withOpacity(0.2),
+            color: DnDTheme.arcaneBlue.withValues(alpha: 0.2),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -475,18 +475,18 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            DnDTheme.dungeonBlack.withOpacity(0.85),
-            DnDTheme.dungeonBlack.withOpacity(0.75),
+            DnDTheme.dungeonBlack.withValues(alpha: 0.85),
+            DnDTheme.dungeonBlack.withValues(alpha: 0.75),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: DnDTheme.arcaneBlue.withOpacity(0.5),
+          color: DnDTheme.arcaneBlue.withValues(alpha: 0.5),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: DnDTheme.arcaneBlue.withOpacity(0.3),
+            color: DnDTheme.arcaneBlue.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -523,13 +523,13 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    DnDTheme.dungeonBlack.withOpacity(0.1),
-                    DnDTheme.dungeonBlack.withOpacity(0.15),
+                    DnDTheme.dungeonBlack.withValues(alpha: 0.1),
+                    DnDTheme.dungeonBlack.withValues(alpha: 0.15),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: DnDTheme.arcaneBlue.withOpacity(0.4),
+                  color: DnDTheme.arcaneBlue.withValues(alpha: 0.4),
                   width: 2,
                   style: BorderStyle.solid,
                 ),
@@ -539,7 +539,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
                   Icon(
                     Icons.card_giftcard_outlined,
                     size: 48,
-                    color: DnDTheme.arcaneBlue.withOpacity(0.7),
+                    color: DnDTheme.arcaneBlue.withValues(alpha: 0.7),
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -579,13 +579,13 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            DnDTheme.dungeonBlack.withOpacity(0.03),
-            DnDTheme.dungeonBlack.withOpacity(0.06),
+            DnDTheme.dungeonBlack.withValues(alpha: 0.03),
+            DnDTheme.dungeonBlack.withValues(alpha: 0.06),
           ],
         ),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: DnDTheme.arcaneBlue.withOpacity(0.3),
+          color: DnDTheme.arcaneBlue.withValues(alpha: 0.3),
           width: 1.5,
         ),
       ),
@@ -642,7 +642,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
           ),
           Container(
             decoration: BoxDecoration(
-              color: DnDTheme.errorRed.withOpacity(0.1),
+              color: DnDTheme.errorRed.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: IconButton(
@@ -664,9 +664,9 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -717,7 +717,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
         hintText: hint,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: DnDTheme.arcaneBlue.withOpacity(0.4)),
+          borderSide: BorderSide(color: DnDTheme.arcaneBlue.withValues(alpha: 0.4)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -732,7 +732,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
           borderSide: const BorderSide(color: DnDTheme.errorRed, width: 2),
         ),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.05),
+        fillColor: Colors.white.withValues(alpha: 0.05),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         floatingLabelBehavior: FloatingLabelBehavior.auto,
       ),
@@ -755,14 +755,14 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
         labelText: label,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: DnDTheme.arcaneBlue.withOpacity(0.4)),
+          borderSide: BorderSide(color: DnDTheme.arcaneBlue.withValues(alpha: 0.4)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: DnDTheme.arcaneBlue, width: 2),
         ),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.05),
+        fillColor: Colors.white.withValues(alpha: 0.05),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
       items: items.map((item) {
@@ -786,8 +786,8 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  DnDTheme.errorRed.withOpacity(0.15),
-                  DnDTheme.errorRed.withOpacity(0.1),
+                  DnDTheme.errorRed.withValues(alpha: 0.15),
+                  DnDTheme.errorRed.withValues(alpha: 0.1),
                 ],
               ),
               border: Border.all(color: DnDTheme.errorRed, width: 2),
@@ -822,7 +822,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   elevation: 4,
-                  shadowColor: DnDTheme.successGreen.withOpacity(0.4),
+                  shadowColor: DnDTheme.successGreen.withValues(alpha: 0.4),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1000,7 +1000,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white.withOpacity(0.98),
+        backgroundColor: Colors.white.withValues(alpha: 0.98),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
@@ -1116,7 +1116,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white.withOpacity(0.98),
+        backgroundColor: Colors.white.withValues(alpha: 0.98),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
@@ -1125,7 +1125,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: DnDTheme.errorRed.withOpacity(0.1),
+                color: DnDTheme.errorRed.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(Icons.delete_outline, color: DnDTheme.errorRed),
@@ -1211,7 +1211,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white.withOpacity(0.98),
+        backgroundColor: Colors.white.withValues(alpha: 0.98),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
@@ -1257,7 +1257,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white.withOpacity(0.98),
+        backgroundColor: Colors.white.withValues(alpha: 0.98),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
@@ -1266,7 +1266,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
             Container(
               padding:  EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: DnDTheme.errorRed.withOpacity(0.1),
+                color: DnDTheme.errorRed.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(Icons.dangerous, color: DnDTheme.errorRed),

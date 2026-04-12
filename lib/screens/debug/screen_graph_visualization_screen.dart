@@ -84,7 +84,7 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
           Text(
             '${_screens.length} Screens mit Navigation-Verbindungen',
             style: TextStyle(
-              color: DnDTheme.ancientGold.withOpacity(0.7),
+              color: DnDTheme.ancientGold.withValues(alpha: 0.7),
               fontSize: 12,
             ),
           ),
@@ -161,10 +161,10 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
     return Container(
       padding: EdgeInsets.all(DnDTheme.md),
       decoration: BoxDecoration(
-        color: DnDTheme.stoneGrey.withOpacity(0.5),
+        color: DnDTheme.stoneGrey.withValues(alpha: 0.5),
         border: Border(
           bottom: BorderSide(
-            color: DnDTheme.mysticalPurple.withOpacity(0.3),
+            color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
             width: 1,
           ),
         ),
@@ -223,7 +223,7 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
         }
       },
       selectedColor: DnDTheme.mysticalPurple,
-      backgroundColor: DnDTheme.stoneGrey.withOpacity(0.3),
+      backgroundColor: DnDTheme.stoneGrey.withValues(alpha: 0.3),
       labelStyle: TextStyle(
         color: isSelected ? DnDTheme.dungeonBlack : DnDTheme.ancientGold,
       ),
@@ -255,7 +255,7 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
       child: Container(
         width: double.infinity,
         height: double.infinity,
-        color: DnDTheme.dungeonBlack.withOpacity(0.3),
+        color: DnDTheme.dungeonBlack.withValues(alpha: 0.3),
       ),
     );
   }
@@ -267,7 +267,7 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
     return Container(
       width: 350,
       decoration: BoxDecoration(
-        color: DnDTheme.stoneGrey.withOpacity(0.9),
+        color: DnDTheme.stoneGrey.withValues(alpha: 0.9),
         border: Border(
           left: BorderSide(
             color: DnDTheme.mysticalPurple,
@@ -302,7 +302,7 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
               ),
             ],
           ),
-          Divider(color: DnDTheme.mysticalPurple.withOpacity(0.3)),
+          Divider(color: DnDTheme.mysticalPurple.withValues(alpha: 0.3)),
           SizedBox(height: DnDTheme.md),
           _buildDetailRow('Dateiname', screen.fileName),
           SizedBox(height: DnDTheme.sm),
@@ -312,10 +312,10 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
             Container(
               padding: EdgeInsets.all(DnDTheme.sm),
               decoration: BoxDecoration(
-                color: DnDTheme.warningOrange.withOpacity(0.2),
+                color: DnDTheme.warningOrange.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: DnDTheme.warningOrange.withOpacity(0.5),
+                  color: DnDTheme.warningOrange.withValues(alpha: 0.5),
                   width: 1,
                 ),
               ),
@@ -358,7 +358,7 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
           child: Text(
             label + ':',
             style: TextStyle(
-              color: DnDTheme.ancientGold.withOpacity(0.7),
+              color: DnDTheme.ancientGold.withValues(alpha: 0.7),
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -378,10 +378,10 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
       margin: EdgeInsets.only(bottom: DnDTheme.sm),
       padding: EdgeInsets.all(DnDTheme.sm),
       decoration: BoxDecoration(
-        color: _getConnectionColor(connection.type).withOpacity(0.1),
+        color: _getConnectionColor(connection.type).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: _getConnectionColor(connection.type).withOpacity(0.5),
+          color: _getConnectionColor(connection.type).withValues(alpha: 0.5),
           width: 1,
         ),
       ),
@@ -409,7 +409,7 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
             Text(
               'Trigger: ${connection.triggerAction}',
               style: TextStyle(
-                color: DnDTheme.ancientGold.withOpacity(0.7),
+                color: DnDTheme.ancientGold.withValues(alpha: 0.7),
                 fontSize: 12,
               ),
             ),
@@ -419,7 +419,7 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
             Text(
               connection.description!,
               style: TextStyle(
-                color: DnDTheme.ancientGold.withOpacity(0.5),
+                color: DnDTheme.ancientGold.withValues(alpha: 0.5),
                 fontSize: 11,
                 fontStyle: FontStyle.italic,
               ),
@@ -434,10 +434,10 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
     return Container(
       padding: EdgeInsets.all(DnDTheme.md),
       decoration: BoxDecoration(
-        color: DnDTheme.stoneGrey.withOpacity(0.3),
+        color: DnDTheme.stoneGrey.withValues(alpha: 0.3),
         border: Border(
           top: BorderSide(
-            color: DnDTheme.mysticalPurple.withOpacity(0.3),
+            color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
             width: 1,
           ),
         ),
@@ -631,7 +631,7 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
                 ),
                 subtitle: Text(
                   '${screen.fileName} • ${screen.category}',
-                  style: TextStyle(color: DnDTheme.ancientGold.withOpacity(0.7)),
+                  style: TextStyle(color: DnDTheme.ancientGold.withValues(alpha: 0.7)),
                 ),
                 trailing: screen.requiresParameters
                     ? Icon(Icons.warning, color: DnDTheme.warningOrange, size: 20)
@@ -906,7 +906,7 @@ class _GraphPainter extends CustomPainter {
       
       // Kreis zeichnen
       final paint = Paint()
-        ..color = color.withOpacity(0.3)
+        ..color = color.withValues(alpha: 0.3)
         ..style = PaintingStyle.fill;
       
       canvas.drawCircle(position, radius, paint);
@@ -965,7 +965,7 @@ class _GraphPainter extends CustomPainter {
 
     // Hintergrund für Text
     final bgPaint = Paint()
-      ..color = Colors.black.withOpacity(0.7)
+      ..color = Colors.black.withValues(alpha: 0.7)
       ..style = PaintingStyle.fill;
     
     final bgRect = Rect.fromLTWH(

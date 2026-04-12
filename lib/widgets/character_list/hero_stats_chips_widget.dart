@@ -56,9 +56,9 @@ class HeroStatsChipsWidget extends StatelessWidget {
     return Container(
       height: chipHeight,
       decoration: BoxDecoration(
-        color: levelColor.withOpacity(0.1),
+        color: levelColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: levelColor.withOpacity(0.3), width: 1),
+        border: Border.all(color: levelColor.withValues(alpha: 0.3), width: 1),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
@@ -92,9 +92,9 @@ class HeroStatsChipsWidget extends StatelessWidget {
     return Container(
       height: chipHeight,
       decoration: BoxDecoration(
-        color: hpColor.withOpacity(0.1),
+        color: hpColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: hpColor.withOpacity(0.3), width: 1),
+        border: Border.all(color: hpColor.withValues(alpha: 0.3), width: 1),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
@@ -127,9 +127,9 @@ class HeroStatsChipsWidget extends StatelessWidget {
     return Container(
       height: chipHeight,
       decoration: BoxDecoration(
-        color: acColor.withOpacity(0.1),
+        color: acColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: acColor.withOpacity(0.3), width: 1),
+        border: Border.all(color: acColor.withValues(alpha: 0.3), width: 1),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
@@ -165,9 +165,9 @@ class HeroStatsChipsWidget extends StatelessWidget {
     return Container(
       height: chipHeight,
       decoration: BoxDecoration(
-        color: initiativeColor.withOpacity(0.1),
+        color: initiativeColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: initiativeColor.withOpacity(0.3), width: 1),
+        border: Border.all(color: initiativeColor.withValues(alpha: 0.3), width: 1),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),

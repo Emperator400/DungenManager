@@ -24,15 +24,15 @@ class UnifiedCardTheme {
 
   /// Icon-Hintergrundfarben nach Typ
   static Map<String, Color> get iconBackgroundColors => {
-        'campaign': const Color(0xFF3A5A40).withOpacity(0.2),
-        'quest': const Color(0xFF588157).withOpacity(0.2),
-        'hero': const Color(0xFF4A6741).withOpacity(0.2),
-        'item': const Color(0xFF6B8E23).withOpacity(0.2),
-        'sound': const Color(0xFF4682B4).withOpacity(0.2),
-        'wiki': const Color(0xFF9370DB).withOpacity(0.2),
-        'session': const Color(0xFF8B4513).withOpacity(0.2),
-        'creature': const Color(0xFFCD5C5C).withOpacity(0.2),
-        'default': Colors.grey.withOpacity(0.2),
+        'campaign': const Color(0xFF3A5A40).withValues(alpha: 0.2),
+        'quest': const Color(0xFF588157).withValues(alpha: 0.2),
+        'hero': const Color(0xFF4A6741).withValues(alpha: 0.2),
+        'item': const Color(0xFF6B8E23).withValues(alpha: 0.2),
+        'sound': const Color(0xFF4682B4).withValues(alpha: 0.2),
+        'wiki': const Color(0xFF9370DB).withValues(alpha: 0.2),
+        'session': const Color(0xFF8B4513).withValues(alpha: 0.2),
+        'creature': const Color(0xFFCD5C5C).withValues(alpha: 0.2),
+        'default': Colors.grey.withValues(alpha: 0.2),
       };
 
   /// Icon-Farben nach Typ

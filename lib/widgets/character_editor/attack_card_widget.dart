@@ -132,9 +132,9 @@ class AttackCardWidget extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.2),
+                          color: Colors.green.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.green.withOpacity(0.5)),
+                          border: Border.all(color: Colors.green.withValues(alpha: 0.5)),
                         ),
                         child: const Text(
                           'Proficient',
@@ -181,9 +181,9 @@ class AttackCardWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -202,7 +202,7 @@ class AttackCardWidget extends StatelessWidget {
                 label,
                 style: TextStyle(
                   fontSize: 11,
-                  color: color.withOpacity(0.8),
+                  color: color.withValues(alpha: 0.8),
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -272,7 +272,7 @@ class CompactAttackCardWidget extends StatelessWidget {
         dense: true,
         leading: CircleAvatar(
           radius: 16,
-          backgroundColor: _getAttackBonusColor(attack.attackBonus).withOpacity(0.2),
+          backgroundColor: _getAttackBonusColor(attack.attackBonus).withValues(alpha: 0.2),
           child: Text(
             attack.formattedAttackBonus,
             style: TextStyle(

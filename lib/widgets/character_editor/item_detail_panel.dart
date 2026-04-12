@@ -36,7 +36,7 @@ class ItemDetailPanel extends StatelessWidget {
     return GestureDetector(
       onTap: onClose,
       child: Container(
-      color: DnDTheme.dungeonBlack.withOpacity(0.8),
+      color: DnDTheme.dungeonBlack.withValues(alpha: 0.8),
         child: Row(
           children: [
             const Expanded(child: SizedBox.shrink()),
@@ -60,7 +60,7 @@ class ItemDetailPanel extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: DnDTheme.dungeonBlack.withOpacity(0.5),
+              color: DnDTheme.dungeonBlack.withValues(alpha: 0.5),
               blurRadius: 10,
               offset: const Offset(-5, 0),
             ),

@@ -85,7 +85,7 @@ class ItemColorHelper {
   // D&D Rarity Rahmenfarben (neues System)
   static Color getRarityBorderColor(String rarity) {
     final baseColor = getRarityColor(rarity);
-    return baseColor.withOpacity(0.7);
+    return baseColor.withValues(alpha: 0.7);
   }
 
   // D&D Haltbarkeitsfarbe mit Fantasy-Farben
@@ -105,7 +105,7 @@ class ItemColorHelper {
     final intensity = _getGlowIntensity(rarity);
     
     return BoxShadow(
-      color: color.withOpacity(intensity),
+      color: color.withValues(alpha: intensity),
       blurRadius: 8.0,
       spreadRadius: intensity > 0.3 ? 2.0 : 1.0,
     );
@@ -165,7 +165,7 @@ class ItemColorHelper {
     final glow = getItemGlow(itemType, rarity);
     
     return BoxDecoration(
-      color: baseColor.withOpacity(0.1),
+      color: baseColor.withValues(alpha: 0.1),
       borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
       border: Border.all(
         color: isSelected ? rarityColor : borderColor,
@@ -188,7 +188,7 @@ class ItemColorHelper {
       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
       shadows: isSelected ? [
         Shadow(
-          color: rarityColor.withOpacity(0.5),
+          color: rarityColor.withValues(alpha: 0.5),
           blurRadius: 4,
           offset: const Offset(0, 2),
         ),

@@ -203,7 +203,7 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
                                     activeTrackColor: DnDTheme.mysticalPurple,
                                     inactiveTrackColor: Colors.grey.shade300,
                                     thumbColor: DnDTheme.mysticalPurple,
-                                    overlayColor: DnDTheme.mysticalPurple.withOpacity(0.2),
+                                    overlayColor: DnDTheme.mysticalPurple.withValues(alpha: 0.2),
                                   ),
                                   child: Slider(
                                     value: _inGameTimeInMinutes.toDouble(),
@@ -270,7 +270,7 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
                                       decoration: BoxDecoration(
                                         color: DnDTheme.slateGrey,
                                         borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(color: DnDTheme.mysticalPurple.withOpacity(0.3)),
+                                        border: Border.all(color: DnDTheme.mysticalPurple.withValues(alpha: 0.3)),
                                       ),
                                       child: Row(
                                         children: [
@@ -400,7 +400,7 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
       prefixIcon: Icon(icon, color: DnDTheme.mysticalPurple),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(color: DnDTheme.mysticalPurple.withOpacity(0.3)),
+        borderSide: BorderSide(color: DnDTheme.mysticalPurple.withValues(alpha: 0.3)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8.0),

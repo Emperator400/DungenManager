@@ -47,7 +47,7 @@ class SkillRowWidget extends StatelessWidget {
                     color: isProficient ? abilityColors[skill.ability]! : Colors.grey[300]!,
                     width: 2,
                   ),
-                  color: isProficient ? abilityColors[skill.ability]!.withOpacity(0.2) : Colors.transparent,
+                  color: isProficient ? abilityColors[skill.ability]!.withValues(alpha: 0.2) : Colors.transparent,
                 ),
                 child: isProficient
                     ? Icon(
@@ -87,10 +87,10 @@ class SkillRowWidget extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: totalBonus >= 0 ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                  color: totalBonus >= 0 ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: totalBonus >= 0 ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3),
+                    color: totalBonus >= 0 ? Colors.green.withValues(alpha: 0.3) : Colors.red.withValues(alpha: 0.3),
                   ),
                 ),
                 child: Text(

@@ -90,7 +90,7 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
                       Icon(
                         Icons.people_outline,
                         size: 64,
-                        color: DnDTheme.mysticalPurple.withOpacity(0.6),
+                        color: DnDTheme.mysticalPurple.withValues(alpha: 0.6),
                       ),
                       const SizedBox(height: 16),
                       Text(
@@ -194,14 +194,14 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                borderSide: BorderSide(color: DnDTheme.mysticalPurple.withOpacity(0.5)),
+                borderSide: BorderSide(color: DnDTheme.mysticalPurple.withValues(alpha: 0.5)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
                 borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
               ),
               filled: true,
-              fillColor: DnDTheme.slateGrey.withOpacity(0.3),
+              fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
             ),
             style: DnDTheme.bodyText1.copyWith(color: Colors.white),
             onChanged: (value) {
@@ -235,7 +235,7 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
                   });
                   _refreshPcList();
                 },
-                backgroundColor: DnDTheme.slateGrey.withOpacity(0.3),
+                backgroundColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
                 selectedColor: DnDTheme.ancientGold,
                 checkmarkColor: Colors.white,
                 avatar: _showFavoritesOnly 
@@ -251,7 +251,7 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
                     border: Border.all(
-                      color: DnDTheme.mysticalPurple.withOpacity(0.5),
+                      color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
                     ),
                   ),
                   child: DropdownButtonFormField<SortOption>(

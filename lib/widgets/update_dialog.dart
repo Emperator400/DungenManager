@@ -158,7 +158,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: DnDTheme.errorRed.withOpacity(0.2),
+                color: DnDTheme.errorRed.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -181,7 +181,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: DnDTheme.emeraldGreen.withOpacity(0.2),
+                color: DnDTheme.emeraldGreen.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Row(
@@ -226,7 +226,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
-                                color: DnDTheme.arcaneBlue.withOpacity(0.3),
+                                color: DnDTheme.arcaneBlue.withValues(alpha: 0.3),
                                 borderRadius: BorderRadius.circular(4),
                                 border: Border.all(color: DnDTheme.arcaneBlue),
                               ),
@@ -325,7 +325,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: DnDTheme.arcaneBlue.withOpacity(0.2),
+        color: DnDTheme.arcaneBlue.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -396,7 +396,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
           onPressed: null,
           child: Text(
             'Bitte warten...',
-            style: TextStyle(color: DnDTheme.charcoalGrey.withOpacity(0.5)),
+            style: TextStyle(color: DnDTheme.charcoalGrey.withValues(alpha: 0.5)),
           ),
         ),
       );

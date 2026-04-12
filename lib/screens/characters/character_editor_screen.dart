@@ -169,7 +169,7 @@ class _UnifiedCharacterEditorScreenState extends State<UnifiedCharacterEditorScr
         bottom: TabBar(
           controller: _tabController,
           labelColor: DnDTheme.ancientGold,
-          unselectedLabelColor: DnDTheme.mysticalPurple.withOpacity(0.7),
+          unselectedLabelColor: DnDTheme.mysticalPurple.withValues(alpha: 0.7),
           indicatorColor: DnDTheme.ancientGold,
           indicatorWeight: 3,
           tabs: _tabManager.getTabs(),

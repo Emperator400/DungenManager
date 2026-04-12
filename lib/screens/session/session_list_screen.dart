@@ -155,7 +155,7 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
                         : null,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12.0),
-                      borderSide: BorderSide(color: DnDTheme.mysticalPurple.withOpacity(0.3)),
+                      borderSide: BorderSide(color: DnDTheme.mysticalPurple.withValues(alpha: 0.3)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12.0),
@@ -268,7 +268,7 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
                   Container(
                     padding: const EdgeInsets.all(12.0),
                     decoration: BoxDecoration(
-                      color: DnDTheme.mysticalPurple.withOpacity(0.1),
+                      color: DnDTheme.mysticalPurple.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8.0),
                     ),
                     child: Icon(
@@ -408,10 +408,10 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
             return Container(
               padding: const EdgeInsets.all(8.0),
               decoration: BoxDecoration(
-                color: DnDTheme.mysticalPurple.withOpacity(0.1),
+                color: DnDTheme.mysticalPurple.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(6.0),
                 border: Border.all(
-                  color: DnDTheme.mysticalPurple.withOpacity(0.3),
+                  color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),

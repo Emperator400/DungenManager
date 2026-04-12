@@ -43,14 +43,14 @@ class ItemCardWidget extends StatelessWidget {
             // Mystischer Schatten für selected Items
             if (isSelected)
               BoxShadow(
-                color: DnDTheme.ancientGold.withOpacity(0.5),
+                color: DnDTheme.ancientGold.withValues(alpha: 0.5),
                 blurRadius: 12,
                 spreadRadius: 2,
               )
             else
               // Standard mystical shadow
               BoxShadow(
-                color: rarityColor.withOpacity(0.3),
+                color: rarityColor.withValues(alpha: 0.3),
                 blurRadius: 8,
                 spreadRadius: 1,
               ),
@@ -95,7 +95,7 @@ class ItemCardWidget extends StatelessWidget {
                                   child: CircularProgressIndicator(
                                     strokeWidth: 1.5,
                                     valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white.withOpacity(0.7),
+                                      Colors.white.withValues(alpha: 0.7),
                                     ),
                                   ),
                                 ),
@@ -139,7 +139,7 @@ class ItemCardWidget extends StatelessWidget {
                   Text(
                     ItemColorHelper.getItemTypeDisplayName(item.itemType),
                     style: DnDTheme.caption.copyWith(
-                      color: DnDTheme.mysticalPurple.withOpacity(0.7),
+                      color: DnDTheme.mysticalPurple.withValues(alpha: 0.7),
                       fontSize: 7,
                       fontWeight: FontWeight.w500,
                     ),
@@ -157,7 +157,7 @@ class ItemCardWidget extends StatelessWidget {
                       Text(
                         '${item.weight} lbs',
                         style: DnDTheme.caption.copyWith(
-                          color: DnDTheme.stoneGrey.withOpacity(0.8),
+                          color: DnDTheme.stoneGrey.withValues(alpha: 0.8),
                           fontSize: 6,
                         ),
                       ),
@@ -168,7 +168,7 @@ class ItemCardWidget extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 0.5),
                             decoration: BoxDecoration(
-                              color: DnDTheme.emeraldGreen.withOpacity(0.8),
+                              color: DnDTheme.emeraldGreen.withValues(alpha: 0.8),
                               borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
                               border: Border.all(
                                 color: DnDTheme.ancientGold,
@@ -243,12 +243,12 @@ class ItemCardWidget extends StatelessWidget {
         width: 100,
         height: 130,
         decoration: BoxDecoration(
-          color: rarityColor.withOpacity(0.2),
+          color: rarityColor.withValues(alpha: 0.2),
           border: Border.all(color: rarityColor, width: 2),
           borderRadius: BorderRadius.circular(8),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.5),
+              color: Colors.black.withValues(alpha: 0.5),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -289,7 +289,7 @@ class ItemCardWidget extends StatelessWidget {
       width: 120,
       height: 150,
       decoration: BoxDecoration(
-        color: Colors.grey.shade700.withOpacity(0.5),
+        color: Colors.grey.shade700.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: Colors.grey.shade500,

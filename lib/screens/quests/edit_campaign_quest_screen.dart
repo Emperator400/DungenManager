@@ -72,11 +72,11 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
         ),
         content: Text(
           'Möchtest du "${widget.campaignQuest.quest.title}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
-          style: TextStyle(color: Colors.white.withOpacity(0.8)),
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: DnDTheme.errorRed.withOpacity(0.5), width: 2),
+          side: BorderSide(color: DnDTheme.errorRed.withValues(alpha: 0.5), width: 2),
         ),
         actions: [
           TextButton(
@@ -181,7 +181,7 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.4),
+            color: Colors.black.withValues(alpha: 0.4),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -191,7 +191,7 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
@@ -223,7 +223,7 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
                 Text(
                   'Quest-Fortschritt verwalten',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withValues(alpha: 0.8),
                     fontSize: 14,
                   ),
                 ),
@@ -243,18 +243,18 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            DnDTheme.dungeonBlack.withOpacity(0.85),
-            DnDTheme.dungeonBlack.withOpacity(0.75),
+            DnDTheme.dungeonBlack.withValues(alpha: 0.85),
+            DnDTheme.dungeonBlack.withValues(alpha: 0.75),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: DnDTheme.arcaneBlue.withOpacity(0.5),
+          color: DnDTheme.arcaneBlue.withValues(alpha: 0.5),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: DnDTheme.arcaneBlue.withOpacity(0.2),
+            color: DnDTheme.arcaneBlue.withValues(alpha: 0.2),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -362,18 +362,18 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            DnDTheme.dungeonBlack.withOpacity(0.85),
-            DnDTheme.dungeonBlack.withOpacity(0.75),
+            DnDTheme.dungeonBlack.withValues(alpha: 0.85),
+            DnDTheme.dungeonBlack.withValues(alpha: 0.75),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: DnDTheme.ancientGold.withOpacity(0.5),
+          color: DnDTheme.ancientGold.withValues(alpha: 0.5),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: DnDTheme.ancientGold.withOpacity(0.2),
+            color: DnDTheme.ancientGold.withValues(alpha: 0.2),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -408,12 +408,12 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: isSelected
-                      ? [DnDTheme.arcaneBlue.withOpacity(0.3), DnDTheme.mysticalPurple.withOpacity(0.3)]
-                      : [Colors.white.withOpacity(0.05), Colors.white.withOpacity(0.02)],
+                      ? [DnDTheme.arcaneBlue.withValues(alpha: 0.3), DnDTheme.mysticalPurple.withValues(alpha: 0.3)]
+                      : [Colors.white.withValues(alpha: 0.05), Colors.white.withValues(alpha: 0.02)],
                 ),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: isSelected ? DnDTheme.arcaneBlue : Colors.grey[600]!.withOpacity(0.3),
+                  color: isSelected ? DnDTheme.arcaneBlue : Colors.grey[600]!.withValues(alpha: 0.3),
                   width: isSelected ? 2 : 1,
                 ),
               ),
@@ -488,18 +488,18 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            DnDTheme.dungeonBlack.withOpacity(0.85),
-            DnDTheme.dungeonBlack.withOpacity(0.75),
+            DnDTheme.dungeonBlack.withValues(alpha: 0.85),
+            DnDTheme.dungeonBlack.withValues(alpha: 0.75),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: DnDTheme.mysticalPurple.withOpacity(0.5),
+          color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: DnDTheme.mysticalPurple.withOpacity(0.2),
+            color: DnDTheme.mysticalPurple.withValues(alpha: 0.2),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -527,14 +527,14 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
               hintStyle: TextStyle(color: Colors.grey[500]),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey[600]!.withOpacity(0.5)),
+                borderSide: BorderSide(color: Colors.grey[600]!.withValues(alpha: 0.5)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: const BorderSide(color: DnDTheme.arcaneBlue, width: 2),
               ),
               filled: true,
-              fillColor: Colors.white.withOpacity(0.05),
+              fillColor: Colors.white.withValues(alpha: 0.05),
               contentPadding: const EdgeInsets.all(16),
             ),
           ),
@@ -559,7 +559,7 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   elevation: 4,
-                  shadowColor: DnDTheme.successGreen.withOpacity(0.4),
+                  shadowColor: DnDTheme.successGreen.withValues(alpha: 0.4),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,

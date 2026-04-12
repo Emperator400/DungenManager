@@ -198,7 +198,7 @@ class _OfficialMonstersScreenState extends State<OfficialMonstersScreen> {
                         : null,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12.0),
-                      borderSide: BorderSide(color: DnDTheme.mysticalPurple.withOpacity(0.3)),
+                      borderSide: BorderSide(color: DnDTheme.mysticalPurple.withValues(alpha: 0.3)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12.0),
@@ -315,7 +315,7 @@ class _OfficialMonstersScreenState extends State<OfficialMonstersScreen> {
         selected: isSelected,
         onSelected: (_) => onTap(),
         backgroundColor: Colors.grey.shade200,
-        selectedColor: DnDTheme.mysticalPurple.withOpacity(0.2),
+        selectedColor: DnDTheme.mysticalPurple.withValues(alpha: 0.2),
         checkmarkColor: DnDTheme.mysticalPurple,
       ),
     );
@@ -339,7 +339,7 @@ class _OfficialMonstersScreenState extends State<OfficialMonstersScreen> {
                   Container(
                     padding: const EdgeInsets.all(12.0),
                     decoration: BoxDecoration(
-                      color: DnDTheme.mysticalPurple.withOpacity(0.1),
+                      color: DnDTheme.mysticalPurple.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8.0),
                     ),
                     child: Icon(

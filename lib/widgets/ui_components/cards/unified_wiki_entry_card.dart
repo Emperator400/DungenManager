@@ -123,7 +123,7 @@ class UnifiedWikiEntryCard extends UnifiedCardBase {
             subtitle: _buildSubtitle(),
             leadingIcon: _getTypeIcon(),
             iconColor: _getTypeColor(),
-            iconBackgroundColor: _getTypeColor().withOpacity(0.2),
+            iconBackgroundColor: _getTypeColor().withValues(alpha: 0.2),
             additionalInfo: _buildTypeChips(),
             onFavoriteToggle: onToggleFavorite,
             isFavorite: isFavorite,

@@ -286,7 +286,7 @@ class _UnifiedHeroCardState extends State<UnifiedHeroCard> {
               endColor: DnDTheme.slateGrey,
             ),
             border: Border.all(
-              color: DnDTheme.ancientGold.withOpacity(0.5),
+              color: DnDTheme.ancientGold.withValues(alpha: 0.5),
               width: 2,
             ),
           ),
@@ -500,10 +500,10 @@ class _UnifiedHeroCardState extends State<UnifiedHeroCard> {
       width: double.infinity,
       padding: const EdgeInsets.all(DnDTheme.sm),
       decoration: BoxDecoration(
-        color: DnDTheme.slateGrey.withOpacity(0.2),
+        color: DnDTheme.slateGrey.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
         border: Border.all(
-          color: DnDTheme.mysticalPurple.withOpacity(0.2),
+          color: DnDTheme.mysticalPurple.withValues(alpha: 0.2),
           width: 1,
         ),
       ),

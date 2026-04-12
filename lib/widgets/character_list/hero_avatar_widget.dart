@@ -38,17 +38,17 @@ class HeroAvatarWidget extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  classColor.withOpacity(0.8),
-                  classColor.withOpacity(0.6),
+                  classColor.withValues(alpha: 0.8),
+                  classColor.withValues(alpha: 0.6),
                 ],
               ),
               border: Border.all(
-                color: classColor.withOpacity(0.3),
+                color: classColor.withValues(alpha: 0.3),
                 width: 2.0,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: classColor.withOpacity(0.3),
+                  color: classColor.withValues(alpha: 0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -74,7 +74,7 @@ class HeroAvatarWidget extends StatelessWidget {
                   border: Border.all(color: Colors.white, width: 1.5),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
+                      color: Colors.black.withValues(alpha: 0.3),
                       blurRadius: 4,
                       offset: const Offset(0, 1),
                     ),
@@ -129,7 +129,7 @@ class HeroAvatarWidget extends StatelessWidget {
                   border: Border.all(color: Colors.white, width: 1.5),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.amber.withOpacity(0.5),
+                      color: Colors.amber.withValues(alpha: 0.5),
                       blurRadius: 6,
                       offset: const Offset(0, 2),
                     ),
@@ -175,13 +175,13 @@ class HeroAvatarWidget extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      color: Colors.white.withOpacity(0.1),
+      color: Colors.white.withValues(alpha: 0.1),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
             classIcon,
-            color: Colors.white.withOpacity(0.9),
+            color: Colors.white.withValues(alpha: 0.9),
             size: size * 0.4,
           ),
           SizedBox(height: size * 0.05),
@@ -197,7 +197,7 @@ class HeroAvatarWidget extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                   shadows: [
                     Shadow(
-                      color: Colors.black.withOpacity(0.5),
+                      color: Colors.black.withValues(alpha: 0.5),
                       offset: const Offset(0, 1),
                       blurRadius: 2,
                     ),
@@ -217,7 +217,7 @@ class HeroAvatarWidget extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      color: Colors.white.withOpacity(0.1),
+      color: Colors.white.withValues(alpha: 0.1),
       child: Center(
         child: SizedBox(
           width: size * 0.3,
@@ -225,7 +225,7 @@ class HeroAvatarWidget extends StatelessWidget {
           child: CircularProgressIndicator(
             strokeWidth: 2,
             valueColor: AlwaysStoppedAnimation<Color>(
-              Colors.white.withOpacity(0.7),
+              Colors.white.withValues(alpha: 0.7),
             ),
           ),
         ),

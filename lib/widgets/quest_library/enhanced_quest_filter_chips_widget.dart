@@ -24,7 +24,7 @@ class EnhancedQuestFilterChipsWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -149,7 +149,7 @@ class EnhancedQuestFilterChipsWidget extends StatelessWidget {
           selected: viewModel.showFavoritesOnly,
           onSelected: (selected) => viewModel.setFavoritesFilter(selected),
           backgroundColor: Colors.grey[200],
-          selectedColor: DnDTheme.ancientGold.withOpacity(0.2),
+          selectedColor: DnDTheme.ancientGold.withValues(alpha: 0.2),
           checkmarkColor: DnDTheme.ancientGold,
           labelStyle: TextStyle(
             color: viewModel.showFavoritesOnly ? DnDTheme.ancientGold : Colors.black87,
@@ -176,7 +176,7 @@ class EnhancedQuestFilterChipsWidget extends StatelessWidget {
               selected: isSelected,
               onSelected: (_) => viewModel.toggleTag(tag),
               backgroundColor: Colors.grey[200],
-              selectedColor: DnDTheme.mysticalPurple.withOpacity(0.2),
+              selectedColor: DnDTheme.mysticalPurple.withValues(alpha: 0.2),
               checkmarkColor: DnDTheme.mysticalPurple,
               labelStyle: TextStyle(
                 color: isSelected ? DnDTheme.mysticalPurple : Colors.black87,
@@ -215,7 +215,7 @@ class EnhancedQuestFilterChipsWidget extends StatelessWidget {
       selected: isSelected,
       onSelected: (_) => viewModel.setTypeFilter(type),
       backgroundColor: Colors.grey[200],
-      selectedColor: _getTypeColor(type).withOpacity(0.2),
+      selectedColor: _getTypeColor(type).withValues(alpha: 0.2),
       checkmarkColor: _getTypeColor(type),
       labelStyle: TextStyle(
         color: isSelected ? _getTypeColor(type) : Colors.black87,
@@ -231,7 +231,7 @@ class EnhancedQuestFilterChipsWidget extends StatelessWidget {
       selected: isSelected,
       onSelected: (_) => viewModel.setDifficultyFilter(difficulty),
       backgroundColor: Colors.grey[200],
-      selectedColor: _getDifficultyColor(difficulty).withOpacity(0.2),
+      selectedColor: _getDifficultyColor(difficulty).withValues(alpha: 0.2),
       checkmarkColor: _getDifficultyColor(difficulty),
       labelStyle: TextStyle(
         color: isSelected ? _getDifficultyColor(difficulty) : Colors.black87,

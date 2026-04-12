@@ -148,13 +148,13 @@ class _MainNavigationLayout extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              DnDTheme.ancientGold.withOpacity(0.1),
-              DnDTheme.ancientGold.withOpacity(0.05),
+              DnDTheme.ancientGold.withValues(alpha: 0.1),
+              DnDTheme.ancientGold.withValues(alpha: 0.05),
             ],
           ),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: DnDTheme.ancientGold.withOpacity(0.3),
+            color: DnDTheme.ancientGold.withValues(alpha: 0.3),
             width: 2,
           ),
           boxShadow: [
@@ -313,12 +313,12 @@ class _CampaignInfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: DnDTheme.ancientGold.withOpacity(0.7)),
+        Icon(icon, size: 16, color: DnDTheme.ancientGold.withValues(alpha: 0.7)),
         const SizedBox(width: 8),
         Text(
           '$label: ',
           style: TextStyle(
-            color: DnDTheme.ancientGold.withOpacity(0.7),
+            color: DnDTheme.ancientGold.withValues(alpha: 0.7),
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
@@ -404,10 +404,10 @@ class _ContentListItem extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [color.withOpacity(0.15), color.withOpacity(0.08)],
+          colors: [color.withValues(alpha: 0.15), color.withValues(alpha: 0.08)],
         ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.4), width: 1.5),
+        border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
         boxShadow: [
           BoxShadow(
             color: color.withValues(alpha: 0.15),
@@ -429,7 +429,7 @@ class _ContentListItem extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
+                    color: color.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(icon, color: color, size: 24),
@@ -452,13 +452,13 @@ class _ContentListItem extends StatelessWidget {
                         subtitle,
                         style: TextStyle(
                           fontSize: 13,
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withValues(alpha: 0.7),
                         ),
                       ),
                     ],
                   ),
                 ),
-                Icon(Icons.arrow_forward_ios, color: color.withOpacity(0.6), size: 16),
+                Icon(Icons.arrow_forward_ios, color: color.withValues(alpha: 0.6), size: 16),
               ],
             ),
           ),

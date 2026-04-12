@@ -122,7 +122,7 @@ class WikiSearchDelegate extends SearchDelegate<WikiEntry?> {
   Widget _buildResultTile(BuildContext context, WikiEntry entry) {
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: _getTypeColor(entry).withOpacity(0.1),
+        backgroundColor: _getTypeColor(entry).withValues(alpha: 0.1),
         child: Icon(
           _getTypeIcon(entry),
           color: _getTypeColor(entry),

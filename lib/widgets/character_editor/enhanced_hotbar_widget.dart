@@ -244,7 +244,7 @@ class _EnhancedHotbarWidgetState extends State<EnhancedHotbarWidget> {
             width: 2,
           ),
           borderRadius: BorderRadius.circular(8),
-          color: equippedItem != null ? primaryColor.withOpacity(0.1) : Colors.grey.shade100,
+          color: equippedItem != null ? primaryColor.withValues(alpha: 0.1) : Colors.grey.shade100,
         ),
         child: Stack(
           children: [
@@ -367,7 +367,7 @@ class _EnhancedHotbarWidgetState extends State<EnhancedHotbarWidget> {
           ),
           borderRadius: BorderRadius.circular(8),
           color: equippedSpell.item.id.isNotEmpty 
-              ? primaryColor.withOpacity(0.1) 
+              ? primaryColor.withValues(alpha: 0.1) 
               : Colors.grey.shade100,
         ),
         child: Stack(

@@ -79,7 +79,7 @@ class _EditCampaignScreenState extends State<EditCampaignScreen> {
               end: Alignment.bottomRight,
               colors: [
                 DnDTheme.dungeonBlack,
-                DnDTheme.stoneGrey.withOpacity(0.3),
+                DnDTheme.stoneGrey.withValues(alpha: 0.3),
               ],
             ),
           ),
@@ -342,7 +342,7 @@ class _EditCampaignScreenState extends State<EditCampaignScreen> {
                 Container(
                   padding: EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: DnDTheme.ancientGold.withOpacity(0.2),
+                    color: DnDTheme.ancientGold.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(icon, color: DnDTheme.ancientGold, size: 22),
@@ -370,22 +370,22 @@ class _EditCampaignScreenState extends State<EditCampaignScreen> {
     return InputDecoration(
       labelText: label,
       labelStyle: TextStyle(
-        color: Colors.white.withOpacity(0.7),
+        color: Colors.white.withValues(alpha: 0.7),
       ),
       prefixIcon: Icon(icon, color: DnDTheme.ancientGold),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8.0),
         borderSide: BorderSide(color: DnDTheme.ancientGold),
       ),
       filled: true,
       fillColor: DnDTheme.slateGrey,
-      hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
     );
   }
 
@@ -469,7 +469,7 @@ class _EditCampaignScreenState extends State<EditCampaignScreen> {
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.7),
+            color: Colors.white.withValues(alpha: 0.7),
             fontSize: 12,
           ),
         ),
@@ -480,7 +480,7 @@ class _EditCampaignScreenState extends State<EditCampaignScreen> {
               child: SliderTheme(
                 data: SliderThemeData(
                   activeTrackColor: DnDTheme.ancientGold,
-                  inactiveTrackColor: Colors.white.withOpacity(0.2),
+                  inactiveTrackColor: Colors.white.withValues(alpha: 0.2),
                   thumbColor: DnDTheme.ancientGold,
                   trackHeight: 4,
                 ),
@@ -552,7 +552,7 @@ class _EditCampaignScreenState extends State<EditCampaignScreen> {
             label: Text('Abbrechen'),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              side: BorderSide(color: Colors.white.withOpacity(0.3)),
+              side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
               foregroundColor: Colors.white,
             ),
           ),

@@ -152,10 +152,10 @@ class UnifiedQuestCard extends UnifiedCardBase {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.amber[100]?.withOpacity(0.3),
+        color: Colors.amber[100]?.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: Colors.amber[300]!.withOpacity(0.5),
+          color: Colors.amber[300]!.withValues(alpha: 0.5),
         ),
       ),
       child: Row(

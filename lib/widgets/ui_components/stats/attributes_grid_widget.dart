@@ -65,7 +65,7 @@ class AttributesGridWidget extends StatelessWidget {
         color: DnDTheme.slateGrey,
         borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
         border: Border.all(
-          color: DnDTheme.ancientGold.withOpacity(0.3),
+          color: DnDTheme.ancientGold.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -78,7 +78,7 @@ class AttributesGridWidget extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: DnDTheme.ancientGold.withOpacity(0.15),
+                color: DnDTheme.ancientGold.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
               ),
               child: Icon(
@@ -167,7 +167,7 @@ class AttributesGridWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: color.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
         border: Border.all(color: color, width: 1),
       ),

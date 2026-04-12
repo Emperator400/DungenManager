@@ -370,7 +370,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
           shadows: [
             Shadow(
               blurRadius: 15.0,
-              color: DnDTheme.ancientGold.withOpacity(0.5),
+              color: DnDTheme.ancientGold.withValues(alpha: 0.5),
               offset: const Offset(2.0, 2.0),
             ),
           ],

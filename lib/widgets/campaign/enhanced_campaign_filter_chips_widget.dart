@@ -48,7 +48,7 @@ class EnhancedCampaignFilterChipsWidget extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
         ),
         filled: true,
-        fillColor: Colors.grey.withOpacity(0.08),
+        fillColor: Colors.grey.withValues(alpha: 0.08),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         hintStyle: const TextStyle(fontSize: 13),
       ),
@@ -141,18 +141,18 @@ class EnhancedCampaignFilterChipsWidget extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected 
-              ? Theme.of(context).primaryColor.withOpacity(0.9)
-              : Colors.grey.withOpacity(0.08),
+              ? Theme.of(context).primaryColor.withValues(alpha: 0.9)
+              : Colors.grey.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected 
-                ? Theme.of(context).primaryColor.withOpacity(0.3)
-                : Colors.grey.withOpacity(0.15),
+                ? Theme.of(context).primaryColor.withValues(alpha: 0.3)
+                : Colors.grey.withValues(alpha: 0.15),
             width: 0.5,
           ),
           boxShadow: isSelected ? [
             BoxShadow(
-              color: Theme.of(context).primaryColor.withOpacity(0.2),
+              color: Theme.of(context).primaryColor.withValues(alpha: 0.2),
               blurRadius: 4,
               offset: const Offset(0, 1),
             )
@@ -182,18 +182,18 @@ class EnhancedCampaignFilterChipsWidget extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected 
-              ? Colors.blue.shade600.withOpacity(0.9)
-              : Colors.grey.withOpacity(0.08),
+              ? Colors.blue.shade600.withValues(alpha: 0.9)
+              : Colors.grey.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected 
-                ? Colors.blue.shade300.withOpacity(0.3)
-                : Colors.grey.withOpacity(0.15),
+                ? Colors.blue.shade300.withValues(alpha: 0.3)
+                : Colors.grey.withValues(alpha: 0.15),
             width: 0.5,
           ),
           boxShadow: isSelected ? [
             BoxShadow(
-              color: Colors.blue.shade300.withOpacity(0.2),
+              color: Colors.blue.shade300.withValues(alpha: 0.2),
               blurRadius: 4,
               offset: const Offset(0, 1),
             )
@@ -255,11 +255,11 @@ class EnhancedCampaignFilterChipsWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: Theme.of(context).primaryColor.withOpacity(0.9),
+        color: Theme.of(context).primaryColor.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).primaryColor.withOpacity(0.2),
+            color: Theme.of(context).primaryColor.withValues(alpha: 0.2),
             blurRadius: 3,
             offset: const Offset(0, 1),
           )

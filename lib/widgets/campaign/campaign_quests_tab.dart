@@ -82,13 +82,13 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
                   Icon(
                     Icons.assignment_outlined,
                     size: 64,
-                    color: DnDTheme.arcaneBlue.withOpacity(0.5),
+                    color: DnDTheme.arcaneBlue.withValues(alpha: 0.5),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     "Dieser Kampagne wurden noch keine Quests hinzugefügt.",
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha: 0.7),
                       fontSize: 16,
                     ),
                   ),
@@ -190,17 +190,17 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            DnDTheme.stoneGrey.withOpacity(0.9),
-            DnDTheme.dungeonBlack.withOpacity(0.95),
+            DnDTheme.stoneGrey.withValues(alpha: 0.9),
+            DnDTheme.dungeonBlack.withValues(alpha: 0.95),
           ],
         ),
         border: Border.all(
-          color: _getStatusColor(status).withOpacity(0.6),
+          color: _getStatusColor(status).withValues(alpha: 0.6),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: _getStatusColor(status).withOpacity(0.2),
+            color: _getStatusColor(status).withValues(alpha: 0.2),
             blurRadius: 8,
             spreadRadius: 2,
           ),
@@ -208,8 +208,8 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
       ),
       child: Theme(
         data: Theme.of(context).copyWith(
-          dividerColor: _getStatusColor(status).withOpacity(0.2),
-          splashColor: _getStatusColor(status).withOpacity(0.1),
+          dividerColor: _getStatusColor(status).withValues(alpha: 0.2),
+          splashColor: _getStatusColor(status).withValues(alpha: 0.1),
         ),
         child: ExpansionTile(
           iconColor: _getStatusColor(status),
@@ -222,7 +222,7 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
               color: Colors.white,
               shadows: [
                 Shadow(
-                  color: _getStatusColor(status).withOpacity(0.5),
+                  color: _getStatusColor(status).withValues(alpha: 0.5),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -232,7 +232,7 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
           subtitle: Text(
             _getStatusDescription(status),
             style: TextStyle(
-              color: Colors.white.withOpacity(0.6),
+              color: Colors.white.withValues(alpha: 0.6),
               fontSize: 12,
             ),
           ),
@@ -244,7 +244,7 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
               decoration: BoxDecoration(
                 border: Border(
                   top: BorderSide(
-                    color: _getStatusColor(status).withOpacity(0.2),
+                    color: _getStatusColor(status).withValues(alpha: 0.2),
                     width: 1,
                   ),
                 ),
@@ -257,13 +257,13 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        _getStatusColor(status).withOpacity(0.3),
-                        _getStatusColor(status).withOpacity(0.1),
+                        _getStatusColor(status).withValues(alpha: 0.3),
+                        _getStatusColor(status).withValues(alpha: 0.1),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: _getStatusColor(status).withOpacity(0.5),
+                      color: _getStatusColor(status).withValues(alpha: 0.5),
                       width: 1,
                     ),
                   ),
@@ -291,7 +291,7 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.6),
+                    color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 13,
                   ),
                 ),

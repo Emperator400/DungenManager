@@ -96,7 +96,7 @@ class _EnhancedSoundMixerWidgetState extends State<EnhancedSoundMixerWidget>
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.2),
+                        color: Colors.green.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -114,7 +114,7 @@ class _EnhancedSoundMixerWidgetState extends State<EnhancedSoundMixerWidget>
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.2),
+                        color: Colors.blue.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -193,7 +193,7 @@ class _EnhancedSoundMixerWidgetState extends State<EnhancedSoundMixerWidget>
                     selected: _viewModel.selectedType == null,
                     onSelected: (selected) => _viewModel.setTypeFilter(null),
                     backgroundColor: Theme.of(context).colorScheme.surface,
-                    selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                    selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                     checkmarkColor: Theme.of(context).colorScheme.primary,
                   ),
                   const SizedBox(width: 8),
@@ -204,7 +204,7 @@ class _EnhancedSoundMixerWidgetState extends State<EnhancedSoundMixerWidget>
                       selected ? SoundType.Ambiente : null,
                     ),
                     backgroundColor: Theme.of(context).colorScheme.surface,
-                    selectedColor: Colors.green.withOpacity(0.2),
+                    selectedColor: Colors.green.withValues(alpha: 0.2),
                     checkmarkColor: Colors.green,
                   ),
                   const SizedBox(width: 8),
@@ -215,7 +215,7 @@ class _EnhancedSoundMixerWidgetState extends State<EnhancedSoundMixerWidget>
                       selected ? SoundType.Effekt : null,
                     ),
                     backgroundColor: Theme.of(context).colorScheme.surface,
-                    selectedColor: Colors.blue.withOpacity(0.2),
+                    selectedColor: Colors.blue.withValues(alpha: 0.2),
                     checkmarkColor: Colors.blue,
                   ),
                   const Spacer(),
@@ -231,7 +231,7 @@ class _EnhancedSoundMixerWidgetState extends State<EnhancedSoundMixerWidget>
                     selected: _viewModel.showFavoritesOnly,
                     onSelected: (_) => _viewModel.toggleFavoritesFilter(),
                     backgroundColor: Theme.of(context).colorScheme.surface,
-                    selectedColor: Colors.red.withOpacity(0.2),
+                    selectedColor: Colors.red.withValues(alpha: 0.2),
                     checkmarkColor: Colors.red,
                   ),
                 ],
@@ -282,7 +282,7 @@ class _EnhancedSoundMixerWidgetState extends State<EnhancedSoundMixerWidget>
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: isActive 
-            ? Theme.of(context).colorScheme.primary.withOpacity(0.2)
+            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)
             : Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
@@ -301,7 +301,7 @@ class _EnhancedSoundMixerWidgetState extends State<EnhancedSoundMixerWidget>
             size: 16,
             color: isActive 
                 ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
           ),
           const SizedBox(width: 8),
           Text(
@@ -311,7 +311,7 @@ class _EnhancedSoundMixerWidgetState extends State<EnhancedSoundMixerWidget>
               fontWeight: FontWeight.w600,
               color: isActive 
                   ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(width: 8),
@@ -395,7 +395,7 @@ class _EnhancedSoundMixerWidgetState extends State<EnhancedSoundMixerWidget>
             Text(
               _viewModel.error!,
               style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
               ),
               textAlign: TextAlign.center,
             ),
@@ -417,7 +417,7 @@ class _EnhancedSoundMixerWidgetState extends State<EnhancedSoundMixerWidget>
             Icon(
               Icons.music_off,
               size: 64,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
@@ -425,7 +425,7 @@ class _EnhancedSoundMixerWidgetState extends State<EnhancedSoundMixerWidget>
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
               ),
             ),
             if (_viewModel.searchQuery.isNotEmpty || _viewModel.selectedType != null) ...[
@@ -433,7 +433,7 @@ class _EnhancedSoundMixerWidgetState extends State<EnhancedSoundMixerWidget>
               Text(
                 'Versuche es mit anderen Filtern',
                 style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                 ),
               ),
               const SizedBox(width: 16),
@@ -491,7 +491,7 @@ class _EnhancedSoundMixerWidgetState extends State<EnhancedSoundMixerWidget>
                   color: (sound.soundType == SoundType.Ambiente 
                           ? Colors.green 
                           : Colors.blue)
-                      .withOpacity(0.1),
+                      .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -528,7 +528,7 @@ class _EnhancedSoundMixerWidgetState extends State<EnhancedSoundMixerWidget>
                           : 'Keine Beschreibung',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -539,7 +539,7 @@ class _EnhancedSoundMixerWidgetState extends State<EnhancedSoundMixerWidget>
                         'Dauer: ${sound.formattedDuration}',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                         ),
                       ),
                     ],

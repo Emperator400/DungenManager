@@ -190,7 +190,7 @@ class UnifiedSoundCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: typeColor.withOpacity(0.2),
+                color: typeColor.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
@@ -207,7 +207,7 @@ class UnifiedSoundCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: DnDTheme.emeraldGreen.withOpacity(0.2),
+                  color: DnDTheme.emeraldGreen.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Row(
@@ -358,7 +358,7 @@ class UnifiedSoundCard extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: typeColor.withOpacity(0.2),
+          color: typeColor.withValues(alpha: 0.2),
           shape: BoxShape.circle,
           border: Border.all(
             color: typeColor,
@@ -377,20 +377,20 @@ class UnifiedSoundCard extends StatelessWidget {
   /// Decoration für die Karte
   BoxDecoration _buildDecoration(Color typeColor) {
     return BoxDecoration(
-      color: DnDTheme.slateGrey.withOpacity(0.3),
+      color: DnDTheme.slateGrey.withValues(alpha: 0.3),
       borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
       border: Border.all(
         color: isSelected
             ? DnDTheme.ancientGold
             : isPlaying
                 ? typeColor
-                : typeColor.withOpacity(0.3),
+                : typeColor.withValues(alpha: 0.3),
         width: isSelected || isPlaying ? 2 : 1,
       ),
       boxShadow: [
         if (isPlaying)
           BoxShadow(
-            color: typeColor.withOpacity(0.3),
+            color: typeColor.withValues(alpha: 0.3),
             blurRadius: 12,
             spreadRadius: 2,
           ),
@@ -441,7 +441,7 @@ class UnifiedSoundListTile extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: typeColor.withOpacity(0.2),
+          color: typeColor.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(

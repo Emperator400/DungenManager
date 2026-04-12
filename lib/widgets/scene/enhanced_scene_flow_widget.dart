@@ -105,7 +105,7 @@ class _EnhancedSceneFlowWidgetState extends State<EnhancedSceneFlowWidget>
                   widget.session.title,
                   style: TextStyle(
                     fontSize: 14,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                 ),
               ],
@@ -114,10 +114,10 @@ class _EnhancedSceneFlowWidgetState extends State<EnhancedSceneFlowWidget>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
               ),
             ),
             child: Row(
@@ -211,7 +211,7 @@ class _EnhancedSceneFlowWidgetState extends State<EnhancedSceneFlowWidget>
                 selected: _selectedTypeFilter == null,
                 onSelected: (_) => setState(() => _selectedTypeFilter = null),
                 backgroundColor: Theme.of(context).colorScheme.surface,
-                selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                 checkmarkColor: Theme.of(context).colorScheme.primary,
               ),
               ...SceneType.values.map((type) {
@@ -223,7 +223,7 @@ class _EnhancedSceneFlowWidgetState extends State<EnhancedSceneFlowWidget>
                     _selectedTypeFilter = selected ? type : null;
                   }),
                   backgroundColor: Theme.of(context).colorScheme.surface,
-                  selectedColor: color.withOpacity(0.2),
+                  selectedColor: color.withValues(alpha: 0.2),
                   checkmarkColor: color,
                 );
               }).toList(),
@@ -239,7 +239,7 @@ class _EnhancedSceneFlowWidgetState extends State<EnhancedSceneFlowWidget>
                 selected: _showCompletedOnly,
                 onSelected: (_) => setState(() => _showCompletedOnly = !_showCompletedOnly),
                 backgroundColor: Theme.of(context).colorScheme.surface,
-                selectedColor: Colors.green.withOpacity(0.2),
+                selectedColor: Colors.green.withValues(alpha: 0.2),
                 checkmarkColor: Colors.green,
               ),
             ],
@@ -308,7 +308,7 @@ class _EnhancedSceneFlowWidgetState extends State<EnhancedSceneFlowWidget>
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: BorderSide(
-            color: sceneTypeColor.withOpacity(0.5),
+            color: sceneTypeColor.withValues(alpha: 0.5),
             width: 2,
           ),
         ),
@@ -321,8 +321,8 @@ class _EnhancedSceneFlowWidgetState extends State<EnhancedSceneFlowWidget>
               gradient: scene.isCompleted
                   ? LinearGradient(
                       colors: [
-                        Colors.green.withOpacity(0.1),
-                        Colors.green.withOpacity(0.05),
+                        Colors.green.withValues(alpha: 0.1),
+                        Colors.green.withValues(alpha: 0.05),
                       ],
                     )
                   : null,
@@ -434,7 +434,7 @@ class _EnhancedSceneFlowWidgetState extends State<EnhancedSceneFlowWidget>
                       scene.description,
                       style: TextStyle(
                         fontSize: 14,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                         height: 1.4,
                       ),
                       maxLines: 3,
@@ -450,14 +450,14 @@ class _EnhancedSceneFlowWidgetState extends State<EnhancedSceneFlowWidget>
                         Icon(
                           Icons.schedule,
                           size: 16,
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                         ),
                         const SizedBox(width: 4),
                         Text(
                           _formatDuration(scene.estimatedDuration!),
                           style: TextStyle(
                             fontSize: 12,
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -505,7 +505,7 @@ class _EnhancedSceneFlowWidgetState extends State<EnhancedSceneFlowWidget>
           Icon(
             Icons.timeline,
             size: 64,
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
           ),
           const SizedBox(height: 16),
           Text(
@@ -513,7 +513,7 @@ class _EnhancedSceneFlowWidgetState extends State<EnhancedSceneFlowWidget>
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(height: 8),
@@ -523,7 +523,7 @@ class _EnhancedSceneFlowWidgetState extends State<EnhancedSceneFlowWidget>
                 : 'Erstelle deine erste Szene',
             style: TextStyle(
               fontSize: 14,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ),
           const SizedBox(height: 24),
@@ -657,7 +657,7 @@ class ConnectionLinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = color.withOpacity(isCompleted ? 1.0 : 0.6)
+      ..color = color.withValues(alpha: isCompleted ? 1.0 : 0.6)
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
 

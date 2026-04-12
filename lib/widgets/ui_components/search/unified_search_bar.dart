@@ -137,7 +137,7 @@ class _UnifiedSearchBarState<T> extends State<UnifiedSearchBar<T>> {
         color: DnDTheme.slateGrey,
         borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
         border: Border.all(
-          color: Colors.white.withOpacity(0.1),
+          color: Colors.white.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -147,17 +147,17 @@ class _UnifiedSearchBarState<T> extends State<UnifiedSearchBar<T>> {
         decoration: InputDecoration(
           hintText: widget.hintText,
           hintStyle: TextStyle(
-            color: Colors.white.withOpacity(0.5),
+            color: Colors.white.withValues(alpha: 0.5),
           ),
           prefixIcon: Icon(
             widget.searchIcon,
-            color: Colors.white.withOpacity(0.7),
+            color: Colors.white.withValues(alpha: 0.7),
           ),
           suffixIcon: _searchController.text.isNotEmpty
               ? IconButton(
                   icon: Icon(
                     Icons.clear,
-                    color: Colors.white.withOpacity(0.7),
+                    color: Colors.white.withValues(alpha: 0.7),
                   ),
                   onPressed: _clearSearch,
                 )
@@ -181,7 +181,7 @@ class _UnifiedSearchBarState<T> extends State<UnifiedSearchBar<T>> {
         physics: const ClampingScrollPhysics(),
         itemCount: _filteredItems.length,
         separatorBuilder: (context, index) => Divider(
-          color: Colors.white.withOpacity(0.1),
+          color: Colors.white.withValues(alpha: 0.1),
           height: 1,
         ),
         itemBuilder: (context, index) {
@@ -207,7 +207,7 @@ class _UnifiedSearchBarState<T> extends State<UnifiedSearchBar<T>> {
           Icon(
             Icons.search_off,
             size: 64,
-            color: Colors.white.withOpacity(0.3),
+            color: Colors.white.withValues(alpha: 0.3),
           ),
           const SizedBox(height: 16),
           Text(
@@ -221,7 +221,7 @@ class _UnifiedSearchBarState<T> extends State<UnifiedSearchBar<T>> {
           Text(
             widget.emptyStateMessage,
             style: DnDTheme.bodyText1.copyWith(
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha: 0.7),
             ),
             textAlign: TextAlign.center,
           ),
@@ -359,7 +359,7 @@ class _UnifiedSearchDialogState<T> extends State<UnifiedSearchDialog<T>> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(DnDTheme.radiusLarge),
           topRight: Radius.circular(DnDTheme.radiusLarge),
@@ -374,17 +374,17 @@ class _UnifiedSearchDialogState<T> extends State<UnifiedSearchDialog<T>> {
               decoration: InputDecoration(
                 hintText: widget.hintText,
                 hintStyle: TextStyle(
-                  color: Colors.white.withOpacity(0.5),
+                  color: Colors.white.withValues(alpha: 0.5),
                 ),
                 prefixIcon: Icon(
                   Icons.search,
-                  color: Colors.white.withOpacity(0.7),
+                  color: Colors.white.withValues(alpha: 0.7),
                 ),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
                         icon: Icon(
                           Icons.clear,
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withValues(alpha: 0.7),
                         ),
                         onPressed: () {
                           _searchController.clear();
@@ -421,7 +421,7 @@ class _UnifiedSearchDialogState<T> extends State<UnifiedSearchDialog<T>> {
             Icon(
               Icons.search_off,
               size: 64,
-              color: Colors.white.withOpacity(0.3),
+              color: Colors.white.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 16),
             Text(
@@ -434,7 +434,7 @@ class _UnifiedSearchDialogState<T> extends State<UnifiedSearchDialog<T>> {
             Text(
               'Versuche andere Suchbegriffe',
               style: DnDTheme.bodyText1.copyWith(
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withValues(alpha: 0.7),
               ),
             ),
           ],
@@ -446,7 +446,7 @@ class _UnifiedSearchDialogState<T> extends State<UnifiedSearchDialog<T>> {
       padding: const EdgeInsets.all(8),
       itemCount: _filteredItems.length,
       separatorBuilder: (context, index) => Divider(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
       ),
       itemBuilder: (context, index) {
         final item = _filteredItems[index];

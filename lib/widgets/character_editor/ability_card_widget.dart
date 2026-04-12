@@ -33,7 +33,7 @@ class AbilityCardWidget extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16.0),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
@@ -94,7 +94,7 @@ class AbilityCardWidget extends StatelessWidget {
               decoration: InputDecoration(
                 hintText: hintText,
                 border: OutlineInputBorder(
-                  borderSide: BorderSide(color: color.withOpacity(0.3)),
+                  borderSide: BorderSide(color: color.withValues(alpha: 0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderSide: BorderSide(color: color, width: 2),

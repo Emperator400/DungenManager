@@ -187,7 +187,7 @@ class _EnhancedInventoryGridWidgetState extends State<EnhancedInventoryGridWidge
         ),
         borderRadius: BorderRadius.circular(8),
         color: equippedItem.item.id.isNotEmpty 
-            ? Colors.amber.shade800.withOpacity(0.3)
+            ? Colors.amber.shade800.withValues(alpha: 0.3)
             : Colors.grey.shade700,
       ),
       child: Stack(

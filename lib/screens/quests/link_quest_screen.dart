@@ -64,7 +64,7 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.4),
+            color: Colors.black.withValues(alpha: 0.4),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -74,7 +74,7 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
@@ -106,7 +106,7 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
                 Text(
                   'Wähle Quests aus, die mit dieser Szene verknüpft werden sollen',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withValues(alpha: 0.8),
                     fontSize: 14,
                   ),
                 ),
@@ -119,7 +119,7 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
               decoration: BoxDecoration(
                 color: DnDTheme.ancientGold,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.3)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -287,24 +287,24 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
               end: Alignment.bottomRight,
               colors: isSelected
                   ? [
-                      DnDTheme.arcaneBlue.withOpacity(0.4),
-                      DnDTheme.mysticalPurple.withOpacity(0.4),
+                      DnDTheme.arcaneBlue.withValues(alpha: 0.4),
+                      DnDTheme.mysticalPurple.withValues(alpha: 0.4),
                     ]
                   : [
-                      DnDTheme.dungeonBlack.withOpacity(0.7),
-                      DnDTheme.dungeonBlack.withOpacity(0.6),
+                      DnDTheme.dungeonBlack.withValues(alpha: 0.7),
+                      DnDTheme.dungeonBlack.withValues(alpha: 0.6),
                     ],
             ),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isSelected
                   ? DnDTheme.arcaneBlue
-                  : DnDTheme.ancientGold.withOpacity(0.5),
+                  : DnDTheme.ancientGold.withValues(alpha: 0.5),
               width: isSelected ? 2 : 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: DnDTheme.ancientGold.withOpacity(0.15),
+                color: DnDTheme.ancientGold.withValues(alpha: 0.15),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -319,8 +319,8 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
                     colors: isSelected
                         ? [DnDTheme.arcaneBlue, DnDTheme.mysticalPurple]
                         : [
-                            DnDTheme.arcaneBlue.withOpacity(0.7),
-                            DnDTheme.mysticalPurple.withOpacity(0.7),
+                            DnDTheme.arcaneBlue.withValues(alpha: 0.7),
+                            DnDTheme.mysticalPurple.withValues(alpha: 0.7),
                           ],
                   ),
                   borderRadius: BorderRadius.circular(10),
@@ -351,7 +351,7 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
                         style: TextStyle(
                           fontSize: 13,
                           color: isSelected
-                              ? DnDTheme.arcaneBlue.withOpacity(0.8)
+                              ? DnDTheme.arcaneBlue.withValues(alpha: 0.8)
                               : Colors.grey[400],
                         ),
                       ),
@@ -377,9 +377,9 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: DnDTheme.mysticalPurple.withOpacity(0.15),
+        color: DnDTheme.mysticalPurple.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: DnDTheme.mysticalPurple.withOpacity(0.4)),
+        border: Border.all(color: DnDTheme.mysticalPurple.withValues(alpha: 0.4)),
       ),
       child: Text(
         _getQuestTypeDisplayName(type),
@@ -396,9 +396,9 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: _getDifficultyColor(difficulty).withOpacity(0.15),
+        color: _getDifficultyColor(difficulty).withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _getDifficultyColor(difficulty).withOpacity(0.4)),
+        border: Border.all(color: _getDifficultyColor(difficulty).withValues(alpha: 0.4)),
       ),
       child: Text(
         _getDifficultyDisplayName(difficulty),

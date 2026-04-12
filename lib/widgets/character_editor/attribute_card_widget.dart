@@ -27,17 +27,17 @@ class AttributeCardWidget extends StatelessWidget {
     
     // Bestimme die Qualität des Attributwerts für visuelle Rückmeldung
     Color cardColor = color.withAlpha(40);
-    Color borderColor = color.withOpacity(0.6);
+    Color borderColor = color.withValues(alpha: 0.6);
     double elevation = 2.0;
     
     if (value >= 18) {
-      borderColor = color.withOpacity(0.9);
+      borderColor = color.withValues(alpha: 0.9);
       elevation = 4.0;
     } else if (value >= 14) {
-      borderColor = color.withOpacity(0.7);
+      borderColor = color.withValues(alpha: 0.7);
       elevation = 3.0;
     } else if (value <= 8) {
-      borderColor = Colors.red.withOpacity(0.6);
+      borderColor = Colors.red.withValues(alpha: 0.6);
       elevation = 1.5;
     }
     
@@ -104,7 +104,7 @@ class AttributeCardWidget extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: borderColor, width: 1),
                 ),
@@ -221,13 +221,13 @@ class AttributeCardWidget extends StatelessWidget {
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: color.withOpacity(0.1),
+          backgroundColor: color.withValues(alpha: 0.1),
           foregroundColor: color,
           elevation: 0,
           padding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(6),
-            side: BorderSide(color: color.withOpacity(0.3), width: 1),
+            side: BorderSide(color: color.withValues(alpha: 0.3), width: 1),
           ),
         ),
         child: Icon(icon, size: 16),

@@ -64,7 +64,7 @@ class _SessionListForCampaignScreenState extends State<SessionListForCampaignScr
               end: Alignment.bottomRight,
               colors: [
                 DnDTheme.dungeonBlack,
-                DnDTheme.stoneGrey.withOpacity(0.3),
+                DnDTheme.stoneGrey.withValues(alpha: 0.3),
               ],
             ),
           ),

@@ -34,7 +34,7 @@ class EnhancedQuestCardWidget extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       elevation: isSelected ? 8 : 2,
-      color: isSelected ? DnDTheme.ancientGold.withOpacity(0.1) : null,
+      color: isSelected ? DnDTheme.ancientGold.withValues(alpha: 0.1) : null,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -135,7 +135,7 @@ class EnhancedQuestCardWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: _getQuestTypeColor().withOpacity(0.2),
+        color: _getQuestTypeColor().withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Icon(
@@ -212,10 +212,10 @@ class EnhancedQuestCardWidget extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: DnDTheme.ancientGold.withOpacity(0.1),
+            color: DnDTheme.ancientGold.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: DnDTheme.ancientGold.withOpacity(0.3),
+              color: DnDTheme.ancientGold.withValues(alpha: 0.3),
             ),
           ),
           child: Text(
@@ -316,7 +316,7 @@ class EnhancedQuestCardWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(

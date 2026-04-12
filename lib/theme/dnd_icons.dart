@@ -230,7 +230,7 @@ class DnDIcons {
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: iconColor.withOpacity(0.6),
+              color: iconColor.withValues(alpha: 0.6),
               blurRadius: 8,
               spreadRadius: 1,
             ),
@@ -250,9 +250,9 @@ class DnDIcons {
     
     return Container(
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: color.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withOpacity(0.5)),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
       padding: const EdgeInsets.all(4),
       child: Icon(icon, color: color, size: size * 0.7),

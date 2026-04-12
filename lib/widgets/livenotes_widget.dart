@@ -96,7 +96,7 @@ class _LiveNotesWidgetState extends State<LiveNotesWidget> {
     return Column(
       children: [
         Container(
-          color: Theme.of(context).primaryColor.withOpacity(0.2),
+          color: Theme.of(context).primaryColor.withValues(alpha: 0.2),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(children: [
             Icon(Icons.edit, size: 18, color: Colors.grey[400]),

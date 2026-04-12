@@ -245,7 +245,7 @@ class _InitiativeTrackerScreenState extends State<InitiativeTrackerScreen> {
         ),
         children: [
           Container(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: creature.isPlayer ? _buildPlayerCheatsheet(creature) : _buildMonsterCheatsheet(creature),
           ),
