@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter analyze:*)",
+      "Bash(flutter build:*)",
+      "Bash(grep -v \"^--$\")",
+      "Bash(xargs grep:*)",
+      "Bash(sed -n '44,75p' \"D:\\\\Programieren\\\\DungenManager\\\\lib\\\\screens\\\\characters\\\\select_character_screen.dart\")",
+      "Bash(sed -n '580,660p' \"D:\\\\Programieren\\\\DungenManager\\\\lib\\\\screens\\\\session\\\\session_list_screen.dart\")",
+      "Bash(sed -n '710,750p' \"D:\\\\Programieren\\\\DungenManager\\\\lib\\\\widgets\\\\character_editor\\\\enhanced_inventory_tab_widget.dart\")",
+      "Bash(sed -n '30,100p' \"D:\\\\Programieren\\\\DungenManager\\\\lib\\\\widgets\\\\character_inventory_handler.dart\")",
+      "Bash(sed -n '75,90p' \"D:\\\\Programieren\\\\DungenManager\\\\lib\\\\widgets\\\\quest_log_widget.dart\")",
+      "Bash(sed -n '35,80p' \"D:\\\\Programieren\\\\DungenManager\\\\lib\\\\screens\\\\lore\\\\link_entry_screen.dart\")",
+      "Bash(sed -n '38,80p' \"D:\\\\Programieren\\\\DungenManager\\\\lib\\\\screens\\\\lore\\\\link_wiki_entries_screen.dart\")",
+      "Bash(sed -n '388,420p' \"D:\\\\Programieren\\\\DungenManager\\\\lib\\\\screens\\\\session\\\\session_list_screen.dart\")",
+      "Bash(sed -n '44,70p' \"D:\\\\Programieren\\\\DungenManager\\\\lib\\\\widgets\\\\character_inventory_handler.dart\")",
+      "Bash(sed -n '127,160p' \"D:\\\\Programieren\\\\DungenManager\\\\lib\\\\widgets\\\\sounds_tab.dart\")"
+    ]
+  }
+}
