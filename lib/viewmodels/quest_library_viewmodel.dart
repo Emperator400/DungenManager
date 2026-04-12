@@ -30,9 +30,14 @@ class QuestLibraryViewModel extends ChangeNotifier {
   // Tab-Management
   int _currentTabIndex = 0;
 
-  /// 
+  // Kampagnen-Modus State
+  String? _campaignId;
+  Set<int> _linkedQuestIds = {};
+  Set<int> _selectedQuestIds = {};
+
+  ///
   /// HINWEIS: Verwendet jetzt das neue QuestModelRepository
-  /// 
+  ///
   QuestLibraryViewModel() : _questRepository = QuestModelRepository(DatabaseConnection.instance);
 
   // Getters
@@ -48,6 +53,16 @@ class QuestLibraryViewModel extends ChangeNotifier {
   SortOption get sortOption => _sortOption;
   bool get sortAscending => _sortAscending;
   int get currentTabIndex => _currentTabIndex;
+
+  // Kampagnen-Modus Getters
+  bool get isCampaignMode => _campaignId != null;
+  String? get campaignId => _campaignId;
+  Set<int> get linkedQuestIds => Set.unmodifiable(_linkedQuestIds);
+  Set<int> get selectedQuestIds => Set.unmodifiable(_selectedQuestIds);
+  int get selectedCount => _selectedQuestIds.length;
+
+  bool isLinked(Quest quest) => quest.id != null && _linkedQuestIds.contains(quest.id);
+  bool isSelected(Quest quest) => quest.id != null && _selectedQuestIds.contains(quest.id);
 
   /// Prüft ob Filter aktiv sind
   bool get hasActiveFilters => 
@@ -67,6 +82,63 @@ class QuestLibraryViewModel extends ChangeNotifier {
       allTags.addAll(quest.tags);
     }
     return allTags;
+  }
+
+  /// Initialisiert den Kampagnen-Modus: lädt verknüpfte Quest-IDs + alle Quests
+  Future<void> initCampaignMode(String campaignId) async {
+    _campaignId = campaignId;
+    await _performAsyncOperation(() async {
+      if (_questRepository != null) {
+        final linked = await _questRepository!.findByCampaign(campaignId);
+        _linkedQuestIds = linked.where((q) => q.id != null).map((q) => q.id!).toSet();
+        _allQuests = await _questRepository!.findAll();
+      }
+      _selectedQuestIds.clear();
+      _applyFiltersAndSort();
+    });
+  }
+
+  /// Selektierung einer Quest umschalten (nur nicht-verknüpfte Quests)
+  void toggleSelection(Quest quest) {
+    if (quest.id == null || isLinked(quest)) return;
+    if (_selectedQuestIds.contains(quest.id)) {
+      _selectedQuestIds.remove(quest.id);
+    } else {
+      _selectedQuestIds.add(quest.id!);
+    }
+    notifyListeners();
+  }
+
+  /// Alle Selektierungen aufheben
+  void clearSelection() {
+    _selectedQuestIds.clear();
+    notifyListeners();
+  }
+
+  /// Ausgewählte Quests zur Kampagne hinzufügen
+  Future<bool> addSelectedToCampaign() async {
+    if (_campaignId == null || _selectedQuestIds.isEmpty || _questRepository == null) {
+      return false;
+    }
+
+    bool success = false;
+    await _performAsyncOperation(() async {
+      for (final questId in _selectedQuestIds.toList()) {
+        final idx = _allQuests.indexWhere((q) => q.id == questId);
+        if (idx == -1) continue;
+        final updated = _allQuests[idx].copyWith(
+          campaignId: _campaignId,
+          updatedAt: DateTime.now(),
+        );
+        await _questRepository!.update(updated);
+        _allQuests[idx] = updated;
+        _linkedQuestIds.add(questId);
+      }
+      _selectedQuestIds.clear();
+      _applyFiltersAndSort();
+      success = true;
+    });
+    return success;
   }
 
   /// Lädt alle Quests aus der Datenbank über neues Repository

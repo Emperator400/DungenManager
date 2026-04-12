@@ -229,7 +229,14 @@ class EditCreatureViewModel extends ChangeNotifier {
 
   void updateMaxHp(int maxHp) {
     if (_creature?.maxHp != maxHp) {
-      _creature = _creature!.copyWith(maxHp: maxHp);
+      // Wenn die Kreatur bisher bei voller Gesundheit war, bleibt sie bei
+      // voller Gesundheit — sonst würde z.B. HP 10/10 nach Änderung auf
+      // maxHp=50 als 10/50 angezeigt werden.
+      final wasAtFullHealth = _creature!.currentHp == _creature!.maxHp;
+      _creature = _creature!.copyWith(
+        maxHp: maxHp,
+        currentHp: wasAtFullHealth ? maxHp : _creature!.currentHp,
+      );
       _markAsUnsaved();
       notifyListeners();
     }

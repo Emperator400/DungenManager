@@ -68,7 +68,7 @@ class CreatureTypeSection extends StatelessWidget {
                 prefixIcon: Icon(
                   selectedCategory?.icon ?? Icons.category,
                   color: DnDTheme.ancientGold,
-                  size: 20,
+                  size: 32,
                 ),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.all(12),
@@ -77,6 +77,19 @@ class CreatureTypeSection extends StatelessWidget {
               ),
               style: DnDTheme.bodyText1.copyWith(color: Colors.white),
               dropdownColor: DnDTheme.stoneGrey,
+              selectedItemBuilder: (context) => [
+                Text(
+                  'Kein Typ ausgewählt',
+                  style: DnDTheme.bodyText2.copyWith(color: Colors.white60),
+                ),
+                ...CreatureCategory.values.map((category) => Text(
+                  category.displayName,
+                  style: DnDTheme.bodyText1.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                )),
+              ],
               items: [
                 DropdownMenuItem<CreatureCategory?>(
                   value: null,
@@ -89,14 +102,11 @@ class CreatureTypeSection extends StatelessWidget {
                   final isNpc = category == CreatureCategory.humanoid;
                   return DropdownMenuItem<CreatureCategory?>(
                     value: category,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          category.icon,
-                          color: isNpc ? DnDTheme.arcaneBlue : DnDTheme.errorRed,
-                          size: 20,
-                        ),
+                    child: SizedBox(
+                      height: 60,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
                         const SizedBox(width: 8),
                         Flexible(
                           child: Column(
@@ -106,7 +116,7 @@ class CreatureTypeSection extends StatelessWidget {
                               Text(
                                 category.displayName,
                                 style: DnDTheme.bodyText1.copyWith(
-                                  color: Colors.white,
+                                  color: const Color.fromARGB(255, 255, 255, 255),
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -116,6 +126,8 @@ class CreatureTypeSection extends StatelessWidget {
                                   color: Colors.white60,
                                   fontSize: 11,
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
@@ -137,6 +149,7 @@ class CreatureTypeSection extends StatelessWidget {
                           ),
                         ),
                       ],
+                    ),
                     ),
                   );
                 }),

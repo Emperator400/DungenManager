@@ -48,7 +48,7 @@ import 'services/image_storage_service.dart';
 // ENTWICKLUNGS-MODUS: Setze auf `false` für Entwicklung
 // - Zeigt AppSelectionScreen mit allen Debug-Optionen
 // 
-const bool kIsProductionMode = false;
+const bool kIsProductionMode = true;
 // ============================================================
 
 /// Hauptfunktion der App

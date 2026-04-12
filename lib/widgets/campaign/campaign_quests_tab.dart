@@ -5,8 +5,8 @@ import '../../database/repositories/quest_model_repository.dart';
 import '../../models/campaign.dart';
 import '../../models/quest.dart';
 import '../../models/campaign_quest.dart';
-import '../../screens/quests/add_quest_screen.dart';
 import '../../screens/quests/edit_campaign_quest_screen.dart';
+import '../../screens/quests/quest_library_screen.dart';
 import '../../screens/quests/edit_quest_screen.dart';
 import '../../viewmodels/edit_quest_viewmodel.dart';
 import '../../theme/dnd_theme.dart';
@@ -148,7 +148,7 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
               foregroundColor: Colors.white,
               onPressed: () {
                 Navigator.of(context).push(MaterialPageRoute(
-                  builder: (ctx) => AddQuestFromLibraryScreen(campaignId: widget.campaign.id),
+                  builder: (ctx) => QuestLibraryScreen(campaignId: widget.campaign.id),
                 )).then((_) => _loadQuests());
               },
             ),

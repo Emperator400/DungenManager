@@ -4,13 +4,18 @@ import 'package:provider/provider.dart';
 import '../../models/quest.dart';
 import '../../screens/quests/edit_quest_screen.dart';
 import '../../theme/dnd_theme.dart';
+import '../../viewmodels/edit_quest_viewmodel.dart';
 import '../../viewmodels/quest_library_viewmodel.dart';
 import '../../widgets/quest_library/enhanced_quest_filter_chips_widget.dart';
 import '../../widgets/quest_library/quest_search_delegate.dart';
 import '../../widgets/ui_components/cards/unified_quest_card.dart';
 
 class QuestLibraryScreen extends StatefulWidget {
-  const QuestLibraryScreen({super.key});
+  /// Wenn gesetzt, läuft der Screen im Kampagnen-Modus:
+  /// Quests können zur Kampagne hinzugefügt werden.
+  final String? campaignId;
+
+  const QuestLibraryScreen({super.key, this.campaignId});
 
   @override
   State<QuestLibraryScreen> createState() => _QuestLibraryScreenState();
@@ -20,7 +25,9 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
     with SingleTickerProviderStateMixin {
   late QuestLibraryViewModel _viewModel;
   late TabController _tabController;
-  
+
+  bool get _isCampaignMode => widget.campaignId != null;
+
   @override
   void initState() {
     super.initState();
@@ -28,9 +35,12 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(_onTabChanged);
 
-    // Daten laden nach dem ersten Frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _viewModel.loadQuests();
+      if (_isCampaignMode) {
+        _viewModel.initCampaignMode(widget.campaignId!);
+      } else {
+        _viewModel.loadQuests();
+      }
     });
   }
 
@@ -59,7 +69,11 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
     );
 
     if (selectedQuest != null) {
-      await _navigateToEditQuest(selectedQuest);
+      if (_isCampaignMode) {
+        _viewModel.toggleSelection(selectedQuest);
+      } else {
+        await _navigateToEditQuest(selectedQuest);
+      }
     }
   }
 
@@ -75,12 +89,61 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
     }
   }
 
+  /// Neue Quest erstellen und direkt mit Kampagne verknüpfen
+  Future<void> _navigateToCreateQuestForCampaign() async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => ChangeNotifierProvider<EditQuestViewModel>(
+          create: (_) => EditQuestViewModel(),
+          child: Builder(
+            builder: (context) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                context
+                    .read<EditQuestViewModel>()
+                    .initialize(null, campaignId: widget.campaignId);
+              });
+              return const EditQuestScreen();
+            },
+          ),
+        ),
+      ),
+    );
+
+    if (result == true && _isCampaignMode) {
+      _viewModel.initCampaignMode(widget.campaignId!);
+    }
+  }
+
+  /// Ausgewählte Quests zur Kampagne hinzufügen und Screen schließen
+  Future<void> _addSelectedToCampaign() async {
+    final count = _viewModel.selectedCount;
+    final success = await _viewModel.addSelectedToCampaign();
+    if (!mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$count Quest(s) zur Kampagne hinzugefügt'),
+          backgroundColor: DnDTheme.successGreen,
+        ),
+      );
+      Navigator.of(context).pop(true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_viewModel.error ?? 'Fehler beim Hinzufügen'),
+          backgroundColor: DnDTheme.errorRed,
+        ),
+      );
+    }
+  }
+
   Future<void> _deleteQuest(Quest quest) async {
     final confirmed = await _showDeleteConfirmation(quest);
     if (!confirmed) return;
 
     await _viewModel.deleteQuest(quest);
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -118,129 +181,114 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
     return ChangeNotifierProvider<QuestLibraryViewModel>.value(
       value: _viewModel,
       child: Scaffold(
-      appBar: AppBar(
-        title: const Text('Quest-Bibliothek'),
-        backgroundColor: DnDTheme.stoneGrey,
-        foregroundColor: Colors.white,
-        elevation: 4,
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: DnDTheme.ancientGold,
-          labelColor: DnDTheme.ancientGold,
-          unselectedLabelColor: Colors.white70,
-          onTap: (index) => _viewModel.setCurrentTab(index),
-          tabs: const [
-            Tab(text: 'Alle', icon: Icon(Icons.list)),
-            Tab(text: 'Hauptquests', icon: Icon(Icons.flag)),
-            Tab(text: 'Favoriten', icon: Icon(Icons.star)),
-          ],
-        ),
+        appBar: AppBar(
+          title: Text(
+            _isCampaignMode ? 'Quest zur Kampagne hinzufügen' : 'Quest-Bibliothek',
+          ),
+          backgroundColor: DnDTheme.stoneGrey,
+          foregroundColor: Colors.white,
+          elevation: 4,
+          bottom: TabBar(
+            controller: _tabController,
+            indicatorColor: DnDTheme.ancientGold,
+            labelColor: DnDTheme.ancientGold,
+            unselectedLabelColor: Colors.white70,
+            onTap: (index) => _viewModel.setCurrentTab(index),
+            tabs: const [
+              Tab(text: 'Alle', icon: Icon(Icons.list)),
+              Tab(text: 'Hauptquests', icon: Icon(Icons.flag)),
+              Tab(text: 'Favoriten', icon: Icon(Icons.star)),
+            ],
+          ),
           actions: [
             IconButton(
               icon: const Icon(Icons.search),
               onPressed: _showSearch,
               tooltip: 'Suchen',
             ),
-            Consumer<QuestLibraryViewModel>(
-              builder: (context, viewModel, child) {
-                return PopupMenuButton<SortOption>(
-                  icon: const Icon(Icons.sort),
-                  tooltip: 'Sortieren',
-                  onSelected: (option) {
-                    viewModel.setSortOption(option);
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: SortOption.alphabetical,
-                      child: Row(
-                        children: [
-                          Icon(Icons.sort_by_alpha),
-                          SizedBox(width: 8),
-                          Text('Alphabetisch'),
-                        ],
+            if (!_isCampaignMode)
+              Consumer<QuestLibraryViewModel>(
+                builder: (context, viewModel, child) {
+                  return PopupMenuButton<SortOption>(
+                    icon: const Icon(Icons.sort),
+                    tooltip: 'Sortieren',
+                    onSelected: viewModel.setSortOption,
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: SortOption.alphabetical,
+                        child: Row(children: [Icon(Icons.sort_by_alpha), SizedBox(width: 8), Text('Alphabetisch')]),
                       ),
-                    ),
-                    const PopupMenuItem(
-                      value: SortOption.type,
-                      child: Row(
-                        children: [
-                          Icon(Icons.category),
-                          SizedBox(width: 8),
-                          Text('Typ'),
-                        ],
+                      const PopupMenuItem(
+                        value: SortOption.type,
+                        child: Row(children: [Icon(Icons.category), SizedBox(width: 8), Text('Typ')]),
                       ),
-                    ),
-                    const PopupMenuItem(
-                      value: SortOption.difficulty,
-                      child: Row(
-                        children: [
-                          Icon(Icons.bolt),
-                          SizedBox(width: 8),
-                          Text('Schwierigkeit'),
-                        ],
+                      const PopupMenuItem(
+                        value: SortOption.difficulty,
+                        child: Row(children: [Icon(Icons.bolt), SizedBox(width: 8), Text('Schwierigkeit')]),
                       ),
-                    ),
-                    const PopupMenuItem(
-                      value: SortOption.level,
-                      child: Row(
-                        children: [
-                          Icon(Icons.signal_cellular_alt),
-                          SizedBox(width: 8),
-                          Text('Level'),
-                        ],
+                      const PopupMenuItem(
+                        value: SortOption.level,
+                        child: Row(children: [Icon(Icons.signal_cellular_alt), SizedBox(width: 8), Text('Level')]),
                       ),
-                    ),
-                    const PopupMenuItem(
-                      value: SortOption.duration,
-                      child: Row(
-                        children: [
-                          Icon(Icons.schedule),
-                          SizedBox(width: 8),
-                          Text('Dauer'),
-                        ],
+                      const PopupMenuItem(
+                        value: SortOption.duration,
+                        child: Row(children: [Icon(Icons.schedule), SizedBox(width: 8), Text('Dauer')]),
                       ),
-                    ),
-                    const PopupMenuItem(
-                      value: SortOption.created,
-                      child: Row(
-                        children: [
-                          Icon(Icons.add_circle),
-                          SizedBox(width: 8),
-                          Text('Erstellt'),
-                        ],
+                      const PopupMenuItem(
+                        value: SortOption.created,
+                        child: Row(children: [Icon(Icons.add_circle), SizedBox(width: 8), Text('Erstellt')]),
                       ),
-                    ),
-                    const PopupMenuItem(
-                      value: SortOption.updated,
-                      child: Row(
-                        children: [
-                          Icon(Icons.update),
-                          SizedBox(width: 8),
-                          Text('Aktualisiert'),
-                        ],
+                      const PopupMenuItem(
+                        value: SortOption.updated,
+                        child: Row(children: [Icon(Icons.update), SizedBox(width: 8), Text('Aktualisiert')]),
                       ),
-                    ),
-                  ],
-                );
-              },
-            ),
+                    ],
+                  );
+                },
+              ),
           ],
         ),
         body: TabBarView(
           controller: _tabController,
           children: [
-            _buildQuestList(), // Alle Quests
-            _buildQuestList(), // Hauptquests (gefiltert)
-            _buildQuestList(), // Favoriten (gefiltert)
+            _buildQuestList(),
+            _buildQuestList(),
+            _buildQuestList(),
           ],
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => _navigateToEditQuest(),
-          backgroundColor: DnDTheme.mysticalPurple,
-          child: const Icon(Icons.add),
-          tooltip: 'Neue Quest',
-        ),
+        floatingActionButton: _buildFab(),
       ),
+    );
+  }
+
+  Widget _buildFab() {
+    if (_isCampaignMode) {
+      return Consumer<QuestLibraryViewModel>(
+        builder: (context, vm, _) {
+          if (vm.selectedCount > 0) {
+            return FloatingActionButton.extended(
+              backgroundColor: DnDTheme.ancientGold,
+              foregroundColor: Colors.black87,
+              icon: const Icon(Icons.add_task),
+              label: Text('${vm.selectedCount} Quest(s) hinzufügen'),
+              onPressed: _addSelectedToCampaign,
+            );
+          }
+          return FloatingActionButton(
+            backgroundColor: DnDTheme.mysticalPurple,
+            tooltip: 'Neue Quest erstellen',
+            onPressed: _navigateToCreateQuestForCampaign,
+            child: const Icon(Icons.add),
+          );
+        },
+      );
+    }
+
+    return FloatingActionButton(
+      onPressed: () => _navigateToEditQuest(),
+      backgroundColor: DnDTheme.mysticalPurple,
+      tooltip: 'Neue Quest',
+      child: const Icon(Icons.add),
     );
   }
 
@@ -248,9 +296,7 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
     return Consumer<QuestLibraryViewModel>(
       builder: (context, viewModel, child) {
         if (viewModel.isLoading) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
+          return const Center(child: CircularProgressIndicator());
         }
 
         if (viewModel.error != null) {
@@ -258,27 +304,16 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 64,
-                  color: DnDTheme.errorRed,
-                ),
+                Icon(Icons.error_outline, size: 64, color: DnDTheme.errorRed),
                 const SizedBox(height: 16),
                 Text(
                   'Fehler beim Laden',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: DnDTheme.errorRed,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: DnDTheme.errorRed),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   viewModel.error!,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
@@ -300,33 +335,22 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
         }
 
         if (viewModel.filteredQuests.isEmpty) {
-          return _buildEmptyState();
+          return _buildEmptyState(viewModel);
         }
 
         return RefreshIndicator(
           onRefresh: viewModel.refresh,
           child: Column(
             children: [
-              // Filter-Chips
-              EnhancedQuestFilterChipsWidget(
-                viewModel: viewModel,
-              ),
-              
-              // Quest-Liste
+              if (!_isCampaignMode)
+                EnhancedQuestFilterChipsWidget(viewModel: viewModel),
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   itemCount: viewModel.filteredQuests.length,
                   itemBuilder: (context, index) {
                     final quest = viewModel.filteredQuests[index];
-                    return UnifiedQuestCard(
-                      quest: quest,
-                      onTap: () => _navigateToEditQuest(quest),
-                      onEdit: () => _navigateToEditQuest(quest),
-                      onDelete: () => _deleteQuest(quest),
-                      onToggleFavorite: () => viewModel.toggleFavorite(quest),
-                      isFavorite: quest.isFavorite,
-                    );
+                    return _buildQuestItem(quest, viewModel);
                   },
                 ),
               ),
@@ -337,63 +361,110 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
     );
   }
 
-  Widget _buildEmptyState() {
-    return Consumer<QuestLibraryViewModel>(
-      builder: (context, viewModel, child) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.assignment_outlined,
-                size: 64,
-                color: Colors.grey[400],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Keine Quests gefunden',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                viewModel.hasActiveFilters 
-                    ? 'Keine Quests entsprechen den aktuellen Filtern'
-                    : 'Erstelle deine erste Quest oder ändere die Filter',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[500],
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              if (viewModel.hasActiveFilters)
-                ElevatedButton.icon(
-                  onPressed: () => viewModel.clearAllFilters(),
-                  icon: const Icon(Icons.clear_all),
-                  label: const Text('Filter zurücksetzen'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: DnDTheme.mysticalPurple,
-                    foregroundColor: Colors.white,
-                  ),
-                )
-              else
-                ElevatedButton.icon(
-                  onPressed: () => _navigateToEditQuest(),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Neue Quest erstellen'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: DnDTheme.mysticalPurple,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-            ],
+  Widget _buildQuestItem(Quest quest, QuestLibraryViewModel viewModel) {
+    if (_isCampaignMode) {
+      final linked = viewModel.isLinked(quest);
+      final selected = viewModel.isSelected(quest);
+
+      return Stack(
+        children: [
+          UnifiedQuestCard(
+            quest: quest,
+            isSelected: selected,
+            showActions: false,
+            onTap: linked ? null : () => viewModel.toggleSelection(quest),
+            onEdit: null,
+            onDelete: null,
+            onToggleFavorite: null,
+            isFavorite: quest.isFavorite,
           ),
-        );
-      },
+          if (linked)
+            Positioned(
+              top: 10,
+              right: 10,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: DnDTheme.successGreen,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check, color: Colors.white, size: 12),
+                    SizedBox(width: 4),
+                    Text(
+                      'Hinzugefügt',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      );
+    }
+
+    return UnifiedQuestCard(
+      quest: quest,
+      onTap: () => _navigateToEditQuest(quest),
+      onEdit: () => _navigateToEditQuest(quest),
+      onDelete: () => _deleteQuest(quest),
+      onToggleFavorite: () => viewModel.toggleFavorite(quest),
+      isFavorite: quest.isFavorite,
+    );
+  }
+
+  Widget _buildEmptyState(QuestLibraryViewModel viewModel) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.assignment_outlined, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          Text(
+            'Keine Quests gefunden',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            viewModel.hasActiveFilters
+                ? 'Keine Quests entsprechen den aktuellen Filtern'
+                : _isCampaignMode
+                    ? 'Erstelle eine neue Quest für diese Kampagne'
+                    : 'Erstelle deine erste Quest',
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          if (viewModel.hasActiveFilters)
+            ElevatedButton.icon(
+              onPressed: () => viewModel.clearAllFilters(),
+              icon: const Icon(Icons.clear_all),
+              label: const Text('Filter zurücksetzen'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: DnDTheme.mysticalPurple,
+                foregroundColor: Colors.white,
+              ),
+            )
+          else
+            ElevatedButton.icon(
+              onPressed: _isCampaignMode
+                  ? _navigateToCreateQuestForCampaign
+                  : () => _navigateToEditQuest(),
+              icon: const Icon(Icons.add),
+              label: const Text('Neue Quest erstellen'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: DnDTheme.mysticalPurple,
+                foregroundColor: Colors.white,
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

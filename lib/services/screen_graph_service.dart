@@ -263,9 +263,9 @@ class ScreenGraphService {
             type: ConnectionType.navigation,
           ),
           ScreenConnection(
-            targetScreen: 'AddQuestFromLibraryScreen',
+            targetScreen: 'QuestLibraryScreen',
             triggerAction: 'Add Quest',
-            description: 'Add Quest to Campaign',
+            description: 'Add Quest to Campaign (Kampagnen-Modus)',
             type: ConnectionType.deepLink,
           ),
           ScreenConnection(
@@ -661,21 +661,6 @@ class ScreenGraphService {
       ),
       
       // Utility Screens
-      'AddQuestFromLibraryScreen': ScreenNode(
-        name: 'Add Quest from Library',
-        fileName: 'add_quest_from_library_screen.dart',
-        category: 'Utility',
-        requiresParameters: true,
-        parameterInfo: 'Benötigt: Campaign',
-        connections: [
-          ScreenConnection(
-            targetScreen: 'EnhancedQuestLibraryScreen',
-            triggerAction: 'Cancel',
-            description: 'Return to Quest Library',
-            type: ConnectionType.modal,
-          ),
-        ],
-      ),
       
       'AddItemFromLibraryScreen': ScreenNode(
         name: 'Add Item from Library',
