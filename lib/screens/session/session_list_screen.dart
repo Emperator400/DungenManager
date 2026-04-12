@@ -630,7 +630,8 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
   Future<void> _duplicateSession(Session session) async {
     final viewModel = context.read<SessionListForCampaignViewModel>();
     final duplicated = await viewModel.duplicateSession(session);
-    
+    if (!mounted) return;
+
     if (duplicated != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -647,7 +648,8 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
 
     final viewModel = context.read<SessionListForCampaignViewModel>();
     final success = await viewModel.deleteSession(session.id);
-    
+    if (!mounted) return;
+
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

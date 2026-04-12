@@ -647,7 +647,8 @@ class _OfficialMonstersScreenState extends State<OfficialMonstersScreen> {
 
     final viewModel = context.read<OfficialMonstersViewModel>();
     final success = await viewModel.importMonsters();
-    
+    if (!mounted) return;
+
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

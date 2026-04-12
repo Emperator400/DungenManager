@@ -101,6 +101,7 @@ class _SessionListForCampaignScreenState extends State<SessionListForCampaignScr
           builder: (ctx) => EditSessionScreen(session: newSession, isNewSession: true),
         ),
       );
+      if (!mounted) return;
       // Liste nach dem Editieren aktualisieren
       context.read<SessionListForCampaignViewModel>().refreshSessions();
     }
@@ -307,8 +308,8 @@ class _SessionListForCampaignScreenState extends State<SessionListForCampaignScr
             onPressed: () async {
               Navigator.pop(context);
               final success = await context.read<SessionListForCampaignViewModel>().deleteSession(session.id!);
+              if (!context.mounted) return;
               if (!success) {
-                // Fehler anzeigen, falls notwendig
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Fehler beim Löschen der Sitzung'),

@@ -465,7 +465,8 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final success = await viewModel.saveSound();
-    
+    if (!mounted) return;
+
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -480,7 +481,8 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
   Future<void> _duplicateSound() async {
     final viewModel = context.read<EditSoundViewModel>();
     await viewModel.duplicateSound();
-    
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Sound dupliziert'),

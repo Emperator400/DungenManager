@@ -66,6 +66,7 @@ class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneS
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
