@@ -61,7 +61,7 @@ lib/
 │   ├── bestiary/                      # Kreaturenverwaltung
 │   ├── campaign/                      # Kampagnenverwaltung
 │   ├── characters/                    # Charakterverwaltung (character_editor_screen_old.dart UNBENUTZT)
-│   ├── debug/                         # Entwickler-Tools (wigets_test_grund.dart — Tippfehler im Namen)
+│   ├── debug/                         # Entwickler-Tools
 │   ├── items/                         # Gegenstände/Inventar
 │   ├── lore/                          # Wiki/Lore-System
 │   ├── navigation/                    # Haupt-Navigation
@@ -204,7 +204,11 @@ lib/
 |---------|--------|--------|
 | `.withOpacity()` statt `.withValues(alpha:)` | 401 Stellen, 63 Dateien | ✅ Behoben (12.04.2026) |
 | `print()` statt `debugPrint()` | 696 Stellen, 51 Dateien | ✅ Behoben (12.04.2026) |
-| Dateiname-Tippfehler: `wigets_test_grund.dart` | 1 Datei (`lib/screens/debug/`) | ❌ Offen |
+| Dateiname-Tippfehler: `wigets_test_grund.dart` | 1 Datei (`lib/screens/debug/`) | ✅ Behoben (14.04.2026) |
+| `unused_field` / `unused_element` Warnungen | ~30 Felder/Methoden, ~20 Dateien | ✅ Behoben (14.04.2026) |
+| `override_on_non_overriding_member` Warnungen | 13 Annotationen, 4 Dateien | ✅ Behoben (14.04.2026) |
+| Null-Safety: unnötige `!`, `??`, `?.`, null-Vergleiche | ~80 Stellen, ~40 Dateien | ✅ Behoben (14.04.2026) |
+| `inference_failure_*` (fehlende Typ-Annotationen) | ~181 Stellen | ⚪ Kosmetisch, kein Handlungsbedarf |
 
 ---
 
