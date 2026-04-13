@@ -50,7 +50,7 @@ class PlayerCharacterService {
       if (attackData is String) {
         decodedList = jsonDecode(attackData) as List<dynamic>;
       } else if (attackData is List) {
-        decodedList = attackData as List<dynamic>;
+        decodedList = attackData;
       } else {
         return [];
       }
@@ -93,7 +93,7 @@ class PlayerCharacterService {
       if (inventoryData is String) {
         decodedList = jsonDecode(inventoryData) as List<dynamic>;
       } else if (inventoryData is List) {
-        decodedList = inventoryData as List<dynamic>;
+        decodedList = inventoryData;
       } else {
         return [];
       }

@@ -448,8 +448,8 @@ class BestiaryViewModel extends ChangeNotifier {
     await _executeWithErrorHandling(() async {
       final allCreatures = List<Creature>.from(_allCreatures);
       for (final creature in allCreatures) {
-        if (_creatureRepository != null && creature.id != null) {
-          await _creatureRepository!.delete(creature.id!);
+        if (_creatureRepository != null) {
+          await _creatureRepository!.delete(creature.id);
         }
       }
       

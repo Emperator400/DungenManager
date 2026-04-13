@@ -258,9 +258,7 @@ class SceneModelRepository extends ModelRepository<Scene> {
       );
       
       final created = await create(duplicated);
-      if (created != null) {
-        duplicatedScenes.add(created);
-      }
+      duplicatedScenes.add(created);
     }
     
     return duplicatedScenes;

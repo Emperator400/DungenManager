@@ -24,19 +24,14 @@ class UnifiedSessionCard extends UnifiedCardBase {
     this.onDelete,
   });
 
-  @override
   String get cardType => 'session';
 
-  @override
   IconData get leadingIcon => Icons.event_note;
 
-  @override
   String get title => session.title;
 
-  @override
   String? get subtitle => 'Sitzung $sessionNumber';
 
-  @override
   String? get description {
     if (session.liveNotes.isNotEmpty) {
       return session.liveNotes.length > 100 
@@ -46,7 +41,6 @@ class UnifiedSessionCard extends UnifiedCardBase {
     return null;
   }
 
-  @override
   List<String>? get tags {
     List<String> tags = [];
     
@@ -56,7 +50,6 @@ class UnifiedSessionCard extends UnifiedCardBase {
     return tags;
   }
 
-  @override
   Widget? buildAdditionalHeaderContent(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -73,7 +66,6 @@ class UnifiedSessionCard extends UnifiedCardBase {
     );
   }
 
-  @override
   List<PopupMenuEntry<String>> get popupMenuItems {
     List<PopupMenuEntry<String>> items = [];
     
@@ -120,7 +112,6 @@ class UnifiedSessionCard extends UnifiedCardBase {
     return items;
   }
 
-  @override
   void handlePopupMenuItem(String value) {
     switch (value) {
       case 'play':
@@ -135,12 +126,10 @@ class UnifiedSessionCard extends UnifiedCardBase {
     }
   }
 
-  @override
   void onTapAction() {
     onTap?.call();
   }
 
-  @override
   Widget? buildMetadata(BuildContext context) {
     return Row(
       children: [

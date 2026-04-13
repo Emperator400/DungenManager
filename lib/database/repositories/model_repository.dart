@@ -39,9 +39,8 @@ abstract class ModelRepository<T> {
     
     // Hole das eingefügte Model aus der Datenbank zurück
     // Dies stellt sicher, dass alle Felder korrekt serialisiert wurden
-    if (model is dynamic) {
-      try {
-        final modelId = model.id;
+    try {
+      final modelId = model.id;
         debugPrint('💾 [ModelRepository] Model ID: $modelId (${modelId.runtimeType})');
         
         // Unterscheide zwischen int und String IDs
@@ -83,14 +82,11 @@ abstract class ModelRepository<T> {
         // Fallback: Kein ID-Typ erkannt
         debugPrint('💾 [ModelRepository] Unbekannter ID-Typ, gib Original zurück');
         return model;
-      } catch (e) {
-        // Fallback bei Fehler
-        debugPrint('💾 [ModelRepository] Fehler beim Lesen aus DB: $e, gib Original zurück');
-        return model;
-      }
+    } catch (e) {
+      // Fallback bei Fehler
+      debugPrint('💾 [ModelRepository] Fehler beim Lesen aus DB: $e, gib Original zurück');
+      return model;
     }
-    
-    return model;
   }
   
   /// Findet eine Entität anhand ihrer ID
@@ -157,15 +153,13 @@ abstract class ModelRepository<T> {
     
     // Hole ID vom Modelle (unterstütze sowohl int als auch String)
     String id = '';
-    if (model is dynamic) {
-      final modelId = model.id;
-      if (modelId is int) {
-        id = modelId.toString();
-      } else if (modelId is String) {
-        id = modelId;
-      }
+    final modelId = model.id;
+    if (modelId is int) {
+      id = modelId.toString();
+    } else if (modelId is String) {
+      id = modelId;
     }
-    
+
     await db.update(
       tableName,
       modelMap,
@@ -315,32 +309,28 @@ abstract class ModelRepository<T> {
         final id = await txn.insert(tableName, modelMap);
         
         // Prüfe, ob das Model bereits eine ID hat (UUID)
-        if (model is dynamic) {
-          try {
-            final existingId = model.id as String?;
-            // Wenn bereits eine ID vorhanden ist (UUID), gib das Model zurück
-            if (existingId != null && existingId.isNotEmpty) {
-              // Hole das Model aus der Datenbank zurück
-              final maps = await txn.query(
-                tableName,
-                where: 'id = ?',
-                whereArgs: [existingId],
-                limit: 1,
-              );
-              if (maps.isNotEmpty) {
-                createdModels.add(fromDatabaseMap(maps.first));
-              } else {
-                createdModels.add(model);
-              }
+        try {
+          final existingId = model.id as String?;
+          // Wenn bereits eine ID vorhanden ist (UUID), gib das Model zurück
+          if (existingId != null && existingId.isNotEmpty) {
+            // Hole das Model aus der Datenbank zurück
+            final maps = await txn.query(
+              tableName,
+              where: 'id = ?',
+              whereArgs: [existingId],
+              limit: 1,
+            );
+            if (maps.isNotEmpty) {
+              createdModels.add(fromDatabaseMap(maps.first));
             } else {
-              // Falls keine ID vorhanden ist, verwende die generierte rowid
-              final copy = model.copyWith(id: id.toString()) as T;
-              createdModels.add(copy);
+              createdModels.add(model);
             }
-          } catch (e) {
-            createdModels.add(model);
+          } else {
+            // Falls keine ID vorhanden ist, verwende die generierte rowid
+            final copy = model.copyWith(id: id.toString()) as T;
+            createdModels.add(copy);
           }
-        } else {
+        } catch (e) {
           createdModels.add(model);
         }
       }
@@ -358,15 +348,13 @@ abstract class ModelRepository<T> {
         final modelMap = toDatabaseMap(model);
         
         String id = '';
-        if (model is dynamic) {
-          final modelId = model.id;
-          if (modelId is int) {
-            id = modelId.toString();
-          } else if (modelId is String) {
-            id = modelId;
-          }
+        final modelId = model.id;
+        if (modelId is int) {
+          id = modelId.toString();
+        } else if (modelId is String) {
+          id = modelId;
         }
-        
+
         await txn.update(
           tableName,
           modelMap,

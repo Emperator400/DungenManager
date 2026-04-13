@@ -2,7 +2,6 @@
 import 'package:flutter/foundation.dart';
 import '../models/campaign.dart';
 import '../services/uuid_service.dart';
-import '../services/session_service.dart';
 import '../database/repositories/campaign_model_repository.dart';
 import '../database/repositories/player_character_model_repository.dart';
 
@@ -30,54 +29,13 @@ enum CampaignSortOption {
 class CampaignViewModel extends ChangeNotifier {
   final CampaignModelRepository? _campaignRepo;
   final PlayerCharacterModelRepository? _characterRepo;
-  final SessionService? _sessionService;
-  
+
   CampaignViewModel({
     CampaignModelRepository? campaignRepo,
     PlayerCharacterModelRepository? characterRepo,
-    SessionService? sessionService,
   }) : _campaignRepo = campaignRepo,
-       _characterRepo = characterRepo,
-       _sessionService = sessionService {
+       _characterRepo = characterRepo {
     debugPrint('🏗️ [CampaignViewModel] Konstruktor aufgerufen');
-    // Nicht mehr im Konstruktor initialisieren - das führt zu Problemen bei Hot Restart
-    // _initializeCampaigns();
-  }
-
-  /// Initialisiert die Kampagnenliste
-  Future<void> _initializeCampaigns() async {
-    try {
-      debugPrint('🔄 [CampaignViewModel] _initializeCampaigns() gestartet');
-      _setLoading(true);
-      _setError(null);
-      
-      if (_campaignRepo != null) {
-        debugPrint('📊 [CampaignViewModel] Repository verfügbar, lade Kampagnen...');
-        _campaigns = await _campaignRepo!.findAll();
-        debugPrint('✅ [CampaignViewModel] ${_campaigns.length} Kampagnen geladen');
-        
-        // Invalidate cache
-        _invalidateFilteredCache();
-      } else {
-        debugPrint('⚠️ [CampaignViewModel] CampaignModelRepository nicht verfügbar');
-        _campaigns = [];
-      }
-      
-      notifyListeners();
-      
-    } catch (e, stackTrace) {
-      debugPrint('❌ [CampaignViewModel] Exception in _initializeCampaigns(): $e');
-      debugPrint('❌ [CampaignViewModel] StackTrace: $stackTrace');
-      _setError('Ausnahme beim Laden der Kampagnen: $e');
-      
-      // Setze eine leere Liste, damit die App nicht abstürzt
-      _campaigns = [];
-      _invalidateFilteredCache();
-      notifyListeners();
-    } finally {
-      _setLoading(false);
-      debugPrint('🏁 [CampaignViewModel] _initializeCampaigns() abgeschlossen');
-    }
   }
 
   // State
@@ -294,7 +252,7 @@ class CampaignViewModel extends ChangeNotifier {
     
     try {
       if (_campaignRepo != null) {
-        await _campaignRepo!.delete(campaign.id!);
+        await _campaignRepo!.delete(campaign.id);
       } else {
         throw Exception('CampaignModelRepository nicht verfügbar');
       }

@@ -101,7 +101,7 @@ class WikiLinkRepository extends BaseRepository<WikiLinkEntity> {
     
     if (linkType != null) {
       whereClause += ' AND link_type = ?';
-      whereArgs.add(linkType!.name);
+      whereArgs.add(linkType.name);
     }
     
     final maps = await findWhere(

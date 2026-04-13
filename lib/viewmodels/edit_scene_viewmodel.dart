@@ -167,19 +167,13 @@ class EditSceneViewModel extends ChangeNotifier {
       // Speichern in der Datenbank
       if (isEditing) {
         debugPrint('✏️ [EditSceneViewModel] Aktualisiere existierende Scene...');
-        final updatedScene = await _sceneRepository.update(_scene!);
-        if (updatedScene != null) {
-          _scene = updatedScene;
-        }
+        _scene = await _sceneRepository.update(_scene!);
         debugPrint('✅ [EditSceneViewModel] Scene aktualisiert');
       } else {
         debugPrint('➕ [EditSceneViewModel] Erstelle neue Scene...');
-        final createdScene = await _sceneRepository.create(_scene!);
-        if (createdScene != null) {
-          _scene = createdScene;
-          // Nach dem ersten Speichern: Als existierende Scene markieren
-          _isEditingExistingScene = true;
-        }
+        _scene = await _sceneRepository.create(_scene!);
+        // Nach dem ersten Speichern: Als existierende Scene markieren
+        _isEditingExistingScene = true;
         debugPrint('✅ [EditSceneViewModel] Scene erstellt');
       }
       

@@ -369,18 +369,14 @@ class EditItemViewModel extends ChangeNotifier {
         }
         
         final savedItem = await _itemRepository.create(_item!);
-        debugPrint('✅ [EditItemViewModel] Item erstellt: ${savedItem?.name}, ID: ${savedItem?.id}');
-        if (savedItem != null) {
-          _item = savedItem;
-        }
+        debugPrint('✅ [EditItemViewModel] Item erstellt: ${savedItem.name}, ID: ${savedItem.id}');
+        _item = savedItem;
       } else {
         // Update existing item
         debugPrint('🔄 [EditItemViewModel] Aktualisiere existierendes Item: ${_item!.id}');
         final updatedItem = await _itemRepository.update(_item!);
-        debugPrint('✅ [EditItemViewModel] Item aktualisiert: ${updatedItem?.name}, ID: ${updatedItem?.id}');
-        if (updatedItem != null) {
-          _item = updatedItem;
-        }
+        debugPrint('✅ [EditItemViewModel] Item aktualisiert: ${updatedItem.name}, ID: ${updatedItem.id}');
+        _item = updatedItem;
       }
       
       _hasUnsavedChanges = false;

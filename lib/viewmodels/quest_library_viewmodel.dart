@@ -1,13 +1,11 @@
 import 'package:flutter/foundation.dart';
 import '../models/quest.dart';
-import '../services/quest_service_locator.dart';
 import '../database/repositories/quest_model_repository.dart';
 import '../database/core/database_connection.dart';
 
 /// ViewModel für die Quest-Bibliothek mit reactive State Management
 /// MIGRIERT zur neuen Repository-Architektur
 class QuestLibraryViewModel extends ChangeNotifier {
-  final _questService = QuestServiceLocator.instance.questLibraryService;
   final QuestModelRepository? _questRepository;
   
   // State
@@ -61,8 +59,8 @@ class QuestLibraryViewModel extends ChangeNotifier {
   Set<int> get selectedQuestIds => Set.unmodifiable(_selectedQuestIds);
   int get selectedCount => _selectedQuestIds.length;
 
-  bool isLinked(Quest quest) => quest.id != null && _linkedQuestIds.contains(quest.id);
-  bool isSelected(Quest quest) => quest.id != null && _selectedQuestIds.contains(quest.id);
+  bool isLinked(Quest quest) => _linkedQuestIds.contains(quest.id);
+  bool isSelected(Quest quest) => _selectedQuestIds.contains(quest.id);
 
   /// Prüft ob Filter aktiv sind
   bool get hasActiveFilters => 
@@ -90,7 +88,7 @@ class QuestLibraryViewModel extends ChangeNotifier {
     await _performAsyncOperation(() async {
       if (_questRepository != null) {
         final linked = await _questRepository!.findByCampaign(campaignId);
-        _linkedQuestIds = linked.where((q) => q.id != null).map((q) => q.id!).toSet();
+        _linkedQuestIds = linked.map((q) => q.id).toSet();
         _allQuests = await _questRepository!.findAll();
       }
       _selectedQuestIds.clear();
@@ -100,11 +98,11 @@ class QuestLibraryViewModel extends ChangeNotifier {
 
   /// Selektierung einer Quest umschalten (nur nicht-verknüpfte Quests)
   void toggleSelection(Quest quest) {
-    if (quest.id == null || isLinked(quest)) return;
+    if (isLinked(quest)) return;
     if (_selectedQuestIds.contains(quest.id)) {
       _selectedQuestIds.remove(quest.id);
     } else {
-      _selectedQuestIds.add(quest.id!);
+      _selectedQuestIds.add(quest.id);
     }
     notifyListeners();
   }
@@ -445,9 +443,9 @@ class QuestLibraryViewModel extends ChangeNotifier {
   /// HINWEIS: Konvertiert int ID zu String für Repository-Kompatibilität
   Future<void> deleteQuest(Quest quest) async {
     await _performAsyncOperation(() async {
-      if (_questRepository != null && quest.id != null) {
+      if (_questRepository != null) {
         // Konvertiere int zu String für Repository
-        final idString = quest.id!.toString();
+        final idString = quest.id.toString();
         await _questRepository!.delete(idString);
       }
       

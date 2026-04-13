@@ -93,7 +93,7 @@ class WikiViewModel extends ChangeNotifier {
   /// HINWEIS: Verwendet jetzt das neue WikiEntryModelRepository
   Future<void> loadEntriesByType(WikiEntryType entryType) async {
     await _performAsyncOperation(() async {
-      _entries = await _wikiRepository!.findAll();
+      _entries = await _wikiRepository.findAll();
       // Filtern nach Typ im ViewModel
       _entries = _entries.where((entry) => entry.entryType == entryType).toList();
       _applyFiltersAndSort();
@@ -292,26 +292,22 @@ class WikiViewModel extends ChangeNotifier {
   /// HINWEIS: Verwendet jetzt das neue WikiEntryModelRepository
   Future<void> addEntry(WikiEntry entry) async {
     await _performAsyncOperation(() async {
-      WikiEntry? savedEntry = await _wikiRepository.create(entry);
-      if (savedEntry != null) {
-        _entries.add(savedEntry);
-        _applyFiltersAndSort();
-      }
+      final savedEntry = await _wikiRepository.create(entry);
+      _entries.add(savedEntry);
+      _applyFiltersAndSort();
     });
   }
 
   /// Aktualisiert einen Wiki-Eintrag über neues Repository
-  /// 
+  ///
   /// HINWEIS: Verwendet jetzt das neue WikiEntryModelRepository
   Future<void> updateEntry(WikiEntry entry) async {
     await _performAsyncOperation(() async {
-      WikiEntry? updatedEntry = await _wikiRepository.update(entry);
-      if (updatedEntry != null) {
-        final index = _entries.indexWhere((e) => e.id == entry.id);
-        if (index != -1) {
-          _entries[index] = updatedEntry;
-          _applyFiltersAndSort();
-        }
+      final updatedEntry = await _wikiRepository.update(entry);
+      final index = _entries.indexWhere((e) => e.id == entry.id);
+      if (index != -1) {
+        _entries[index] = updatedEntry;
+        _applyFiltersAndSort();
       }
     });
   }
@@ -337,11 +333,9 @@ class WikiViewModel extends ChangeNotifier {
         updatedAt: DateTime.now(),
       );
       
-      WikiEntry? savedEntry = await _wikiRepository.create(duplicatedEntry);
-      if (savedEntry != null) {
-        _entries.add(savedEntry);
-        _applyFiltersAndSort();
-      }
+      final savedEntry = await _wikiRepository.create(duplicatedEntry);
+      _entries.add(savedEntry);
+      _applyFiltersAndSort();
     });
   }
 

@@ -36,7 +36,6 @@ class EnhancedInventoryGridWidget extends StatefulWidget {
 class _EnhancedInventoryGridWidgetState extends State<EnhancedInventoryGridWidget>
     with TickerProviderStateMixin {
   late AnimationController _slideController;
-  late Animation<Offset> _slideAnimation;
   
   // Ausrüstungs-Slots nach Kategorien gruppiert
   Map<String, List<EquipSlot>> get categorizedSlots => {
@@ -53,13 +52,6 @@ class _EnhancedInventoryGridWidgetState extends State<EnhancedInventoryGridWidge
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(1.0, 0.0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeInOut,
-    ));
   }
 
   @override
@@ -308,34 +300,6 @@ class _EnhancedInventoryGridWidgetState extends State<EnhancedInventoryGridWidge
           decoration: BoxDecoration(
             color: durabilityColor,
             borderRadius: BorderRadius.circular(1),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDurabilityIndicator(DisplayInventoryItem displayItem) {
-    final item = displayItem.item;
-    final current = displayItem.currentDurability ?? item.maxDurability ?? 100;
-    final max = item.maxDurability ?? 100;
-    final percentage = current / max;
-    
-    Color durabilityColor = ItemColorHelper.getDurabilityColor(percentage);
-    
-    return Container(
-      width: 32,
-      height: 3,
-      decoration: BoxDecoration(
-        color: Colors.grey.shade600,
-        borderRadius: BorderRadius.circular(2),
-      ),
-      child: FractionallySizedBox(
-        alignment: Alignment.centerLeft,
-        widthFactor: percentage,
-        child: Container(
-          decoration: BoxDecoration(
-            color: durabilityColor,
-            borderRadius: BorderRadius.circular(2),
           ),
         ),
       ),
@@ -747,19 +711,4 @@ class _EnhancedInventoryGridWidgetState extends State<EnhancedInventoryGridWidge
     );
   }
 
-  void _handleEquipItem(DisplayInventoryItem item, EquipSlot slot) {
-    final canEquip = slot.allowedItemTypes.contains(item.item.itemType);
-    if (canEquip) {
-      widget.onEquipItem(item, slot);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${item.item.name} kann nicht in ${slot.displayName} ausgerüstet werden',
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
 }

@@ -419,28 +419,4 @@ class InventoryService {
   }
 
   // ============================================================================
-  // VALIDATION HELPERS
-  // ============================================================================
-
-  /// Validiert Inventar-Operationen
-  void _validateInventoryOperation(String characterId, String itemId) {
-    if (characterId.isEmpty) {
-      throw ArgumentError('Character ID ist erforderlich');
-    }
-    
-    if (itemId.isEmpty) {
-      throw ArgumentError('Item ID ist erforderlich');
-    }
-  }
-
-  /// Validiert Menge
-  void _validateQuantity(int quantity) {
-    if (quantity < 0) {
-      throw ArgumentError('Menge darf nicht negativ sein');
-    }
-    
-    if (quantity > 9999) {
-      throw ArgumentError('Menge darf 9999 nicht überschreiten');
-    }
-  }
 }

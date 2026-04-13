@@ -19,7 +19,6 @@ class SessionRepository extends BaseRepository<SessionEntity> {
   @override
   SessionEntity get entityFactory => createEntity();
 
-  @override
   SessionEntity createEntity() {
     return SessionEntity(
       id: '',
@@ -30,7 +29,6 @@ class SessionRepository extends BaseRepository<SessionEntity> {
     );
   }
 
-  @override
   SessionEntity fromMap(Map<String, dynamic> map) {
     return SessionEntity.fromMap(map);
   }

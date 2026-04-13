@@ -4,7 +4,6 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import '../migrations/refactoring_migration_v2.dart';
-import '../migrations/database_migration.dart';
 
 /// Verwaltet die Datenbankverbindung und sorgt für Singleton-Pattern
 class DatabaseConnection {
@@ -1035,17 +1034,6 @@ class DatabaseConnection {
     await deleteDatabase(path);
     _database = await _initDatabase();
     debugPrint('✅ Datenbank wurde zurückgesetzt');
-  }
-  
-  /// Führt Datenbank-Migrationen aus
-  Future<void> _runDatabaseMigrations(Database db) async {
-    try {
-      final migration = DatabaseMigration(this);
-      await migration.runMigrations();
-      debugPrint('✅ Datenbank-Migrationen erfolgreich ausgeführt');
-    } catch (e) {
-      debugPrint('⚠️ Fehler bei Datenbank-Migrationen: $e');
-    }
   }
   
   /// Löscht die Datenbank-Datei

@@ -166,8 +166,8 @@ class CreatureEntity extends BaseEntity implements DatabaseEntity<CreatureEntity
       sourceId: creature.sourceId,
       isFavorite: creature.isFavorite,
       version: creature.version,
-      attackList: creature.attackList?.toString(),
-      inventory: creature.inventory?.toString(),
+      attackList: creature.attackList.toString(),
+      inventory: creature.inventory.toString(),
     );
   }
 

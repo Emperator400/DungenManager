@@ -15,7 +15,6 @@ class OfficialMonstersScreen extends StatefulWidget {
 class _OfficialMonstersScreenState extends State<OfficialMonstersScreen> {
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
-  MonsterSortCriteria _sortCriteria = MonsterSortCriteria.nameAsc;
   bool _isSearchMode = false;
 
   @override
@@ -69,9 +68,6 @@ class _OfficialMonstersScreenState extends State<OfficialMonstersScreen> {
                 icon: Icon(Icons.sort, color: Colors.white),
                 tooltip: 'Sortieren',
                 onSelected: (criteria) {
-                  setState(() {
-                    _sortCriteria = criteria;
-                  });
                   viewModel.sortMonsters(criteria);
                 },
                 itemBuilder: (context) => [

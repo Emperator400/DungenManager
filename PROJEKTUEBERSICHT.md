@@ -192,21 +192,19 @@ lib/
 ### Offene Bugs
 | # | Datei | Problem | Status |
 |---|-------|---------|--------|
-| 1 | `creature_type_section.dart` | RenderFlex Overflow im Kreaturentyp-Dropdown | In Bearbeitung |
+| — | — | — | — |
 
-### Tote Dateien (löschen)
-| Datei | Grund |
-|-------|-------|
-| `screens/audio/sound_library_screen_old.dart` | Alte Version, kein Import |
-| `screens/characters/character_editor_screen_old.dart` | Alte Version, kein Import |
-| `database/legacy/database_helper_legacy_backup.dart` | Legacy-Backup, kein Import |
+> Keine bekannten offenen Bugs. ✅
+
+### Tote Dateien
+> Alle bereinigt. ✅
 
 ### Code-Qualität
-| Problem | Umfang |
-|---------|--------|
-| `.withOpacity()` statt `.withValues(alpha:)` | Viele Dateien (Flutter-Deprecation) |
-| `print()` statt `debugPrint()` | Viele Dateien |
-| Dateiname-Tippfehler: `wigets_test_grund.dart` | 1 Datei |
+| Problem | Umfang | Status |
+|---------|--------|--------|
+| `.withOpacity()` statt `.withValues(alpha:)` | 401 Stellen, 63 Dateien | ✅ Behoben (12.04.2026) |
+| `print()` statt `debugPrint()` | 696 Stellen, 51 Dateien | ✅ Behoben (12.04.2026) |
+| Dateiname-Tippfehler: `wigets_test_grund.dart` | 1 Datei (`lib/screens/debug/`) | ❌ Offen |
 
 ---
 

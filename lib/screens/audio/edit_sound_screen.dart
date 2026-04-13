@@ -50,12 +50,12 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
     final sound = viewModel.sound;
     
     if (sound != null) {
-      _nameController.text = sound!.name;
-      _filePathController.text = sound!.filePath;
-      _descriptionController.text = sound!.description;
-      _tagsController.text = sound!.tags ?? '';
-      _selectedSoundType = sound!.soundType;
-      _duration = sound!.duration;
+      _nameController.text = sound.name;
+      _filePathController.text = sound.filePath;
+      _descriptionController.text = sound.description;
+      _tagsController.text = sound.tags ?? '';
+      _selectedSoundType = sound.soundType;
+      _duration = sound.duration;
     }
   }
 

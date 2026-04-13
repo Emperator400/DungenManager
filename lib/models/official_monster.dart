@@ -248,7 +248,7 @@ class MonsterAction {
 
   factory MonsterAction.from5eToolsJson(Map<String, dynamic> json) {
     final entries = json['entries'] ?? [];
-    final description = entries is List ? (entries as List).join('\n') : entries.toString();
+    final description = entries is List ? entries.join('\n') : entries.toString();
     
     String? attackBonus;
     String? damage;

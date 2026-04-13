@@ -70,16 +70,10 @@ class EditWikiEntryViewModel extends ChangeNotifier {
       
       if (_wikiEntry!.id.isEmpty) {
         // Create new wiki entry
-        final savedWikiEntry = await _wikiRepository.create(_wikiEntry!);
-        if (savedWikiEntry != null) {
-          _wikiEntry = savedWikiEntry;
-        }
+        _wikiEntry = await _wikiRepository.create(_wikiEntry!);
       } else {
         // Update existing wiki entry
-        final updatedWikiEntry = await _wikiRepository.update(_wikiEntry!);
-        if (updatedWikiEntry != null) {
-          _wikiEntry = updatedWikiEntry;
-        }
+        _wikiEntry = await _wikiRepository.update(_wikiEntry!);
       }
       
       _resetUnsavedChanges();
@@ -271,9 +265,4 @@ class EditWikiEntryViewModel extends ChangeNotifier {
            _wikiEntry!.content.trim().isNotEmpty;
   }
 
-  /// Simuliert eine Datenbankoperation
-  Future<void> _simulateDatabaseOperation() async {
-    // Simuliere Netzwerkverzögerung
-    await Future.delayed(const Duration(milliseconds: 500));
-  }
 }

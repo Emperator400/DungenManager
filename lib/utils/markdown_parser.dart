@@ -74,7 +74,7 @@ class MarkdownParser {
     // Entferne list markers
     plainText = plainText.replaceAllMapped(
       RegExp(r'^\s*[-*+]\s*'),
-      (match) => match.input?.substring(match.group(0)!.length) ?? '',
+      (match) => match.input.substring(match.group(0)!.length),
     );
     
     // Entferne links (behalte nur text)

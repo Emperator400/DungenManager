@@ -51,8 +51,6 @@ class QuestDataService {
           return decoded
               .where((rewardMap) => rewardMap != null && rewardMap is Map<String, dynamic>)
               .map((rewardMap) => qr.QuestReward.fromMap(rewardMap as Map<String, dynamic>))
-              .where((reward) => reward != null)
-              .cast<qr.QuestReward>()
               .toList();
         }
       } else if (rewardsData is List) {
@@ -60,8 +58,6 @@ class QuestDataService {
         return rewardsData
             .where((rewardMap) => rewardMap != null && rewardMap is Map<String, dynamic>)
             .map((rewardMap) => qr.QuestReward.fromMap(rewardMap as Map<String, dynamic>))
-            .where((reward) => reward != null)
-            .cast<qr.QuestReward>()
             .toList();
       }
     } catch (e) {

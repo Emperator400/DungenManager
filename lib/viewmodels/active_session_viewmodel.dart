@@ -23,7 +23,6 @@ class ActiveSessionViewModel extends ChangeNotifier {
   final SceneModelRepository _sceneRepository;
   final SceneService _sceneService;
   final SoundModelRepository _soundRepository;
-  final SoundService _soundService;
   final WikiEntryModelRepository _wikiRepository;
 
   // ============================================================================
@@ -68,7 +67,6 @@ class ActiveSessionViewModel extends ChangeNotifier {
     SceneModelRepository? sceneRepository,
     SceneService? sceneService,
     SoundModelRepository? soundRepository,
-    SoundService? soundService,
     WikiEntryModelRepository? wikiRepository,
   }) : _currentSession = session,
        _campaign = campaign,
@@ -76,7 +74,6 @@ class ActiveSessionViewModel extends ChangeNotifier {
        _sceneRepository = sceneRepository ?? SceneModelRepository(DatabaseConnection.instance),
        _sceneService = sceneService ?? SceneService(DatabaseConnection.instance),
        _soundRepository = soundRepository ?? SoundModelRepository(DatabaseConnection.instance),
-       _soundService = soundService ?? SoundService(),
        _wikiRepository = wikiRepository ?? WikiEntryModelRepository(DatabaseConnection.instance) {
     // Lade Scenes beim Initialisieren
     _loadScenes();

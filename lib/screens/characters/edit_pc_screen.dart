@@ -39,8 +39,6 @@ class EditPCScreen extends StatefulWidget {
 class _EditPCScreenState extends State<EditPCScreen>
     with SingleTickerProviderStateMixin {
   static const int _tabCount = 4;
-  static const int _minAbilityScore = 1;
-  static const int _maxAbilityScore = 20;
   static const Duration _debounceDelay = Duration(milliseconds: 300);
 
   late EditPCViewModel _viewModel;
@@ -485,8 +483,8 @@ class _EditPCScreenState extends State<EditPCScreen>
           inventoryItems: viewModel.inventory,
           equipmentMap: viewModel.equipmentMap,
           gold: viewModel.gold.toInt(),
-          silver: viewModel.silver?.toInt(),
-          copper: viewModel.copper?.toInt(),
+          silver: viewModel.silver.toInt(),
+          copper: viewModel.copper.toInt(),
           onEquipItem: (slot, displayItem) async {
             try {
               await viewModel.equipItem(slot, displayItem);

@@ -91,7 +91,6 @@ class WikiRepository extends BaseRepository<WikiEntity> {
   }
 
   /// Holt einen Eintrag nach ID (von BaseRepository)
-  @override
   Future<WikiEntity?> getById(String id) async {
     final maps = await findWhere(
       where: 'id = ?',

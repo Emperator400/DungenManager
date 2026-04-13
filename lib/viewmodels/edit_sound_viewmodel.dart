@@ -69,16 +69,10 @@ class EditSoundViewModel extends ChangeNotifier {
       
       if (_sound!.id.isEmpty) {
         // Create new sound
-        final savedSound = await _soundRepository.create(_sound!);
-        if (savedSound != null) {
-          _sound = savedSound;
-        }
+        _sound = await _soundRepository.create(_sound!);
       } else {
         // Update existing sound
-        final updatedSound = await _soundRepository.update(_sound!);
-        if (updatedSound != null) {
-          _sound = updatedSound;
-        }
+        _sound = await _soundRepository.update(_sound!);
       }
       
       _resetUnsavedChanges();
@@ -258,9 +252,4 @@ class EditSoundViewModel extends ChangeNotifier {
            _sound!.filePath.trim().isNotEmpty;
   }
 
-  /// Simuliert eine Datenbankoperation
-  Future<void> _simulateDatabaseOperation() async {
-    // Simuliere Netzwerkverzögerung
-    await Future.delayed(const Duration(milliseconds: 500));
-  }
 }

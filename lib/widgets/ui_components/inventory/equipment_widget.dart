@@ -296,7 +296,7 @@ class EquipmentWidget extends StatelessWidget {
               ],
             ),
             const SizedBox(height: DnDTheme.sm),
-            if (isEquipped && equippedItem != null)
+            if (isEquipped)
               _buildEquippedItemInfo(equippedItem)
             else
               _buildEmptySlot(),

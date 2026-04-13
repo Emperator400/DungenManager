@@ -522,7 +522,7 @@ class WikiEntryService {
     
     final service = WikiEntryService();
     
-    while (currentId != null && currentId.isNotEmpty && maxIterations > 0) {
+    while (currentId.isNotEmpty && maxIterations > 0) {
       if (currentId == entryId) {
         return true; // Zyklus detected
       }

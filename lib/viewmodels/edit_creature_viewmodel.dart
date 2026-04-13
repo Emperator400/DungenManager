@@ -18,7 +18,6 @@ class EditCreatureViewModel extends ChangeNotifier {
   bool _isSaving = false;
   String? _error;
   bool _isLoading = false;
-  bool _hasUnsavedChanges = false;
 
   // Getter
   Creature? get creature => _creature;
@@ -630,13 +629,9 @@ class EditCreatureViewModel extends ChangeNotifier {
     _error = null;
   }
 
-  void _markAsUnsaved() {
-    _hasUnsavedChanges = true;
-  }
+  void _markAsUnsaved() {}
 
-  void _resetUnsavedChanges() {
-    _hasUnsavedChanges = false;
-  }
+  void _resetUnsavedChanges() {}
 
   bool _hasValidCreature() {
     if (_creature == null) return false;

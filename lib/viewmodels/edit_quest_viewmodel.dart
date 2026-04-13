@@ -238,20 +238,12 @@ class EditQuestViewModel extends ChangeNotifier {
         if (_quest!.id < 0) {
         debugPrint('💾 [EditQuestViewModel] Erstelle neuen Quest (ID: ${_quest!.id})');
         // Create new quest
-        final savedQuest = await _questRepository.create(_quest!);
-        debugPrint('💾 [EditQuestViewModel] Gespeicherter Quest: $savedQuest');
-        if (savedQuest != null) {
-          _quest = savedQuest;
-          debugPrint('💾 [EditQuestViewModel] Neue Quest ID: ${_quest!.id}');
-        }
+        _quest = await _questRepository.create(_quest!);
+        debugPrint('💾 [EditQuestViewModel] Neue Quest ID: ${_quest!.id}');
       } else {
         debugPrint('💾 [EditQuestViewModel] Aktualisiere Quest (ID: ${_quest!.id})');
         // Update existing quest
-        final updatedQuest = await _questRepository.update(_quest!);
-        debugPrint('💾 [EditQuestViewModel] Aktualisierter Quest: $updatedQuest');
-        if (updatedQuest != null) {
-          _quest = updatedQuest;
-        }
+        _quest = await _questRepository.update(_quest!);
       }
       
       _hasUnsavedChanges = false;

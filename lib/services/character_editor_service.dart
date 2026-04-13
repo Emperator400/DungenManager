@@ -287,15 +287,7 @@ class CharacterEditorService {
   ) async {
     try {
       final result = await performServiceOperation('processAttacks', () async {
-        return attacks.map((attack) {
-          // Automatische Bonus-Berechnung wenn nicht gesetzt
-          final abilityScore = attributes[attack.abilityUsed ?? 'strength'] ?? 10;
-          final abilityModifier = calculateModifier(abilityScore);
-          
-          return attack.copyWith(
-            attackBonus: attack.attackBonus ?? abilityModifier,
-          );
-        }).toList();
+        return attacks.toList();
       });
       return ServiceResult<List<Attack>>.success(result, operation: 'processAttacks');
     } catch (e) {
@@ -315,12 +307,8 @@ class CharacterEditorService {
           final attacks = AttackParserService.parseAttacksFromString(attacksString);
           // Füge IDs hinzu und berechne Boni basierend auf Attributen
           return attacks.map((attack) {
-            final abilityScore = attributes[attack.abilityUsed ?? 'strength'] ?? 10;
-            final abilityModifier = calculateModifier(abilityScore);
-            
             return attack.copyWith(
               id: _uuidService.generateId(),
-              attackBonus: attack.attackBonus ?? abilityModifier,
             );
           }).toList();
         } catch (e) {

@@ -25,16 +25,14 @@ class CreatureDataService {
         decodedList = jsonDecode(attackListData) as List<dynamic>;
       } else if (attackListData is List) {
         // Altes Format: direkte Liste (für Abwärtskompatibilität)
-        decodedList = attackListData as List<dynamic>;
+        decodedList = attackListData;
       } else {
         decodedList = [];
       }
-      
+
       final attacks = decodedList
           .where((attackMap) => attackMap != null && attackMap is Map<String, dynamic>)
           .map((attackMap) => Attack.fromMap(attackMap as Map<String, dynamic>))
-          .where((attack) => attack != null)
-          .cast<Attack>()
           .toList();
 
       if (attacks.isEmpty && decodedList.isNotEmpty) {
@@ -67,7 +65,7 @@ class CreatureDataService {
         decodedList = jsonDecode(inventoryData) as List<dynamic>;
       } else if (inventoryData is List) {
         // Altes Format: direkte Liste (für Abwärtskompatibilität)
-        decodedList = inventoryData as List<dynamic>;
+        decodedList = inventoryData;
       } else {
         decodedList = [];
       }
@@ -248,7 +246,7 @@ class CreatureDataService {
           operation: 'validateAttackList',
         );
       }
-      if (attack.attackBonus != null && (attack.attackBonus! < -10 || attack.attackBonus! > 20)) {
+      if (attack.attackBonus < -10 || attack.attackBonus > 20) {
         throw ValidationException(
           'Angriff $i: Angriffsbonus muss zwischen -10 und 20 liegen',
           operation: 'validateAttackList',
@@ -343,9 +341,7 @@ class CreatureDataService {
       final attack = attacks[i];
       buffer.writeln('${i + 1}. ${attack.name}');
       buffer.writeln('   Schaden: ${attack.damageDice}');
-      if (attack.attackBonus != null) {
-        buffer.writeln('   Bonus: +${attack.attackBonus}');
-      }
+      buffer.writeln('   Bonus: +${attack.attackBonus}');
       if (attack.abilityUsed != null) {
         buffer.writeln('   Attribut: ${attack.abilityUsed}');
       }

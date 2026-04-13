@@ -38,8 +38,6 @@ class ItemEffectService {
           return DateTime.now().difference(effect.activatedAt!).inMinutes > effect.durationValue!;
         }
         return false;
-      default:
-        return false;
     }
   }
 
@@ -77,8 +75,6 @@ class ItemEffectService {
           final remaining = effect.durationValue! - difference.inMinutes;
           return remaining > 0 ? '$remaining Min' : 'Abgelaufen';
         }
-        return 'Unbekannt';
-      default:
         return 'Unbekannt';
     }
   }

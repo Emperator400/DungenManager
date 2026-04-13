@@ -4,7 +4,6 @@ import '../../models/wiki_entry.dart';
 import '../../viewmodels/wiki_viewmodel.dart';
 import '../../widgets/ui_components/cards/unified_wiki_entry_card.dart';
 import '../../widgets/lore_keeper/enhanced_wiki_filter_chips_widget.dart';
-import '../../widgets/lore_keeper/wiki_search_delegate.dart';
 import '../../theme/dnd_theme.dart';
 import 'edit_wiki_entry_screen.dart';
 
@@ -70,24 +69,6 @@ class _LoreKeeperScreenState extends State<LoreKeeperScreen>
     }
   }
 
-  Future<void> _showSearch() async {
-    final viewModel = context.read<WikiViewModel>();
-    final delegate = WikiSearchDelegate(
-      allEntries: viewModel.allEntries,
-      selectedType: viewModel.selectedType,
-      selectedTags: viewModel.selectedTags,
-    );
-    
-    final result = await showSearch<WikiEntry?>(
-      context: context,
-      delegate: delegate,
-    );
-    
-    if (result != null) {
-      await _navigateToEditScreen(result);
-    }
-  }
-
   Future<void> _navigateToEditScreen([WikiEntry? entryToEdit]) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -99,59 +80,6 @@ class _LoreKeeperScreenState extends State<LoreKeeperScreen>
     context.read<WikiViewModel>().refresh();
   }
 
-  Future<void> _deleteEntry(WikiEntry entry) async {
-    final confirmed = await _showDeleteConfirmation(entry);
-    if (confirmed == true) {
-      await context.read<WikiViewModel>().deleteEntry(entry.id);
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${entry.title} gelöscht'),
-            backgroundColor: DnDTheme.successGreen,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<bool?> _showDeleteConfirmation(WikiEntry entry) {
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
-        title: Text(
-          'Löschen bestätigen',
-          style: DnDTheme.headline3.copyWith(
-            color: DnDTheme.errorRed,
-          ),
-        ),
-        content: Text(
-          'Möchtest du "${entry.title}" wirklich löschen?',
-          style: DnDTheme.bodyText1.copyWith(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(
-              'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(
-                color: DnDTheme.mysticalPurple,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.errorRed,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Löschen'),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {

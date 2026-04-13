@@ -36,7 +36,6 @@ class PlayerCharacterRepository extends BaseRepository<PlayerCharacterEntity> {
     );
   }
 
-  @override
   PlayerCharacterEntity fromMap(Map<String, dynamic> map) {
     return createEntity().fromDatabaseMap(map);
   }

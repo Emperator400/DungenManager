@@ -55,10 +55,10 @@ class _EditSessionScreenState extends State<EditSessionScreen> {
     final session = viewModel.session;
     
     if (session != null) {
-      _titleController.text = session!.title;
-      _campaignIdController.text = session!.campaignId;
-      _liveNotesController.text = session!.liveNotes;
-      _inGameTimeInMinutes = session!.inGameTimeInMinutes;
+      _titleController.text = session.title;
+      _campaignIdController.text = session.campaignId;
+      _liveNotesController.text = session.liveNotes;
+      _inGameTimeInMinutes = session.inGameTimeInMinutes;
     }
   }
 

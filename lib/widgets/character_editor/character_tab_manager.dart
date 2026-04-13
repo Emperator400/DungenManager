@@ -6,7 +6,6 @@ import '../character_editor/attributes_tab_widget.dart';
 import '../character_editor/attacks_tab_widget.dart';
 import '../character_editor/enhanced_inventory_tab_widget.dart';
 import '../character_editor/character_inventory_handler.dart';
-import '../../models/inventory_item.dart';
 
 class CharacterTabManager {
   final EnhancedCharacterEditorController controller;
@@ -130,36 +129,4 @@ class CharacterTabManager {
     );
   }
 
-  Future<void> _handleAddItem() async {
-    if (inventoryHandler != null) {
-      await inventoryHandler!.addItemFromLibrary();
-    }
-  }
-
-  Future<void> _handleLoadInventory() async {
-    try {
-      await controller.loadInventory();
-      onStateChanged();
-    } catch (e) {
-      // Error handling wird vom aufrufenden Widget übernommen
-    }
-  }
-
-  Future<void> _handleManageItem(DisplayInventoryItem displayItem) async {
-    if (inventoryHandler != null) {
-      await inventoryHandler!.showManageItemDialog(displayItem);
-    }
-  }
-
-  Future<void> _handleUpdateQuantity(DisplayInventoryItem displayItem, int newQuantity) async {
-    if (inventoryHandler != null) {
-      await inventoryHandler!.updateItemQuantity(displayItem, newQuantity);
-    }
-  }
-
-  Future<void> _handleRemoveItem(DisplayInventoryItem displayItem) async {
-    if (inventoryHandler != null) {
-      await inventoryHandler!.removeItem(displayItem);
-    }
-  }
 }

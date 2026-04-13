@@ -338,9 +338,9 @@ class UnifiedItemListTile extends StatelessWidget {
                 color: DnDTheme.mysticalPurple.withValues(alpha: 0.7),
               ),
             ),
-            if (item.description != null && item.description!.isNotEmpty)
+            if (item.description.isNotEmpty)
               Text(
-                item.description!,
+                item.description,
                 style: DnDTheme.caption.copyWith(
                   color: Colors.white54,
                 ),

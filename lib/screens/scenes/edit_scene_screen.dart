@@ -93,8 +93,8 @@ class _EditSceneScreenState extends State<EditSceneScreen> {
     final scene = viewModel.scene;
     
     if (scene != null) {
-      _nameController.text = scene!.name;
-      _descriptionController.text = scene!.description;
+      _nameController.text = scene.name;
+      _descriptionController.text = scene.description;
     }
   }
 
@@ -1646,9 +1646,9 @@ class _EditSceneScreenState extends State<EditSceneScreen> {
                             ),
                             const SizedBox(width: 8),
                             _buildEncounterStatusBadge(
-                              icon: _getEncounterStatusIcon(viewModel.linkedEncounter?.status?.toString() ?? 'preparation'),
-                              label: _getEncounterStatusText(viewModel.linkedEncounter?.status?.toString() ?? 'preparation'),
-                              color: _getEncounterStatusColor(viewModel.linkedEncounter?.status?.toString() ?? 'preparation'),
+                              icon: _getEncounterStatusIcon(viewModel.linkedEncounter?.status.toString() ?? 'preparation'),
+                              label: _getEncounterStatusText(viewModel.linkedEncounter?.status.toString() ?? 'preparation'),
+                              color: _getEncounterStatusColor(viewModel.linkedEncounter?.status.toString() ?? 'preparation'),
                             ),
                           ],
                         ),
@@ -1725,16 +1725,6 @@ class _EditSceneScreenState extends State<EditSceneScreen> {
             ),
           ],
         ],
-      ),
-    );
-  }
-
-  void _removeEncounter(EditSceneViewModel viewModel) {
-    viewModel.updateLinkedEncounter(null);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Encounter von Szene entfernt'),
-        backgroundColor: DnDTheme.successGreen,
       ),
     );
   }

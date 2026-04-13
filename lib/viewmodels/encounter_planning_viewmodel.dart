@@ -153,7 +153,7 @@ class EncounterPlanningViewModel extends ChangeNotifier {
       // Alle Kreaturen, die keine Spieler sind, als Monster verfügbar machen
       // Das schließt custom, official, und alle anderen sourceTypes ein
       _availableMonsters = allCreatures.where((c) => 
-        c.isPlayer == false || c.isPlayer == null
+        c.isPlayer == false
       ).toList();
       debugPrint('🎯 [EncounterPlanningViewModel] ${_availableMonsters.length} Monster nach Filterung verfügbar (isPlayer == false)');
       debugPrint('');

@@ -27,7 +27,6 @@ class EnhancedSessionListForCampaignScreen extends StatefulWidget {
 
 class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionListForCampaignScreen> {
   final _searchController = TextEditingController();
-  SessionSortCriteria _sortCriteria = SessionSortCriteria.titleAsc;
   bool _isSearchMode = false;
 
   @override
@@ -68,9 +67,6 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
                 icon: Icon(Icons.sort, color: Colors.white),
                 tooltip: 'Sortieren',
                 onSelected: (criteria) {
-                  setState(() {
-                    _sortCriteria = criteria;
-                  });
                   viewModel.sortSessions(criteria);
                 },
                 itemBuilder: (context) => [

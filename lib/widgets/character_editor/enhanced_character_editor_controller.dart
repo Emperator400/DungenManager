@@ -171,7 +171,7 @@ class EnhancedCharacterEditorController {
     intController.text = creature.intelligence.toString();
     wisController.text = creature.wisdom.toString();
     chaController.text = creature.charisma.toString();
-    attacksController.text = creature.attacks ?? '';
+    attacksController.text = creature.attacks;
     specialAbilitiesController.text = creature.specialAbilities ?? '';
     legendaryActionsController.text = creature.legendaryActions ?? '';
     selectedSize = creature.size ?? 'Medium';
@@ -324,8 +324,8 @@ class EnhancedCharacterEditorController {
   void importFromOfficialMonster(OfficialMonster monster) {
     nameController.text = monster.name;
     hpController.text = monster.hitPoints.toString();
-    acController.text = monster.armorClass ?? '10';
-    speedController.text = monster.speed ?? '30ft';
+    acController.text = monster.armorClass;
+    speedController.text = monster.speed;
     strController.text = monster.strength.toString();
     dexController.text = monster.dexterity.toString();
     conController.text = monster.constitution.toString();
@@ -336,7 +336,7 @@ class EnhancedCharacterEditorController {
     selectedSize = monster.size;
     selectedType = monster.type;
     selectedSubtype = monster.subtype ?? '';
-    selectedAlignment = monster.alignment ?? 'True Neutral';
+    selectedAlignment = monster.alignment;
     
     // Actions und Special Abilities formatieren
     attacksController.text = monster.actions.map((a) => '${a.name}: ${a.description}').join('\n');

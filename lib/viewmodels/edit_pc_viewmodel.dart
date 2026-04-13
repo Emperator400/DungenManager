@@ -287,9 +287,9 @@ class EditPCViewModel extends ChangeNotifier {
         _description = pc.description ?? '';
         _specialAbilities = pc.specialAbilities;
         _attacks = pc.attacks ?? '';
-        _gold = pc.gold ?? 0.0;
-        _silver = pc.silver ?? 0.0;
-        _copper = pc.copper ?? 0.0;
+        _gold = pc.gold;
+        _silver = pc.silver;
+        _copper = pc.copper;
 
         // Finde Klasse und Rasse
         _selectedClass = allDndClasses.firstWhere(
@@ -642,21 +642,15 @@ class EditPCViewModel extends ChangeNotifier {
         debugPrint('Update PC ID: ${updatePc.id}');
         final savedPc = await _pcRepository.update(updatePc);
         debugPrint('Character erfolgreich aktualisiert: ${savedPc.id}');
-        if (savedPc != null) {
-          _pcToEdit = savedPc;
-        }
+        _pcToEdit = savedPc;
       } else {
         // Create new character
         debugPrint('Create new character...');
         debugPrint('PC Repository: $_pcRepository');
         final savedPc = await _pcRepository.create(pc);
         debugPrint('Character erfolgreich erstellt mit ID: ${savedPc.id}');
-        if (savedPc != null) {
-          _pcToEdit = savedPc;
-          debugPrint('PC nach Speichern gesetzt: ${_pcToEdit?.id}');
-        } else {
-          debugPrint('WARNUNG: savedPc ist null!');
-        }
+        _pcToEdit = savedPc;
+        debugPrint('PC nach Speichern gesetzt: ${_pcToEdit?.id}');
       }
       
       debugPrint('=== SAVE CHARACTER SUCCESS ===');

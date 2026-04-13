@@ -291,8 +291,8 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
     final isEquipped = equippedItem != null;
 
     return GestureDetector(
-      onTap: isEquipped ? () => _showItemDetails(equippedItem!) : () => _showEquipmentDialog(slot),
-      onLongPress: isEquipped ? () => _showUnequipConfirmation(slot, equippedItem!) : null,
+      onTap: isEquipped ? () => _showItemDetails(equippedItem) : () => _showEquipmentDialog(slot),
+      onLongPress: isEquipped ? () => _showUnequipConfirmation(slot, equippedItem) : null,
       child: Container(
         decoration: BoxDecoration(
           color: DnDTheme.stoneGrey,
@@ -318,7 +318,7 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: ItemColorHelper.getItemTypeColor(equippedItem!.item.itemType),
+                          color: ItemColorHelper.getItemTypeColor(equippedItem.item.itemType),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Icon(
@@ -375,7 +375,7 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
                 top: 2,
                 right: 2,
                 child: GestureDetector(
-                  onTap: () => _showUnequipConfirmation(slot, equippedItem!),
+                  onTap: () => _showUnequipConfirmation(slot, equippedItem),
                   child: Container(
                     padding: const EdgeInsets.all(3),
                     decoration: BoxDecoration(
@@ -1069,10 +1069,6 @@ class _UnifiedCharacterInventoryWidgetState extends State<UnifiedCharacterInvent
       case EquipmentSlot.cloak:
         return Icons.checkroom;
     }
-  }
-
-  IconData _getItemIcon(ItemType itemType) {
-    return ItemColorHelper.getItemTypeIcon(itemType);
   }
 
   void _showItemDetails(DisplayInventoryItem displayItem) {

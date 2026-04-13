@@ -71,14 +71,7 @@ class CampaignService {
         );
       }
 
-      final updatedCampaign = await _campaignRepository.update(campaign);
-      if (updatedCampaign == null) {
-        throw DatabaseException(
-          'Kampagne nicht gefunden oder konnte nicht aktualisiert werden',
-          operation: 'updateCampaign',
-        );
-      }
-      return updatedCampaign;
+      return await _campaignRepository.update(campaign);
     });
   }
 

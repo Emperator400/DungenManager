@@ -1,30 +1,9 @@
 import 'package:dungen_manager/models/quest.dart';
 import 'package:dungen_manager/models/wiki_entry.dart';
-import 'package:dungen_manager/services/quest_library_service.dart';
-import 'package:dungen_manager/services/wiki_link_service.dart';
 
 /// Service to handle interactions between Quests and Wiki Entries (Lore).
 class QuestLoreIntegrationService {
-  final QuestLibraryService _questService;
-  final WikiLinkService _wikiLinkService;
-
-  /// Private constructor for dependency injection
-  QuestLoreIntegrationService._({
-    required QuestLibraryService questService,
-    required WikiLinkService wikiLinkService,
-  })  : _questService = questService,
-        _wikiLinkService = wikiLinkService;
-
-  /// Factory constructor to create a new instance with dependency injection
-  factory QuestLoreIntegrationService({
-    required QuestLibraryService questService,
-    required WikiLinkService wikiLinkService,
-  }) {
-    return QuestLoreIntegrationService._(
-      questService: questService,
-      wikiLinkService: wikiLinkService,
-    );
-  }
+  const QuestLoreIntegrationService();
 
   /// Creates a new Quest from a Wiki Entry
   /// Copies the title and content from the wiki entry to create a quest

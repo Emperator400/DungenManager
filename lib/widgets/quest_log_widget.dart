@@ -1,7 +1,5 @@
 // lib/widgets/quest_log_widget.dart
 import 'package:flutter/material.dart';
-import '../database/core/database_connection.dart';
-import '../database/repositories/quest_model_repository.dart';
 import '../models/campaign.dart';
 import '../models/quest.dart';
 import '../models/campaign_quest.dart';
@@ -22,13 +20,11 @@ class QuestLogWidget extends StatefulWidget {
 }
 
 class QuestLogWidgetState extends State<QuestLogWidget> {
-  late final QuestModelRepository _questRepository;
   late Future<List<CampaignQuest>> _campaignQuestsFuture;
 
   @override
   void initState() {
     super.initState();
-    _questRepository = QuestModelRepository(DatabaseConnection.instance);
     _campaignQuestsFuture = _loadCampaignQuests();
   }
 

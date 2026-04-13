@@ -94,11 +94,11 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
     final quest = viewModel.quest;
     
     if (quest != null) {
-      _titleController.text = quest!.title;
-      _descriptionController.text = quest!.description;
-      _locationController.text = quest!.location ?? '';
-      _recommendedLevelController.text = quest!.recommendedLevel?.toString() ?? '';
-      _estimatedDurationController.text = quest!.estimatedDurationHours?.toString() ?? '';
+      _titleController.text = quest.title;
+      _descriptionController.text = quest.description;
+      _locationController.text = quest.location ?? '';
+      _recommendedLevelController.text = quest.recommendedLevel?.toString() ?? '';
+      _estimatedDurationController.text = quest.estimatedDurationHours?.toString() ?? '';
     }
   }
 

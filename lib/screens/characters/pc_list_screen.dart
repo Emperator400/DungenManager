@@ -63,11 +63,11 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
     
     var filteredPcs = allPcs.where((pc) {
       final matchesSearch = _searchQuery.isEmpty ||
-          (pc.name?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-          (pc.className?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-          (pc.playerName?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
-      
-      final matchesFavorite = !_showFavoritesOnly || (pc.isFavorite ?? false);
+          pc.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          pc.className.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          pc.playerName.toLowerCase().contains(_searchQuery.toLowerCase());
+
+      final matchesFavorite = !_showFavoritesOnly || pc.isFavorite;
       
       return matchesSearch && matchesFavorite;
     }).toList();
@@ -580,80 +580,6 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showCharacterOptions(BuildContext context, PlayerCharacter pc) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
-        title: Text(
-          pc.name,
-          style: DnDTheme.headline3.copyWith(
-            color: DnDTheme.ancientGold,
-          ),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '${pc.raceName} ${pc.className} Level ${pc.level}',
-                style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-              ),
-              Text(
-                'Spieler: ${pc.playerName}',
-                style: DnDTheme.bodyText2.copyWith(color: Colors.white70),
-              ),
-              const SizedBox(height: DnDTheme.sm),
-              Text(
-                'HP: ${pc.maxHp}',
-                style: DnDTheme.bodyText2.copyWith(color: DnDTheme.successGreen),
-              ),
-              Text(
-                'AC: ${pc.armorClass}',
-                style: DnDTheme.bodyText2.copyWith(color: DnDTheme.infoBlue),
-              ),
-              Text(
-                'Initiative: ${pc.initiativeBonus}',
-                style: DnDTheme.bodyText2.copyWith(color: DnDTheme.arcaneBlue),
-              ),
-              if (pc.description != null && pc.description!.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: DnDTheme.sm),
-                  child: Text(
-                    pc.description!,
-                    style: DnDTheme.bodyText2.copyWith(color: Colors.white70),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Schließen',
-              style: DnDTheme.bodyText1.copyWith(
-                color: DnDTheme.mysticalPurple,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _editCharacter(context, pc);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.arcaneBlue,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Bearbeiten'),
-          ),
-        ],
       ),
     );
   }

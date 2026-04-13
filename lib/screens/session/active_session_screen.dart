@@ -12,7 +12,6 @@ import '../../models/campaign.dart';
 import '../../models/quest.dart';
 import '../../models/scene.dart';
 import '../../models/session.dart';
-import '../../models/sound.dart';
 import '../../models/wiki_entry.dart';
 //import '../../services/sound_service.dart';
 import '../../theme/dnd_theme.dart';
@@ -981,34 +980,6 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
       },
       );
     }
-
-  
-
-  /// Lädt die Details der verknüpften Sounds
-  Future<List<Sound>> _loadLinkedSounds(List<String> soundIds) async {
-    final result = <Sound>[];
-
-    try {
-      final soundRepo = context.read<SoundModelRepository>();
-
-      for (final soundId in soundIds) {
-        try {
-          final sound = await soundRepo.findById(soundId);
-          // Nur gültige Sounds hinzufügen
-          if (sound != null && sound.isValid) {
-            result.add(sound);
-          }
-        } catch (e) {
-          // Nicht gefunden oder ungültig, überspringen
-          debugPrint('Sound $soundId konnte nicht geladen werden: $e');
-        }
-      }
-    } catch (e) {
-      debugPrint('Fehler beim Laden der Sounds: $e');
-    }
-
-    return result;
-  }
 
   /// Baut eine Reihe mit verknüpften Charakteren
   Widget _buildLinkedCharactersRow(Scene scene) {

@@ -234,7 +234,7 @@ class _EnhancedHotbarWidgetState extends State<EnhancedHotbarWidget> {
 
     return GestureDetector(
       onTap: equippedItem != null && widget.onQuickUse != null
-          ? () => widget.onQuickUse!(equippedItem!)
+          ? () => widget.onQuickUse!(equippedItem)
           : null,
       child: Container(
         height: 60,
@@ -282,15 +282,15 @@ class _EnhancedHotbarWidgetState extends State<EnhancedHotbarWidget> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        _getItemTypeIcon(equippedItem!.item.itemType),
+                        _getItemTypeIcon(equippedItem.item.itemType),
                         color: primaryColor,
                         size: 20,
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        equippedItem!.item.name.length > 10
-                            ? '${equippedItem!.item.name.substring(0, 8)}...'
-                            : equippedItem!.item.name,
+                        equippedItem.item.name.length > 10
+                            ? '${equippedItem.item.name.substring(0, 8)}...'
+                            : equippedItem.item.name,
                         style: TextStyle(
                           fontSize: 8,
                           fontWeight: FontWeight.w600,
@@ -309,7 +309,7 @@ class _EnhancedHotbarWidgetState extends State<EnhancedHotbarWidget> {
             if (equippedItem?.item.id.isEmpty == true && slot != null)
               Center(
                 child: Text(
-                  slot!.iconName,
+                  slot.iconName,
                   style: TextStyle(
                     fontSize: 20,
                     color: Colors.grey.shade400,
@@ -425,7 +425,7 @@ class _EnhancedHotbarWidgetState extends State<EnhancedHotbarWidget> {
                           margin: const EdgeInsets.only(top: 2),
                           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                           decoration: BoxDecoration(
-                            color: remainingCasts! > 0 ? Colors.green : Colors.red,
+                            color: remainingCasts > 0 ? Colors.green : Colors.red,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(

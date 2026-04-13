@@ -191,8 +191,8 @@ class _MainNavigationLayout extends StatelessWidget {
             _CampaignInfoRow(
               icon: Icons.description,
               label: 'Beschreibung',
-              value: campaign.description?.isNotEmpty == true 
-                  ? campaign.description! 
+              value: campaign.description.isNotEmpty
+                  ? campaign.description
                   : 'Keine Beschreibung',
             ),
             const SizedBox(height: 6),

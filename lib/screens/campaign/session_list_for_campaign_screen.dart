@@ -307,7 +307,7 @@ class _SessionListForCampaignScreenState extends State<SessionListForCampaignScr
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
-              final success = await context.read<SessionListForCampaignViewModel>().deleteSession(session.id!);
+              final success = await context.read<SessionListForCampaignViewModel>().deleteSession(session.id);
               if (!context.mounted) return;
               if (!success) {
                 ScaffoldMessenger.of(context).showSnackBar(

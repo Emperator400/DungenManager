@@ -50,7 +50,7 @@ class SessionListForCampaignViewModel extends ChangeNotifier {
     if (_campaign == null) return;
 
     try {
-      _sessions = await _sessionRepository!.findAll();
+      _sessions = await _sessionRepository.findAll();
       // Filtern nach Kampagne im ViewModel
       _sessions = _sessions.where((session) => session.campaignId == _campaign!.id).toList();
       notifyListeners();
@@ -86,12 +86,9 @@ class SessionListForCampaignViewModel extends ChangeNotifier {
       );
       
       final savedSession = await _sessionRepository.create(newSession);
-      if (savedSession != null) {
-        _sessions.insert(0, savedSession);
-        notifyListeners();
-        return savedSession;
-      }
-      return null;
+      _sessions.insert(0, savedSession);
+      notifyListeners();
+      return savedSession;
     } catch (e) {
       if (e is ServiceException) {
         _setError(e.message);
@@ -143,19 +140,15 @@ class SessionListForCampaignViewModel extends ChangeNotifier {
       );
       
       final savedSession = await _sessionRepository.create(duplicatedSession);
-      if (savedSession != null) {
-        // Einfügen nach der Original-Session
-        final originalIndex = _sessions.indexWhere((s) => s.id == session.id);
-        if (originalIndex != -1) {
-          _sessions.insert(originalIndex + 1, savedSession);
-        } else {
-          _sessions.insert(0, savedSession);
-        }
-        
-        notifyListeners();
-        return savedSession;
+      // Einfügen nach der Original-Session
+      final originalIndex = _sessions.indexWhere((s) => s.id == session.id);
+      if (originalIndex != -1) {
+        _sessions.insert(originalIndex + 1, savedSession);
+      } else {
+        _sessions.insert(0, savedSession);
       }
-      return null;
+      notifyListeners();
+      return savedSession;
     } catch (e) {
       if (e is ServiceException) {
         _setError(e.message);
@@ -220,11 +213,6 @@ class SessionListForCampaignViewModel extends ChangeNotifier {
     _errorMessage = null;
   }
 
-  /// Simuliert eine Datenbankoperation
-  Future<void> _simulateDatabaseOperation() async {
-    // Simuliere Netzwerkverzögerung
-    await Future.delayed(const Duration(milliseconds: 300));
-  }
 }
 
 /// Sortierkriterien für Sessions

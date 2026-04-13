@@ -405,55 +405,6 @@ class ItemDetailPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildDurabilityRow(DisplayInventoryItem displayItem) {
-    final item = displayItem.item;
-    final current = displayItem.currentDurability ?? item.maxDurability ?? 100;
-    final max = item.maxDurability ?? 100;
-    final percentage = current / max;
-    final durabilityColor = ItemColorHelper.getDurabilityColor(percentage);
-
-    return Row(
-      children: [
-        Text(
-          'Haltbarkeit',
-          style: TextStyle(
-            color: DnDTheme.mysticalPurple.withValues(alpha: 0.7),
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Container(
-            height: 8,
-            decoration: BoxDecoration(
-              color: DnDTheme.stoneGrey.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: percentage,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: durabilityColor,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          '$current/$max',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildInfoCard(String label, String value) {
     return Container(
       padding: const EdgeInsets.all(12),

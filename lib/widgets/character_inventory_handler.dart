@@ -80,7 +80,7 @@ class _CharacterInventoryHandlerState extends State<CharacterInventoryHandler> {
                 itemCount: items.length,
                 itemBuilder: (context, index) {
                   final item = items[index];
-                  final itemName = item.itemId ?? 'Unbekannt';
+                  final itemName = item.itemId;
                   return ListTile(
                     leading: const Icon(Icons.inventory),
                     title: Text(itemName),

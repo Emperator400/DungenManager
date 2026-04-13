@@ -85,16 +85,10 @@ class EditSessionViewModel extends ChangeNotifier {
       
       if (_session!.id.isEmpty) {
         // Create new session
-        final savedSession = await _sessionRepository.create(_session!);
-        if (savedSession != null) {
-          _session = savedSession;
-        }
+        _session = await _sessionRepository.create(_session!);
       } else {
         // Update existing session
-        final updatedSession = await _sessionRepository.update(_session!);
-        if (updatedSession != null) {
-          _session = updatedSession;
-        }
+        _session = await _sessionRepository.update(_session!);
       }
       
       _resetUnsavedChanges();
@@ -188,7 +182,7 @@ class EditSessionViewModel extends ChangeNotifier {
   }
 
   void updateLinkedSoundIds(List<String>? linkedSoundIds) {
-    if (_session?.linkedSoundIds?.join(',') != linkedSoundIds?.join(',')) {
+    if (_session?.linkedSoundIds.join(',') != linkedSoundIds?.join(',')) {
       _session = _session!.copyWith(linkedSoundIds: linkedSoundIds);
       _markAsUnsaved();
       notifyListeners();
@@ -196,8 +190,8 @@ class EditSessionViewModel extends ChangeNotifier {
   }
 
   void removeLinkedSound(String soundId) {
-    if (_session?.linkedSoundIds != null) {
-      final newIds = List<String>.from(_session!.linkedSoundIds!);
+    if (_session != null) {
+      final newIds = List<String>.from(_session!.linkedSoundIds);
       newIds.remove(soundId);
       _session = _session!.copyWith(linkedSoundIds: newIds);
       _markAsUnsaved();
@@ -207,14 +201,14 @@ class EditSessionViewModel extends ChangeNotifier {
 
   /// Lädt die verlinkten Sounds aus der Datenbank
   Future<void> loadLinkedSounds() async {
-    if (_session?.linkedSoundIds == null || _session!.linkedSoundIds!.isEmpty) {
+    if (_session == null || _session!.linkedSoundIds.isEmpty) {
       _linkedSounds = [];
       notifyListeners();
       return;
     }
 
     try {
-      final soundIds = _session!.linkedSoundIds!;
+      final soundIds = _session!.linkedSoundIds;
       final sounds = <Sound>[];
       
       for (final soundId in soundIds) {
@@ -285,9 +279,4 @@ class EditSessionViewModel extends ChangeNotifier {
            _session!.campaignId.trim().isNotEmpty;
   }
 
-  /// Simuliert eine Datenbankoperation
-  Future<void> _simulateDatabaseOperation() async {
-    // Simuliere Netzwerkverzögerung
-    await Future.delayed(const Duration(milliseconds: 500));
-  }
 }

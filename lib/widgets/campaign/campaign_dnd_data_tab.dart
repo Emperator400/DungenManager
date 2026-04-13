@@ -5,7 +5,6 @@ import '../../database/repositories/campaign_model_repository.dart';
 import '../../database/repositories/creature_model_repository.dart';
 import '../../models/campaign.dart';
 import '../../models/official_monster.dart';
-import '../../models/official_spell.dart';
 import '../../models/creature.dart';
 import '../../screens/bestiary/official_monsters_screen.dart';
 
@@ -21,8 +20,6 @@ class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
   late final CampaignModelRepository _campaignRepository;
   late final CreatureModelRepository _creatureRepository;
   List<OfficialMonster> _availableMonsters = [];
-  List<OfficialSpell> _availableSpells = [];
-  List<Creature> _campaignCreatures = [];
   bool _isLoading = true;
 
   @override
@@ -42,13 +39,7 @@ class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
       final monsters = await db.query('official_monsters', orderBy: 'name ASC');
       _availableMonsters = monsters.map((m) => OfficialMonster.fromMap(m)).toList();
       
-      // Lade verfügbare offizielle Zauber (direkte Datenbank-Abfrage)
-      final spells = await db.query('official_spells', orderBy: 'name ASC');
-      _availableSpells = spells.map((s) => OfficialSpell.fromMap(s)).toList();
-      
-      // Lade Kreaturen der Kampagne (temporär alle Kreaturen)
-      _campaignCreatures = await _creatureRepository.findAll();
-      
+
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Fehler beim Laden der Daten: $e')),

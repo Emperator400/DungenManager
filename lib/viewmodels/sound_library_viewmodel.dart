@@ -307,53 +307,47 @@ class SoundLibraryViewModel extends ChangeNotifier {
       }
 
       // Sound hochladen und Datei kopieren
-      Sound? sound = await SoundService.uploadAndCreateSound(
+      Sound sound = await SoundService.uploadAndCreateSound(
         filePath,
         soundType,
         customName: customName,
         description: description,
       );
 
-      if (sound != null) {
-        // NEU: Datei in den sicheren Ordner (Dokumente/DungenManager/sounds) verschieben
-        try {
-          final Directory documentsDir = await getApplicationDocumentsDirectory();
-          final String securePath = path.join(documentsDir.path, 'DungenManager', 'sounds');
-          final Directory secureDir = Directory(securePath);
-          
-          if (!await secureDir.exists()) {
-            await secureDir.create(recursive: true);
-          }
-          
-          final File sourceFile = File(sound.filePath);
-          if (await sourceFile.exists()) {
-            final String fileName = path.basename(sound.filePath);
-            final String newFilePath = path.join(securePath, '${DateTime.now().millisecondsSinceEpoch}_$fileName');
-            
-            await sourceFile.copy(newFilePath);
-            try { await sourceFile.delete(); } catch (_) {} // Alte Datei aufräumen falls möglich
-            
-            sound = sound.copyWith(filePath: newFilePath);
-          }
-        } catch (e) {
-          debugPrint('⚠️ Fehler beim Sichern der Audio-Datei: $e');
+      // NEU: Datei in den sicheren Ordner (Dokumente/DungenManager/sounds) verschieben
+      try {
+        final Directory documentsDir = await getApplicationDocumentsDirectory();
+        final String securePath = path.join(documentsDir.path, 'DungenManager', 'sounds');
+        final Directory secureDir = Directory(securePath);
+
+        if (!await secureDir.exists()) {
+          await secureDir.create(recursive: true);
         }
 
-        // In Datenbank speichern
-        Sound? savedSound;
-        if (_soundRepository != null) {
-          savedSound = await _soundRepository!.create(sound!);
+        final File sourceFile = File(sound.filePath);
+        if (await sourceFile.exists()) {
+          final String fileName = path.basename(sound.filePath);
+          final String newFilePath = path.join(securePath, '${DateTime.now().millisecondsSinceEpoch}_$fileName');
+
+          await sourceFile.copy(newFilePath);
+          try { await sourceFile.delete(); } catch (_) {} // Alte Datei aufräumen falls möglich
+
+          sound = sound.copyWith(filePath: newFilePath);
         }
-        
-        if (savedSound != null) {
-          _sounds.add(savedSound);
-          _applyFiltersAndSort();
-          _soundError = null;
-          notifyListeners();
-          return savedSound;
-        }
+      } catch (e) {
+        debugPrint('⚠️ Fehler beim Sichern der Audio-Datei: $e');
       }
-      
+
+      // In Datenbank speichern
+      if (_soundRepository != null) {
+        final savedSound = await _soundRepository!.create(sound);
+        _sounds.add(savedSound);
+        _applyFiltersAndSort();
+        _soundError = null;
+        notifyListeners();
+        return savedSound;
+      }
+
       return null;
     } catch (e) {
       _soundError = 'Fehler beim Hochladen des Sounds: $e';

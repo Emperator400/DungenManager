@@ -78,7 +78,6 @@ class UpdateService {
   UpdateStatus _currentStatus = UpdateStatus.idle;
   UpdateStatus get currentStatus => _currentStatus;
   
-  String? _downloadedFilePath;
   String? _extractedPath;
   String? _lastError;
 
@@ -249,7 +248,6 @@ class UpdateService {
 
       await sink.close();
 
-      _downloadedFilePath = filePath;
       _setStatus(UpdateStatus.extracting);
       _setProgress(0.0);
 

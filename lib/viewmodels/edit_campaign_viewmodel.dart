@@ -64,15 +64,9 @@ class EditCampaignViewModel extends ChangeNotifier {
       
       // Speichern in der Datenbank
       if (isEditing) {
-        final updatedCampaign = await _campaignRepository.update(_campaign!);
-        if (updatedCampaign != null) {
-          _campaign = updatedCampaign;
-        }
+        _campaign = await _campaignRepository.update(_campaign!);
       } else {
-        final createdCampaign = await _campaignRepository.create(_campaign!);
-        if (createdCampaign != null) {
-          _campaign = createdCampaign;
-        }
+        _campaign = await _campaignRepository.create(_campaign!);
       }
       
       _resetUnsavedChanges();
@@ -91,7 +85,7 @@ class EditCampaignViewModel extends ChangeNotifier {
 
   /// Löscht die aktuelle Campaign
   Future<bool> deleteCampaign() async {
-    if (_campaign == null || _campaign!.id == null || _campaign!.id!.isEmpty) {
+    if (_campaign == null || _campaign!.id.isEmpty) {
       _setError('Keine Campaign zum Löschen vorhanden');
       return false;
     }
@@ -100,7 +94,7 @@ class EditCampaignViewModel extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       
-      await _campaignRepository.delete(_campaign!.id!);
+      await _campaignRepository.delete(_campaign!.id);
       return true;
     } catch (e) {
       if (e is ServiceException) {

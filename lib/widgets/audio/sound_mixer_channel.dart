@@ -635,7 +635,7 @@ class _SoundMixerChannelState extends State<SoundMixerChannel> {
   /// Speed-Control (0.5x - 2.0x)
   Widget _buildSpeedControl(SoundChannel channel) {
     const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
-    final currentSpeed = channel.playbackSpeed ?? 1.0;
+    final currentSpeed = channel.playbackSpeed;
     
     return Row(
       children: [

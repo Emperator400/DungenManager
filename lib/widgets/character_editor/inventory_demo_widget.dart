@@ -13,9 +13,6 @@ class InventoryDemoWidget extends StatefulWidget {
 }
 
 class _InventoryDemoWidgetState extends State<InventoryDemoWidget> {
-  List<DisplayInventoryItem> _demoInventory = [];
-  bool _isLoading = false;
-  double _gold = 150.0;
 
   @override
   void initState() {
@@ -24,9 +21,6 @@ class _InventoryDemoWidgetState extends State<InventoryDemoWidget> {
   }
 
   void _generateDemoData() {
-    setState(() {
-      _isLoading = true;
-    });
 
     // Demo-Items erstellen
     final items = [
@@ -157,41 +151,6 @@ class _InventoryDemoWidgetState extends State<InventoryDemoWidget> {
       ),
     ];
 
-    // Inventory-Items erstellen
-    _demoInventory = items.asMap().entries.map((entry) {
-      final index = entry.key;
-      final item = entry.value;
-      
-      // Einige Items bereits ausrüsten
-      final isEquipped = index < 3;
-      EquipSlot? equipSlot;
-      if (isEquipped) {
-        if (index == 0) equipSlot = EquipSlot.mainHand;
-        if (index == 1) equipSlot = EquipSlot.offHand;
-        if (index == 2) equipSlot = EquipSlot.chest;
-      }
-
-      // Einige Items mit Menge > 1
-      final quantity = (item.itemType == ItemType.Potion) ? 3 : 1;
-
-      return DisplayInventoryItem(
-        inventoryItem: InventoryItem(
-          id: 'inv_${item.id}',
-          characterId: 'demo_character',
-          itemId: item.id,
-          quantity: quantity,
-          isEquipped: isEquipped,
-          equipSlot: equipSlot,
-        ),
-        item: item,
-        currentDurability: item.hasDurability == true ? 
-            (item.maxDurability != null ? (item.maxDurability! * 0.7).round() : null) : null,
-      );
-    }).toList();
-
-    setState(() {
-      _isLoading = false;
-    });
   }
 
   @override
@@ -219,13 +178,4 @@ class _InventoryDemoWidgetState extends State<InventoryDemoWidget> {
     );
   }
 
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.blue.shade700,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
 }

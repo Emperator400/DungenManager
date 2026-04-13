@@ -129,47 +129,6 @@ class EnhancedCampaignFilterChipsWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildFilterChip(
-    BuildContext context,
-    String label,
-    bool isSelected,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected 
-              ? Theme.of(context).primaryColor.withValues(alpha: 0.9)
-              : Colors.grey.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected 
-                ? Theme.of(context).primaryColor.withValues(alpha: 0.3)
-                : Colors.grey.withValues(alpha: 0.15),
-            width: 0.5,
-          ),
-          boxShadow: isSelected ? [
-            BoxShadow(
-              color: Theme.of(context).primaryColor.withValues(alpha: 0.2),
-              blurRadius: 4,
-              offset: const Offset(0, 1),
-            )
-          ] : null,
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.grey.shade700,
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildSortChip(
     BuildContext context,
     String label,
@@ -290,30 +249,4 @@ class EnhancedCampaignFilterChipsWidget extends StatelessWidget {
     );
   }
 
-  String _getSortOptionLabel(CampaignSortOption option) {
-    switch (option) {
-      case CampaignSortOption.name:
-        return 'Name';
-      case CampaignSortOption.createdDate:
-        return 'Erstellungsdatum';
-      case CampaignSortOption.lastActive:
-        return 'Zuletzt aktiv';
-      case CampaignSortOption.heroCount:
-        return 'Heldenanzahl';
-      case CampaignSortOption.sessionCount:
-        return 'Session-Anzahl';
-      case CampaignSortOption.questCount:
-        return 'Quest-Anzahl';
-      case CampaignSortOption.alphabetical:
-        return 'Alphabetisch';
-      case CampaignSortOption.monsters:
-        return 'Monster';
-      case CampaignSortOption.npcs:
-        return 'NPCs';
-      case CampaignSortOption.items:
-        return 'Items';
-      case CampaignSortOption.spells:
-        return 'Spells';
-    }
-  }
 }

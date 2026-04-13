@@ -63,16 +63,16 @@ class _EditItemScreenState extends State<EditItemScreen> {
     final item = _viewModel.item;
     
     if (item != null) {
-      _nameController.text = item!.name;
-      _descriptionController.text = item!.description;
-      _propertiesController.text = item!.properties ?? '';
-      _costController.text = item!.cost.toString();
-      _weightController.text = item!.weight.toString();
-      _damageController.text = item!.damage ?? '';
-      _acFormulaController.text = item!.acFormula ?? '';
-      _strengthController.text = item!.strengthRequirement?.toString() ?? '';
-      _rarityController.text = item!.rarity ?? '';
-      _maxDurabilityController.text = item!.maxDurability?.toString() ?? '';
+      _nameController.text = item.name;
+      _descriptionController.text = item.description;
+      _propertiesController.text = item.properties ?? '';
+      _costController.text = item.cost.toString();
+      _weightController.text = item.weight.toString();
+      _damageController.text = item.damage ?? '';
+      _acFormulaController.text = item.acFormula ?? '';
+      _strengthController.text = item.strengthRequirement?.toString() ?? '';
+      _rarityController.text = item.rarity ?? '';
+      _maxDurabilityController.text = item.maxDurability?.toString() ?? '';
     }
   }
 
@@ -848,18 +848,6 @@ class _EditItemScreenState extends State<EditItemScreen> {
     );
   }
 
-  /// Gibt das Icon für eine Rüstungskategorie zurück
-  IconData _getArmorCategoryIcon(ArmorCategory category) {
-    switch (category) {
-      case ArmorCategory.Light:
-        return Icons.checkroom;
-      case ArmorCategory.Medium:
-        return Icons.shield;
-      case ArmorCategory.Heavy:
-        return Icons.security;
-    }
-  }
-
   /// Gibt die Farbe für eine Rüstungskategorie zurück
   Color _getArmorCategoryColor(ArmorCategory category) {
     switch (category) {
@@ -869,30 +857,6 @@ class _EditItemScreenState extends State<EditItemScreen> {
         return DnDTheme.warningOrange;
       case ArmorCategory.Heavy:
         return DnDTheme.errorRed;
-    }
-  }
-
-  /// Gibt den Anzeigenamen für eine Rüstungskategorie zurück
-  String _getArmorCategoryDisplayName(ArmorCategory category) {
-    switch (category) {
-      case ArmorCategory.Light:
-        return 'Leichte Rüstung';
-      case ArmorCategory.Medium:
-        return 'Mittlere Rüstung';
-      case ArmorCategory.Heavy:
-        return 'Schwere Rüstung';
-    }
-  }
-
-  /// Gibt die Beschreibung für eine Rüstungskategorie zurück
-  String _getArmorCategoryDescription(ArmorCategory category) {
-    switch (category) {
-      case ArmorCategory.Light:
-        return 'Leder, Padded, Studded Leather';
-      case ArmorCategory.Medium:
-        return 'Chain Shirt, Scale Mail, Breastplate';
-      case ArmorCategory.Heavy:
-        return 'Chain Mail, Splint, Plate';
     }
   }
 

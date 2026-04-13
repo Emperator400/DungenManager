@@ -476,7 +476,7 @@ class WikiAutoLinkService {
   Future<void> _createLinkIfExists(WikiEntry sourceEntry, String targetTitle, WikiLinkType linkType) async {
     try {
       final targetEntries = await _wikiRepository.findByTitle(targetTitle);
-      if (targetEntries != null && targetEntries.isNotEmpty) {
+      if (targetEntries.isNotEmpty) {
         for (final target in targetEntries) {
           final link = WikiLink(
             sourceEntryId: sourceEntry.id,

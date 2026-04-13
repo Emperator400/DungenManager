@@ -15,10 +15,9 @@ import 'package:provider/provider.dart';
 import 'screens/campaign/campaign_selection_screen.dart';
 import 'screens/navigation/all_screens_screen.dart';
 import 'screens/debug/screen_graph_visualization_screen.dart';
-import 'screens/debug/wigets_test_grund.dart';
+import 'screens/debug/widgets_test_grund.dart';
 import 'inventory_demo_app.dart';
 import 'theme/dnd_theme.dart';
-import 'services/session_service.dart';
 import 'viewmodels/campaign_viewmodel.dart';
 import 'viewmodels/wiki_viewmodel.dart';
 import 'viewmodels/edit_session_viewmodel.dart';
@@ -125,7 +124,6 @@ class DmApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sessionService = SessionService();
     final dbConnection = DatabaseConnection.instance;
 
     return MultiProvider(
@@ -134,7 +132,6 @@ class DmApp extends StatelessWidget {
           create: (_) => CampaignViewModel(
             campaignRepo: CampaignModelRepository(dbConnection),
             characterRepo: PlayerCharacterModelRepository(dbConnection),
-            sessionService: sessionService,
           ),
         ),
         ChangeNotifierProvider(

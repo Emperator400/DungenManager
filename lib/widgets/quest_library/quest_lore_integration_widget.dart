@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/quest.dart';
 import '../../models/wiki_entry.dart';
-import '../../services/quest_lore_integration_service.dart';
 import '../../theme/dnd_theme.dart';
 
 /// Widget für die Anzeige und Verwaltung von Quest-Wiki-Integration
@@ -24,7 +23,6 @@ class QuestLoreIntegrationWidget extends StatefulWidget {
 }
 
 class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget> {
-  late final QuestLoreIntegrationService _loreService;
   List<WikiEntry> _linkedWikiEntries = [];
   List<WikiEntry> _suggestedEntries = [];
   bool _isLoading = false;
@@ -32,11 +30,6 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
   @override
   void initState() {
     super.initState();
-    // TODO: Service mit Dependency Injection initialisieren
-    // _loreService = QuestLoreIntegrationService(
-    //   questService: QuestServiceLocator.questLibraryService,
-    //   wikiLinkService: WikiServiceLocator.wikiLinkService,
-    // );
     _loadWikiEntries();
   }
 

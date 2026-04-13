@@ -194,8 +194,8 @@ class WikiSearchService {
     String highlightedText = text;
     
     // Kürze Text wenn nötig
-    if (maxLength != null && highlightedText.length > maxLength!) {
-      highlightedText = '${highlightedText.substring(0, maxLength!)}...';
+    if (maxLength != null && highlightedText.length > maxLength) {
+      highlightedText = '${highlightedText.substring(0, maxLength)}...';
     }
     
     // Hebe jeden Suchbegriff hervor
