@@ -40,7 +40,7 @@ abstract class ModelRepository<T> {
     // Hole das eingefügte Model aus der Datenbank zurück
     // Dies stellt sicher, dass alle Felder korrekt serialisiert wurden
     try {
-      final modelId = model.id;
+      final modelId = (model as dynamic).id;
         debugPrint('💾 [ModelRepository] Model ID: $modelId (${modelId.runtimeType})');
         
         // Unterscheide zwischen int und String IDs
@@ -153,7 +153,7 @@ abstract class ModelRepository<T> {
     
     // Hole ID vom Modelle (unterstütze sowohl int als auch String)
     String id = '';
-    final modelId = model.id;
+    final modelId = (model as dynamic).id;
     if (modelId is int) {
       id = modelId.toString();
     } else if (modelId is String) {
@@ -310,7 +310,7 @@ abstract class ModelRepository<T> {
         
         // Prüfe, ob das Model bereits eine ID hat (UUID)
         try {
-          final existingId = model.id as String?;
+          final existingId = (model as dynamic).id as String?;
           // Wenn bereits eine ID vorhanden ist (UUID), gib das Model zurück
           if (existingId != null && existingId.isNotEmpty) {
             // Hole das Model aus der Datenbank zurück
@@ -327,7 +327,7 @@ abstract class ModelRepository<T> {
             }
           } else {
             // Falls keine ID vorhanden ist, verwende die generierte rowid
-            final copy = model.copyWith(id: id.toString()) as T;
+            final copy = (model as dynamic).copyWith(id: id.toString()) as T;
             createdModels.add(copy);
           }
         } catch (e) {
@@ -348,7 +348,7 @@ abstract class ModelRepository<T> {
         final modelMap = toDatabaseMap(model);
         
         String id = '';
-        final modelId = model.id;
+        final modelId = (model as dynamic).id;
         if (modelId is int) {
           id = modelId.toString();
         } else if (modelId is String) {

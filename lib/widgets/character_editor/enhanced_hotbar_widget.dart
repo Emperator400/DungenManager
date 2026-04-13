@@ -282,15 +282,15 @@ class _EnhancedHotbarWidgetState extends State<EnhancedHotbarWidget> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        _getItemTypeIcon(equippedItem.item.itemType),
+                        _getItemTypeIcon(equippedItem!.item.itemType),
                         color: primaryColor,
                         size: 20,
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        equippedItem.item.name.length > 10
-                            ? '${equippedItem.item.name.substring(0, 8)}...'
-                            : equippedItem.item.name,
+                        equippedItem!.item.name.length > 10
+                            ? '${equippedItem!.item.name.substring(0, 8)}...'
+                            : equippedItem!.item.name,
                         style: TextStyle(
                           fontSize: 8,
                           fontWeight: FontWeight.w600,
