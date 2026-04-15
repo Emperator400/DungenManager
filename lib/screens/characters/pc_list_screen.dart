@@ -9,6 +9,9 @@ import '../../theme/dnd_theme.dart';
 import '../../viewmodels/character_editor_viewmodel.dart';
 import '../../database/core/database_connection.dart';
 import '../../database/repositories/player_character_model_repository.dart';
+import '../../widgets/ui_components/states/loading_state_widget.dart';
+import '../../widgets/ui_components/feedback/snackbar_helper.dart';
+import '../../widgets/ui_components/feedback/confirmation_dialog.dart';
 
 class PlayerCharacterListScreen extends StatefulWidget {
   final Campaign campaign;
@@ -48,12 +51,7 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
       setState(() {});
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fehler beim Laden der Helden: $e'),
-            backgroundColor: DnDTheme.errorRed,
-          ),
-        );
+        SnackBarHelper.showError(context, 'Fehler beim Laden der Helden: $e');
       }
     }
   }
@@ -112,23 +110,7 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
                 child: Consumer<CharacterEditorViewModel>(
           builder: (context, viewModel, child) {
             if (viewModel.isLoading) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      color: DnDTheme.ancientGold,
-                    ),
-                    const SizedBox(height: DnDTheme.md),
-                    Text(
-                      'Lade Helden...',
-                      style: DnDTheme.bodyText1.copyWith(
-                        color: DnDTheme.ancientGold,
-                      ),
-                    ),
-                  ],
-                ),
-              );
+              return LoadingStateWidget.withMessage(message: 'Lade Helden...');
             }
 
             if (viewModel.error != null) {

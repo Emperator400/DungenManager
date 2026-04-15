@@ -342,28 +342,23 @@ class UpdateService {
       final tempDir = await getTemporaryDirectory();
       final scriptPath = p.join(tempDir.path, 'dungenmanager_update.ps1');
 
-      // Single-Quotes in Pfaden escapen (PowerShell: '' = literales ')
-      final safeSource = extractedPath.replaceAll("'", "''");
-      final safeTarget = installDir.replaceAll("'", "''");
-      final safeExe = exeName.replaceAll("'", "''");
+      // Single-Quotes in Pfaden escapen (PowerShell: '' = literales ').
+      // PS-Single-Quoted-Strings interpolieren keine Variablen/Sonderzeichen
+      // → sicher für Pfade mit Leerzeichen, $, Backticks, etc.
+      final sqSource = "'${extractedPath.replaceAll("'", "''")}'";
+      final sqTarget = "'${installDir.replaceAll("'", "''")}'";
+      final sqExe    = "'${exeName.replaceAll("'", "''")}'";
 
       // PowerShell-Skript: wartet auf App-Exit, kopiert Dateien, startet neu.
-      // Pfade in Single-Quotes → keine Variable/Sonderzeichen-Interpolation.
       // Fehler werden in eine Log-Datei geschrieben statt still ignoriert.
       final script = r'''
 $logFile = "$env:TEMP\dungenmanager_update_log.txt"
 try {
   Start-Sleep -Seconds 3
 
-  $sourceDir = '''' +
-          safeSource +
-          r''''
-  $targetDir = '''' +
-          safeTarget +
-          r''''
-  $exeName   = '''' +
-          safeExe +
-          r''''
+  $sourceDir = ''' + sqSource + r'''
+  $targetDir = ''' + sqTarget + r'''
+  $exeName   = ''' + sqExe + r'''
 
   # Falls das ZIP einen Unterordner hat, diesen als Quelle nehmen
   $subDirs = Get-ChildItem -Path "$sourceDir" -Directory -ErrorAction SilentlyContinue
