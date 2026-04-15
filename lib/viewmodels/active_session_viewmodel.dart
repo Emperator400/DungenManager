@@ -35,6 +35,9 @@ class ActiveSessionViewModel extends ChangeNotifier {
   List<Scene> _scenes = [];
   List<Sound> _sessionSounds = [];
 
+  // Sound-Cache: sceneId → geladene Sound-Objekte (für sofortige Übergabe an Mixer)
+  Map<String, List<Sound>> _sceneSoundsCache = {};
+
   // Wiki Cache für schnellen Zugriff
   final Map<String, WikiEntry> _wikiCache = {};
 
@@ -52,6 +55,11 @@ class ActiveSessionViewModel extends ChangeNotifier {
   List<Sound> get sessionSounds => _sessionSounds;
   bool get isLoading => _isLoading;
   String? get error => _error;
+
+  /// Gibt die vorgeladenen Sound-Objekte für eine Szene zurück.
+  /// Leere Liste wenn noch nicht geladen oder keine Sounds verknüpft.
+  List<Sound> sceneSoundsFor(String sceneId) =>
+      _sceneSoundsCache[sceneId] ?? [];
 
   // ============================================================================
   // CONSTRUCTOR
@@ -84,7 +92,7 @@ class ActiveSessionViewModel extends ChangeNotifier {
   // SCENE OPERATIONS
   // ============================================================================
 
-  /// Lädt alle Scenes für die aktuelle Session
+  /// Lädt alle Scenes für die aktuelle Session und danach deren Sound-Objekte.
   Future<void> _loadScenes() async {
     debugPrint('🔄 [ActiveSessionViewModel] _loadScenes() aufgerufen für Session: ${_currentSession.id}');
     await _executeWithErrorHandling(() async {
@@ -92,11 +100,46 @@ class ActiveSessionViewModel extends ChangeNotifier {
       debugPrint('📊 [ActiveSessionViewModel] Rufe findBySession auf...');
       final scenes = await _sceneRepository.findBySession(_currentSession.id);
       debugPrint('✅ [ActiveSessionViewModel] ${scenes.length} Scenes geladen');
-      // Sortiere nach orderIndex
       _scenes = scenes..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
       _setLoading(false);
       notifyListeners();
     });
+    // Sounds nach dem Scene-Laden asynchron vorhalten (nicht blockierend)
+    unawaited(_preloadSceneSounds());
+  }
+
+  /// Lädt alle Sound-Objekte für jede Scene in den Cache.
+  /// Wird einmal beim Session-Start und nach jeder Scene-Änderung aufgerufen.
+  Future<void> _preloadSceneSounds() async {
+    try {
+      // Alle benötigten Sound-IDs sammeln (duplikatfrei)
+      final allIds = _scenes
+          .expand((s) => s.linkedSoundIds)
+          .toSet();
+
+      if (allIds.isEmpty) {
+        _sceneSoundsCache = {};
+        notifyListeners();
+        return;
+      }
+
+      // Einmalig alle Sounds laden statt pro Szene einzeln
+      final allSounds = await _soundRepository.findAll();
+      final soundById = {for (final s in allSounds) s.id: s};
+
+      _sceneSoundsCache = {
+        for (final scene in _scenes)
+          if (scene.linkedSoundIds.isNotEmpty)
+            scene.id: scene.linkedSoundIds
+                .map((id) => soundById[id])
+                .whereType<Sound>()
+                .toList(),
+      };
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('⚠️ [ActiveSessionViewModel] Fehler beim Voraufladen der Sounds: $e');
+    }
   }
 
   /// Lädt Scenes neu
@@ -222,6 +265,11 @@ class ActiveSessionViewModel extends ChangeNotifier {
         await _loadScenes();
       }
     });
+  }
+
+  /// Aktualisiert den Sound-Cache für eine einzelne Szene nach Änderungen.
+  Future<void> refreshSceneSounds(String sceneId) async {
+    unawaited(_preloadSceneSounds());
   }
 
   /// Aktualisiert die Lautstärken der verknüpften Sounds einer Szene

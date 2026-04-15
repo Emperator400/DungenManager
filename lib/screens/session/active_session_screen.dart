@@ -12,6 +12,7 @@ import '../../models/campaign.dart';
 import '../../models/quest.dart';
 import '../../models/scene.dart';
 import '../../models/session.dart';
+import '../../models/sound.dart';
 import '../../models/wiki_entry.dart';
 //import '../../services/sound_service.dart';
 import '../../theme/dnd_theme.dart';
@@ -395,18 +396,20 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
 
   /// Baut das Atmosphäre Panel (rechts unten) mit Sound Mixer
   Widget _buildAtmospherePanel(ActiveSessionViewModel viewModel) {
-    // Hole verknüpfte Sounds der aktiven Szene
     final activeSceneId = viewModel.currentSession.activeSceneId;
-    List<String> linkedSoundIds = [];
     Map<String, double> soundVolumes = {};
 
     if (activeSceneId != null) {
-      final sceneIndex = viewModel.scenes.indexWhere((scene) => scene.id == activeSceneId);
+      final sceneIndex = viewModel.scenes.indexWhere((s) => s.id == activeSceneId);
       if (sceneIndex != -1) {
-        linkedSoundIds = viewModel.scenes[sceneIndex].linkedSoundIds;
         soundVolumes = viewModel.scenes[sceneIndex].soundVolumes;
       }
     }
+
+    // Vorgeladene Sound-Objekte direkt übergeben — kein async Lookup im Mixer nötig
+    final preloadedSounds = activeSceneId != null
+        ? viewModel.sceneSoundsFor(activeSceneId)
+        : <Sound>[];
 
     return Container(
       decoration: BoxDecoration(
@@ -419,7 +422,6 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Eigener Header für das Atmosphäre Panel
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
@@ -443,12 +445,11 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
               ],
             ),
           ),
-          // SoundMixer direkt einbinden, damit onSoundsChanged funktioniert
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: SoundMixerWidget(
               key: ValueKey('atmosphere_${activeSceneId ?? "none"}'),
-              initialSoundIds: linkedSoundIds,
+              initialSounds: preloadedSounds.isNotEmpty ? preloadedSounds : null,
               initialVolumes: soundVolumes,
               config: const SoundMixerConfig(
                 compactMode: false,
@@ -458,9 +459,9 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                 showChannelCounter: false,
                 readOnly: false,
                 showDivider: true,
-                showHeader: false, // Header haben wir selbst gebaut
+                showHeader: false,
               ),
-              onSoundsChanged: activeSceneId != null 
+              onSoundsChanged: activeSceneId != null
                   ? (soundIds) => viewModel.updateSceneSounds(activeSceneId, soundIds)
                   : null,
               onVolumesChanged: activeSceneId != null
@@ -963,21 +964,18 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
         return const SizedBox.shrink();
       }
 
-    final Map<String, double> soundVolumes = scene.soundVolumes;
+      final viewModel = context.read<ActiveSessionViewModel>();
+      final preloadedSounds = viewModel.sceneSoundsFor(scene.id);
 
-      // Sound Mixer Widget direkt verwenden (ohne AtmosphereQuadrant Wrapper)
       return SoundMixerWidget(
-        // WICHTIG: Eindeutiger Key pro Szene
         size: SoundMixerSize.minimal,
         key: ValueKey('mixer_${scene.id}'),
-        initialSoundIds: scene.linkedSoundIds,
-      initialVolumes: soundVolumes,
-        onSoundsChanged: (soundIds) {
-          context.read<ActiveSessionViewModel>().updateSceneSounds(scene.id, soundIds);
-        },
-      onVolumesChanged: (volumes) {
-        context.read<ActiveSessionViewModel>().updateSceneSoundVolumes(scene.id, volumes);
-      },
+        initialSounds: preloadedSounds.isNotEmpty ? preloadedSounds : null,
+        initialVolumes: scene.soundVolumes,
+        onSoundsChanged: (soundIds) =>
+            viewModel.updateSceneSounds(scene.id, soundIds),
+        onVolumesChanged: (volumes) =>
+            viewModel.updateSceneSoundVolumes(scene.id, volumes),
       );
     }
 
