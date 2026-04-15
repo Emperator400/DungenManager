@@ -417,44 +417,58 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
     return true;
   }
   
-  /// Aktualisiert die Sounds wenn sich initialSounds ändert
+  /// Aktualisiert die Sounds wenn sich initialSounds ändert — per Diff, nicht clearAll.
+  ///
+  /// clearAll() würde laufende Sounds stoppen (Feedback-Schleife: onSoundsChanged
+  /// → DB-Save → ViewModel-Reload → notifyListeners → didUpdateWidget → clearAll).
+  /// Stattdessen: neue IDs hinzufügen, weggefallene entfernen, laufende in Ruhe lassen.
   Future<void> _updateInitialSounds() async {
     if (_isDisposed) return;
-    
-    // Erst alle aktuellen Sounds entfernen
-    await _mixerService.clearAll();
-    
-    // Dann die neuen Sounds laden
-    if (widget.initialSounds != null && widget.initialSounds!.isNotEmpty) {
-      for (final sound in widget.initialSounds!) {
-        if (_isDisposed) return;
-        if (sound.isValid) {
-          await _mixerService.addSound(
-            sound,
-            volume: widget.initialVolumes?[sound.id] ?? 0.8,
-            isLooping: sound.soundType == SoundType.Ambiente,
-            autoPlay: false,
-          );
-        }
+
+    final newIds = widget.initialSounds?.map((s) => s.id).toSet() ?? {};
+    final currentIds = _mixerService.channels.map((c) => c.sound.id).toSet();
+
+    // Entfernte Sounds aus dem Mixer löschen
+    for (final id in currentIds.difference(newIds)) {
+      if (_isDisposed) return;
+      await _mixerService.removeSound(id);
+    }
+
+    // Neue Sounds hinzufügen (bereits vorhandene überspringen)
+    for (final sound in widget.initialSounds ?? <Sound>[]) {
+      if (_isDisposed) return;
+      if (!_mixerService.hasSound(sound.id) && sound.isValid) {
+        await _mixerService.addSound(
+          sound,
+          volume: widget.initialVolumes?[sound.id] ?? 0.8,
+          isLooping: sound.soundType == SoundType.Ambiente,
+          autoPlay: false,
+        );
       }
     }
-    
+
     if (_isDisposed) return;
     setState(() {});
   }
 
-  /// Aktualisiert die Sounds wenn sich initialSoundIds ändert (z.B. nach DB-Load)
+  /// Aktualisiert die Sounds wenn sich initialSoundIds ändert — per Diff, nicht clearAll.
   Future<void> _updateInitialSoundIds() async {
     if (_isDisposed) return;
-    
-    if (widget.initialSoundIds != null && widget.initialSoundIds!.isNotEmpty) {
+
+    final newIds = widget.initialSoundIds?.toSet() ?? {};
+    final currentIds = _mixerService.channels.map((c) => c.sound.id).toSet();
+
+    // Entfernte Sounds aus dem Mixer löschen
+    for (final id in currentIds.difference(newIds)) {
+      if (_isDisposed) return;
+      await _mixerService.removeSound(id);
+    }
+
+    // Neue Sounds hinzufügen
+    if (newIds.isNotEmpty) {
       final soundRepo = context.read<SoundModelRepository>();
-      
-      for (final soundId in widget.initialSoundIds!) {
+      for (final soundId in newIds.difference(currentIds)) {
         if (_isDisposed) return;
-        // Überspringen wenn bereits geladen
-        if (_mixerService.hasSound(soundId)) continue;
-        
         try {
           final sound = await soundRepo.findById(soundId);
           if (_isDisposed) return;
@@ -471,7 +485,7 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
         }
       }
     }
-    
+
     if (_isDisposed) return;
     setState(() {});
   }
