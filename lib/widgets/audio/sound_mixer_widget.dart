@@ -924,9 +924,12 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
 
   /// Zeigt den Sound-Picker Dialog
   Future<void> _showSoundPicker(SoundType filterType) async {
-    // Aktive Sound-IDs sammeln
+    // Für die Vorauswahl im Picker: gespeicherte IDs aus dem Widget (DB-Stand) verwenden,
+    // NICHT den Mixer-Service — der lädt asynchron und ist beim ersten Öffnen evtl. noch leer.
+    // activeSoundIds (Mixer-State) bleibt für das Diff beim tatsächlichen Hinzufügen/Entfernen.
+    final savedSoundIds = widget.initialSoundIds ?? [];
     final activeSoundIds = _mixerService.channels.map((c) => c.sound.id).toList();
-    
+
     final result = await showModalBottomSheet<List<String>>(
       context: context,
       isScrollControlled: true,
@@ -944,19 +947,15 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
             ),
           ),
           child: SoundPickerWidget(
-            initiallySelectedSoundIds: activeSoundIds,
-            onSelectionChanged: (_) {}, // Wird nicht benötigt da wir das Ergebnis beim Schließen bekommen
+            initiallySelectedSoundIds: savedSoundIds,
+            onSelectionChanged: (_) {},
           ),
         ),
       ),
     );
 
-    // Sounds hinzufügen oder abwählen (auch wenn Liste nun leer ist!)
     if (result != null) {
-      // Direkt die vom Picker erstellte Liste speichern, da der Mixer asynchron lädt
       widget.onSoundsChanged?.call(result);
-      
-      // Erst danach den Mixer die Dateien laden lassen
       await _addSoundsToMixer(result, activeSoundIds, filterType);
     }
   }
