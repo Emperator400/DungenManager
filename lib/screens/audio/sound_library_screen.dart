@@ -9,6 +9,7 @@ import '../../widgets/audio/sound_mixer_widget.dart';
 import '../../widgets/ui_components/filter/unified_filter_chip.dart';
 import '../../widgets/ui_components/states/loading_state_widget.dart';
 import '../../widgets/ui_components/states/empty_state_widget.dart';
+import '../../widgets/ui_components/feedback/snackbar_helper.dart';
 
 /// Sound Library Screen mit integriertem SoundMixerWidget
 /// 
@@ -828,15 +829,7 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen>
             ElevatedButton(
               onPressed: isUploading || selectedFilePath == null ? null : () async {
                 if (selectedFilePath == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Bitte wähle zuerst eine Datei aus',
-                        style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                      ),
-                      backgroundColor: DnDTheme.warningOrange,
-                    ),
-                  );
+                  SnackBarHelper.showWarning(context, 'Bitte wähle zuerst eine Datei aus');
                   return;
                 }
                 
@@ -856,28 +849,12 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen>
                 
                 if (uploadedSound != null) {
                   Navigator.of(context).pop();
-                  
+
                   if (!mounted) return;
-                  
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Sound "${uploadedSound.name}" erfolgreich hochgeladen',
-                        style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                      ),
-                      backgroundColor: DnDTheme.successGreen,
-                    ),
-                  );
+
+                  SnackBarHelper.showSuccess(context, 'Sound "${uploadedSound.name}" erfolgreich hochgeladen');
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        _viewModel.soundError ?? 'Fehler beim Hochladen',
-                        style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                      ),
-                      backgroundColor: DnDTheme.errorRed,
-                    ),
-                  );
+                  SnackBarHelper.showError(context, _viewModel.soundError ?? 'Fehler beim Hochladen');
                 }
               },
               style: ElevatedButton.styleFrom(

@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../models/sound.dart';
 import '../../viewmodels/edit_sound_viewmodel.dart';
 import '../../theme/dnd_theme.dart';
+import '../../widgets/ui_components/states/loading_state_widget.dart';
+import '../../widgets/ui_components/feedback/snackbar_helper.dart';
 
 /// Enhanced Screen zur Bearbeitung von Sounds mit modernem Design
 class EditSoundScreen extends StatefulWidget {
@@ -103,7 +105,7 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
       body: Consumer<EditSoundViewModel>(
         builder: (context, viewModel, child) {
           if (viewModel.isLoading) {
-            return Center(child: CircularProgressIndicator(color: DnDTheme.mysticalPurple));
+            return const LoadingStateWidget();
           }
 
           return Form(
@@ -119,24 +121,24 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
                       margin: const EdgeInsets.only(bottom: 16.0),
                       padding: const EdgeInsets.all(12.0),
                       decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        border: Border.all(color: Colors.red.shade200),
+                        color: DnDTheme.errorRed.withValues(alpha: 0.1),
+                        border: Border.all(color: DnDTheme.errorRed.withValues(alpha: 0.4)),
                         borderRadius: BorderRadius.circular(8.0),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.error, color: Colors.red.shade600, size: 20),
+                          const Icon(Icons.error, color: DnDTheme.errorRed, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               viewModel.errorMessage!,
-                              style: TextStyle(color: Colors.red.shade800),
+                              style: const TextStyle(color: DnDTheme.errorRed),
                             ),
                           ),
                           IconButton(
                             icon: const Icon(Icons.close, size: 16),
                             onPressed: viewModel.clearError,
-                            color: Colors.red.shade600,
+                            color: DnDTheme.errorRed,
                           ),
                         ],
                       ),
@@ -243,10 +245,10 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
                                           });
                                           _updateViewModel();
                                         },
-                                        icon: Icon(Icons.clear, size: 16),
-                                        label: Text('Entfernen'),
+                                        icon: const Icon(Icons.clear, size: 16),
+                                        label: const Text('Entfernen'),
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.grey,
+                                          backgroundColor: DnDTheme.charcoalGrey,
                                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                         ),
                                       ),
@@ -276,7 +278,7 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
                                       const SizedBox(width: 12),
                                       Text(
                                         'Größe: ${viewModel.sound!.formattedFileSize}',
-                                        style: TextStyle(color: Colors.grey.shade600),
+                                        style: const TextStyle(color: DnDTheme.charcoalGrey),
                                       ),
                                     ],
                                   ],
@@ -347,10 +349,10 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(color: DnDTheme.mysticalPurple),
+        borderSide: const BorderSide(color: DnDTheme.mysticalPurple),
       ),
       filled: true,
-      fillColor: Colors.grey.shade50,
+      fillColor: DnDTheme.slateGrey,
     );
   }
 
@@ -362,9 +364,9 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
             onPressed: () => Navigator.pop(context),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              side: BorderSide(color: Colors.grey.shade400),
+              side: const BorderSide(color: DnDTheme.charcoalGrey),
             ),
-            child: Text('Abbrechen'),
+            child: const Text('Abbrechen'),
           ),
         ),
         const SizedBox(width: 12),
@@ -386,10 +388,10 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
           Expanded(
             child: ElevatedButton.icon(
               onPressed: _duplicateSound,
-              icon: Icon(Icons.copy, color: Colors.white),
-              label: Text('Duplizieren'),
+              icon: const Icon(Icons.copy, color: Colors.white),
+              label: const Text('Duplizieren'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
+                backgroundColor: DnDTheme.warningOrange,
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
             ),
@@ -468,12 +470,7 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
     if (!mounted) return;
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Sound erfolgreich gespeichert'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      SnackBarHelper.showSuccess(context, 'Sound erfolgreich gespeichert');
       Navigator.pop(context, true);
     }
   }
@@ -483,11 +480,6 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
     await viewModel.duplicateSound();
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Sound dupliziert'),
-        backgroundColor: Colors.orange,
-      ),
-    );
+    SnackBarHelper.showInfo(context, 'Sound dupliziert');
   }
 }

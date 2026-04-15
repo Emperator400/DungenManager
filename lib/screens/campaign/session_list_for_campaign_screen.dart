@@ -8,6 +8,10 @@ import '../session/edit_session_screen.dart' show EditSessionScreen;
 import '../session/active_session_screen.dart' show ActiveSessionScreen;
 import 'edit_campaign_screen.dart' show EditCampaignScreen;
 import '../../widgets/ui_components/cards/unified_session_card.dart';
+import '../../widgets/ui_components/states/loading_state_widget.dart';
+import '../../widgets/ui_components/states/error_state_widget.dart';
+import '../../widgets/ui_components/feedback/snackbar_helper.dart';
+import '../../widgets/ui_components/feedback/confirmation_dialog.dart';
 import '../../theme/dnd_theme.dart';
 
 class SessionListForCampaignScreen extends StatefulWidget {
@@ -160,47 +164,17 @@ class _SessionListForCampaignScreenState extends State<SessionListForCampaignScr
       builder: (context, viewModel, child) {
         // Loading state
         if (viewModel.isLoading) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
+          return const LoadingStateWidget();
         }
 
-        // Error state
         if (viewModel.errorMessage != null) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 64,
-                  color: Theme.of(context).colorScheme.error,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Fehler beim Laden der Sitzungen',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  viewModel.errorMessage!,
-                  style: TextStyle(color: Theme.of(context).disabledColor),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    viewModel.clearError();
-                    viewModel.refreshSessions();
-                  },
-                  child: const Text('Erneut versuchen'),
-                ),
-              ],
-            ),
+          return ErrorStateWidget.withRetry(
+            title: 'Fehler beim Laden der Sitzungen',
+            message: viewModel.errorMessage,
+            onRetry: () {
+              viewModel.clearError();
+              viewModel.refreshSessions();
+            },
           );
         }
 
@@ -290,43 +264,19 @@ class _SessionListForCampaignScreenState extends State<SessionListForCampaignScr
     context.read<SessionListForCampaignViewModel>().refreshSessions();
   }
 
-  void _deleteSession(Session session) {
-    showDialog<void>(
+  void _deleteSession(Session session) async {
+    final confirmed = await ConfirmationDialog.showDelete(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Sitzung löschen'),
-        content: Text(
-          'Möchtest du die Sitzung "${session.title}" wirklich löschen? '
+      title: 'Sitzung löschen',
+      message: 'Möchtest du die Sitzung "${session.title}" wirklich löschen? '
           'Diese Aktion kann nicht rückgängig gemacht werden.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Abbrechen'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              final success = await context.read<SessionListForCampaignViewModel>().deleteSession(session.id);
-              if (!context.mounted) return;
-              if (!success) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Fehler beim Löschen der Sitzung'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Löschen'),
-          ),
-        ],
-      ),
     );
+    if (confirmed != true || !mounted) return;
+    final success = await context.read<SessionListForCampaignViewModel>().deleteSession(session.id);
+    if (!mounted) return;
+    if (!success) {
+      SnackBarHelper.showError(context, 'Fehler beim Löschen der Sitzung');
+    }
   }
 
   void _editCampaign() {

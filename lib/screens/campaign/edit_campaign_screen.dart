@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/campaign.dart';
 import '../../viewmodels/campaign_viewmodel.dart';
 import '../../theme/dnd_theme.dart';
+import '../../widgets/ui_components/feedback/snackbar_helper.dart';
 
 /// Screen zur Bearbeitung von Campaigns mit CampaignViewModel
 class EditCampaignScreen extends StatefulWidget {
@@ -114,24 +115,24 @@ class _EditCampaignScreenState extends State<EditCampaignScreen> {
                       margin: const EdgeInsets.only(bottom: 16.0),
                       padding: const EdgeInsets.all(12.0),
                       decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        border: Border.all(color: Colors.red.shade200),
+                        color: DnDTheme.errorRed.withValues(alpha: 0.1),
+                        border: Border.all(color: DnDTheme.errorRed.withValues(alpha: 0.4)),
                         borderRadius: BorderRadius.circular(8.0),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.error, color: Colors.red.shade600, size: 20),
+                          const Icon(Icons.error, color: DnDTheme.errorRed, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               viewModel.error!,
-                              style: TextStyle(color: Colors.red.shade800),
+                              style: const TextStyle(color: DnDTheme.errorRed),
                             ),
                           ),
                           IconButton(
                             icon: const Icon(Icons.close, size: 16),
                             onPressed: viewModel.clearError,
-                            color: Colors.red.shade600,
+                            color: DnDTheme.errorRed,
                           ),
                         ],
                       ),
@@ -693,12 +694,7 @@ class _EditCampaignScreenState extends State<EditCampaignScreen> {
       await viewModel.duplicateCampaign(widget.campaign!);
       
       if (viewModel.error == null && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Kampagne dupliziert'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        SnackBarHelper.showSuccess(context, 'Kampagne dupliziert');
       }
     }
   }

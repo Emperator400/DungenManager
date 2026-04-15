@@ -412,21 +412,27 @@ class CampaignViewModel extends ChangeNotifier {
   }
   
   Future<int> getSessionCount(String campaignId) async {
-    // Placeholder - Session Repository would be used here
-    // TODO: Implement when SessionModelRepository is available
-    return 0;
+    final campaign = _campaigns.cast<Campaign?>().firstWhere(
+      (c) => c!.id == campaignId,
+      orElse: () => null,
+    );
+    return campaign?.sessionIds.length ?? 0;
   }
-  
+
   Future<int> getQuestCount(String campaignId) async {
-    // Placeholder - Quest Repository would be used here
-    // TODO: Implement when QuestModelRepository is available
-    return 0;
+    final campaign = _campaigns.cast<Campaign?>().firstWhere(
+      (c) => c!.id == campaignId,
+      orElse: () => null,
+    );
+    return campaign?.questIds.length ?? 0;
   }
-  
+
   Future<DateTime?> getLastActiveDate(String campaignId) async {
-    // Placeholder - would return last session-activity
-    // TODO: Implement when SessionModelRepository is available
-    return null;
+    final campaign = _campaigns.cast<Campaign?>().firstWhere(
+      (c) => c!.id == campaignId,
+      orElse: () => null,
+    );
+    return campaign?.updatedAt;
   }
   
   // Private helper methods

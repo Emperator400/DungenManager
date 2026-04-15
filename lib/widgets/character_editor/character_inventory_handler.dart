@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../database/core/database_connection.dart';
-import '../../database/repositories/inventory_item_repository.dart';
-import '../../database/entities/inventory_item_entity.dart';
+import '../../database/repositories/inventory_item_model_repository.dart';
 import '../../models/inventory_item.dart';
 import '../../viewmodels/character_editor_viewmodel.dart';
 import 'character_editor_controller.dart'
@@ -14,7 +13,7 @@ class CharacterInventoryHandler {
   final EnhancedCharacterEditorController controller;
   final BuildContext context;
   final VoidCallback onInventoryChanged;
-  final InventoryItemRepository _inventoryRepository;
+  final InventoryItemModelRepository _inventoryRepository;
   final CharacterEditorViewModel? _viewModel;
 
   CharacterInventoryHandler({
@@ -22,7 +21,7 @@ class CharacterInventoryHandler {
     required this.context,
     required this.onInventoryChanged,
     CharacterEditorViewModel? viewModel,
-  }) : _inventoryRepository = InventoryItemRepository(DatabaseConnection.instance),
+  }) : _inventoryRepository = InventoryItemModelRepository(DatabaseConnection.instance),
        _viewModel = viewModel;
 
   Future<void> addItemFromLibrary() async {
@@ -92,9 +91,6 @@ class CharacterInventoryHandler {
   Future<void> showManageItemDialog(DisplayInventoryItem displayItem) async {
     final quantityController = TextEditingController(text: displayItem.inventoryItem.quantity.toString());
     
-    // Konvertiere Model zu Entity für Repository-Operationen
-    final inventoryItemEntity = InventoryItemEntity.fromModel(displayItem.inventoryItem);
-    
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -112,7 +108,7 @@ class CharacterInventoryHandler {
                 await _inventoryRepository.delete(displayItem.inventoryItem.id);
                 if (context.mounted) Navigator.of(ctx).pop();
                 await loadInventory();
-                
+
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('${displayItem.item.name} wurde entfernt')),
@@ -136,8 +132,8 @@ class CharacterInventoryHandler {
             onPressed: () async {
               try {
                 final newQuantity = int.tryParse(quantityController.text) ?? 1;
-                final updatedEntity = inventoryItemEntity.copyWith(quantity: newQuantity);
-                await _inventoryRepository.update(updatedEntity);
+                final updatedItem = displayItem.inventoryItem.copyWith(quantity: newQuantity);
+                await _inventoryRepository.update(updatedItem);
                 if (context.mounted) Navigator.of(ctx).pop();
                 await loadInventory();
               } catch (e) {
@@ -162,10 +158,8 @@ class CharacterInventoryHandler {
     }
 
     try {
-      // Konvertiere Model zu Entity für Repository-Operationen
-      final inventoryItemEntity = InventoryItemEntity.fromModel(displayItem.inventoryItem);
-      final updatedEntity = inventoryItemEntity.copyWith(quantity: newQuantity);
-      await _inventoryRepository.update(updatedEntity);
+      final updatedItem = displayItem.inventoryItem.copyWith(quantity: newQuantity);
+      await _inventoryRepository.update(updatedItem);
       await loadInventory();
     } catch (e) {
       if (context.mounted) {

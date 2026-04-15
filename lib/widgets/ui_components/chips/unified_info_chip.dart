@@ -51,7 +51,7 @@ class UnifiedInfoChip extends StatelessWidget {
     VoidCallback? onTap,
     bool isCompact = false,
   }) {
-    final chipColor = color ?? Colors.blueGrey;
+    final chipColor = color ?? DnDTheme.arcaneBlue;
     return UnifiedInfoChip(
       label: label,
       value: value,
@@ -183,7 +183,7 @@ class UnifiedInfoChip extends StatelessWidget {
     VoidCallback? onTap,
     bool isSelected = false,
   }) {
-    final chipColor = color ?? Colors.purple;
+    final chipColor = color ?? DnDTheme.mysticalPurple;
     return UnifiedInfoChip(
       label: '',
       value: tag,
@@ -250,7 +250,7 @@ class UnifiedInfoChip extends StatelessWidget {
     Color? color,
     VoidCallback? onTap,
   }) {
-    final chipColor = color ?? Colors.blueGrey;
+    final chipColor = color ?? DnDTheme.arcaneBlue;
     return UnifiedInfoChip(
       label: label,
       value: '$count',
@@ -271,23 +271,23 @@ class UnifiedInfoChip extends StatelessWidget {
   // ============================================
 
   static Color _getAttributeColor(int value) {
-    if (value >= 18) return Colors.greenAccent;
-    if (value >= 16) return Colors.green;
-    if (value >= 14) return Colors.lightGreen;
-    if (value >= 12) return Colors.blue;
-    if (value >= 10) return Colors.lightBlue;
-    if (value >= 8) return Colors.orange;
-    if (value >= 6) return Colors.deepOrange;
-    return Colors.red;
+    if (value >= 18) return DnDTheme.emeraldGreen;
+    if (value >= 16) return DnDTheme.successGreen;
+    if (value >= 14) return DnDTheme.successGreen;
+    if (value >= 12) return DnDTheme.arcaneBlue;
+    if (value >= 10) return DnDTheme.infoBlue;
+    if (value >= 8) return DnDTheme.warningOrange;
+    if (value >= 6) return DnDTheme.deepRed;
+    return DnDTheme.errorRed;
   }
 
   static Color _getAlignmentColor(String alignment) {
     final lower = alignment.toLowerCase();
-    if (lower.contains('good')) return Colors.green;
-    if (lower.contains('evil')) return Colors.red;
-    if (lower.contains('lawful')) return Colors.blue;
-    if (lower.contains('chaotic')) return Colors.orange;
-    if (lower.contains('neutral')) return Colors.grey;
+    if (lower.contains('good')) return DnDTheme.successGreen;
+    if (lower.contains('evil')) return DnDTheme.errorRed;
+    if (lower.contains('lawful')) return DnDTheme.arcaneBlue;
+    if (lower.contains('chaotic')) return DnDTheme.warningOrange;
+    if (lower.contains('neutral')) return DnDTheme.charcoalGrey;
     return DnDTheme.mysticalPurple;
   }
 
@@ -552,7 +552,7 @@ class UnifiedStatItem {
       label: 'CR',
       value: cr,
       icon: Icons.warning_amber,
-      color: Colors.amber,
+      color: DnDTheme.ancientGold,
       onTap: onTap,
     );
   }

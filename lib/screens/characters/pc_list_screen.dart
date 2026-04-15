@@ -11,7 +11,8 @@ import '../../database/core/database_connection.dart';
 import '../../database/repositories/player_character_model_repository.dart';
 import '../../widgets/ui_components/states/loading_state_widget.dart';
 import '../../widgets/ui_components/feedback/snackbar_helper.dart';
-import '../../widgets/ui_components/feedback/confirmation_dialog.dart';
+// ignore: unused_import
+// '../../widgets/ui_components/feedback/confirmation_dialog.dart';
 
 class PlayerCharacterListScreen extends StatefulWidget {
   final Campaign campaign;

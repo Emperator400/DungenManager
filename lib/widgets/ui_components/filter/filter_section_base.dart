@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../theme/dnd_theme.dart';
 
 /// Abstrakte Basis-Klasse für Filter-Sektionen
 /// 
@@ -113,7 +114,7 @@ abstract class FilterSectionBase extends StatelessWidget {
           : Text(label),
       selected: isSelected,
       onSelected: (_) => onTap(),
-      backgroundColor: Colors.grey[200],
+      backgroundColor: DnDTheme.charcoalGrey,
       selectedColor: selectedColor?.withValues(alpha: 0.2) ?? 
                   Theme.of(context).primaryColor.withValues(alpha: 0.2),
       checkmarkColor: checkmarkColor ?? Theme.of(context).primaryColor,

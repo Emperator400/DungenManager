@@ -9,6 +9,8 @@ import '../../viewmodels/edit_creature_viewmodel.dart';
 import '../../widgets/ui_components/stats/attributes_section_widget.dart';
 import '../../widgets/ui_components/inventory/creature_inventory_widget.dart';
 import '../../widgets/ui_components/feedback/snackbar_helper.dart';
+import '../../widgets/ui_components/feedback/confirmation_dialog.dart';
+import '../../widgets/ui_components/states/loading_state_widget.dart';
 import '../../widgets/bestiary/edit_creature/edit_creature_screen_widgets.dart';
 
 /// Enhanced Screen zur Bearbeitung von Creatures - basierend auf Hero Creation Screen
@@ -118,11 +120,7 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
     return Consumer<EditCreatureViewModel>(
       builder: (context, viewModel, child) {
         if (viewModel.isLoading) {
-          return Center(
-            child: CircularProgressIndicator(
-              color: DnDTheme.ancientGold,
-            ),
-          );
+          return const LoadingStateWidget();
         }
 
         if (viewModel.error != null) {
@@ -376,42 +374,13 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
       return true;
     }
     
-    final shouldPop = await showDialog<bool>(
+    final shouldPop = await ConfirmationDialog.showWarning(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
-        title: Text(
-          'Ungespeicherte Änderungen',
-          style: DnDTheme.headline2.copyWith(
-            color: DnDTheme.ancientGold,
-          ),
-        ),
-        content: Text(
-          'Möchtest du wirklich ohne Speichern gehen?',
-          style: DnDTheme.bodyText1.copyWith(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(
-                color: DnDTheme.mysticalPurple,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.errorRed,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Verlassen'),
-          ),
-        ],
-      ),
+      title: 'Ungespeicherte Änderungen',
+      message: 'Möchtest du wirklich ohne Speichern gehen?',
+      confirmText: 'Verlassen',
     );
-    
+
     return shouldPop ?? false;
   }
 }

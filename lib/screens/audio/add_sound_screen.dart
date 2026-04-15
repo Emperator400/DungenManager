@@ -7,6 +7,9 @@ import '../../database/repositories/sound_model_repository.dart';
 import '../../models/sound.dart';
 import '../../models/scene_sound_link.dart';
 import '../../viewmodels/sound_library_viewmodel.dart';
+import '../../theme/dnd_theme.dart';
+import '../../widgets/ui_components/states/loading_state_widget.dart';
+import '../../widgets/ui_components/feedback/snackbar_helper.dart';
 
 class AddSoundToSceneScreen extends StatefulWidget {
   final String sceneId;
@@ -73,10 +76,9 @@ class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
               if (snapshot.hasError) {
                 return Center(child: Text('Fehler: ${snapshot.error}'));
               }
-              
+
               final sounds = snapshot.data ?? [];
-              
-              // Lade den aktuellen Zustand der scene_sound_links Tabelle
+
               return FutureBuilder(
                 future: _getAllSceneSoundLinks(),
                 builder: (context, linksSnapshot) {
@@ -84,26 +86,24 @@ class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
                     if (linksSnapshot.hasError) {
                       return Center(child: Text('Fehler: ${linksSnapshot.error}'));
                     }
-                    
+
                     final sceneLinks = linksSnapshot.data ?? [];
-                    
+
                     return Scaffold(
                       appBar: AppBar(
-                        title: Text('Sound zur Szene hinzufügen'),
-                        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                        title: const Text('Sound zur Szene hinzufügen'),
+                        backgroundColor: DnDTheme.stoneGrey,
                       ),
                       body: Column(
                         children: [
-                          // Zeige existierende Sounds für diese Szene an
                           if (sceneLinks.isNotEmpty) ...[
                             Container(
                               margin: const EdgeInsets.all(8),
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.grey[100],
+                                color: DnDTheme.slateGrey,
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.grey[300]!),
+                                border: Border.all(color: DnDTheme.charcoalGrey),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,7 +116,7 @@ class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
                                   ...sceneLinks.map((link) {
                                     final sound = sounds.firstWhere(
                                       (s) => s.id == link.soundId,
-                                      orElse: () => sounds.first, // Fallback
+                                      orElse: () => sounds.first,
                                     );
                                     return Container(
                                       margin: const EdgeInsets.only(bottom: 8),
@@ -124,28 +124,27 @@ class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
                                         children: [
                                           Expanded(
                                             child: Text(
-                                              '${sound.name}',
+                                              sound.name,
                                               style: Theme.of(context).textTheme.bodyMedium,
                                             ),
                                           ),
                                           Text(
-                                              ' (Lautstärke: ${link.volume})',
-                                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                                color: Colors.grey[600],
-                                              ),
+                                            ' (Lautstärke: ${link.volume})',
+                                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                              color: DnDTheme.charcoalGrey,
+                                            ),
                                           ),
                                           IconButton(
                                             icon: const Icon(Icons.delete),
                                             onPressed: () async {
-                                              // Entferne den Sound-Link
                                               await _deleteSceneSoundLink(link.id);
-                                              setState(() {}); // UI aktualisieren
+                                              setState(() {});
                                             },
                                           ),
                                         ],
                                       ),
                                     );
-                                  }).toList(),
+                                  }),
                                 ],
                               ),
                             ),
@@ -157,12 +156,12 @@ class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
                       ),
                     );
                   } else {
-                    return const Center(child: CircularProgressIndicator());
+                    return const LoadingStateWidget();
                   }
                 },
               );
             } else {
-              return const Center(child: CircularProgressIndicator());
+              return const LoadingStateWidget();
             }
           },
         );
@@ -191,22 +190,16 @@ class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
                 margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: InkWell(
                   onTap: () async {
-                    // Füge den Sound zur Szene hinzu
                     final newLink = SceneSoundLink(
                       sceneId: widget.sceneId,
                       soundId: sound.id,
-                      volume: 0.5, // Standard-Lautstärke
+                      volume: 0.5,
                     );
                     await _insertSceneSoundLink(newLink);
-                    setState(() {}); // UI aktualisieren
-                    
+                    setState(() {});
+
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('${sound.name} zur Szene hinzugefügt'),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
+                      SnackBarHelper.showSuccess(context, '${sound.name} zur Szene hinzugefügt');
                     }
                   },
                   child: Padding(
@@ -235,7 +228,7 @@ class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
                               Text(
                                 sound.soundType.toString().split('.').last,
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Colors.grey[600],
+                                  color: DnDTheme.charcoalGrey,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,

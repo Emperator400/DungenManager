@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../../theme/dnd_theme.dart';
 
 /// Wiederverwendbarer Empty State Widget
 /// 
@@ -36,7 +37,7 @@ class EmptyStateWidget extends StatelessWidget {
       title: title,
       message: message,
       icon: icon ?? Icons.folder_open,
-      iconColor: iconColor ?? Colors.grey[600],
+      iconColor: iconColor ?? DnDTheme.charcoalGrey,
       action: action,
     );
   }
@@ -54,7 +55,7 @@ class EmptyStateWidget extends StatelessWidget {
       title: title,
       message: message,
       icon: icon ?? Icons.folder_open,
-      iconColor: iconColor ?? Colors.grey[600],
+      iconColor: iconColor ?? DnDTheme.charcoalGrey,
       showAction: false,
     );
   }
@@ -74,7 +75,7 @@ class EmptyStateWidget extends StatelessWidget {
       title: title,
       message: message,
       icon: icon ?? Icons.folder_open,
-      iconColor: iconColor ?? Colors.grey[600],
+      iconColor: iconColor ?? DnDTheme.charcoalGrey,
       action: ElevatedButton.icon(
         onPressed: onCreate,
         icon: const Icon(Icons.add),
@@ -97,7 +98,7 @@ class EmptyStateWidget extends StatelessWidget {
       title: title,
       message: message,
       icon: icon ?? Icons.search_off,
-      iconColor: iconColor ?? Colors.grey[600],
+      iconColor: iconColor ?? DnDTheme.charcoalGrey,
       action: ElevatedButton.icon(
         onPressed: onClearFilters,
         icon: const Icon(Icons.clear_all),
@@ -124,7 +125,7 @@ class EmptyStateWidget extends StatelessWidget {
                   Icon(
                     icon ?? Icons.folder_open,
                     size: 64,
-                    color: iconColor ?? Colors.grey[600],
+                    color: iconColor ?? DnDTheme.charcoalGrey,
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -132,7 +133,7 @@ class EmptyStateWidget extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: iconColor ?? Colors.grey[600],
+                      color: iconColor ?? DnDTheme.charcoalGrey,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -140,9 +141,9 @@ class EmptyStateWidget extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       message!,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 14,
-                        color: Colors.grey[500],
+                        color: DnDTheme.charcoalGrey,
                       ),
                       textAlign: TextAlign.center,
                     ),

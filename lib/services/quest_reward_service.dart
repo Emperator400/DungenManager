@@ -214,29 +214,16 @@ class QuestRewardService {
     };
   }
 
-  /// Fügt Gold zum Spieler hinzu
+  /// Fügt Gold zum Spieler hinzu und persistiert die Änderung
   Future<void> _addGoldToPlayer(PlayerCharacter player, int amount) async {
-    // Annahme: PlayerCharacter hat eine gold-Eigenschaft oder Money-System
-    // Dies müsste im PlayerCharacter-Modell implementiert werden
-    // Für jetzt zeigen wir die Logik
-    
-    // In einer echten Implementierung:
-    // final updatedPlayer = player.copyWith(gold: player.gold + amount);
-    // await _dbHelper.updatePlayerCharacter(updatedPlayer);
-    
-    debugPrint('Spieler ${player.name} erhält $amount Gold');
+    final updatedPlayer = player.copyWith(gold: player.gold + amount);
+    await _playerRepository.update(updatedPlayer);
+    debugPrint('✅ Spieler ${player.name} erhält $amount Gold (neu: ${updatedPlayer.gold})');
   }
 
-  /// Fügt Erfahrungspunkte zum Spieler hinzu
+  /// Erfahrungspunkte: kein XP-Feld im Modell — nur loggen
   Future<void> _addXPToPlayer(PlayerCharacter player, int amount) async {
-    // Annahme: PlayerCharacter hat Erfahrungspunkte-System
-    // Dies müsste im PlayerCharacter-Modell implementiert werden
-    
-    // In einer echten Implementierung:
-    // final updatedPlayer = player.addExperience(amount);
-    // await _dbHelper.updatePlayerCharacter(updatedPlayer);
-    
-    debugPrint('Spieler ${player.name} erhält $amount Erfahrungspunkte');
+    debugPrint('ℹ️ Spieler ${player.name} würde $amount XP erhalten (XP-Feld nicht im Modell)');
   }
 
   /// Berechnet die Gesamtwerte aller Belohnungen einer Quest

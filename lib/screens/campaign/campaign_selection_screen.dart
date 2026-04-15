@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../viewmodels/campaign_viewmodel.dart';
 import '../../viewmodels/update_viewmodel.dart';
 import '../../widgets/campaign/campaign_selection_layout_widget.dart';
+import '../../widgets/update_dialog.dart';
 
 /// Campaign Selection Screen - Startseite der Anwendung
 /// 
@@ -51,9 +52,7 @@ class _CampaignSelectionScreenState extends State<CampaignSelectionScreen> {
     final hasUpdate = await _updateViewModel!.checkForUpdate();
 
     if (hasUpdate && mounted) {
-      // Zeige Update-Dialog wenn Update verfügbar
-      // Importiere die Funktion aus dem update_dialog.dart
-      // await showUpdateDialogIfNeeded(context);
+      showUpdateDialogIfNeeded(context);
     }
   }
 

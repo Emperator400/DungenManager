@@ -1,8 +1,10 @@
 // lib/widgets/sound_scenes_tab.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/sound_scene.dart';
 import '../models/sound_scene_item.dart';
 import '../models/sound.dart';
+import '../services/multi_stream_sound_service.dart';
 import '../services/sound_scene_service.dart';
 import '../viewmodels/sound_library_viewmodel.dart';
 import '../theme/dnd_theme.dart';
@@ -17,6 +19,7 @@ class SoundScenesTab extends StatefulWidget {
 
 class SoundScenesTabState extends State<SoundScenesTab> {
   final SoundSceneService _sceneService = SoundSceneService();
+  late MultiStreamSoundService _soundService;
   List<SoundScene> _scenes = [];
   List<Sound> _availableSounds = [];
   bool _isLoading = true;
@@ -26,6 +29,18 @@ class SoundScenesTabState extends State<SoundScenesTab> {
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _soundService = context.read<MultiStreamSoundService>();
+  }
+
+  /// Gibt zurück ob irgendein Sound dieser Szene gerade aktiv im Mixer ist
+  bool _isScenePlaying(SoundScene scene) {
+    final activeIds = _soundService.channels.map((c) => c.id).toSet();
+    return scene.items.any((item) => activeIds.contains(item.soundId));
   }
 
   Future<void> _loadData() async {
@@ -450,32 +465,78 @@ class SoundScenesTabState extends State<SoundScenesTab> {
 
   Future<void> _playScene(SoundScene scene) async {
     if (!scene.hasSounds) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Diese Szene enthält keine Sounds.',
-            style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Diese Szene enthält keine Sounds.',
+              style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+            ),
+            backgroundColor: DnDTheme.warningOrange,
           ),
-          backgroundColor: DnDTheme.warningOrange,
-        ),
-      );
+        );
+      }
       return;
     }
 
-    // TODO: Multi-Track Playback mit mehreren Sounds gleichzeitig implementieren
-    // Aktuell wird nur eine Info angezeigt
-    
+    int startedCount = 0;
+
+    for (final item in scene.items) {
+      // Sound-Objekt anhand der ID aus der geladenen Liste holen
+      final sound = _availableSounds.cast<Sound?>().firstWhere(
+        (s) => s!.id == item.soundId,
+        orElse: () => null,
+      );
+
+      if (sound == null) {
+        debugPrint('⚠️ Sound ${item.soundId} nicht gefunden, übersprungen');
+        continue;
+      }
+
+      // Wenn der Sound bereits läuft, überspringen
+      if (_soundService.channels.any((c) => c.id == sound.id)) {
+        continue;
+      }
+
+      final channelId = await _soundService.addSound(
+        sound,
+        volume: item.volume,
+        isLooping: item.isLooping,
+        autoPlay: true,
+      );
+
+      if (channelId != null) {
+        startedCount++;
+      } else {
+        debugPrint('⚠️ Sound "${sound.name}" konnte nicht gestartet werden');
+      }
+    }
+
     if (mounted) {
+      final message = startedCount > 0
+          ? 'Szene "${scene.name}" gestartet ($startedCount Sound${startedCount != 1 ? 's' : ''})'
+          : 'Szene konnte nicht gestartet werden';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '🔊 Szene "${scene.name}" mit ${scene.soundCount} Sound(s) - Playback wird implementiert',
+            message,
             style: DnDTheme.bodyText1.copyWith(color: Colors.white),
           ),
-          backgroundColor: DnDTheme.arcaneBlue,
+          backgroundColor:
+              startedCount > 0 ? DnDTheme.successGreen : DnDTheme.errorRed,
           duration: const Duration(seconds: 2),
         ),
       );
+      setState(() {}); // Play-Button-Status aktualisieren
+    }
+  }
+
+  Future<void> _stopScene(SoundScene scene) async {
+    for (final item in scene.items) {
+      await _soundService.removeSound(item.soundId);
+    }
+    if (mounted) {
+      setState(() {}); // Play-Button-Status zurücksetzen
     }
   }
 
@@ -570,6 +631,16 @@ class SoundScenesTabState extends State<SoundScenesTab> {
   }
 
   Widget _buildSceneCard(SoundScene scene) {
+    return ListenableBuilder(
+      listenable: _soundService,
+      builder: (context, _) {
+        final isPlaying = _isScenePlaying(scene);
+        return _buildSceneCardContent(scene, isPlaying);
+      },
+    );
+  }
+
+  Widget _buildSceneCardContent(SoundScene scene, bool isPlaying) {
     return Container(
       margin: const EdgeInsets.only(bottom: DnDTheme.md),
       decoration: BoxDecoration(
@@ -579,9 +650,12 @@ class SoundScenesTabState extends State<SoundScenesTab> {
         ),
         borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
         border: Border.all(
-          color: scene.isFavorite 
-              ? DnDTheme.ancientGold.withValues(alpha: 0.5)
-              : DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+          color: isPlaying
+              ? DnDTheme.successGreen.withValues(alpha: 0.8)
+              : scene.isFavorite
+                  ? DnDTheme.ancientGold.withValues(alpha: 0.5)
+                  : DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+          width: isPlaying ? 2.0 : 1.0,
         ),
       ),
       child: ExpansionTile(
@@ -603,12 +677,39 @@ class SoundScenesTabState extends State<SoundScenesTab> {
             size: 24,
           ),
         ),
-        title: Text(
-          scene.name,
-          style: DnDTheme.bodyText1.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+        title: Row(
+          children: [
+            Flexible(
+              child: Text(
+                scene.name,
+                style: DnDTheme.bodyText1.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            if (isPlaying) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: DnDTheme.successGreen.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: DnDTheme.successGreen.withValues(alpha: 0.6),
+                  ),
+                ),
+                child: Text(
+                  'LÄUFT',
+                  style: DnDTheme.bodyText2.copyWith(
+                    color: DnDTheme.successGreen,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
         subtitle: Text(
           '${scene.soundCount} Sound${scene.soundCount != 1 ? 's' : ''}',
@@ -617,11 +718,15 @@ class SoundScenesTabState extends State<SoundScenesTab> {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Play Button
+            // Play/Stop Toggle
             IconButton(
-              icon: Icon(Icons.play_arrow, color: DnDTheme.successGreen),
-              onPressed: () => _playScene(scene),
-              tooltip: 'Szene abspielen',
+              icon: Icon(
+                isPlaying ? Icons.stop_circle : Icons.play_circle,
+                color: isPlaying ? DnDTheme.errorRed : DnDTheme.successGreen,
+              ),
+              onPressed: () =>
+                  isPlaying ? _stopScene(scene) : _playScene(scene),
+              tooltip: isPlaying ? 'Szene stoppen' : 'Szene abspielen',
             ),
             // Add Sound Button
             IconButton(
@@ -672,7 +777,9 @@ class SoundScenesTabState extends State<SoundScenesTab> {
                       ),
                       const SizedBox(width: DnDTheme.sm),
                       Text(
-                        scene.isFavorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten',
+                        scene.isFavorite
+                            ? 'Aus Favoriten entfernen'
+                            : 'Zu Favoriten',
                         style: DnDTheme.bodyText1.copyWith(color: Colors.white),
                       ),
                     ],

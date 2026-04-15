@@ -10,13 +10,40 @@ class DatabaseConnection {
   static DatabaseConnection? _instance;
   static Database? _database;
   RefactoringMigrationV2? _migration;
-  
+
   DatabaseConnection._();
-  
+
   /// Singleton-Instanz
   static DatabaseConnection get instance {
     _instance ??= DatabaseConnection._();
     return _instance!;
+  }
+
+  // ===== TEST SUPPORT =====
+
+  /// Initialisiert eine In-Memory-Datenbank mit dem vollständigen Schema für Tests.
+  ///
+  /// Nur in Tests verwenden. Ersetzt den Singleton durch eine isolierte
+  /// In-Memory-Datenbank, die nach dem Test mit [resetForTesting] bereinigt wird.
+  @visibleForTesting
+  static Future<void> initializeForTesting() async {
+    final conn = DatabaseConnection._();
+    final db = await openDatabase(
+      inMemoryDatabasePath,
+      version: 1,
+      onCreate: (db, _) async => conn._createAllTables(db),
+      onOpen: (db) async => db.execute('PRAGMA foreign_keys = ON'),
+    );
+    _instance = conn;
+    _database = db;
+  }
+
+  /// Setzt den Singleton nach einem Test zurück.
+  @visibleForTesting
+  static Future<void> resetForTesting() async {
+    await _database?.close();
+    _database = null;
+    _instance = null;
   }
   
   /// Datenbank-Instanz
@@ -63,21 +90,16 @@ class DatabaseConnection {
   Future<Database> _initDatabase() async {
     final path = await _getCustomDatabasePath();
     debugPrint('📁 [DatabaseConnection] Datenbank-Pfad: $path');
-    
-    _migration = RefactoringMigrationV2(this);
-    
+
     final db = await openDatabase(
       path,
       version: 18,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
+      onOpen: (db) async => db.execute('PRAGMA foreign_keys = ON'),
       singleInstance: true,
     );
-    
-    // TEMPORÄR DEAKTIVIERT - Verursacht Freeze
-    debugPrint('⚠️ [DatabaseConnection] Migrationen vorübergehend deaktiviert');
-    // await _runDatabaseMigrations(db);
-    
+
     return db;
   }
   
@@ -204,10 +226,10 @@ class DatabaseConnection {
         attack_list TEXT,
         inventory TEXT,
         equipment TEXT,
-        size TEXT NOT NULL DEFAULT 'Medium',
-        type TEXT NOT NULL DEFAULT 'Humanoid',
+        size TEXT DEFAULT 'Medium',
+        type TEXT DEFAULT 'Humanoid',
         subtype TEXT,
-        alignment TEXT NOT NULL DEFAULT 'Neutral',
+        alignment TEXT DEFAULT 'Neutral',
         description TEXT,
         gold REAL NOT NULL DEFAULT 0.0,
         silver REAL NOT NULL DEFAULT 0.0,
@@ -223,6 +245,9 @@ class DatabaseConnection {
         spell_save_dc INTEGER NOT NULL DEFAULT 0,
         spell_attack_bonus INTEGER NOT NULL DEFAULT 0,
         saving_throw_proficiencies TEXT DEFAULT '[]',
+        hit_dice TEXT NOT NULL DEFAULT 'd8',
+        hit_dice_count INTEGER NOT NULL DEFAULT 1,
+        hit_dice_remaining INTEGER NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY (campaign_id) REFERENCES campaigns (id) ON DELETE CASCADE

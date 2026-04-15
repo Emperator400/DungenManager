@@ -11,6 +11,8 @@ import '../../widgets/character_editor/character_inventory_handler.dart';
 import '../bestiary/official_monsters_screen.dart';
 import '../../models/official_monster.dart';
 import '../../theme/dnd_theme.dart';
+import '../../widgets/ui_components/feedback/snackbar_helper.dart';
+import '../../widgets/ui_components/states/loading_state_widget.dart';
 
 class UnifiedCharacterEditorScreen extends StatefulWidget {
   final CharacterType characterType;
@@ -99,9 +101,7 @@ class _UnifiedCharacterEditorScreenState extends State<UnifiedCharacterEditorScr
       await _controller.loadInventory();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fehler beim Laden des Inventars: $e')),
-        );
+        SnackBarHelper.showError(context, 'Fehler beim Laden des Inventars: $e');
       }
     } finally {
       if (mounted) {
@@ -121,9 +121,7 @@ class _UnifiedCharacterEditorScreenState extends State<UnifiedCharacterEditorScr
         }
       } catch (e) {
         if (mounted && context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Fehler beim Speichern: $e')),
-          );
+          SnackBarHelper.showError(context, 'Fehler beim Speichern: $e');
         }
       }
     }
@@ -141,9 +139,7 @@ class _UnifiedCharacterEditorScreenState extends State<UnifiedCharacterEditorScr
       setState(() {});
       
       if (mounted && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${selectedMonster.name} wurde importiert')),
-        );
+        SnackBarHelper.showSuccess(context, '${selectedMonster.name} wurde importiert');
       }
     }
   }
@@ -209,11 +205,7 @@ class _UnifiedCharacterEditorScreenState extends State<UnifiedCharacterEditorScr
         ],
       ),
       body: _isLoading
-          ? Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(DnDTheme.ancientGold),
-              ),
-            )
+          ? const LoadingStateWidget()
           : Container(
               decoration: BoxDecoration(
                 gradient: DnDTheme.getMysticalGradient(

@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import '../../../theme/dnd_theme.dart';
 
 /// Theme-Konfiguration für Unified Cards
-/// 
+///
 /// Definiert Farben und Styles für verschiedene Card-Typen
 class UnifiedCardTheme {
   const UnifiedCardTheme();
 
   /// Standard Card-Farbe
-  static const Color defaultCardColor = Color(0xFF2C2C2C);
+  static Color get defaultCardColor => DnDTheme.slateGrey;
 
   /// Card-Hintergrundfarben nach Typ
   static Map<String, Color> get cardColors => {
@@ -69,18 +70,18 @@ class UnifiedCardTheme {
   static const double largeSpacing = 12.0;
 
   /// Farben für Status
-  static const Color activeStatusColor = Color(0xFF22C55E);
-  static const Color pendingStatusColor = Color(0xFFF59E0B);
-  static const Color completedStatusColor = Color(0xFF3B82F6);
+  static Color get activeStatusColor => DnDTheme.successGreen;
+  static Color get pendingStatusColor => DnDTheme.ancientGold;
+  static Color get completedStatusColor => DnDTheme.arcaneBlue;
   static const Color archivedStatusColor = Color(0xFF6B7280);
 
   /// Farben für Priorität
-  static const Color highPriorityColor = Color(0xFFEF4444);
-  static const Color mediumPriorityColor = Color(0xFFF59E0B);
-  static const Color lowPriorityColor = Color(0xFF22C55E);
+  static Color get highPriorityColor => DnDTheme.errorRed;
+  static Color get mediumPriorityColor => DnDTheme.ancientGold;
+  static Color get lowPriorityColor => DnDTheme.successGreen;
 
   /// Farben für Löschen-Aktionen
-  static const Color deleteActionColor = Color.fromARGB(255, 255, 95, 95);
+  static Color get deleteActionColor => DnDTheme.errorRed;
 
   /// Hilfsfunktion zum Abrufen der Card-Farbe
   static Color getCardColor(String type) {
@@ -109,7 +110,7 @@ class UnifiedCardTheme {
     } else if (lowerStatus.contains('archiv')) {
       return archivedStatusColor;
     }
-    return Colors.purple;
+    return DnDTheme.mysticalPurple;
   }
 
   /// Hilfsfunktion zum Abrufen der Prioritäts-Farbe
@@ -122,6 +123,6 @@ class UnifiedCardTheme {
     } else if (lowerPriority.contains('niedrig') || lowerPriority.contains('low')) {
       return lowPriorityColor;
     }
-    return Colors.grey;
+    return DnDTheme.charcoalGrey;
   }
 }

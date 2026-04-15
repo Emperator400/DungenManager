@@ -7,6 +7,7 @@ import '../../widgets/bestiary/bestiary_creatures_tab.dart';
 import '../../widgets/bestiary/bestiary_importer_tab.dart';
 import '../../widgets/bestiary/bestiary_fab.dart';
 import '../../widgets/bestiary/bestiary_dialogs.dart';
+import '../../widgets/ui_components/feedback/snackbar_helper.dart';
 
 class BestiaryScreen extends StatefulWidget {
   const BestiaryScreen({super.key});
@@ -43,12 +44,7 @@ class _BestiaryScreenState extends State<BestiaryScreen>
       await _viewModel.loadDndData();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fehler beim Laden: $e'),
-            backgroundColor: DnDTheme.errorRed,
-          ),
-        );
+        SnackBarHelper.showError(context, 'Fehler beim Laden: $e');
       }
     }
   }
@@ -58,21 +54,11 @@ class _BestiaryScreenState extends State<BestiaryScreen>
       final count = await _viewModel.importMonstersFrom5eTools();
       await _viewModel.loadDndData();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$count Monster von 5e.tools importiert'),
-            backgroundColor: DnDTheme.successGreen,
-          ),
-        );
+        SnackBarHelper.showSuccess(context, '$count Monster von 5e.tools importiert');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fehler beim Import: $e'),
-            backgroundColor: DnDTheme.errorRed,
-          ),
-        );
+        SnackBarHelper.showError(context, 'Fehler beim Import: $e');
       }
     }
   }

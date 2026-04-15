@@ -101,7 +101,7 @@ class ConfirmationDialog {
       cancelText: 'Abbrechen',
       isDangerous: false,
       icon: Icons.warning,
-      iconColor: Colors.orange,
+      iconColor: DnDTheme.warningOrange,
     );
   }
 

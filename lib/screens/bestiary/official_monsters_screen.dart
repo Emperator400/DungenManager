@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../models/official_monster.dart';
 import '../../viewmodels/official_monsters_viewmodel.dart';
 import '../../theme/dnd_theme.dart';
+import '../../widgets/ui_components/states/loading_state_widget.dart';
+import '../../widgets/ui_components/states/empty_state_widget.dart';
 
 /// Enhanced Screen für offizielle Monster mit modernem Design
 class OfficialMonstersScreen extends StatefulWidget {
@@ -158,9 +160,7 @@ class _OfficialMonstersScreenState extends State<OfficialMonstersScreen> {
       body: Consumer<OfficialMonstersViewModel>(
         builder: (context, viewModel, child) {
           if (viewModel.isLoading && viewModel.filteredMonsters.isEmpty) {
-            return Center(
-              child: CircularProgressIndicator(color: DnDTheme.mysticalPurple),
-            );
+            return const LoadingStateWidget();
           }
 
           final monsters = _isSearchMode && _searchController.text.isNotEmpty
@@ -262,44 +262,12 @@ class _OfficialMonstersScreenState extends State<OfficialMonstersScreen> {
   }
 
   Widget _buildEmptyState(OfficialMonstersViewModel viewModel) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.pets,
-            size: 64,
-            color: Colors.grey.shade400,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Keine Monster gefunden',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey.shade600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Importieren Sie Monster oder passen Sie die Filter an',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade500,
-            ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: _importMonsters,
-            icon: Icon(Icons.download),
-            label: Text('Monster importieren'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.mysticalPurple,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-          ),
-        ],
-      ),
+    return EmptyStateWidget.withCreate(
+      title: 'Keine Monster gefunden',
+      message: 'Importiere Monster oder passe die Filter an',
+      icon: Icons.pets,
+      buttonText: 'Monster importieren',
+      onCreate: _importMonsters,
     );
   }
 
@@ -310,7 +278,7 @@ class _OfficialMonstersScreenState extends State<OfficialMonstersScreen> {
         label: Text(label),
         selected: isSelected,
         onSelected: (_) => onTap(),
-        backgroundColor: Colors.grey.shade200,
+        backgroundColor: DnDTheme.charcoalGrey,
         selectedColor: DnDTheme.mysticalPurple.withValues(alpha: 0.2),
         checkmarkColor: DnDTheme.mysticalPurple,
       ),
@@ -354,7 +322,7 @@ class _OfficialMonstersScreenState extends State<OfficialMonstersScreen> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                            color: Colors.white,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -362,7 +330,7 @@ class _OfficialMonstersScreenState extends State<OfficialMonstersScreen> {
                           '${monster.size} ${monster.type}${monster.subtype != null ? ' (${monster.subtype})' : ''}',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey.shade600,
+                            color: DnDTheme.charcoalGrey,
                           ),
                         ),
                       ],
@@ -391,7 +359,7 @@ class _OfficialMonstersScreenState extends State<OfficialMonstersScreen> {
                         'TP ${monster.hitPoints}',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey.shade600,
+                          color: DnDTheme.charcoalGrey,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -421,14 +389,14 @@ class _OfficialMonstersScreenState extends State<OfficialMonstersScreen> {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Icon(Icons.language, size: 14, color: Colors.grey.shade600),
+                    Icon(Icons.language, size: 14, color: DnDTheme.charcoalGrey),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         monster.languages,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey.shade600,
+                          color: DnDTheme.charcoalGrey,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -448,14 +416,14 @@ class _OfficialMonstersScreenState extends State<OfficialMonstersScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: DnDTheme.slateGrey,
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         '$label $value',
         style: TextStyle(
           fontSize: 10,
-          color: Colors.grey.shade700,
+          color: Colors.white70,
           fontWeight: FontWeight.w500,
         ),
       ),
@@ -463,15 +431,15 @@ class _OfficialMonstersScreenState extends State<OfficialMonstersScreen> {
   }
 
   Color _getCrColor(double cr) {
-    if (cr <= 0.25) return Colors.green;
-    if (cr <= 0.5) return Colors.lightGreen;
-    if (cr <= 1) return Colors.yellow.shade700;
-    if (cr <= 2) return Colors.orange;
-    if (cr <= 4) return Colors.deepOrange;
-    if (cr <= 8) return Colors.red;
-    if (cr <= 12) return Colors.purple;
-    if (cr <= 16) return Colors.deepPurple;
-    return Colors.black;
+    if (cr <= 0.25) return DnDTheme.successGreen;
+    if (cr <= 0.5) return DnDTheme.emeraldGreen;
+    if (cr <= 1) return DnDTheme.ancientGold;
+    if (cr <= 2) return DnDTheme.warningOrange;
+    if (cr <= 4) return DnDTheme.deepRed;
+    if (cr <= 8) return DnDTheme.errorRed;
+    if (cr <= 12) return DnDTheme.mysticalPurple;
+    if (cr <= 16) return DnDTheme.mysticalPurple;
+    return DnDTheme.dungeonBlack;
   }
 
   void _showMonsterDetails(OfficialMonster monster) {
