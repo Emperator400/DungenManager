@@ -187,7 +187,12 @@ class UpdateViewModel extends ChangeNotifier {
     }
   }
 
-  /// Öffnet den Ordner mit dem entpackten Update
+  /// Installiert das Update und startet die App neu
+  Future<bool> installAndRestart() async {
+    return await _updateService.applyUpdateAndRestart();
+  }
+
+  /// Öffnet den Ordner mit dem entpackten Update (Fallback)
   Future<bool> openExtractedFolder() async {
     return await _updateService.openExtractedFolder();
   }

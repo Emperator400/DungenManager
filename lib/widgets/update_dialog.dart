@@ -3,6 +3,8 @@
 /// Zeigt einen Dialog an wenn ein Update verfügbar ist.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -361,6 +363,52 @@ class _UpdateDialogState extends State<UpdateDialog> {
     );
   }
 
+  Future<void> _confirmAndInstall(BuildContext context, UpdateViewModel viewModel) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: DnDTheme.slateGrey,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: DnDTheme.ancientGold, width: 2),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: DnDTheme.ancientGold),
+            SizedBox(width: 12),
+            Text(
+              'App wird neugestartet',
+              style: TextStyle(color: DnDTheme.ancientGold),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Die App wird jetzt geschlossen, das Update installiert und anschließend automatisch neu gestartet.\n\nBitte speichere alle offenen Änderungen vorher.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Abbrechen', style: TextStyle(color: DnDTheme.charcoalGrey)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            icon: const Icon(Icons.restart_alt),
+            label: const Text('Jetzt installieren'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DnDTheme.emeraldGreen,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed ?? false) {
+      unawaited(viewModel.installAndRestart());
+    }
+  }
+
   List<Widget> _buildActions(UpdateViewModel viewModel) {
     final actions = <Widget>[];
 
@@ -375,14 +423,9 @@ class _UpdateDialogState extends State<UpdateDialog> {
           ),
         ),
         ElevatedButton.icon(
-          onPressed: () async {
-            await viewModel.openExtractedFolder();
-            if (context.mounted) {
-              _showInstallInstructions(context);
-            }
-          },
-          icon: const Icon(Icons.folder_open),
-          label: const Text('Ordner öffnen'),
+          onPressed: () => _confirmAndInstall(context, viewModel),
+          icon: const Icon(Icons.restart_alt),
+          label: const Text('Installieren & Neu starten'),
           style: ElevatedButton.styleFrom(
             backgroundColor: DnDTheme.emeraldGreen,
             foregroundColor: Colors.white,
@@ -452,65 +495,4 @@ class _UpdateDialogState extends State<UpdateDialog> {
     return actions;
   }
 
-  void _showInstallInstructions(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.slateGrey,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: DnDTheme.ancientGold, width: 2),
-        ),
-        title: const Row(
-          children: [
-            Icon(Icons.info, color: DnDTheme.arcaneBlue),
-            SizedBox(width: 12),
-            Text(
-              'Installation',
-              style: TextStyle(color: DnDTheme.ancientGold),
-            ),
-          ],
-        ),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Das Update wurde heruntergeladen und entpackt.',
-              style: TextStyle(color: Colors.white70),
-            ),
-            SizedBox(height: 16),
-            Text(
-              'So installieren Sie das Update:',
-              style: TextStyle(
-                color: DnDTheme.ancientGold,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              '1. Der Ordner mit dem Update wurde geöffnet\n'
-              '2. Schließen Sie diese Anwendung\n'
-              '3. Kopieren Sie den Inhalt des Ordners\n'
-              '4. Ersetzen Sie die alten Dateien\n'
-              '5. Starten Sie die Anwendung neu',
-              style: TextStyle(color: Colors.white70),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pop(true);
-            },
-            child: const Text(
-              'Verstanden',
-              style: TextStyle(color: DnDTheme.ancientGold),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

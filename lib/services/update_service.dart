@@ -316,6 +316,91 @@ class UpdateService {
     }
   }
 
+  /// Installiert das Update und startet die App automatisch neu (nur Windows)
+  ///
+  /// Erstellt ein temporäres PowerShell-Skript, das nach dem App-Exit
+  /// die neuen Dateien in das Installationsverzeichnis kopiert und die App neu startet.
+  Future<bool> applyUpdateAndRestart() async {
+    if (_extractedPath == null) {
+      _lastError = 'Kein entpacktes Update gefunden';
+      _setStatus(UpdateStatus.error);
+      return false;
+    }
+
+    if (!Platform.isWindows) {
+      _lastError = 'Automatische Installation wird nur auf Windows unterstützt';
+      _setStatus(UpdateStatus.error);
+      return false;
+    }
+
+    try {
+      final exePath = Platform.resolvedExecutable;
+      final installDir = File(exePath).parent.path;
+      final exeName = p.basename(exePath);
+      final extractedPath = _extractedPath!;
+
+      final tempDir = await getTemporaryDirectory();
+      final scriptPath = p.join(tempDir.path, 'dungenmanager_update.ps1');
+
+      // Single-Quotes in Pfaden escapen (PowerShell: '' = literales ')
+      final safeSource = extractedPath.replaceAll("'", "''");
+      final safeTarget = installDir.replaceAll("'", "''");
+      final safeExe = exeName.replaceAll("'", "''");
+
+      // PowerShell-Skript: wartet auf App-Exit, kopiert Dateien, startet neu.
+      // Pfade in Single-Quotes → keine Variable/Sonderzeichen-Interpolation.
+      // Fehler werden in eine Log-Datei geschrieben statt still ignoriert.
+      final script = r'''
+$logFile = "$env:TEMP\dungenmanager_update_log.txt"
+try {
+  Start-Sleep -Seconds 3
+
+  $sourceDir = '''' +
+          safeSource +
+          r''''
+  $targetDir = '''' +
+          safeTarget +
+          r''''
+  $exeName   = '''' +
+          safeExe +
+          r''''
+
+  # Falls das ZIP einen Unterordner hat, diesen als Quelle nehmen
+  $subDirs = Get-ChildItem -Path "$sourceDir" -Directory -ErrorAction SilentlyContinue
+  if ($subDirs.Count -eq 1) { $sourceDir = $subDirs[0].FullName }
+
+  Copy-Item -Path "$sourceDir\*" -Destination "$targetDir" -Recurse -Force
+  Start-Process -FilePath "$targetDir\$exeName"
+} catch {
+  $_ | Out-File -FilePath $logFile -Encoding UTF8 -Append
+} finally {
+  Remove-Item -Path $MyInvocation.MyCommand.Path -Force -ErrorAction SilentlyContinue
+}
+''';
+
+      await File(scriptPath).writeAsString(script);
+
+      await Process.start(
+        'powershell.exe',
+        [
+          '-ExecutionPolicy', 'Bypass',
+          '-NonInteractive',
+          '-WindowStyle', 'Hidden',
+          '-File', scriptPath,
+        ],
+        mode: ProcessStartMode.detached,
+      );
+
+      // App beenden — das Skript übernimmt
+      exit(0);
+    } catch (e) {
+      _lastError = 'Fehler beim Installieren: $e';
+      _setStatus(UpdateStatus.error);
+      debugPrint('❌ Fehler beim Anwenden des Updates: $e');
+      return false;
+    }
+  }
+
   /// Öffnet das extrahierte Verzeichnis im Dateimanager
   Future<bool> openExtractedFolder() async {
     if (_extractedPath == null) {
