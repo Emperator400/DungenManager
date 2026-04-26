@@ -1,56 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../theme/dnd_theme.dart';
 
-/// Unified Search Bar - Wiederverwendbares Such-Widget
-/// 
-/// Ein flexibles Such-Widget, das einfach in verschiedenen Screens
-/// verwendet werden kann. Unterstützt Echtzeit-Suche, Vorschläge und
-/// benutzerdefinierte Result-Widgets.
-/// 
-/// Beispiel:
-/// ```dart
-/// UnifiedSearchBar<T>(
-///   items: myItems,
-///   hintText: 'Suchen...',
-///   itemBuilder: (context, item) => MyItemCard(item: item),
-///   searchFilter: (item, query) => item.name.contains(query),
-///   onItemSelected: (item) => _navigateTo(item),
-/// )
-/// ```
+import '../../../theme/app_theme.dart';
+
 class UnifiedSearchBar<T> extends StatefulWidget {
-  /// Liste aller durchsuchbaren Elemente
-  final List<T> items;
-  
-  /// Widget-Builder für ein einzelnes Element
-  final Widget Function(BuildContext context, T item) itemBuilder;
-  
-  /// Filter-Funktion: Gibt true zurück, wenn Element mit Suchabfrage übereinstimmt
-  final bool Function(T item, String query) searchFilter;
-  
-  /// Callback, wenn ein Element ausgewählt wird
-  final void Function(T item) onItemSelected;
-  
-  /// Platzhalter-Text für Suchfeld
-  final String hintText;
-  
-  /// Icon für Suchfeld
-  final IconData searchIcon;
-  
-  /// Maximale Anzahl von anzuzeigenden Ergebnissen
-  final int maxResults;
-  
-  /// Zeige leere Ergebnisse an
-  final bool showEmptyState;
-  
-  /// Zeige Vorschläge wenn Suchfeld leer ist
-  final bool showSuggestionsWhenEmpty;
-  
-  /// Titel für leeren Zustand
-  final String emptyStateTitle;
-  
-  /// Nachricht für leeren Zustand
-  final String emptyStateMessage;
-
   const UnifiedSearchBar({
     super.key,
     required this.items,
@@ -58,202 +10,87 @@ class UnifiedSearchBar<T> extends StatefulWidget {
     required this.searchFilter,
     required this.onItemSelected,
     this.hintText = 'Suchen...',
-    this.searchIcon = Icons.search,
     this.maxResults = 10,
     this.showEmptyState = true,
-    this.showSuggestionsWhenEmpty = false,
     this.emptyStateTitle = 'Keine Ergebnisse gefunden',
     this.emptyStateMessage = 'Versuche andere Suchbegriffe',
   });
+
+  final List<T> items;
+  final Widget Function(BuildContext context, T item) itemBuilder;
+  final bool Function(T item, String query) searchFilter;
+  final void Function(T item) onItemSelected;
+  final String hintText;
+  final int maxResults;
+  final bool showEmptyState;
+  final String emptyStateTitle;
+  final String emptyStateMessage;
 
   @override
   State<UnifiedSearchBar<T>> createState() => _UnifiedSearchBarState<T>();
 }
 
 class _UnifiedSearchBarState<T> extends State<UnifiedSearchBar<T>> {
-  late TextEditingController _searchController;
-  List<T> _filteredItems = [];
+  final _ctrl = TextEditingController();
+  List<T> _filtered = [];
 
   @override
   void initState() {
     super.initState();
-    _searchController = TextEditingController();
-    _searchController.addListener(_onSearchChanged);
-    _filteredItems = widget.items.take(widget.maxResults).toList();
+    _filtered = widget.items.take(widget.maxResults).toList();
+    _ctrl.addListener(_onChanged);
   }
 
   @override
   void dispose() {
-    _searchController.removeListener(_onSearchChanged);
-    _searchController.dispose();
+    _ctrl
+      ..removeListener(_onChanged)
+      ..dispose();
     super.dispose();
   }
 
-  void _onSearchChanged() {
-    final query = _searchController.text.trim();
-    
-    if (query.isEmpty) {
-      setState(() {
-        _filteredItems = widget.items.take(widget.maxResults).toList();
-      });
-      return;
-    }
-
-    final filtered = widget.items
-        .where((item) => widget.searchFilter(item, query))
-        .take(widget.maxResults)
-        .toList();
-    
+  void _onChanged() {
+    final q = _ctrl.text.trim();
     setState(() {
-      _filteredItems = filtered;
+      _filtered = q.isEmpty
+          ? widget.items.take(widget.maxResults).toList()
+          : widget.items
+              .where((i) => widget.searchFilter(i, q))
+              .take(widget.maxResults)
+              .toList();
     });
-  }
-
-  void _clearSearch() {
-    _searchController.clear();
-    FocusScope.of(context).unfocus();
   }
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Suchfeld
-        _buildSearchField(),
-        
-        // Ergebnisse
-        if (_filteredItems.isNotEmpty)
-          _buildResults()
-        else if (widget.showEmptyState && _searchController.text.isNotEmpty)
-          _buildEmptyState(),
-      ],
-    );
-  }
-
-  Widget _buildSearchField() {
-    return Container(
-      decoration: BoxDecoration(
-        color: DnDTheme.slateGrey,
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
-          width: 1,
-        ),
-      ),
-      child: TextField(
-        controller: _searchController,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          hintText: widget.hintText,
-          hintStyle: TextStyle(
-            color: Colors.white.withValues(alpha: 0.5),
-          ),
-          prefixIcon: Icon(
-            widget.searchIcon,
-            color: Colors.white.withValues(alpha: 0.7),
-          ),
-          suffixIcon: _searchController.text.isNotEmpty
-              ? IconButton(
-                  icon: Icon(
-                    Icons.clear,
-                    color: Colors.white.withValues(alpha: 0.7),
-                  ),
-                  onPressed: _clearSearch,
-                )
-              : null,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 12,
-          ),
-        ),
-        onChanged: (_) => setState(() {}),
-      ),
-    );
-  }
-
-  Widget _buildResults() {
-    return Container(
-      constraints: const BoxConstraints(maxHeight: 400),
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const ClampingScrollPhysics(),
-        itemCount: _filteredItems.length,
-        separatorBuilder: (context, index) => Divider(
-          color: Colors.white.withValues(alpha: 0.1),
-          height: 1,
-        ),
-        itemBuilder: (context, index) {
-          final item = _filteredItems[index];
-          return InkWell(
-            onTap: () {
+        _SearchField(ctrl: _ctrl, hint: widget.hintText, C: C),
+        if (_filtered.isNotEmpty)
+          _Results(
+            items: _filtered,
+            itemBuilder: widget.itemBuilder,
+            onSelected: (item) {
               widget.onItemSelected(item);
-              _clearSearch();
+              _ctrl.clear();
+              FocusScope.of(context).unfocus();
             },
-            child: widget.itemBuilder(context, item),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.search_off,
-            size: 64,
-            color: Colors.white.withValues(alpha: 0.3),
+            C: C,
+          )
+        else if (widget.showEmptyState && _ctrl.text.isNotEmpty)
+          _EmptyState(
+            title: widget.emptyStateTitle,
+            message: widget.emptyStateMessage,
+            C: C,
           ),
-          const SizedBox(height: 16),
-          Text(
-            widget.emptyStateTitle,
-            style: DnDTheme.headline3.copyWith(
-              color: Colors.white,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            widget.emptyStateMessage,
-            style: DnDTheme.bodyText1.copyWith(
-              color: Colors.white.withValues(alpha: 0.7),
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+      ],
     );
   }
 }
 
-/// Unified Search Dialog - Vollbild-Suchdialog
-/// 
-/// Vollbild-Suche mit größerer Anzeige und erweiterten Funktionen.
-/// Ideal für mobile Screens mit vielen Elementen.
 class UnifiedSearchDialog<T> extends StatefulWidget {
-  /// Alle durchsuchbaren Elemente
-  final List<T> items;
-  
-  /// Widget-Builder für ein Element
-  final Widget Function(BuildContext context, T item) itemBuilder;
-  
-  /// Filter-Funktion
-  final bool Function(T item, String query) searchFilter;
-  
-  /// Callback bei Auswahl
-  final void Function(T item) onItemSelected;
-  
-  /// Titel der Suche
-  final String title;
-  
-  /// Platzhalter-Text
-  final String hintText;
-  
   const UnifiedSearchDialog({
     super.key,
     required this.items,
@@ -264,10 +101,13 @@ class UnifiedSearchDialog<T> extends StatefulWidget {
     this.hintText = 'Suchen...',
   });
 
-  @override
-  State<UnifiedSearchDialog<T>> createState() => _UnifiedSearchDialogState<T>();
+  final List<T> items;
+  final Widget Function(BuildContext context, T item) itemBuilder;
+  final bool Function(T item, String query) searchFilter;
+  final void Function(T item) onItemSelected;
+  final String title;
+  final String hintText;
 
-  /// Öffnet den Suchdialog und gibt das ausgewählte Element zurück
   static Future<T?> show<T>({
     required BuildContext context,
     required List<T> items,
@@ -275,186 +115,223 @@ class UnifiedSearchDialog<T> extends StatefulWidget {
     required bool Function(T, String) searchFilter,
     String title = 'Suchen',
     String hintText = 'Suchen...',
-  }) {
-    return showDialog<T>(
-      context: context,
-      builder: (context) => UnifiedSearchDialog<T>(
-        items: items,
-        itemBuilder: itemBuilder,
-        searchFilter: searchFilter,
-        onItemSelected: (item) {
-          Navigator.of(context).pop(item);
-        },
-        title: title,
-        hintText: hintText,
-      ),
-    );
-  }
+  }) =>
+      showDialog<T>(
+        context: context,
+        builder: (_) => UnifiedSearchDialog<T>(
+          items: items,
+          itemBuilder: itemBuilder,
+          searchFilter: searchFilter,
+          onItemSelected: (item) => Navigator.of(context).pop(item),
+          title: title,
+          hintText: hintText,
+        ),
+      );
+
+  @override
+  State<UnifiedSearchDialog<T>> createState() =>
+      _UnifiedSearchDialogState<T>();
 }
 
 class _UnifiedSearchDialogState<T> extends State<UnifiedSearchDialog<T>> {
-  late TextEditingController _searchController;
-  List<T> _filteredItems = [];
+  final _ctrl = TextEditingController();
+  List<T> _filtered = [];
 
   @override
   void initState() {
     super.initState();
-    _searchController = TextEditingController();
-    _searchController.addListener(_onSearchChanged);
-    _filteredItems = widget.items;
+    _filtered = widget.items;
+    _ctrl.addListener(_onChanged);
   }
 
   @override
   void dispose() {
-    _searchController.removeListener(_onSearchChanged);
-    _searchController.dispose();
+    _ctrl
+      ..removeListener(_onChanged)
+      ..dispose();
     super.dispose();
   }
 
-  void _onSearchChanged() {
-    final query = _searchController.text.trim();
-    
-    if (query.isEmpty) {
-      setState(() {
-        _filteredItems = widget.items;
-      });
-      return;
-    }
-
-    final filtered = widget.items
-        .where((item) => widget.searchFilter(item, query))
-        .toList();
-    
+  void _onChanged() {
+    final q = _ctrl.text.trim();
     setState(() {
-      _filteredItems = filtered;
+      _filtered = q.isEmpty
+          ? widget.items
+          : widget.items.where((i) => widget.searchFilter(i, q)).toList();
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Dialog(
-      backgroundColor: DnDTheme.stoneGrey,
+      backgroundColor: C.bgPanel,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(DnDTheme.radiusLarge),
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: C.border),
       ),
-      child: Container(
-        constraints: const BoxConstraints(maxHeight: 600),
-        width: double.maxFinite,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 560),
         child: Column(
           children: [
-            // Header mit Suchfeld
-            _buildHeader(),
-            
-            // Ergebnisse
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Row(
+                children: [
+                  Text(
+                    widget.title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: C.text,
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Icon(Icons.close, size: 18, color: C.textSoft),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: _SearchField(ctrl: _ctrl, hint: widget.hintText, C: C),
+            ),
+            Divider(height: 1, color: C.border),
             Expanded(
-              child: _buildResults(),
+              child: _filtered.isEmpty
+                  ? _EmptyState(
+                      title: 'Keine Ergebnisse',
+                      message: 'Versuche andere Suchbegriffe',
+                      C: C,
+                    )
+                  : _Results(
+                      items: _filtered,
+                      itemBuilder: widget.itemBuilder,
+                      onSelected: widget.onItemSelected,
+                      C: C,
+                    ),
             ),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(DnDTheme.radiusLarge),
-          topRight: Radius.circular(DnDTheme.radiusLarge),
+// ── PRIVATE HELPERS ───────────────────────────────────────────────────────────
+
+class _SearchField extends StatelessWidget {
+  const _SearchField({required this.ctrl, required this.hint, required this.C});
+
+  final TextEditingController ctrl;
+  final String hint;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 38,
+        decoration: BoxDecoration(
+          color: C.bgPanel,
+          border: Border.all(color: C.border),
+          borderRadius: BorderRadius.circular(8),
         ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _searchController,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: widget.hintText,
-                hintStyle: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.5),
-                ),
-                prefixIcon: Icon(
-                  Icons.search,
-                  color: Colors.white.withValues(alpha: 0.7),
-                ),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: Icon(
-                          Icons.clear,
-                          color: Colors.white.withValues(alpha: 0.7),
-                        ),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {});
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: DnDTheme.slateGrey,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          IconButton(
-            icon: const Icon(Icons.close, color: Colors.white),
-            onPressed: () => Navigator.of(context).pop(),
-            tooltip: 'Schließen',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildResults() {
-    if (_filteredItems.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Row(
           children: [
-            Icon(
-              Icons.search_off,
-              size: 64,
-              color: Colors.white.withValues(alpha: 0.3),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Keine Ergebnisse',
-              style: DnDTheme.headline3.copyWith(
-                color: Colors.white,
+            const SizedBox(width: 10),
+            Icon(Icons.search, size: 16, color: C.textSoft),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                controller: ctrl,
+                style: TextStyle(fontSize: 13, color: C.text),
+                decoration: InputDecoration(
+                  hintText: hint,
+                  hintStyle: TextStyle(fontSize: 13, color: C.textSoft),
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
               ),
             ),
-            const SizedBox(height: 8),
+            if (ctrl.text.isNotEmpty)
+              GestureDetector(
+                onTap: ctrl.clear,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Icon(Icons.close, size: 14, color: C.textSoft),
+                ),
+              )
+            else
+              const SizedBox(width: 10),
+          ],
+        ),
+      );
+}
+
+class _Results<T> extends StatelessWidget {
+  const _Results({
+    required this.items,
+    required this.itemBuilder,
+    required this.onSelected,
+    required this.C,
+  });
+
+  final List<T> items;
+  final Widget Function(BuildContext, T) itemBuilder;
+  final void Function(T) onSelected;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) => ListView.separated(
+        shrinkWrap: true,
+        physics: const ClampingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        itemCount: items.length,
+        separatorBuilder: (_, __) => Divider(height: 1, color: C.border),
+        itemBuilder: (ctx, i) => InkWell(
+          onTap: () => onSelected(items[i]),
+          child: itemBuilder(ctx, items[i]),
+        ),
+      );
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({
+    required this.title,
+    required this.message,
+    required this.C,
+  });
+
+  final String title;
+  final String message;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.search_off, size: 40, color: C.border),
+            const SizedBox(height: 12),
             Text(
-              'Versuche andere Suchbegriffe',
-              style: DnDTheme.bodyText1.copyWith(
-                color: Colors.white.withValues(alpha: 0.7),
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: C.textMid,
               ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              message,
+              style: TextStyle(fontSize: 12, color: C.textSoft),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
       );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.all(8),
-      itemCount: _filteredItems.length,
-      separatorBuilder: (context, index) => Divider(
-        color: Colors.white.withValues(alpha: 0.1),
-      ),
-      itemBuilder: (context, index) {
-        final item = _filteredItems[index];
-        return InkWell(
-          onTap: () => widget.onItemSelected(item),
-          child: widget.itemBuilder(context, item),
-        );
-      },
-    );
-  }
 }

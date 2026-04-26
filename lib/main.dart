@@ -13,11 +13,14 @@ import 'package:provider/provider.dart';
 
 // 3. Eigene Projekte (absolute Pfade von lib/)
 import 'screens/campaign/campaign_selection_screen.dart';
+import 'screens/navigation/home_screen.dart';
 import 'screens/navigation/all_screens_screen.dart';
 import 'screens/debug/screen_graph_visualization_screen.dart';
 import 'screens/debug/widgets_test_grund.dart';
 import 'inventory_demo_app.dart';
 import 'theme/dnd_theme.dart';
+import 'theme/app_theme.dart';
+import 'theme/theme_notifier.dart';
 import 'viewmodels/campaign_viewmodel.dart';
 import 'viewmodels/wiki_viewmodel.dart';
 import 'viewmodels/edit_session_viewmodel.dart';
@@ -33,6 +36,7 @@ import 'database/repositories/sound_model_repository.dart';
 import 'database/repositories/wiki_entry_model_repository.dart';
 import 'database/repositories/encounter_model_repository.dart';
 import 'viewmodels/update_viewmodel.dart';
+import 'widgets/ui_components/shared/app_logo.dart';
 import 'widgets/update_dialog.dart';
 import 'services/multi_stream_sound_service.dart';
 import 'services/image_storage_service.dart';
@@ -85,7 +89,7 @@ Future<void> _initializeDatabase() async {
     
     // Migriere alle bestehenden Bilder in den Update-sicheren Documents-Ordner
     await ImageStorageService.migrateExistingImages();
-    
+     
   } catch (e) {
     debugPrint('❌ Fehler beim Initialisieren der Datenbank: $e');
     rethrow;
@@ -128,6 +132,7 @@ class DmApp extends StatelessWidget {
 
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ThemeNotifier()),
         ChangeNotifierProvider(
           create: (_) => CampaignViewModel(
             campaignRepo: CampaignModelRepository(dbConnection),
@@ -176,15 +181,17 @@ class DmApp extends StatelessWidget {
           create: (_) => MultiStreamSoundService(),
         ),
       ],
-      child: MaterialApp(
-        title: 'Dungeon Manager',
-        theme: DnDTheme.darkTheme,
-        // Produktionsmodus: Direkt zur CampaignSelectionScreen
-        // Entwicklungsmodus: Zeigt AppSelectionScreen
-        home: kIsProductionMode 
-            ? const CampaignSelectionScreen() 
-            : const AppSelectionScreen(),
-        debugShowCheckedModeBanner: false,
+      child: Consumer<ThemeNotifier>(
+        builder: (context, themeNotifier, _) => MaterialApp(
+          title: 'Dungeon Manager',
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: themeNotifier.themeMode,
+          home: kIsProductionMode
+              ? const HomeScreen()
+              : const AppSelectionScreen(),
+          debugShowCheckedModeBanner: false,
+        ),
       ),
     );
   }
@@ -349,30 +356,20 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
   }
 
   Widget _buildTitle() {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: DnDTheme.ancientGold,
-          width: 2.0,
+    const accent = Color(0xFF7C3AED);
+    return const Column(
+      children: [
+        AppLogo(size: 64, color: accent),
+        SizedBox(height: 16),
+        Text(
+          'Dungeon Manager',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: accent,
+          ),
         ),
-        borderRadius: BorderRadius.circular(8.0),
-      ),
-      child: Text(
-        'Dungeon Manager',
-        style: TextStyle(
-          fontSize: 32.0,
-          fontWeight: FontWeight.bold,
-          color: DnDTheme.ancientGold,
-          shadows: [
-            Shadow(
-              blurRadius: 15.0,
-              color: DnDTheme.ancientGold.withValues(alpha: 0.5),
-              offset: const Offset(2.0, 2.0),
-            ),
-          ],
-        ),
-      ),
+      ],
     );
   }
 

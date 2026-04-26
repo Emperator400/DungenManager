@@ -11,12 +11,12 @@ class AttributesSectionWidget extends StatelessWidget {
   final int intelligence;
   final int wisdom;
   final int charisma;
-  final Function(int) onStrengthChanged;
-  final Function(int) onDexterityChanged;
-  final Function(int) onConstitutionChanged;
-  final Function(int) onIntelligenceChanged;
-  final Function(int) onWisdomChanged;
-  final Function(int) onCharismaChanged;
+  final void Function(int) onStrengthChanged;
+  final void Function(int) onDexterityChanged;
+  final void Function(int) onConstitutionChanged;
+  final void Function(int) onIntelligenceChanged;
+  final void Function(int) onWisdomChanged;
+  final void Function(int) onCharismaChanged;
   final String title;
   final IconData icon;
   final bool useSectionCard;

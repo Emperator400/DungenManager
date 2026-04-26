@@ -7,6 +7,7 @@ import '../models/item.dart';
 import '../models/equip_slot.dart';
 import '../models/attack.dart';
 import '../services/character_editor_service.dart';
+import '../services/creature_helper_service.dart';
 import '../services/inventory_service.dart';
 import '../services/armor_calculation_service.dart';
 import '../services/uuid_service.dart';
@@ -419,6 +420,33 @@ class CharacterEditorViewModel extends ChangeNotifier {
       _playerCharacter = _playerCharacter!.copyWith(armorClass: ac);
     } else if (!_isPlayerCharacter && _creature != null) {
       _creature = _creature!.copyWith(armorClass: ac);
+    }
+    notifyListeners();
+  }
+
+  void updateGold(double gold) {
+    if (_isPlayerCharacter && _playerCharacter != null) {
+      _playerCharacter = _playerCharacter!.copyWith(gold: gold);
+    } else if (!_isPlayerCharacter && _creature != null) {
+      _creature = CreatureHelperService.copyWith(_creature!, gold: gold);
+    }
+    notifyListeners();
+  }
+
+  void updateSilver(double silver) {
+    if (_isPlayerCharacter && _playerCharacter != null) {
+      _playerCharacter = _playerCharacter!.copyWith(silver: silver);
+    } else if (!_isPlayerCharacter && _creature != null) {
+      _creature = CreatureHelperService.copyWith(_creature!, silver: silver);
+    }
+    notifyListeners();
+  }
+
+  void updateCopper(double copper) {
+    if (_isPlayerCharacter && _playerCharacter != null) {
+      _playerCharacter = _playerCharacter!.copyWith(copper: copper);
+    } else if (!_isPlayerCharacter && _creature != null) {
+      _creature = CreatureHelperService.copyWith(_creature!, copper: copper);
     }
     notifyListeners();
   }

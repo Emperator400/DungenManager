@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/campaign.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/theme_notifier.dart';
 import '../../viewmodels/campaign_viewmodel.dart';
 import '../../viewmodels/update_viewmodel.dart';
 import '../../widgets/update_dialog.dart';
@@ -13,190 +14,217 @@ import '../../widgets/ui_components/feedback/snackbar_helper.dart';
 import '../../widgets/ui_components/states/empty_state_widget.dart';
 import '../../widgets/ui_components/states/error_state_widget.dart';
 import '../../widgets/ui_components/states/loading_state_widget.dart';
+import '../../widgets/ui_components/shared/app_icon.dart';
+import '../../widgets/ui_components/shared/app_logo.dart';
 
+import '../../database/core/database_connection.dart';
+import '../../database/repositories/campaign_model_repository.dart';
 import '../../screens/campaign/edit_campaign_screen.dart';
 import '../../screens/navigation/main_navigation_screen.dart';
 
-/// Campaign Selection Layout Widget
-/// 
-/// Zeigt alle verfügbaren Kampagnen mit Filter- und Suchfunktionen.
 class CampaignSelectionLayout extends StatelessWidget {
   const CampaignSelectionLayout({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: DnDTheme.dungeonBlack,
-      appBar: _buildAppBar(context),
-      body: Consumer<CampaignViewModel>(
-        builder: (context, viewModel, child) {
-          return RefreshIndicator(
-            onRefresh: () async => viewModel.refresh(),
-            color: DnDTheme.ancientGold,
-            child: Column(
-              children: [
-                _buildFilterSection(context, viewModel),
-                Expanded(
-                  child: _buildContent(context, viewModel),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-      floatingActionButton: _buildFloatingActionButton(context),
-    );
-  }
+    final C = context.appColors;
 
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: DnDTheme.ancientGold.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.campaign,
-              color: DnDTheme.ancientGold,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
+    return Scaffold(
+      backgroundColor: C.bg,
+      appBar: _buildTopBar(context, C),
+      body: Consumer<CampaignViewModel>(
+        builder: (context, viewModel, child) => RefreshIndicator(
+          onRefresh: () async => viewModel.refresh(),
+          color: C.accent,
+          child: Column(
             children: [
-              const Text(
-                'Kampagnen',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Consumer<CampaignViewModel>(
-                builder: (context, viewModel, child) {
-                  return Text(
-                    '${viewModel.campaigns.length} Kampagnen',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 12,
-                    ),
-                  );
-                },
-              ),
+              _buildFilterSection(context, viewModel, C),
+              Expanded(child: _buildContent(context, viewModel, C)),
             ],
           ),
+        ),
+      ),
+      floatingActionButton: _buildFab(context, C),
+    );
+  }
+
+  PreferredSizeWidget _buildTopBar(BuildContext context, AppColorsExtension C) {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(48),
+      child: Container(
+        height: 48,
+        color: C.bgPanel,
+        child: Column(
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    // Zurück (nur wenn nicht Root-Screen)
+                    if (Navigator.canPop(context)) ...[
+                      _iconBtn(context, C, AppIconName.back, () => Navigator.of(context).pop()),
+                      const SizedBox(width: 4),
+                      Container(width: 1, height: 18, color: C.border),
+                      const SizedBox(width: 10),
+                    ],
+                    // Titel
+                    const AppLogo(size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Kampagnen',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: C.text,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Consumer<CampaignViewModel>(
+                      builder: (context, vm, _) => Text(
+                        '${vm.campaigns.length}',
+                        style: TextStyle(fontSize: 12, color: C.textSoft),
+                      ),
+                    ),
+                    const Spacer(),
+                    // Update Check
+                    _iconBtn(
+                      context,
+                      C,
+                      AppIconName.refresh,
+                      () => _checkForUpdatesManually(context),
+                    ),
+                    const SizedBox(width: 4),
+                    // Suche
+                    _iconBtn(
+                      context,
+                      C,
+                      AppIconName.search,
+                      () => _showSearchDialog(context),
+                    ),
+                    const SizedBox(width: 4),
+                    // Theme Toggle
+                    _themeToggle(context, C),
+                  ],
+                ),
+              ),
+            ),
+            Divider(height: 1, thickness: 1, color: C.border),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _iconBtn(
+    BuildContext context,
+    AppColorsExtension C,
+    AppIconName icon,
+    VoidCallback onTap,
+  ) => _HoverIconButton(C: C, icon: icon, onTap: onTap);
+
+  Widget _themeToggle(BuildContext context, AppColorsExtension C) {
+    final notifier = context.watch<ThemeNotifier>();
+    return _HoverIconButton(
+      C: C,
+      icon: notifier.isDark ? AppIconName.sun : AppIconName.moon,
+      onTap: notifier.toggle,
+    );
+  }
+
+  Widget _buildFilterSection(
+    BuildContext context,
+    CampaignViewModel viewModel,
+    AppColorsExtension C,
+  ) {
+    return Container(
+      color: C.bgPanel,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+            child: EnhancedCampaignFilterChipsWidget(viewModel: viewModel),
+          ),
+          Divider(height: 1, thickness: 1, color: C.border),
         ],
       ),
-      backgroundColor: DnDTheme.dungeonBlack,
-      elevation: 0,
-      actions: [
-        IconButton(
-          onPressed: () => _checkForUpdatesManually(context),
-          icon: const Icon(Icons.system_update_alt, color: Colors.white),
-          tooltip: 'Nach Updates suchen',
-        ),
-        IconButton(
-          onPressed: () => _showSearchDialog(context),
-          icon: const Icon(Icons.search, color: Colors.white),
-          tooltip: 'Kampagnen suchen',
-        ),
-      ],
     );
   }
 
-  Widget _buildFilterSection(BuildContext context, CampaignViewModel viewModel) {
-    return Card(
-      margin: const EdgeInsets.all(16),
-      color: DnDTheme.stoneGrey.withValues(alpha: 0.1),
-      child: EnhancedCampaignFilterChipsWidget(viewModel: viewModel),
-    );
-  }
-
-  Widget _buildContent(BuildContext context, CampaignViewModel viewModel) {
+  Widget _buildContent(
+    BuildContext context,
+    CampaignViewModel viewModel,
+    AppColorsExtension C,
+  ) {
     if (viewModel.isLoading) {
-      return _buildLoadingState();
+      return LoadingStateWidget.withMessage(
+        message: 'Kampagnen werden geladen...',
+        color: C.accent,
+      );
     }
 
     if (viewModel.error != null) {
-      return _buildErrorState(context, viewModel);
+      return ErrorStateWidget.withRetry(
+        title: 'Fehler beim Laden',
+        message: viewModel.error,
+        onRetry: viewModel.refresh,
+      );
     }
 
-    final filteredCampaigns = viewModel.filteredCampaigns;
-    
-    if (filteredCampaigns.isEmpty) {
-      if (viewModel.campaigns.isEmpty) {
-        return _buildEmptyState(context);
-      } else {
-        return _buildNoResultsState(context);
-      }
+    final filtered = viewModel.filteredCampaigns;
+
+    if (filtered.isEmpty) {
+      return viewModel.campaigns.isEmpty
+          ? EmptyStateWidget.withCreate(
+              title: 'Noch keine Kampagnen',
+              message: 'Erstelle deine erste Kampagne, um dein Abenteuer zu beginnen!',
+              icon: Icons.campaign_outlined,
+              iconColor: C.accent,
+              onCreate: () => _showCreateCampaignDialog(context),
+              buttonText: 'Erste Kampagne erstellen',
+            )
+          : EmptyStateWidget.withClearFilters(
+              title: 'Keine Kampagnen gefunden',
+              message: 'Versuche andere Suchbegriffe oder passe die Filter an.',
+              icon: Icons.search_off,
+              iconColor: C.textSoft,
+              onClearFilters: () => context.read<CampaignViewModel>().clearSearch(),
+            );
     }
 
-    return _buildCampaignList(context, filteredCampaigns, viewModel);
-  }
-
-  Widget _buildLoadingState() {
-    return LoadingStateWidget.withMessage(
-      message: 'Kampagnen werden geladen...',
-      color: DnDTheme.ancientGold,
-    );
-  }
-
-  Widget _buildErrorState(BuildContext context, CampaignViewModel viewModel) {
-    return ErrorStateWidget.withRetry(
-      title: 'Fehler beim Laden',
-      message: viewModel.error,
-      onRetry: viewModel.refresh,
-    );
-  }
-
-  Widget _buildEmptyState(BuildContext context) {
-    return EmptyStateWidget.withCreate(
-      title: 'Noch keine Kampagnen',
-      message: 'Erstelle deine erste Kampagne, um dein D&D Abenteuer zu beginnen!',
-      icon: Icons.campaign_outlined,
-      iconColor: DnDTheme.ancientGold,
-      onCreate: () => _showCreateCampaignDialog(context),
-      buttonText: 'Erste Kampagne erstellen',
-    );
-  }
-
-  Widget _buildNoResultsState(BuildContext context) {
-    return EmptyStateWidget.withClearFilters(
-      title: 'Keine Kampagnen gefunden',
-      message: 'Versuche andere Suchbegriffe oder passe die Filter an.',
-      icon: Icons.search_off,
-      iconColor: DnDTheme.infoBlue,
-      onClearFilters: () {
-        final viewModel = context.read<CampaignViewModel>();
-        viewModel.clearSearch();
-      },
-    );
-  }
-
-  Widget _buildCampaignList(
-    BuildContext context,
-    List<Campaign> campaigns,
-    CampaignViewModel viewModel,
-  ) {
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: campaigns.length,
-      itemBuilder: (ctx, index) {
-        final campaign = campaigns[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: UnifiedCampaignCard(
-            campaign: campaign,
-            viewModel: viewModel,
-            onNavigate: () => _navigateToCampaign(context, campaign),
-            onEdit: () => _editCampaign(context, campaign),
-            onDuplicate: () => _duplicateCampaign(context, campaign, viewModel),
-            onToggleFavorite: () => _toggleFavorite(context, campaign, viewModel),
+      padding: const EdgeInsets.all(16),
+      itemCount: filtered.length,
+      itemBuilder: (ctx, i) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: UnifiedCampaignCard(
+          campaign: filtered[i],
+          viewModel: viewModel,
+          onNavigate: () => _navigateToCampaign(context, filtered[i]),
+          onEdit: () => _editCampaign(context, filtered[i]),
+          onDuplicate: () => _duplicateCampaign(context, filtered[i], viewModel),
+          onToggleFavorite: () => _toggleFavorite(context, filtered[i], viewModel),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFab(BuildContext context, AppColorsExtension C) {
+    return Consumer<CampaignViewModel>(
+      builder: (context, vm, _) {
+        if (vm.campaigns.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return FilledButton.icon(
+          onPressed: () => _showCreateCampaignDialog(context),
+          icon: AppIcon(AppIconName.plus, size: 14, color: Colors.white),
+          label: const Text('Neue Kampagne'),
+          style: FilledButton.styleFrom(
+            backgroundColor: C.accent,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           ),
         );
       },
@@ -205,7 +233,7 @@ class CampaignSelectionLayout extends StatelessWidget {
 
   void _editCampaign(BuildContext context, Campaign campaign) {
     Navigator.of(context).push(
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
         builder: (context) => ChangeNotifierProvider.value(
           value: context.read<CampaignViewModel>(),
           child: EditCampaignScreen(campaign: campaign),
@@ -240,13 +268,12 @@ class CampaignSelectionLayout extends StatelessWidget {
       await viewModel.updateCampaign(
         campaign.copyWith(isFavorite: !campaign.isFavorite),
       );
-      
       if (context.mounted) {
         SnackBarHelper.showInfo(
           context,
-          campaign.isFavorite 
-            ? 'Kampagne von Favoriten entfernt' 
-            : 'Kampagne als Favorit markiert',
+          campaign.isFavorite
+              ? 'Kampagne von Favoriten entfernt'
+              : 'Kampagne als Favorit markiert',
         );
       }
     } catch (e) {
@@ -256,35 +283,14 @@ class CampaignSelectionLayout extends StatelessWidget {
     }
   }
 
-  Widget _buildFloatingActionButton(BuildContext context) {
-    return Consumer<CampaignViewModel>(
-      builder: (context, viewModel, child) {
-        if (viewModel.campaigns.isEmpty) {
-          return const SizedBox.shrink();
-        }
-        
-        return FloatingActionButton.extended(
-          onPressed: () => _showCreateCampaignDialog(context),
-          backgroundColor: DnDTheme.ancientGold,
-          foregroundColor: Colors.white,
-          icon: const Icon(Icons.add),
-          label: const Text('Neue Kampagne'),
-        );
-      },
-    );
-  }
-
   void _navigateToCampaign(BuildContext context, Campaign campaign) async {
     final viewModel = context.read<CampaignViewModel>();
     await viewModel.selectCampaign(campaign);
-
+    await CampaignModelRepository(DatabaseConnection.instance).updateLastOpenedAt(campaign.id);
     if (!context.mounted) return;
-
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => EnhancedMainNavigationScreen(
-          campaign: campaign,
-        ),
+      MaterialPageRoute<void>(
+        builder: (context) => EnhancedMainNavigationScreen(campaign: campaign),
       ),
     );
   }
@@ -298,59 +304,120 @@ class CampaignSelectionLayout extends StatelessWidget {
     );
   }
 
-  /// Prüft manuell auf Updates und zeigt das Ergebnis an
   Future<void> _checkForUpdatesManually(BuildContext context) async {
     final viewModel = context.read<UpdateViewModel>();
-    
-    // Zeige Lade-Indikator
     SnackBarHelper.showInfo(context, 'Prüfe auf Updates...');
-    
-    // Prüfe auf Updates
     await viewModel.checkForUpdate();
-    
     if (!context.mounted) return;
-    
+
     if (viewModel.availableUpdate != null) {
-      // Zeige das vollständige UpdateDialog Widget mit Patchnotes
       await showUpdateDialogIfNeeded(context, forceShow: true);
     } else if (viewModel.errorMessage != null) {
-      // Fehler beim Prüfen
-      SnackBarHelper.showError(context, 'Fehler beim Prüfen: ${viewModel.errorMessage}');
+      SnackBarHelper.showError(context, 'Fehler: ${viewModel.errorMessage}');
     } else {
-      // Kein Update verfügbar
-      SnackBarHelper.showSuccess(context, 'Du verwendest bereits die neueste Version!');
+      SnackBarHelper.showSuccess(context, 'Du verwendest die neueste Version!');
     }
   }
 
   void _showSearchDialog(BuildContext context) async {
+    final C = context.appColors;
     final viewModel = context.read<CampaignViewModel>();
-    
+
     final selectedCampaign = await showDialog<Campaign>(
       context: context,
-      builder: (context) => SimpleDialog(
-        title: const Text('Kampagnen suchen'),
-        backgroundColor: DnDTheme.stoneGrey,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: viewModel.campaigns.map((campaign) {
-                return ListTile(
-                  title: Text(campaign.title),
-                  subtitle: Text(campaign.description),
-                  onTap: () {
-                    Navigator.of(context).pop(campaign);
-                  },
-                );
-              }).toList(),
-            ),
+      builder: (ctx) => Dialog(
+        backgroundColor: C.bgPanel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: C.border),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Kampagnen suchen',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: C.text),
+              ),
+              const SizedBox(height: 12),
+              ...viewModel.campaigns.map(
+                (campaign) => InkWell(
+                  borderRadius: BorderRadius.circular(7),
+                  onTap: () => Navigator.of(ctx).pop(campaign),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                    child: Row(
+                      children: [
+                        AppIcon(AppIconName.book, size: 13, color: C.textSoft),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            campaign.title,
+                            style: TextStyle(fontSize: 13, color: C.text),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
-    
-    if (selectedCampaign != null) {
+
+    if (selectedCampaign != null && context.mounted) {
       _navigateToCampaign(context, selectedCampaign);
     }
+  }
+}
+
+// ── HILFWIDGET: Icon-Button mit Hover ─────────────────────────────────────────
+
+class _HoverIconButton extends StatefulWidget {
+  const _HoverIconButton({
+    required this.C,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final AppColorsExtension C;
+  final AppIconName icon;
+  final VoidCallback onTap;
+
+  @override
+  State<_HoverIconButton> createState() => _HoverIconButtonState();
+}
+
+class _HoverIconButtonState extends State<_HoverIconButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: _hovered ? widget.C.bgHover : Colors.transparent,
+            border: Border.all(
+              color: _hovered ? widget.C.border : Colors.transparent,
+            ),
+            borderRadius: BorderRadius.circular(7),
+          ),
+          child: Center(
+            child: AppIcon(widget.icon, size: 14, color: widget.C.textMid),
+          ),
+        ),
+      ),
+    );
   }
 }

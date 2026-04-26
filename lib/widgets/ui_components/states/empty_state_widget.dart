@@ -1,21 +1,12 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import '../../../theme/dnd_theme.dart';
 
-/// Wiederverwendbarer Empty State Widget
-/// 
-/// Zeigt einen konsistenten Leerer-Zustand mit optionalen Aktionen.
+import '../../../theme/app_theme.dart';
+
 class EmptyStateWidget extends StatelessWidget {
-  final String title;
-  final String? message;
-  final Widget? action;
-  final IconData? icon;
-  final Color? iconColor;
-  final bool showAction;
-
   const EmptyStateWidget({
-    super.key,
     required this.title,
+    super.key,
     this.message,
     this.action,
     this.icon,
@@ -23,7 +14,13 @@ class EmptyStateWidget extends StatelessWidget {
     this.showAction = true,
   });
 
-  /// Empty State mit Standard-Icon und optionaler Aktion
+  final String title;
+  final String? message;
+  final Widget? action;
+  final IconData? icon;
+  final Color? iconColor;
+  final bool showAction;
+
   factory EmptyStateWidget.withAction({
     required String title,
     String? message,
@@ -31,133 +28,114 @@ class EmptyStateWidget extends StatelessWidget {
     IconData? icon,
     Color? iconColor,
     Key? key,
-  }) {
-    return EmptyStateWidget(
-      key: key,
-      title: title,
-      message: message,
-      icon: icon ?? Icons.folder_open,
-      iconColor: iconColor ?? DnDTheme.charcoalGrey,
-      action: action,
-    );
-  }
+  }) =>
+      EmptyStateWidget(
+        key: key,
+        title: title,
+        message: message,
+        icon: icon ?? Icons.folder_open,
+        iconColor: iconColor,
+        action: action,
+      );
 
-  /// Minimaler Empty State ohne Aktion
   factory EmptyStateWidget.minimal({
     required String title,
     String? message,
     IconData? icon,
     Color? iconColor,
     Key? key,
-  }) {
-    return EmptyStateWidget(
-      key: key,
-      title: title,
-      message: message,
-      icon: icon ?? Icons.folder_open,
-      iconColor: iconColor ?? DnDTheme.charcoalGrey,
-      showAction: false,
-    );
-  }
+  }) =>
+      EmptyStateWidget(
+        key: key,
+        title: title,
+        message: message,
+        icon: icon ?? Icons.folder_open,
+        iconColor: iconColor,
+        showAction: false,
+      );
 
-  /// Empty State mit "Erstellen" Button
   factory EmptyStateWidget.withCreate({
     required String title,
-    String? message,
     required VoidCallback onCreate,
+    String? message,
     String buttonText = 'Erstellen',
     IconData? icon,
     Color? iconColor,
     Key? key,
-  }) {
-    return EmptyStateWidget(
-      key: key,
-      title: title,
-      message: message,
-      icon: icon ?? Icons.folder_open,
-      iconColor: iconColor ?? DnDTheme.charcoalGrey,
-      action: ElevatedButton.icon(
-        onPressed: onCreate,
-        icon: const Icon(Icons.add),
-        label: Text(buttonText),
-      ),
-    );
-  }
+  }) =>
+      EmptyStateWidget(
+        key: key,
+        title: title,
+        message: message,
+        icon: icon ?? Icons.folder_open,
+        iconColor: iconColor,
+        action: ElevatedButton.icon(
+          onPressed: onCreate,
+          icon: const Icon(Icons.add),
+          label: Text(buttonText),
+        ),
+      );
 
-  /// Empty State mit "Filter zurücksetzen" Button
   factory EmptyStateWidget.withClearFilters({
     required String title,
-    String? message,
     required VoidCallback onClearFilters,
+    String? message,
     IconData? icon,
     Color? iconColor,
     Key? key,
-  }) {
-    return EmptyStateWidget(
-      key: key,
-      title: title,
-      message: message,
-      icon: icon ?? Icons.search_off,
-      iconColor: iconColor ?? DnDTheme.charcoalGrey,
-      action: ElevatedButton.icon(
-        onPressed: onClearFilters,
-        icon: const Icon(Icons.clear_all),
-        label: const Text('Filter zurücksetzen'),
-      ),
-    );
-  }
+  }) =>
+      EmptyStateWidget(
+        key: key,
+        title: title,
+        message: message,
+        icon: icon ?? Icons.search_off,
+        iconColor: iconColor,
+        action: ElevatedButton.icon(
+          onPressed: onClearFilters,
+          icon: const Icon(Icons.clear_all),
+          label: const Text('Filter zurücksetzen'),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
+    final effectiveColor = iconColor ?? C.textSoft;
+
     return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: math.max(0, constraints.maxHeight - 48), // Padding abziehen, aber nie negativ
-            ),
-            child: IntrinsicHeight(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    icon ?? Icons.folder_open,
-                    size: 64,
-                    color: iconColor ?? DnDTheme.charcoalGrey,
-                  ),
-                  const SizedBox(height: 16),
+      builder: (context, constraints) => SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: math.max(0, constraints.maxHeight - 48)),
+          child: IntrinsicHeight(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon ?? Icons.folder_open, size: 64, color: effectiveColor),
+                const SizedBox(height: 16),
+                Text(
+                  title,
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: effectiveColor),
+                  textAlign: TextAlign.center,
+                ),
+                if (message != null) ...[
+                  const SizedBox(height: 8),
                   Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: iconColor ?? DnDTheme.charcoalGrey,
-                    ),
+                    message!,
+                    style: TextStyle(fontSize: 14, color: C.textSoft),
                     textAlign: TextAlign.center,
                   ),
-                  if (message != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      message!,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: DnDTheme.charcoalGrey,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                  if (showAction && action != null) ...[
-                    const SizedBox(height: 16),
-                    action!,
-                  ],
                 ],
-              ),
+                if (showAction && action != null) ...[
+                  const SizedBox(height: 16),
+                  action!,
+                ],
+              ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

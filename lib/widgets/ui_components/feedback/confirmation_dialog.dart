@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../theme/dnd_theme.dart';
 
-/// Wiederverwendbarer Bestätigungsdialog
-/// 
-/// Bietet eine konsistente Benutzeroberfläche für Bestätigungsdialoge
-/// mit optionalen Icons und verschiedenen Stilen.
+import '../../../theme/app_theme.dart';
+
 class ConfirmationDialog {
-  /// Zeigt einen einfachen Bestätigungsdialog
   static Future<bool?> show({
     required BuildContext context,
     required String title,
@@ -14,114 +10,131 @@ class ConfirmationDialog {
     String confirmText = 'Bestätigen',
     String? cancelText,
     bool isDangerous = false,
-    IconData? icon,
-    Color? iconColor,
   }) {
+    final C = context.appColors;
     return showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            if (icon != null) ...[
-              Icon(icon, color: iconColor),
-              const SizedBox(width: 12),
-            ],
-            Expanded(child: Text(title)),
-          ],
+      builder: (ctx) => Dialog(
+        backgroundColor: C.bgPanel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: C.border),
         ),
-        content: message != null ? Text(message) : null,
-        actions: [
-          if (cancelText != null)
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text(cancelText),
-            ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: isDangerous ? DnDTheme.errorRed : null,
-            ),
-            child: Text(confirmText),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: isDangerous ? C.red : C.text,
+                ),
+              ),
+              if (message != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  message,
+                  style: TextStyle(fontSize: 13, color: C.textMid),
+                ),
+              ],
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (cancelText != null) ...[
+                    OutlinedButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: C.border),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                      ),
+                      child: Text(
+                        cancelText,
+                        style: TextStyle(color: C.textMid, fontSize: 13),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  FilledButton(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: isDangerous ? C.red : C.accent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                    ),
+                    child: Text(confirmText, style: const TextStyle(fontSize: 13)),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  /// Bestätigungsdialog für Lösch-Operationen
   static Future<bool?> showDelete({
     required BuildContext context,
     required String title,
     String? message,
     String confirmText = 'Löschen',
-  }) {
-    return show(
-      context: context,
-      title: title,
-      message: message,
-      confirmText: confirmText,
-      cancelText: 'Abbrechen',
-      isDangerous: true,
-      icon: Icons.warning,
-      iconColor: DnDTheme.errorRed,
-    );
-  }
+  }) =>
+      show(
+        context: context,
+        title: title,
+        message: message,
+        confirmText: confirmText,
+        cancelText: 'Abbrechen',
+        isDangerous: true,
+      );
 
-  /// Bestätigungsdialog für Speicher-Operationen
   static Future<bool?> showSave({
     required BuildContext context,
     String title = 'Änderungen speichern?',
     String? message = 'Möchtest du die Änderungen speichern?',
     String confirmText = 'Speichern',
-  }) {
-    return show(
-      context: context,
-      title: title,
-      message: message,
-      confirmText: confirmText,
-      cancelText: 'Verwerfen',
-      isDangerous: false,
-      icon: Icons.save,
-      iconColor: DnDTheme.ancientGold,
-    );
-  }
+  }) =>
+      show(
+        context: context,
+        title: title,
+        message: message,
+        confirmText: confirmText,
+        cancelText: 'Verwerfen',
+      );
 
-  /// Bestätigungsdialog für Warnungen
   static Future<bool?> showWarning({
     required BuildContext context,
     required String title,
     String? message,
     String confirmText = 'Fortfahren',
-  }) {
-    return show(
-      context: context,
-      title: title,
-      message: message,
-      confirmText: confirmText,
-      cancelText: 'Abbrechen',
-      isDangerous: false,
-      icon: Icons.warning,
-      iconColor: DnDTheme.warningOrange,
-    );
-  }
+  }) =>
+      show(
+        context: context,
+        title: title,
+        message: message,
+        confirmText: confirmText,
+        cancelText: 'Abbrechen',
+      );
 
-  /// Bestätigungsdialog für Informations-Dialoge
   static Future<bool?> showInfo({
     required BuildContext context,
     required String title,
     String? message,
     String confirmText = 'OK',
     bool showCancel = false,
-  }) {
-    return show(
-      context: context,
-      title: title,
-      message: message,
-      confirmText: confirmText,
-      cancelText: showCancel ? 'Abbrechen' : null,
-      isDangerous: false,
-      icon: Icons.info,
-      iconColor: DnDTheme.infoBlue,
-    );
-  }
+  }) =>
+      show(
+        context: context,
+        title: title,
+        message: message,
+        confirmText: confirmText,
+        cancelText: showCancel ? 'Abbrechen' : null,
+      );
 }

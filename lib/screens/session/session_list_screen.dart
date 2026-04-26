@@ -7,19 +7,17 @@ import '../../viewmodels/session_list_for_campaign_viewmodel.dart';
 import '../../database/repositories/scene_model_repository.dart';
 import '../../database/repositories/creature_model_repository.dart';
 import '../../database/repositories/player_character_model_repository.dart';
-import '../../theme/dnd_theme.dart';
 import 'edit_session_screen.dart';
 import '../../viewmodels/active_session_viewmodel.dart';
 import 'active_session_screen.dart';
 
-/// Enhanced Screen für die Session-Liste einer Kampagne mit modernem Design
 class EnhancedSessionListForCampaignScreen extends StatefulWidget {
   final Campaign campaign;
 
   const EnhancedSessionListForCampaignScreen({
-    Key? key,
+    super.key,
     required this.campaign,
-  }) : super(key: key);
+  });
 
   @override
   State<EnhancedSessionListForCampaignScreen> createState() => _EnhancedSessionListForCampaignScreenState();
@@ -32,7 +30,6 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
   @override
   void initState() {
     super.initState();
-    // ViewModel initialisieren
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<SessionListForCampaignViewModel>().initialize(widget.campaign);
     });
@@ -54,58 +51,58 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Sitzungen: ${widget.campaign.title}',
+        title: const Text(
+          'Sitzungen',
           style: TextStyle(color: Colors.white),
         ),
-        backgroundColor: DnDTheme.mysticalPurple,
-        iconTheme: IconThemeData(color: Colors.white),
+        backgroundColor: const Color(0xFF7C3AED),
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           Consumer<SessionListForCampaignViewModel>(
             builder: (context, viewModel, child) {
               return PopupMenuButton<SessionSortCriteria>(
-                icon: Icon(Icons.sort, color: Colors.white),
+                icon: const Icon(Icons.sort, color: Colors.white),
                 tooltip: 'Sortieren',
                 onSelected: (criteria) {
                   viewModel.sortSessions(criteria);
                 },
                 itemBuilder: (context) => [
-                  PopupMenuItem(
+                  const PopupMenuItem(
                     value: SessionSortCriteria.titleAsc,
                     child: Row(
                       children: [
                         Icon(Icons.arrow_upward, size: 16),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Text('Titel (A-Z)'),
                       ],
                     ),
                   ),
-                  PopupMenuItem(
+                  const PopupMenuItem(
                     value: SessionSortCriteria.titleDesc,
                     child: Row(
                       children: [
                         Icon(Icons.arrow_downward, size: 16),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Text('Titel (Z-A)'),
                       ],
                     ),
                   ),
-                  PopupMenuItem(
+                  const PopupMenuItem(
                     value: SessionSortCriteria.durationAsc,
                     child: Row(
                       children: [
                         Icon(Icons.arrow_upward, size: 16),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Text('Dauer (kurz-lang)'),
                       ],
                     ),
                   ),
-                  PopupMenuItem(
+                  const PopupMenuItem(
                     value: SessionSortCriteria.durationDesc,
                     child: Row(
                       children: [
                         Icon(Icons.arrow_downward, size: 16),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Text('Dauer (lang-kurz)'),
                       ],
                     ),
@@ -119,7 +116,7 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
       body: Consumer<SessionListForCampaignViewModel>(
         builder: (context, viewModel, child) {
           if (viewModel.isLoading && viewModel.sessions.isEmpty) {
-            return Center(child: CircularProgressIndicator(color: DnDTheme.mysticalPurple));
+            return const Center(child: CircularProgressIndicator(color: Color(0xFF7C3AED)));
           }
 
           final sessions = _isSearchMode && _searchController.text.isNotEmpty
@@ -127,22 +124,21 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
               : viewModel.sessions;
 
           if (sessions.isEmpty) {
-            return _buildEmptyState(viewModel);
+            return _buildEmptyState();
           }
 
           return Column(
             children: [
-              // Suchleiste
-              Container(
+              Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
                     hintText: 'Sessions suchen...',
-                    prefixIcon: Icon(Icons.search, color: DnDTheme.mysticalPurple),
+                    prefixIcon: const Icon(Icons.search, color: Color(0xFF7C3AED)),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
-                            icon: Icon(Icons.clear),
+                            icon: const Icon(Icons.clear),
                             onPressed: () {
                               _searchController.clear();
                               setState(() {});
@@ -151,11 +147,11 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
                         : null,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12.0),
-                      borderSide: BorderSide(color: DnDTheme.mysticalPurple.withValues(alpha: 0.3)),
+                      borderSide: BorderSide(color: const Color(0xFF7C3AED).withValues(alpha: 0.3)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12.0),
-                      borderSide: BorderSide(color: DnDTheme.mysticalPurple),
+                      borderSide: const BorderSide(color: Color(0xFF7C3AED)),
                     ),
                     filled: true,
                     fillColor: Colors.white,
@@ -167,8 +163,6 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
                   },
                 ),
               ),
-
-              // Session-Liste
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -190,9 +184,9 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
             child: FloatingActionButton.extended(
               heroTag: 'session_list_fab',
               onPressed: viewModel.isLoading ? null : _createNewSession,
-              backgroundColor: DnDTheme.mysticalPurple,
-              icon: Icon(Icons.add, color: Colors.white),
-              label: Text(
+              backgroundColor: const Color(0xFF7C3AED),
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text(
                 'Neue Session',
                 style: TextStyle(color: Colors.white),
               ),
@@ -204,7 +198,7 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
     );
   }
 
-  Widget _buildEmptyState(SessionListForCampaignViewModel viewModel) {
+  Widget _buildEmptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -234,10 +228,10 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: _createNewSession,
-            icon: Icon(Icons.add),
-            label: Text('Erste Session erstellen'),
+            icon: const Icon(Icons.add),
+            label: const Text('Erste Session erstellen'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.mysticalPurple,
+              backgroundColor: const Color(0xFF7C3AED),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
           ),
@@ -264,12 +258,12 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
                   Container(
                     padding: const EdgeInsets.all(12.0),
                     decoration: BoxDecoration(
-                      color: DnDTheme.mysticalPurple.withValues(alpha: 0.1),
+                      color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8.0),
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.event,
-                      color: DnDTheme.mysticalPurple,
+                      color: Color(0xFF7C3AED),
                       size: 24,
                     ),
                   ),
@@ -280,13 +274,13 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
                       children: [
                         Text(
                           session.title,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                             color: Colors.black87,
                           ),
                         ),
-                        const SizedBox(height:4),
+                        const SizedBox(height: 4),
                         Row(
                           children: [
                             Icon(
@@ -307,41 +301,38 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
                       ],
                     ),
                   ),
-                  // Bearbeiten-Button direkt sichtbar
                   IconButton(
-                    icon: Icon(Icons.edit, color: DnDTheme.mysticalPurple),
+                    icon: const Icon(Icons.edit, color: Color(0xFF7C3AED)),
                     onPressed: () => _editSession(session),
                     tooltip: 'Bearbeiten',
                   ),
                   PopupMenuButton<String>(
-                    icon: Icon(Icons.more_vert),
+                    icon: const Icon(Icons.more_vert),
                     onSelected: (value) {
                       switch (value) {
                         case 'duplicate':
                           _duplicateSession(session);
-                          break;
                         case 'delete':
                           _deleteSession(session);
-                          break;
                       }
                     },
                     itemBuilder: (context) => [
-                      PopupMenuItem(
+                      const PopupMenuItem(
                         value: 'duplicate',
                         child: Row(
                           children: [
                             Icon(Icons.copy, size: 16),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             Text('Duplizieren'),
                           ],
                         ),
                       ),
-                      PopupMenuItem(
+                      const PopupMenuItem(
                         value: 'delete',
                         child: Row(
                           children: [
                             Icon(Icons.delete, size: 16, color: Colors.red),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             Text('Löschen', style: TextStyle(color: Colors.red)),
                           ],
                         ),
@@ -371,7 +362,6 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
                   ),
                 ),
               ],
-              // Scene Character Summary
               if (session.sceneIds.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 _buildSceneCharacterSummary(session),
@@ -383,7 +373,6 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
     );
   }
 
-  /// Baut eine Zusammenfassung der Charaktere in den Scenes
   Widget _buildSceneCharacterSummary(Session session) {
     return FutureBuilder<Set<String>>(
       future: _loadAllSceneCharacters(session),
@@ -404,30 +393,30 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
             return Container(
               padding: const EdgeInsets.all(8.0),
               decoration: BoxDecoration(
-                color: DnDTheme.mysticalPurple.withValues(alpha: 0.1),
+                color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(6.0),
                 border: Border.all(
-                  color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+                  color: const Color(0xFF7C3AED).withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  const Row(
                     children: [
                       Icon(
                         Icons.people,
-                        color: DnDTheme.mysticalPurple,
+                        color: Color(0xFF7C3AED),
                         size: 14,
                       ),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Text(
                         'Beteiligte Charaktere',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: DnDTheme.mysticalPurple,
+                          color: Color(0xFF7C3AED),
                         ),
                       ),
                     ],
@@ -439,14 +428,14 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
                     children: characters.values.map((char) {
                       final type = char['type'] as String;
                       final name = char['name'] as String;
-                      
+                      final color = _getCharacterTypeColor(type);
                       return Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: _getCharacterTypeColor(type).withValues(alpha: 0.15),
+                          color: color.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(4.0),
                           border: Border.all(
-                            color: _getCharacterTypeColor(type).withValues(alpha: 0.3),
+                            color: color.withValues(alpha: 0.3),
                             width: 1,
                           ),
                         ),
@@ -455,13 +444,13 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
                           children: [
                             Icon(
                               _getCharacterTypeIcon(type),
-                              color: _getCharacterTypeColor(type),
+                              color: color,
                               size: 10,
                             ),
                             const SizedBox(width: 3),
                             Text(
                               name,
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 10,
                                 color: Colors.black87,
                                 fontWeight: FontWeight.w500,
@@ -481,13 +470,10 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
     );
   }
 
-  /// Lädt alle Charakter-IDs aus allen Scenes einer Session
   Future<Set<String>> _loadAllSceneCharacters(Session session) async {
     final Set<String> characterIds = {};
-    
     try {
       final sceneRepo = context.read<SceneModelRepository>();
-      
       for (final sceneId in session.sceneIds) {
         try {
           final scene = await sceneRepo.findById(sceneId);
@@ -501,34 +487,22 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
     } catch (e) {
       debugPrint('Fehler beim Laden der Scene-Charaktere: $e');
     }
-    
     return characterIds;
   }
 
-  /// Lädt Details zu einer Liste von Charakter-IDs
   Future<Map<String, dynamic>> _loadCharacterDetails(List<String> characterIds) async {
     final Map<String, dynamic> result = {};
-    
     try {
       final creatureRepo = context.read<CreatureModelRepository>();
       final pcRepo = context.read<PlayerCharacterModelRepository>();
-      
       for (final charId in characterIds) {
-        // Versuche zuerst als Player Character zu laden
         try {
           final pc = await pcRepo.findById(charId);
           if (pc != null) {
-            result[charId] = {
-              'name': pc.name,
-              'type': 'pc',
-            };
+            result[charId] = {'name': pc.name, 'type': 'pc'};
             continue;
           }
-        } catch (e) {
-          // Nicht gefunden, versuche als Creature
-        }
-        
-        // Versuche als Creature zu laden
+        } catch (_) {}
         try {
           final creature = await creatureRepo.findById(charId);
           if (creature != null) {
@@ -537,67 +511,52 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
               'type': creature.sourceType == 'official' ? 'monster' : 'npc',
             };
           }
-        } catch (e) {
-          // Nicht gefunden, überspringen
-        }
+        } catch (_) {}
       }
     } catch (e) {
       debugPrint('Fehler beim Laden der Charakterdetails: $e');
     }
-    
     return result;
   }
 
-  /// Gibt die Farbe für den Charaktertyp zurück
   Color _getCharacterTypeColor(String type) {
-    switch (type) {
-      case 'pc':
-        return Colors.green.shade600;
-      case 'npc':
-        return Colors.blue.shade600;
-      case 'monster':
-        return Colors.red.shade600;
-      default:
-        return Colors.grey;
-    }
+    return switch (type) {
+      'pc' => Colors.green.shade600,
+      'npc' => Colors.blue.shade600,
+      'monster' => Colors.red.shade600,
+      _ => Colors.grey,
+    };
   }
 
-  /// Gibt das Icon für den Charaktertyp zurück
   IconData _getCharacterTypeIcon(String type) {
-    switch (type) {
-      case 'pc':
-        return Icons.person;
-      case 'npc':
-        return Icons.person_outline;
-      case 'monster':
-        return Icons.pets;
-      default:
-        return Icons.person;
-    }
+    return switch (type) {
+      'pc' => Icons.person,
+      'npc' => Icons.person_outline,
+      'monster' => Icons.pets,
+      _ => Icons.person,
+    };
   }
 
   Future<void> _createNewSession() async {
     final viewModel = context.read<SessionListForCampaignViewModel>();
     final newSession = await viewModel.createSession();
-    
-    if (newSession != null) {
+    if (newSession != null && mounted) {
       Navigator.of(context).push(
-        MaterialPageRoute(
+        MaterialPageRoute<void>(
           builder: (context) => EditSessionScreen(
             session: newSession,
             isNewSession: true,
           ),
         ),
       ).then((_) {
-        // Liste aktualisieren nach dem Bearbeiten
-        context.read<SessionListForCampaignViewModel>().refreshSessions();
+        if (mounted) context.read<SessionListForCampaignViewModel>().refreshSessions();
       });
     }
   }
 
   void _openSession(Session session) {
     Navigator.of(context).push(
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
         builder: (context) => ChangeNotifierProvider<ActiveSessionViewModel>(
           create: (context) => ActiveSessionViewModel(
             session: session,
@@ -614,12 +573,11 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
 
   void _editSession(Session session) {
     Navigator.of(context).push(
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
         builder: (context) => EditSessionScreen(session: session),
       ),
     ).then((_) {
-      // Liste aktualisieren nach dem Bearbeiten
-      context.read<SessionListForCampaignViewModel>().refreshSessions();
+      if (mounted) context.read<SessionListForCampaignViewModel>().refreshSessions();
     });
   }
 
@@ -627,10 +585,9 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
     final viewModel = context.read<SessionListForCampaignViewModel>();
     final duplicated = await viewModel.duplicateSession(session);
     if (!mounted) return;
-
     if (duplicated != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Session dupliziert'),
           backgroundColor: Colors.orange,
         ),
@@ -641,14 +598,12 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
   Future<void> _deleteSession(Session session) async {
     final confirmed = await _showDeleteConfirmation(session);
     if (!confirmed) return;
-
     final viewModel = context.read<SessionListForCampaignViewModel>();
     final success = await viewModel.deleteSession(session.id);
     if (!mounted) return;
-
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Session gelöscht'),
           backgroundColor: Colors.red,
         ),
@@ -661,17 +616,17 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Session löschen'),
+          title: const Text('Session löschen'),
           content: Text('Möchten Sie die Session "${session.title}" wirklich löschen?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: Text('Abbrechen'),
+              child: const Text('Abbrechen'),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: Text('Löschen'),
+              child: const Text('Löschen'),
             ),
           ],
         );

@@ -14,8 +14,7 @@ import '../../models/scene.dart';
 import '../../models/session.dart';
 import '../../models/sound.dart';
 import '../../models/wiki_entry.dart';
-//import '../../services/sound_service.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 import '../../viewmodels/active_session_viewmodel.dart';
 import '../../viewmodels/edit_scene_viewmodel.dart';
 import '../../widgets/active_session/live_notes_quadrant.dart';
@@ -25,7 +24,6 @@ import '../../widgets/lore_keeper/wiki_entry_popup_dialog.dart';
 import '../scenes/edit_scene_screen.dart';
 import 'encounter_setup_screen.dart' as encounter_setup;
 
-/// Enhanced Active Session Screen mit Provider-Pattern und modernem D&D Design
 class ActiveSessionScreen extends StatefulWidget {
   final Campaign campaign;
   final Session session;
@@ -42,7 +40,8 @@ class ActiveSessionScreen extends StatefulWidget {
 
 class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   late ActiveSessionViewModel _viewModel;
-  int _questUpdateCounter = 0; // Counter für Quest-Updates zur UI-Aktualisierung
+  int _questUpdateCounter = 0;
+  final Set<String> _expandedSceneIds = {};
 
   @override
   void initState() {
@@ -51,422 +50,149 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
       session: widget.session,
       campaign: widget.campaign,
     );
-    // Session beim Öffnen neu aus der Datenbank laden
     _viewModel.reloadSession();
   }
 
   @override
   void dispose() {
-    // Sicherstellen, dass alle verbleibenden Hintergrund-Sounds (z. B. Previews
-    // aus dem Sound Picker oder Encounter) gestoppt werden, wenn der Screen schließt.
     _viewModel.stopSessionSound();
-    
     _viewModel.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => ChangeNotifierProvider<ActiveSessionViewModel>.value(
-        value: _viewModel,
-        child: Scaffold(
-          backgroundColor: DnDTheme.dungeonBlack,
-          appBar: _buildAppBar(),
-          body: _buildBody(),
-          floatingActionButton: _buildFloatingActionButton(),
-        ),
-      );
-
-  PreferredSizeWidget _buildAppBar() => AppBar(
-        title: Consumer<ActiveSessionViewModel>(
-          builder: (context, viewModel, child) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                viewModel.currentSession.title,
-                style: DnDTheme.headline2.copyWith(
-                  color: DnDTheme.ancientGold,
-                ),
-              ),
-              Text(
-                'In-Game Zeit: ${viewModel.getFormattedInGameTime()}',
-                style: DnDTheme.bodyText2.copyWith(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-        backgroundColor: DnDTheme.stoneGrey,
-        foregroundColor: Colors.white,
-        elevation: 4,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: DnDTheme.getMysticalGradient(
-              startColor: DnDTheme.stoneGrey,
-              endColor: DnDTheme.slateGrey,
-            ),
-          ),
-        ),
-        actions: [
-          Consumer<ActiveSessionViewModel>(
-            builder: (context, viewModel, child) => Container(
-              margin: const EdgeInsets.only(right: DnDTheme.sm),
-              decoration: DnDTheme.getMysticalBorder(
-                borderColor: DnDTheme.arcaneBlue,
-                width: 2,
-              ),
-              child: PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: Colors.white),
-                color: DnDTheme.stoneGrey,
-                onSelected: _handleMenuAction,
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'edit_title',
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit, color: DnDTheme.ancientGold, size: 20),
-                        const SizedBox(width: DnDTheme.sm),
-                        Text(
-                          'Titel bearbeiten',
-                          style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'add_time_15',
-                    child: Row(
-                      children: [
-                        Icon(Icons.add, color: DnDTheme.successGreen, size: 20),
-                        const SizedBox(width: DnDTheme.sm),
-                        Text(
-                          '+15 Min',
-                          style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'add_time_30',
-                    child: Row(
-                      children: [
-                        Icon(Icons.add, color: DnDTheme.successGreen, size: 20),
-                        const SizedBox(width: DnDTheme.sm),
-                        Text(
-                          '+30 Min',
-                          style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'add_time_60',
-                    child: Row(
-                      children: [
-                        Icon(Icons.add, color: DnDTheme.successGreen, size: 20),
-                        const SizedBox(width: DnDTheme.sm),
-                        Text(
-                          '+1 Std',
-                          style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      );
+  @override
+  Widget build(BuildContext context) {
+    final C = context.appColors;
+    return ChangeNotifierProvider<ActiveSessionViewModel>.value(
+      value: _viewModel,
+      child: Scaffold(
+        backgroundColor: C.bg,
+        body: _buildBody(),
+      ),
+    );
+  }
 
   Widget _buildBody() => Consumer<ActiveSessionViewModel>(
         builder: (context, viewModel, child) {
           if (viewModel.error != null) {
             return _buildErrorWidget(viewModel.error!);
           }
-
-          return Padding(
-            padding: const EdgeInsets.all(DnDTheme.md),
-            child: Column(
-              children: [
-                // Session Info Bar
-                _buildSessionInfoBar(viewModel),
-                const SizedBox(height: 8),
-
-                // Main Content - 2 Column Layout
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Linke Seite: Szenen-Ablauf (volle Höhe)
-                      Expanded(
-                        flex: 1,
-                        child: _buildSceneFlowPanel(viewModel),
-                      ),
-
-                      const SizedBox(width: 8),
-
-                      // Rechte Seite: Scrollbare Sidebar mit Live-Notizen, Atmosphäre und Quests
-                      Expanded(
-                        flex: 1,
-                        child: _buildScrollableSidebar(viewModel),
-                      ),
-                    ],
-                  ),
+          return Column(
+            children: [
+              _buildTopBar(viewModel),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 62, child: _buildSceneFlowPanel(viewModel)),
+                    Container(width: 1, color: context.appColors.border),
+                    Expanded(flex: 38, child: _buildRightPane(viewModel)),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           );
         },
       );
 
-  Widget _buildSessionInfoBar(ActiveSessionViewModel viewModel) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: DnDTheme.sm, vertical: 4),
-        decoration: BoxDecoration(
-          gradient: DnDTheme.getMysticalGradient(
-            startColor: DnDTheme.stoneGrey,
-            endColor: DnDTheme.slateGrey,
-          ),
-          borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-          border: Border.all(
-            color: DnDTheme.ancientGold.withValues(alpha: 0.3),
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: DnDTheme.ancientGold,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: DnDTheme.stoneGrey,
-                  width: 2,
-                ),
-              ),
-              child: const Icon(
-                Icons.play_circle_filled,
-                color: DnDTheme.dungeonBlack,
-                size: 16,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Kampagne: ${viewModel.campaign.title}',
-                style: DnDTheme.bodyText2.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11,
-                ),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 6,
-                vertical: 2,
-              ),
-              decoration: BoxDecoration(
-                gradient: DnDTheme.getMysticalGradient(
-                  startColor: DnDTheme.arcaneBlue,
-                  endColor: DnDTheme.mysticalPurple,
-                ),
-                borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                border: Border.all(
-                  color: DnDTheme.ancientGold.withValues(alpha: 0.5),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.timer,
-                    color: Colors.white,
-                    size: 12,
-                  ),
-                  const SizedBox(width: DnDTheme.xs),
-                  Text(
-                    'Aktiv',
-                    style: DnDTheme.bodyText2.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 9,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-
-  /// Baut das Szenen-Ablauf Panel (linke Seite, volle Höhe)
-  Widget _buildSceneFlowPanel(ActiveSessionViewModel viewModel) => Container(
-        decoration: BoxDecoration(
-          color: DnDTheme.slateGrey.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-          border: Border.all(
-            color: DnDTheme.arcaneBlue.withValues(alpha: 0.3),
-          ),
-        ),
-        child: Column(
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: DnDTheme.arcaneBlue.withValues(alpha: 0.2),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(DnDTheme.radiusMedium),
-                  topRight: Radius.circular(DnDTheme.radiusMedium),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.list_alt, color: DnDTheme.arcaneBlue, size: 18),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Szenen-Ablauf',
-                    style: DnDTheme.bodyText1.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '${viewModel.scenes.length} Szenen',
-                    style: DnDTheme.bodyText2.copyWith(
-                      color: Colors.white54,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Content
-            Expanded(
-              child: _buildSceneFlowWidget(viewModel),
-            ),
-          ],
-        ),
-      );
-
-  /// Baut das Live-Notizen Panel (rechts oben)
-  Widget _buildLiveNotesPanel(ActiveSessionViewModel viewModel) => Container(
-        decoration: BoxDecoration(
-          color: DnDTheme.slateGrey.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-          border: Border.all(
-            color: DnDTheme.ancientGold.withValues(alpha: 0.3),
-          ),
-        ),
-        child: Column(
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: DnDTheme.ancientGold.withValues(alpha: 0.2),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(DnDTheme.radiusMedium),
-                  topRight: Radius.circular(DnDTheme.radiusMedium),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.note_alt, color: DnDTheme.ancientGold, size: 18),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Live-Notizen',
-                    style: DnDTheme.bodyText1.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Content
-            Expanded(
-              child: _buildLiveNotesWidget(viewModel),
-            ),
-          ],
-        ),
-      );
-
-  /// Baut das Atmosphäre Panel (rechts unten) mit Sound Mixer
-  Widget _buildAtmospherePanel(ActiveSessionViewModel viewModel) {
-    final activeSceneId = viewModel.currentSession.activeSceneId;
-    Map<String, double> soundVolumes = {};
-
-    if (activeSceneId != null) {
-      final sceneIndex = viewModel.scenes.indexWhere((s) => s.id == activeSceneId);
-      if (sceneIndex != -1) {
-        soundVolumes = viewModel.scenes[sceneIndex].soundVolumes;
-      }
-    }
-
-    // Vorgeladene Sound-Objekte direkt übergeben — kein async Lookup im Mixer nötig
-    final preloadedSounds = activeSceneId != null
-        ? viewModel.sceneSoundsFor(activeSceneId)
-        : <Sound>[];
-
+  Widget _buildTopBar(ActiveSessionViewModel viewModel) {
+    final C = context.appColors;
     return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: DnDTheme.slateGrey.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-        border: Border.all(
-          color: DnDTheme.arcaneBlue.withValues(alpha: 0.3),
-        ),
+        color: C.bgPanel,
+        border: Border(bottom: BorderSide(color: C.border)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: DnDTheme.arcaneBlue.withValues(alpha: 0.2),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(DnDTheme.radiusMedium),
-                topRight: Radius.circular(DnDTheme.radiusMedium),
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(7),
               ),
+              child: Icon(Icons.arrow_back_ios, size: 16, color: C.textMid),
+            ),
+          ),
+          Container(width: 1, height: 18, color: C.border, margin: const EdgeInsets.symmetric(horizontal: 10)),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                viewModel.currentSession.title,
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.text),
+              ),
+              Row(
+                children: [
+                  Icon(Icons.access_time, size: 11, color: C.textSoft),
+                  const SizedBox(width: 4),
+                  Text(
+                    'In-Game Zeit: ${viewModel.getFormattedInGameTime()}',
+                    style: TextStyle(fontSize: 11, color: C.textSoft),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: C.greenSoft,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: C.green.withValues(alpha: 0.3)),
             ),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.music_note, color: DnDTheme.arcaneBlue, size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  'Atmosphäre',
-                  style: DnDTheme.bodyText1.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(color: C.green, shape: BoxShape.circle),
                 ),
+                const SizedBox(width: 5),
+                Text('Aktiv', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: C.green)),
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: SoundMixerWidget(
-              key: ValueKey('atmosphere_${activeSceneId ?? "none"}'),
-              initialSounds: preloadedSounds.isNotEmpty ? preloadedSounds : null,
-              initialVolumes: soundVolumes,
-              config: const SoundMixerConfig(
-                compactMode: false,
-                showAddButtons: true,
-                showMasterVolume: true,
-                showStopAllButton: true,
-                showChannelCounter: false,
-                readOnly: false,
-                showDivider: true,
-                showHeader: false,
-              ),
-              onSoundsChanged: activeSceneId != null
-                  ? (soundIds) => viewModel.updateSceneSounds(activeSceneId, soundIds)
-                  : null,
-              onVolumesChanged: activeSceneId != null
-                  ? (volumes) => viewModel.updateSceneSoundVolumes(activeSceneId, volumes)
-                  : null,
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: C.bgHover,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: C.border),
+            ),
+            child: Text(viewModel.campaign.title, style: TextStyle(fontSize: 11, color: C.textMid)),
+          ),
+          const SizedBox(width: 4),
+          PopupMenuButton<String>(
+            icon: Icon(Icons.more_vert, color: C.textMid, size: 18),
+            color: C.bgPanel,
+            onSelected: _handleMenuAction,
+            itemBuilder: (context) => [
+              PopupMenuItem(value: 'edit_title', child: Row(children: [Icon(Icons.edit, color: C.amber, size: 16), const SizedBox(width: 8), Text('Titel bearbeiten', style: TextStyle(color: C.text, fontSize: 13))])),
+              PopupMenuItem(value: 'add_time_15', child: Row(children: [Icon(Icons.add, color: C.green, size: 16), const SizedBox(width: 8), Text('+15 Min', style: TextStyle(color: C.text, fontSize: 13))])),
+              PopupMenuItem(value: 'add_time_30', child: Row(children: [Icon(Icons.add, color: C.green, size: 16), const SizedBox(width: 8), Text('+30 Min', style: TextStyle(color: C.text, fontSize: 13))])),
+              PopupMenuItem(value: 'add_time_60', child: Row(children: [Icon(Icons.add, color: C.green, size: 16), const SizedBox(width: 8), Text('+1 Std', style: TextStyle(color: C.text, fontSize: 13))])),
+            ],
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton.icon(
+            onPressed: _startEncounter,
+            icon: const Icon(Icons.gavel, size: 13),
+            label: const Text('Kampf', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: C.red,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+              elevation: 0,
             ),
           ),
         ],
@@ -474,83 +200,186 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     );
   }
 
-    /// Baut die rechte Sidebar mit Live-Notizen, Atmosphäre und Quests
-    /// Verwendet scrollbares Layout - Atmosphäre passt sich dynamisch an Sound-Anzahl an
-    Widget _buildScrollableSidebar(ActiveSessionViewModel viewModel) =>
-        SingleChildScrollView(
-          child: Column(
+  Widget _buildSceneFlowPanel(ActiveSessionViewModel viewModel) {
+    final C = context.appColors;
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: C.bgPanel,
+            border: Border(bottom: BorderSide(color: C.border)),
+          ),
+          child: Row(
             children: [
-              // Live-Notizen
-              SizedBox(
-                height: 400,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _buildLiveNotesPanel(viewModel),
-                ),
+              Icon(Icons.list_alt, color: C.accent, size: 14),
+              const SizedBox(width: 7),
+              Text('Szenen-Ablauf', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.text)),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                decoration: BoxDecoration(color: C.bgHover, borderRadius: BorderRadius.circular(4)),
+                child: Text('${viewModel.scenes.length} Szenen', style: TextStyle(fontSize: 10, color: C.textSoft)),
               ),
-
-              // Atmosphäre - dynamische Höhe basierend auf Sound-Anzahl
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: _buildAtmospherePanel(viewModel),
-              ),
-
-              // Quest-Liste
-              SizedBox(
-                height: 400,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: QuestListSection(
-                    key: ValueKey('quest_list_$_questUpdateCounter'),
-                    campaignId: viewModel.campaign.id,
-                    onQuestUpdated: () {
-                      // Counter erhöhen für UI-Update von ALLEN Quest-Anzeigen
-                      setState(() {
-                        _questUpdateCounter++;
-                      });
-                    },
-                  ),
+              const Spacer(),
+              ElevatedButton.icon(
+                onPressed: _showCreateSceneDialog,
+                icon: const Icon(Icons.add, size: 12),
+                label: const Text('Neue Szene', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: C.accent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  elevation: 0,
                 ),
               ),
             ],
           ),
-        );
-
-  Widget _buildSceneFlowWidget(ActiveSessionViewModel viewModel) {
-    final scenes = viewModel.scenes;
-
-    // KEIN KeyedSubtree mehr - damit ExpansionTiles nicht zusammenklappen
-    // Nur der FutureBuilder für Quests hat einen Key
-    return _buildSceneListContent(viewModel, scenes);
+        ),
+        Expanded(child: _buildSceneFlowWidget(viewModel)),
+      ],
+    );
   }
 
+  Widget _buildRightPane(ActiveSessionViewModel viewModel) {
+    final C = context.appColors;
+    return Container(
+      color: C.bgPanel,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildLiveNotesSection(viewModel),
+            _buildAtmosphereSection(viewModel),
+            _buildQuestSection(viewModel),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLiveNotesSection(ActiveSessionViewModel viewModel) {
+    final C = context.appColors;
+    return Container(
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: C.border))),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
+            child: Row(
+              children: [
+                Icon(Icons.sticky_note_2_outlined, color: C.amber, size: 13),
+                const SizedBox(width: 6),
+                Text('Live-Notizen', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: C.text)),
+              ],
+            ),
+          ),
+          SizedBox(height: 180, child: _buildLiveNotesWidget(viewModel)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAtmosphereSection(ActiveSessionViewModel viewModel) {
+    final C = context.appColors;
+    final activeSceneId = viewModel.currentSession.activeSceneId;
+    Map<String, double> soundVolumes = {};
+    if (activeSceneId != null) {
+      final sceneIndex = viewModel.scenes.indexWhere((s) => s.id == activeSceneId);
+      if (sceneIndex != -1) soundVolumes = viewModel.scenes[sceneIndex].soundVolumes;
+    }
+    final preloadedSounds = activeSceneId != null ? viewModel.sceneSoundsFor(activeSceneId) : <Sound>[];
+
+    return Container(
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: C.border))),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.music_note, color: C.accent, size: 13),
+              const SizedBox(width: 6),
+              Text('Atmosphäre', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: C.text)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SoundMixerWidget(
+            key: ValueKey('atmosphere_${activeSceneId ?? "none"}'),
+            initialSounds: preloadedSounds.isNotEmpty ? preloadedSounds : null,
+            initialVolumes: soundVolumes,
+            config: const SoundMixerConfig(
+              compactMode: true,
+              showAddButtons: true,
+              showMasterVolume: true,
+              showStopAllButton: true,
+              showChannelCounter: false,
+              readOnly: false,
+              showDivider: false,
+              showHeader: false,
+            ),
+            onSoundsChanged: activeSceneId != null
+                ? (soundIds) => viewModel.updateSceneSounds(activeSceneId, soundIds)
+                : null,
+            onVolumesChanged: activeSceneId != null
+                ? (volumes) => viewModel.updateSceneSoundVolumes(activeSceneId, volumes)
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuestSection(ActiveSessionViewModel viewModel) {
+    final C = context.appColors;
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+          child: Row(
+            children: [
+              Icon(Icons.flag_outlined, color: const Color(0xFF7c3aed), size: 13),
+              const SizedBox(width: 6),
+              Text('Quests', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: C.text)),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 380,
+          child: QuestListSection(
+            key: ValueKey('quest_list_$_questUpdateCounter'),
+            campaignId: viewModel.campaign.id,
+            onQuestUpdated: () => setState(() => _questUpdateCounter++),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSceneFlowWidget(ActiveSessionViewModel viewModel) =>
+      _buildSceneListContent(viewModel, viewModel.scenes);
+
   Widget _buildSceneListContent(ActiveSessionViewModel viewModel, List<Scene> scenes) {
+    final C = context.appColors;
     if (scenes.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.list_alt,
-              size: 32,
-              color: Colors.white38,
-            ),
+            Icon(Icons.list_alt, size: 32, color: C.textSoft),
             const SizedBox(height: 8),
             Text(
               'Keine Szenen',
-              style: DnDTheme.bodyText2.copyWith(
-                color: Colors.white70,
-                fontWeight: FontWeight.bold,
-                fontSize: 10,
-              ),
+              style: TextStyle(color: C.text, fontWeight: FontWeight.bold, fontSize: 13),
             ),
             const SizedBox(height: 4),
             Text(
               'Erstelle deine erste Szene',
-              style: DnDTheme.bodyText2.copyWith(
-                color: Colors.white54,
-                fontSize: 8,
-              ),
+              style: TextStyle(color: C.textMid, fontSize: 12),
             ),
             const SizedBox(height: 8),
             ElevatedButton.icon(
@@ -558,12 +387,9 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
               icon: const Icon(Icons.add, size: 14),
               label: const Text('Szene erstellen'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: DnDTheme.arcaneBlue,
+                backgroundColor: C.accent,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: DnDTheme.sm,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 textStyle: const TextStyle(fontSize: 9),
               ),
             ),
@@ -573,35 +399,11 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(2),
-      itemCount: scenes.length + 1, // +1 für den Button am Ende
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      itemCount: scenes.length,
       itemBuilder: (context, index) {
-        // Letztes Item ist der "Neue Szene" Button
-        if (index == scenes.length) {
-          return Padding(
-            padding: const EdgeInsets.all(8),
-            child: ElevatedButton.icon(
-              onPressed: _showCreateSceneDialog,
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Neue Szene', style: TextStyle(fontSize: 14)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: DnDTheme.arcaneBlue,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                ),
-              ),
-            ),
-          );
-        }
-
         final scene = scenes[index];
         final isActive = viewModel.currentSession.activeSceneId == scene.id;
-
         return _buildSceneCard(
           scene: scene,
           isActive: isActive,
@@ -615,1002 +417,434 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     required Scene scene,
     required bool isActive,
     required VoidCallback onTap,
-  }) =>
-      Theme(
-        data: ThemeData(
-          dividerColor: Colors.transparent,
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-        ),
-        child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          leading: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: scene.isCompleted ? DnDTheme.successGreen : DnDTheme.arcaneBlue,
-              borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-            ),
-            child: Text(
-              '${scene.orderIndex + 1}',
-              style: DnDTheme.bodyText2.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-          ),
-          title: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      scene.name,
-                      style: DnDTheme.bodyText2.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
+  }) {
+    final C = context.appColors;
+    final typeColor = _sceneTypeColor(scene.sceneType);
+    final isExpanded = _expandedSceneIds.contains(scene.id);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: C.bgPanel,
+        border: Border.all(color: C.border),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Left type-color strip ──
+            Container(width: 3, color: typeColor),
+            // ── Content ──
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Header row (always visible) ──
+                  GestureDetector(
+                    onTap: () => setState(() {
+                      if (isExpanded) {
+                        _expandedSceneIds.remove(scene.id);
+                      } else {
+                        _expandedSceneIds.add(scene.id);
+                      }
+                    }),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      child: Row(
+                children: [
+                  Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: scene.isCompleted ? C.green : typeColor,
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                    const SizedBox(height: 2),
-                    Row(
+                    alignment: Alignment.center,
+                    child: Text(
+                      '${scene.orderIndex + 1}',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          scene.sceneTypeDisplayName,
-                          style: DnDTheme.bodyText2.copyWith(
-                            color: Colors.white70,
-                            fontSize: 11,
-                          ),
+                        Text(scene.name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: C.text)),
+                        Row(
+                          children: [
+                            Text(scene.sceneTypeDisplayName, style: TextStyle(fontSize: 11, color: C.textMid)),
+                            if (scene.linkedEncounterId != null) ...[
+                              const SizedBox(width: 6),
+                              Icon(Icons.gavel, color: C.red, size: 12),
+                            ],
+                          ],
                         ),
-                        // Encounter Link Indicator
-                        if (scene.linkedEncounterId != null) ...[
-                          const SizedBox(width: 6),
-                          Icon(
-                            Icons.gavel,
-                            color: DnDTheme.errorRed,
-                            size: 14,
-                          ),
-                        ],
                       ],
                     ),
+                  ),
+                  if (scene.isCompleted) Icon(Icons.check_circle, color: C.green, size: 16),
+                  if (isActive) ...[
+                    const SizedBox(width: 4),
+                    Icon(Icons.play_circle_filled, color: C.amber, size: 16),
                   ],
-                ),
-              ),
-              // Status Icons
-              Row(
-                children: [
-                  if (scene.isCompleted)
-                    Icon(
-                      Icons.check_circle,
-                      color: DnDTheme.successGreen,
-                      size: 18,
-                    ),
-                  if (isActive)
-                    Icon(
-                      Icons.play_circle_filled,
-                      color: DnDTheme.ancientGold,
-                      size: 18,
-                    ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
                   GestureDetector(
                     onTap: onTap,
-                    child: Icon(
-                      Icons.more_vert,
-                      color: Colors.white70,
-                      size: 18,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      child: Icon(Icons.more_horiz, color: C.textSoft, size: 16),
                     ),
+                  ),
+                  Icon(
+                    isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                    color: C.textSoft,
+                    size: 16,
                   ),
                 ],
               ),
-            ],
+            ),
           ),
-          trailing: const SizedBox.shrink(), // Wir haben unsere eigenen Icons
-          backgroundColor: Colors.transparent,
-          children: [
-            // Expanded Content - mit SingleChildScrollView um Overflow zu verhindern
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                gradient: DnDTheme.getMysticalGradient(
-                  startColor: isActive
-                      ? DnDTheme.ancientGold.withValues(alpha: 0.2)
-                      : DnDTheme.slateGrey.withValues(alpha: 0.5),
-                  endColor: Colors.transparent,
-                ),
-                borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                border: Border.all(
-                  color: isActive
-                      ? DnDTheme.ancientGold.withValues(alpha: 0.3)
-                      : DnDTheme.arcaneBlue.withValues(alpha: 0.2),
-                  width: 1,
-                ),
-              ),
+          // ── Expanded content ──
+          if (isExpanded) ...[
+            Divider(height: 1, thickness: 1, color: C.border),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
               child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                  // Beschreibung
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   if (scene.description.isNotEmpty) ...[
-                    Text(
-                      'Beschreibung',
-                      style: DnDTheme.bodyText2.copyWith(
-                        color: DnDTheme.ancientGold,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      scene.description,
-                      style: DnDTheme.bodyText2.copyWith(
-                        color: Colors.white,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
+                    _sceneSectionLabel('Beschreibung', C),
+                    Text(scene.description, style: TextStyle(fontSize: 12, color: C.textMid, height: 1.6)),
+                    const SizedBox(height: 10),
                   ],
-                  // Verknüpfte Quests
                   if (scene.linkedQuestIds.isNotEmpty) ...[
-                    Text(
-                      'Verknüpfte Quests',
-                      style: DnDTheme.bodyText2.copyWith(
-                        color: DnDTheme.ancientGold,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
+                    _sceneSectionLabel('Verknüpfte Quests', C),
                     _buildLinkedQuestsRow(scene),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                   ],
-                  // Verknüpfte Sounds
                   if (scene.linkedSoundIds.isNotEmpty) ...[
-                    Text(
-                      'Verknüpfte Sounds',
-                      style: DnDTheme.bodyText2.copyWith(
-                        color: DnDTheme.ancientGold,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
+                    _sceneSectionLabel('Verknüpfte Sounds', C),
                     _buildLinkedSoundsRow(scene),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                   ],
-                  // Verknüpfte Charaktere
                   if (scene.linkedCharacterIds.isNotEmpty) ...[
-                    Text(
-                      'Verknüpfte Charaktere',
-                      style: DnDTheme.bodyText2.copyWith(
-                        color: DnDTheme.ancientGold,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
+                    _sceneSectionLabel('Verknüpfte Charaktere', C),
                     _buildLinkedCharactersRow(scene),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                   ],
-                  // Verknüpfte Wiki-Einträge
                   if (scene.linkedWikiEntryIds.isNotEmpty) ...[
-                    Text(
-                      'Verknüpfte Wiki-Einträge',
-                      style: DnDTheme.bodyText2.copyWith(
-                        color: DnDTheme.ancientGold,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
+                    _sceneSectionLabel('Verknüpfte Wiki-Einträge', C),
                     _buildLinkedWikiEntriesRow(scene),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                   ],
-                  // Combat-Szene: Kampf starten Button
                   if (scene.sceneType == SceneType.Combat &&
                       scene.linkedEncounterId != null &&
-                      scene.linkedEncounterId!.isNotEmpty) ...[
-                    Container(
+                      scene.linkedEncounterId!.isNotEmpty)
+                    SizedBox(
                       width: double.infinity,
-                      margin: const EdgeInsets.only(top: 8),
                       child: ElevatedButton.icon(
                         onPressed: () => _startEncounterForScene(scene),
-                        icon: const Icon(Icons.gavel, size: 18),
+                        icon: const Icon(Icons.gavel, size: 14),
                         label: const Text('Kampf starten'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: DnDTheme.errorRed,
+                          backgroundColor: C.red,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                          elevation: 0,
                         ),
                       ),
                     ),
-                  ],
-
-                  // Combat-Szene ohne Encounter: Hinweis anzeigen
-                  if (scene.sceneType == SceneType.Combat &&
-                      (scene.linkedEncounterId == null || scene.linkedEncounterId!.isEmpty)) ...[
-                    Container(
-                      margin: const EdgeInsets.only(top: 8),
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: DnDTheme.ancientGold.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                        border: Border.all(
-                          color: DnDTheme.ancientGold.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            color: DnDTheme.ancientGold,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Kein Encounter geplant - Bearbeite die Szene um einen Encounter hinzuzufügen',
-                              style: DnDTheme.bodyText2.copyWith(
-                                color: DnDTheme.ancientGold,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                  if (scene.complexity != null || scene.estimatedDuration != null) ...[
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 4,
+                      children: [
+                        if (scene.complexity != null)
+                          _sceneBadge(scene.complexityDisplayName, const Color(0xFF7C3AED), Icons.trending_up),
+                        if (scene.estimatedDuration != null)
+                          _sceneBadge(_formatDuration(scene.estimatedDuration!), C.accent, Icons.schedule),
+                      ],
                     ),
                   ],
-
-                  // Zusätzliche Details
-                  Row(
-                    children: [
-                      // Komplexität
-                      if (scene.complexity != null) ...[
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: DnDTheme.mysticalPurple.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                            border: Border.all(
-                              color: DnDTheme.mysticalPurple.withValues(alpha: 0.4),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.trending_up,
-                                color: DnDTheme.mysticalPurple,
-                                size: 8,
-                              ),
-                              const SizedBox(width: 2),
-                              Text(
-                                scene.complexityDisplayName,
-                                style: DnDTheme.bodyText2.copyWith(
-                                  color: Colors.white,
-                                  fontSize: 7,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                      ],
-                      // Geschätzte Dauer
-                      if (scene.estimatedDuration != null) ...[
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: DnDTheme.arcaneBlue.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                            border: Border.all(
-                              color: DnDTheme.arcaneBlue.withValues(alpha: 0.4),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.schedule,
-                                color: DnDTheme.arcaneBlue,
-                                size: 8,
-                              ),
-                              const SizedBox(width: 2),
-                              Text(
-                                _formatDuration(scene.estimatedDuration!),
-                                style: DnDTheme.bodyText2.copyWith(
-                                  color: Colors.white,
-                                  fontSize: 7,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
                 ],
               ),
             ),
           ],
+                ],          // closes outer Column.children
+              ),            // closes outer Column
+            ),              // closes Expanded
+          ],                // closes Row.children
+        ),                  // closes Row
+      ),                    // closes IntrinsicHeight
+    );
+  }
+
+  Widget _sceneSectionLabel(String label, AppColorsExtension C) => Padding(
+        padding: const EdgeInsets.only(bottom: 5),
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: C.textMid, letterSpacing: 0.4),
         ),
       );
 
-  /// Formatiert eine Duration für die Anzeige
+  Widget _sceneBadge(String text, Color color, IconData icon) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(5),
+          border: Border.all(color: color.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 9),
+            const SizedBox(width: 3),
+            Text(text, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w500)),
+          ],
+        ),
+      );
+
+  Color _sceneTypeColor(SceneType type) => switch (type) {
+        SceneType.Introduction => const Color(0xFF2f6feb),
+        SceneType.Social => const Color(0xFF7c3aed),
+        SceneType.Exploration => const Color(0xFF1a7f4b),
+        SceneType.Combat => const Color(0xFFc93a3a),
+        SceneType.Puzzle => const Color(0xFFb45309),
+        SceneType.Climax => const Color(0xFF0891b2),
+        SceneType.Resolution => const Color(0xFF6b7280),
+      };
+
   String _formatDuration(Duration duration) {
     final hours = duration.inHours;
     final minutes = duration.inMinutes.remainder(60);
-
-    if (hours > 0 && minutes > 0) {
-      return '${hours}h ${minutes}min';
-    } else if (hours > 0) {
-      return '${hours}h';
-    } else {
-      return '${minutes}min';
-    }
+    if (hours > 0 && minutes > 0) return '${hours}h ${minutes}min';
+    if (hours > 0) return '${hours}h';
+    return '${minutes}min';
   }
 
-            /// Baut eine Reihe mit verknüpften Sounds mit Sound Mixer Widget
-    /// Verwendet Multi-Channel Sound Mixer für gleichzeitige Wiedergabe
-    Widget _buildLinkedSoundsRow(Scene scene) {
-      if (scene.linkedSoundIds.isEmpty) {
-        return const SizedBox.shrink();
-      }
+  Widget _buildLinkedSoundsRow(Scene scene) {
+    if (scene.linkedSoundIds.isEmpty) return const SizedBox.shrink();
+    final viewModel = context.read<ActiveSessionViewModel>();
+    final preloadedSounds = viewModel.sceneSoundsFor(scene.id);
+    return SoundMixerWidget(
+      size: SoundMixerSize.minimal,
+      key: ValueKey('mixer_${scene.id}'),
+      initialSounds: preloadedSounds.isNotEmpty ? preloadedSounds : null,
+      initialVolumes: scene.soundVolumes,
+      onSoundsChanged: (soundIds) => viewModel.updateSceneSounds(scene.id, soundIds),
+      onVolumesChanged: (volumes) => viewModel.updateSceneSoundVolumes(scene.id, volumes),
+    );
+  }
 
-      final viewModel = context.read<ActiveSessionViewModel>();
-      final preloadedSounds = viewModel.sceneSoundsFor(scene.id);
-
-      return SoundMixerWidget(
-        size: SoundMixerSize.minimal,
-        key: ValueKey('mixer_${scene.id}'),
-        initialSounds: preloadedSounds.isNotEmpty ? preloadedSounds : null,
-        initialVolumes: scene.soundVolumes,
-        onSoundsChanged: (soundIds) =>
-            viewModel.updateSceneSounds(scene.id, soundIds),
-        onVolumesChanged: (volumes) =>
-            viewModel.updateSceneSoundVolumes(scene.id, volumes),
-      );
-    }
-
-  /// Baut eine Reihe mit verknüpften Charakteren
   Widget _buildLinkedCharactersRow(Scene scene) {
     return FutureBuilder<Map<String, Map<String, dynamic>>>(
       future: _loadLinkedCharacters(scene.linkedCharacterIds),
       builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const SizedBox.shrink();
-        }
-
-        final linkedChars = snapshot.data!;
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          decoration: BoxDecoration(
-            color: DnDTheme.mysticalPurple.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-            border: Border.all(
-              color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
-              width: 1,
-            ),
-          ),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            children: linkedChars.values.map((char) {
-              final type = char['type'] as String;
-              final name = char['name'] as String;
-              final level = char['level'] as String?;
-
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: _getCharacterTypeColor(type).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                  border: Border.all(
-                    color: _getCharacterTypeColor(type).withValues(alpha: 0.4),
-                    width: 1,
+        if (!snapshot.hasData || snapshot.data!.isEmpty) return const SizedBox.shrink();
+        final C = context.appColors;
+        return Wrap(
+          spacing: 5,
+          runSpacing: 5,
+          children: snapshot.data!.values.map((char) {
+            final name = char['name'] as String;
+            final level = char['level'] as String?;
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: C.bgHover,
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(color: C.border),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.person_outline, color: C.textSoft, size: 10),
+                  const SizedBox(width: 5),
+                  Text(
+                    level != null ? '$name ($level)' : name,
+                    style: TextStyle(fontSize: 11, color: C.textMid),
                   ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _getCharacterTypeIcon(type),
-                      color: _getCharacterTypeColor(type),
-                      size: 16,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      name,
-                      style: DnDTheme.bodyText2.copyWith(
-                        color: Colors.white,
-                        fontSize: 12,
-                      ),
-                    ),
-                    if (level != null) ...[
-                      const SizedBox(width: 4),
-                      Text(
-                        '($level)',
-                        style: DnDTheme.bodyText2.copyWith(
-                          color: Colors.white70,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
+                ],
+              ),
+            );
+          }).toList(),
         );
       },
     );
   }
 
-  /// Lädt die Details der verknüpften Charaktere
   Future<Map<String, Map<String, dynamic>>> _loadLinkedCharacters(List<String> characterIds) async {
     final result = <String, Map<String, dynamic>>{};
-
     try {
       final creatureRepo = context.read<CreatureModelRepository>();
       final pcRepo = context.read<PlayerCharacterModelRepository>();
-
       for (final charId in characterIds) {
-        // Versuche zuerst als Player Character zu laden
         try {
           final pc = await pcRepo.findById(charId);
           if (pc != null) {
-            result[charId] = {
-              'name': pc.name,
-              'type': 'pc',
-              'level': 'Lvl ${pc.level}',
-            };
+            result[charId] = {'name': pc.name, 'type': 'pc', 'level': 'Lvl ${pc.level}'};
             continue;
           }
-        } catch (e) {
-          // Nicht gefunden, versuche als Creature
-        }
-
-        // Versuche als Creature zu laden
+        } catch (_) {}
         try {
           final creature = await creatureRepo.findById(charId);
           if (creature != null) {
-            final level = creature.challengeRating != null ? 'CR ${creature.challengeRating}' : null;
             result[charId] = {
               'name': creature.name,
               'type': creature.sourceType == 'official' ? 'monster' : 'npc',
-              'level': level,
+              'level': creature.challengeRating != null ? 'CR ${creature.challengeRating}' : null,
             };
           }
-        } catch (e) {
-          // Nicht gefunden, überspringen
-        }
+        } catch (_) {}
       }
     } catch (e) {
       debugPrint('Fehler beim Laden der Charaktere: $e');
     }
-
     return result;
   }
 
-  /// Baut eine Reihe mit verknüpften Wiki-Einträgen
   Widget _buildLinkedWikiEntriesRow(Scene scene) {
     return FutureBuilder<List<WikiEntry>>(
       future: _loadLinkedWikiEntries(scene.linkedWikiEntryIds),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Padding(
-            padding: EdgeInsets.all(4),
-            child: Center(
-              child: SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
-              ),
-            ),
+          return SizedBox(
+            height: 16,
+            width: 16,
+            child: CircularProgressIndicator(strokeWidth: 2, color: context.appColors.textSoft),
           );
         }
-
-        if (snapshot.hasError) {
-          return Padding(
-            padding: const EdgeInsets.all(4),
-            child: Text(
-              'Fehler beim Laden der Wiki-Einträge',
-              style: DnDTheme.bodyText2.copyWith(
-                color: DnDTheme.errorRed,
-                fontSize: 10,
+        if (!snapshot.hasData || snapshot.data!.isEmpty) return const SizedBox.shrink();
+        const purple = Color(0xFF7C3AED);
+        return Wrap(
+          spacing: 5,
+          runSpacing: 5,
+          children: snapshot.data!.map((wikiEntry) => GestureDetector(
+            onTap: () => WikiEntryPopupDialog.show(context: context, entry: wikiEntry),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: purple.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(color: purple.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.book_outlined, color: purple, size: 10),
+                  const SizedBox(width: 5),
+                  Text(wikiEntry.title, style: const TextStyle(fontSize: 11, color: purple)),
+                ],
               ),
             ),
-          );
-        }
-
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const SizedBox.shrink();
-        }
-
-        final linkedWikiEntries = snapshot.data!;
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          decoration: BoxDecoration(
-            color: DnDTheme.mysticalPurple.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-            border: Border.all(
-              color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
-              width: 1,
-            ),
-          ),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            children: linkedWikiEntries.map((wikiEntry) {
-                return  TextButton(
-                  onPressed: () {
-                     WikiEntryPopupDialog.show(context: context, entry: wikiEntry);
-                  },
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap
-                  ),
-                  child: 
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                        color: _getWikiEntryTypeColor(wikiEntry.entryType).withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                        border: Border.all(
-                        color: _getWikiEntryTypeColor(wikiEntry.entryType).withValues(alpha: 0.4),
-                        width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _getWikiEntryTypeIcon(wikiEntry.entryType),
-                      color: _getWikiEntryTypeColor(wikiEntry.entryType),
-                      size: 16,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      wikiEntry.title,
-                      style: DnDTheme.bodyText2.copyWith(
-                        color: Colors.white,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-              );
-            }).toList(),
-          ),
+          )).toList(),
         );
       },
     );
   }
 
-  /// Lädt die Details der verknüpften Wiki-Einträge
   Future<List<WikiEntry>> _loadLinkedWikiEntries(List<String> wikiEntryIds) async {
     final result = <WikiEntry>[];
-
     try {
       final wikiEntryRepo = context.read<WikiEntryModelRepository>();
-
       for (final wikiId in wikiEntryIds) {
         try {
           final wikiEntry = await wikiEntryRepo.findById(wikiId);
-          if (wikiEntry != null) {
-            result.add(wikiEntry);
-          }
+          if (wikiEntry != null) result.add(wikiEntry);
         } catch (e) {
-          // Nicht gefunden, überspringen
           debugPrint('Wiki-Eintrag $wikiId konnte nicht geladen werden: $e');
         }
       }
     } catch (e) {
       debugPrint('Fehler beim Laden der Wiki-Einträge: $e');
     }
-
     return result;
   }
 
-  /// Gibt die Farbe für den Wiki-Eintrag-Typ zurück
-  Color _getWikiEntryTypeColor(WikiEntryType type) => switch (type) {
-        WikiEntryType.Person => DnDTheme.successGreen,
-        WikiEntryType.Place => DnDTheme.arcaneBlue,
-        WikiEntryType.Lore => DnDTheme.ancientGold,
-        WikiEntryType.Faction => DnDTheme.mysticalPurple,
-        WikiEntryType.Magic => Colors.purple,
-        WikiEntryType.History => Colors.orange,
-        WikiEntryType.Item => DnDTheme.infoBlue,
-        WikiEntryType.Quest => DnDTheme.successGreen,
-        WikiEntryType.Creature => DnDTheme.errorRed,
-      };
-
-  /// Gibt das Icon für den Wiki-Eintrag-Typ zurück
-  IconData _getWikiEntryTypeIcon(WikiEntryType type) => switch (type) {
-        WikiEntryType.Person => Icons.person,
-        WikiEntryType.Place => Icons.place,
-        WikiEntryType.Lore => Icons.book,
-        WikiEntryType.Faction => Icons.groups,
-        WikiEntryType.Magic => Icons.auto_awesome,
-        WikiEntryType.History => Icons.history,
-        WikiEntryType.Item => Icons.inventory_2,
-        WikiEntryType.Quest => Icons.flag,
-        WikiEntryType.Creature => Icons.pets,
-      };
-
-  /// Baut eine Liste mit verknüpften Quests mit vollständigen Informationen
-  /// Verwendet _questUpdateCounter als Key um bei Quest-Updates neu zu laden
   Widget _buildLinkedQuestsRow(Scene scene) {
     return FutureBuilder<List<Quest>>(
       key: ValueKey('quests_${scene.id}_$_questUpdateCounter'),
       future: _loadLinkedQuests(scene.linkedQuestIds),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Padding(
-            padding: EdgeInsets.all(4),
-            child: Center(
-              child: SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
-              ),
-            ),
+          return SizedBox(
+            height: 16,
+            width: 16,
+            child: CircularProgressIndicator(strokeWidth: 2, color: context.appColors.textSoft),
           );
         }
-
-        if (snapshot.hasError) {
-          return Padding(
-            padding: const EdgeInsets.all(4),
-            child: Text(
-              'Fehler beim Laden der Quests',
-              style: DnDTheme.bodyText2.copyWith(
-                color: DnDTheme.errorRed,
-                fontSize: 8,
+        if (!snapshot.hasData || snapshot.data!.isEmpty) return const SizedBox.shrink();
+        return Wrap(
+          spacing: 5,
+          runSpacing: 5,
+          children: snapshot.data!.map((quest) {
+            final statusColor = _getQuestStatusColor(quest.status);
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(color: statusColor.withValues(alpha: 0.35)),
               ),
-            ),
-          );
-        }
-
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const SizedBox.shrink();
-        }
-
-        final linkedQuests = snapshot.data!;
-        return Column(
-          children: linkedQuests.map(_buildQuestCard).toList(),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.flag_outlined, color: statusColor, size: 10),
+                  const SizedBox(width: 5),
+                  Text(quest.title, style: TextStyle(fontSize: 11, color: context.appColors.textMid)),
+                ],
+              ),
+            );
+          }).toList(),
         );
       },
     );
   }
 
-  /// Baut eine vollständige Quest-Karte mit allen Informationen
-  Widget _buildQuestCard(Quest quest) => Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: DnDTheme.getMysticalGradient(
-            startColor: DnDTheme.slateGrey.withValues(alpha: 0.8),
-            endColor: DnDTheme.stoneGrey.withValues(alpha: 0.8),
-          ),
-          borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-          border: Border.all(
-            color: _getQuestStatusColor(quest.status).withValues(alpha: 0.5),
-            width: 2,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header: Titel und Status
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: _getQuestStatusColor(quest.status).withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: _getQuestStatusColor(quest.status),
-                      width: 2,
-                    ),
-                  ),
-                  child: Icon(
-                    _getQuestStatusIcon(quest.status),
-                    color: _getQuestStatusColor(quest.status),
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        quest.title,
-                        style: DnDTheme.headline3.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Row(
-                        children: [
-                          Text(
-                            _getQuestStatusText(quest.status),
-                            style: DnDTheme.bodyText1.copyWith(
-                              color: _getQuestStatusColor(quest.status),
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          if (quest.location != null && quest.location!.isNotEmpty) ...[
-                            const SizedBox(width: 8),
-                            Icon(
-                              Icons.location_on,
-                              color: Colors.white54,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              quest.location!,
-                              style: DnDTheme.bodyText1.copyWith(
-                                color: Colors.white54,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            // Beschreibung
-            if (quest.description.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(
-                quest.description,
-                style: DnDTheme.bodyText1.copyWith(
-                  color: Colors.white70,
-                  fontSize: 14,
-                ),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-
-            // Aktionen
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                // Als aufgegeben markieren
-                Expanded(
-                  child: _buildQuestActionButton(
-                    icon: Icons.remove_circle_outline,
-                    label: 'Aufgegeben',
-                    color: Colors.orange,
-                    isSelected: quest.status == QuestStatus.abandoned,
-                    onTap: () => _updateQuestStatus(quest, QuestStatus.abandoned),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Als aktiv markieren
-                Expanded(
-                  child: _buildQuestActionButton(
-                    icon: Icons.play_circle_outline,
-                    label: 'Aktiv',
-                    color: DnDTheme.ancientGold,
-                    isSelected: quest.status == QuestStatus.active,
-                    onTap: () => _updateQuestStatus(quest, QuestStatus.active),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Als erledigt markieren
-                Expanded(
-                  child: _buildQuestActionButton(
-                    icon: Icons.check_circle_outline,
-                    label: 'Erledigt',
-                    color: DnDTheme.successGreen,
-                    isSelected: quest.status == QuestStatus.completed,
-                    onTap: () => _updateQuestStatus(quest, QuestStatus.completed),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-
-  /// Baut einen Quest-Aktions-Button
-  Widget _buildQuestActionButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) =>
-      GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          decoration: BoxDecoration(
-            gradient: DnDTheme.getMysticalGradient(
-              startColor: isSelected ? color.withValues(alpha: 0.4) : color.withValues(alpha: 0.1),
-              endColor: isSelected ? color.withValues(alpha: 0.2) : color.withValues(alpha: 0.05),
-            ),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isSelected ? color : color.withValues(alpha: 0.3),
-              width: isSelected ? 2 : 1,
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                color: isSelected ? color : color.withValues(alpha: 0.7),
-                size: 18,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: DnDTheme.bodyText1.copyWith(
-                  color: isSelected ? color : Colors.white70,
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-
-  /// Aktualisiert den Status eines Quests
-  Future<void> _updateQuestStatus(Quest quest, QuestStatus newStatus) async {
-    try {
-      final questRepo = context.read<QuestModelRepository>();
-
-      // Quest mit neuem Status erstellen
-      final updatedQuest = quest.copyWith(
-        status: newStatus,
-        updatedAt: DateTime.now(),
-      );
-
-      // In der Datenbank aktualisieren
-      await questRepo.update(updatedQuest);
-
-      // UI aktualisieren - Counter erhöhen für FutureBuilder-Refresh
-      setState(() {
-        _questUpdateCounter++;
-      });
-
-      // Feedback anzeigen
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(
-                _getQuestStatusIcon(newStatus),
-                color: Colors.white,
-                size: 16,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '"${quest.title}" als ${_getQuestStatusText(newStatus)} markiert',
-                style: const TextStyle(color: Colors.white, fontSize: 11),
-              ),
-            ],
-          ),
-          backgroundColor: _getQuestStatusColor(newStatus),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    } catch (e) {
-      debugPrint('Fehler beim Aktualisieren des Quest-Status: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Fehler beim Aktualisieren des Quests'),
-          backgroundColor: DnDTheme.errorRed,
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  /// Lädt die Details der verknüpften Quests
   Future<List<Quest>> _loadLinkedQuests(List<String> questIds) async {
     final result = <Quest>[];
-
     try {
       final questRepo = context.read<QuestModelRepository>();
-
       for (final questId in questIds) {
         try {
           final quest = await questRepo.findById(questId);
-          if (quest != null) {
-            result.add(quest);
-          }
+          if (quest != null) result.add(quest);
         } catch (e) {
-          // Nicht gefunden, überspringen
           debugPrint('Quest $questId konnte nicht geladen werden: $e');
         }
       }
     } catch (e) {
       debugPrint('Fehler beim Laden der Quests: $e');
     }
-
     return result;
   }
 
-  /// Gibt die Farbe für den Quest-Status zurück
-  Color _getQuestStatusColor(QuestStatus status) => switch (status) {
-        QuestStatus.active => Colors.grey,
-        QuestStatus.onHold => DnDTheme.arcaneBlue,
-        QuestStatus.completed => DnDTheme.successGreen,
-        QuestStatus.failed => DnDTheme.errorRed,
-        QuestStatus.abandoned => Colors.orange,
-      };
-
-  /// Gibt das Icon für den Quest-Status zurück
-  IconData _getQuestStatusIcon(QuestStatus status) => switch (status) {
-        QuestStatus.active => Icons.flag_outlined,
-        QuestStatus.onHold => Icons.play_arrow,
-        QuestStatus.completed => Icons.check_circle,
-        QuestStatus.failed => Icons.cancel,
-        QuestStatus.abandoned => Icons.remove_circle,
-      };
-
-  /// Gibt den Text für den Quest-Status zurück
-  String _getQuestStatusText(QuestStatus status) => switch (status) {
-        QuestStatus.active => 'Aktiv',
-        QuestStatus.onHold => 'In Arbeit',
-        QuestStatus.completed => 'Abgeschlossen',
-        QuestStatus.failed => 'Fehlgeschlagen',
-        QuestStatus.abandoned => 'Aufgegeben',
-      };
-
-  /// Gibt die Farbe für den Charaktertyp zurück
-  Color _getCharacterTypeColor(String type) => switch (type) {
-        'pc' => DnDTheme.successGreen,
-        'npc' => DnDTheme.arcaneBlue,
-        'monster' => DnDTheme.errorRed,
-        _ => Colors.grey,
-      };
-
-  /// Gibt das Icon für den Charaktertyp zurück
-  IconData _getCharacterTypeIcon(String type) => switch (type) {
-        'pc' => Icons.person,
-        'npc' => Icons.person_outline,
-        'monster' => Icons.pets,
-        _ => Icons.person,
-      };
+  Color _getQuestStatusColor(QuestStatus status) {
+    final C = context.appColors;
+    return switch (status) {
+      QuestStatus.active => C.green,
+      QuestStatus.onHold => C.textMid,
+      QuestStatus.completed => C.green,
+      QuestStatus.failed => C.red,
+      QuestStatus.abandoned => C.amber,
+    };
+  }
 
   void _showSceneOptions(Scene scene) {
+    final C = context.appColors;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         decoration: BoxDecoration(
-          gradient: DnDTheme.getMysticalGradient(
-            startColor: DnDTheme.slateGrey,
-            endColor: DnDTheme.stoneGrey,
-          ),
+          color: C.bgHover,
           borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(DnDTheme.radiusLarge),
-            topRight: Radius.circular(DnDTheme.radiusLarge),
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
           ),
         ),
         child: SafeArea(
@@ -1618,76 +852,52 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: Icon(Icons.edit, color: DnDTheme.arcaneBlue, size: 20),
-                title: Text(
-                  'Bearbeiten',
-                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                ),
+                leading: Icon(Icons.edit, color: C.accent, size: 20),
+                title: Text('Bearbeiten', style: TextStyle(fontSize: 14, color: C.text)),
                 onTap: () {
                   Navigator.pop(context);
                   _showEditSceneDialog(scene);
                 },
               ),
               ListTile(
-                leading: Icon(Icons.play_circle_filled, color: DnDTheme.ancientGold, size: 20),
-                title: Text(
-                  'Scene aktivieren',
-                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                ),
-                subtitle: Text(
-                  'Aktiviert Scene und ihre Quests',
-                  style: DnDTheme.bodyText2.copyWith(color: Colors.white54, fontSize: 11),
-                ),
+                leading: Icon(Icons.play_circle_filled, color: C.amber, size: 20),
+                title: Text('Szene aktivieren', style: TextStyle(fontSize: 14, color: C.text)),
+                subtitle: Text('Aktiviert Szene und ihre Quests', style: TextStyle(color: C.textSoft, fontSize: 11)),
                 onTap: () {
                   Navigator.pop(context);
                   _viewModel.activateScene(scene.id);
                 },
               ),
               ListTile(
-                leading: Icon(Icons.check_circle, color: DnDTheme.successGreen, size: 20),
-                title: Text(
-                  'Scene abschließen',
-                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                ),
-                subtitle: Text(
-                  'Schließt Scene, Quests und Encounters',
-                  style: DnDTheme.bodyText2.copyWith(color: Colors.white54, fontSize: 11),
-                ),
+                leading: Icon(Icons.check_circle, color: C.green, size: 20),
+                title: Text('Szene abschließen', style: TextStyle(fontSize: 14, color: C.text)),
+                subtitle: Text('Schließt Szene, Quests und Encounters', style: TextStyle(color: C.textSoft, fontSize: 11)),
                 onTap: () {
                   Navigator.pop(context);
                   _viewModel.completeScene(scene.id);
                 },
               ),
-              Divider(color: DnDTheme.stoneGrey),
+              Divider(color: C.border),
               ListTile(
-                leading: Icon(Icons.arrow_upward, color: DnDTheme.arcaneBlue, size: 20),
-                title: Text(
-                  'Nach oben verschieben',
-                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                ),
+                leading: Icon(Icons.arrow_upward, color: C.accent, size: 20),
+                title: Text('Nach oben verschieben', style: TextStyle(fontSize: 14, color: C.text)),
                 onTap: () {
                   Navigator.pop(context);
                   _viewModel.moveSceneUp(scene.id);
                 },
               ),
               ListTile(
-                leading: Icon(Icons.arrow_downward, color: DnDTheme.arcaneBlue, size: 20),
-                title: Text(
-                  'Nach unten verschieben',
-                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                ),
+                leading: Icon(Icons.arrow_downward, color: C.accent, size: 20),
+                title: Text('Nach unten verschieben', style: TextStyle(fontSize: 14, color: C.text)),
                 onTap: () {
                   Navigator.pop(context);
                   _viewModel.moveSceneDown(scene.id);
                 },
               ),
-              Divider(color: DnDTheme.stoneGrey),
+              Divider(color: C.border),
               ListTile(
-                leading: Icon(Icons.delete, color: DnDTheme.errorRed, size: 20),
-                title: Text(
-                  'Löschen',
-                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                ),
+                leading: Icon(Icons.delete, color: C.red, size: 20),
+                title: Text('Löschen', style: TextStyle(fontSize: 14, color: C.red)),
                 onTap: () {
                   Navigator.pop(context);
                   _showDeleteSceneConfirm(scene);
@@ -1701,12 +911,10 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   }
 
   void _showCreateSceneDialog() {
-    // Übergebe null und sessionId - der EditSceneViewModel erstellt die neue Scene
     _showEditSceneDialog(null, isCreate: true);
   }
 
   void _showEditSceneDialog(Scene? scene, {bool isCreate = false}) async {
-    // Repositories VOR dem Navigator aus dem Context lesen
     final sceneRepository = context.read<SceneModelRepository>();
     final creatureRepository = context.read<CreatureModelRepository>();
     final playerCharacterRepository = context.read<PlayerCharacterModelRepository>();
@@ -1714,8 +922,6 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     final soundRepository = context.read<SoundModelRepository>();
     final wikiEntryRepository = context.read<WikiEntryModelRepository>();
     final encounterRepository = context.read<EncounterModelRepository>();
-
-    // Für neue Scenes: sessionId übergeben, für existierende: nicht
     final sessionId = scene == null ? widget.session.id : null;
 
     final result = await Navigator.push<bool>(
@@ -1735,54 +941,41 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
               ),
             ),
           ],
-          child: EditSceneScreen(
-            scene: scene,
-            sessionId: sessionId,
-          ),
+          child: EditSceneScreen(scene: scene, sessionId: sessionId),
         ),
       ),
     );
 
     if (result == true) {
-      // Scene wurde gespeichert, Daten neu laden
       await _viewModel.triggerDataReload();
     }
   }
 
   void _showDeleteSceneConfirm(Scene scene) {
+    final C = context.appColors;
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
+        backgroundColor: C.bgPanel,
         title: Text(
           'Szene löschen?',
-          style: DnDTheme.headline3.copyWith(
-            color: DnDTheme.errorRed,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: C.red),
         ),
         content: Text(
           'Möchtest du "${scene.name}" wirklich löschen?',
-          style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+          style: TextStyle(fontSize: 14, color: C.text),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(
-                color: DnDTheme.mysticalPurple,
-              ),
-            ),
+            child: const Text('Abbrechen', style: TextStyle(color: Color(0xFF7C3AED))),
           ),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
               await _viewModel.deleteScene(scene.id);
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.errorRed,
-              foregroundColor: Colors.white,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: C.red, foregroundColor: Colors.white),
             child: const Text('Löschen'),
           ),
         ],
@@ -1793,131 +986,102 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   Widget _buildLiveNotesWidget(ActiveSessionViewModel viewModel) =>
       LiveNotesQuadrant(viewModel: viewModel);
 
-  Widget _buildFloatingActionButton() => Container(
-        decoration: DnDTheme.getMysticalBorder(
-          borderColor: DnDTheme.errorRed,
-          width: 3,
-        ),
-        child: FloatingActionButton.extended(
-          heroTag: 'active_session_fab',
-          onPressed: _startEncounter,
-          backgroundColor: DnDTheme.errorRed,
-          foregroundColor: Colors.white,
-          icon: const Icon(Icons.play_arrow),
-          label: const Text('Kampf'),
-        ),
-      );
 
-  Widget _buildErrorWidget(String error) => Center(
-        child: Container(
-          padding: const EdgeInsets.all(DnDTheme.lg),
-          decoration: DnDTheme.getDungeonWallDecoration(),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.error_outline,
-                color: DnDTheme.errorRed,
-                size: 48,
-              ),
-              const SizedBox(height: DnDTheme.md),
-              Text(
-                'Fehler',
-                style: DnDTheme.headline3.copyWith(
-                  color: DnDTheme.errorRed,
-                ),
-              ),
-              const SizedBox(height: DnDTheme.sm),
-              Text(
-                error,
-                style: DnDTheme.bodyText2.copyWith(
-                  color: Colors.white70,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: DnDTheme.md),
-              ElevatedButton.icon(
-                onPressed: () async {
-                  _viewModel.clearError();
-                  await _viewModel.triggerDataReload();
-                },
-                icon: const Icon(Icons.refresh),
-                label: const Text('Erneut versuchen'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: DnDTheme.arcaneBlue,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ],
-          ),
+
+  Widget _buildErrorWidget(String error) {
+    final C = context.appColors;
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: C.bgPanel,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: C.accent.withValues(alpha: 0.3)),
         ),
-      );
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, color: C.red, size: 48),
+            const SizedBox(height: 16),
+            Text(
+              'Fehler',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: C.red),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error,
+              style: TextStyle(fontSize: 13, color: C.textMid),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () async {
+                _viewModel.clearError();
+                await _viewModel.triggerDataReload();
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text('Erneut versuchen'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: C.accent,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Future<void> _handleMenuAction(String action) async {
     switch (action) {
       case 'edit_title':
         _showEditTitleDialog();
-        break;
       case 'add_time_15':
         await _viewModel.addInGameTime(15);
-        break;
       case 'add_time_30':
         await _viewModel.addInGameTime(30);
-        break;
       case 'add_time_60':
         await _viewModel.addInGameTime(60);
-        break;
     }
   }
 
   void _showEditTitleDialog() {
+    final C = context.appColors;
     final controller = TextEditingController(text: _viewModel.currentSession.title);
-
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
+        backgroundColor: C.bgPanel,
         title: Text(
           'Session-Titel bearbeiten',
-          style: DnDTheme.headline3.copyWith(
-            color: DnDTheme.ancientGold,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: C.amber),
         ),
         content: TextFormField(
           controller: controller,
-          style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+          style: TextStyle(color: C.text, fontSize: 14),
           decoration: InputDecoration(
             labelText: 'Titel',
-            labelStyle: DnDTheme.bodyText2.copyWith(
-              color: DnDTheme.ancientGold,
-            ),
+            labelStyle: TextStyle(color: C.amber),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-              borderSide: const BorderSide(color: DnDTheme.mysticalPurple),
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFF7C3AED)),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-              borderSide: BorderSide(
-                color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
-              ),
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: const Color(0xFF7C3AED).withValues(alpha: 0.5)),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-              borderSide: const BorderSide(color: DnDTheme.ancientGold, width: 2),
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: C.amber, width: 2),
             ),
             filled: true,
-            fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
+            fillColor: C.bgHover.withValues(alpha: 0.3),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(
-                color: DnDTheme.mysticalPurple,
-              ),
-            ),
+            child: const Text('Abbrechen', style: TextStyle(color: Color(0xFF7C3AED))),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -1925,8 +1089,8 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
               await _viewModel.updateSessionTitle(controller.text);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.ancientGold,
-              foregroundColor: DnDTheme.dungeonBlack,
+              backgroundColor: C.amber,
+              foregroundColor: C.bg,
             ),
             child: const Text('Speichern'),
           ),
@@ -1936,7 +1100,6 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   }
 
   Future<void> _startEncounter() async {
-    // Prüfe ob eine aktive Scene existiert
     final activeSceneId = _viewModel.currentSession.activeSceneId;
     if (activeSceneId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1948,33 +1111,22 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
       );
       return;
     }
-
-    // Finde die aktive Scene
     final activeScene = _viewModel.scenes.firstWhere(
       (scene) => scene.id == activeSceneId,
       orElse: () => throw Exception('Scene nicht gefunden'),
     );
-
-    // Lade den verknüpften Encounter um den Titel zu erhalten
     String? encounterTitle;
-
     if (activeScene.linkedEncounterId != null && activeScene.linkedEncounterId!.isNotEmpty) {
       try {
         final encounterRepo = context.read<EncounterModelRepository>();
         final encounter = await encounterRepo.findById(activeScene.linkedEncounterId!);
-        if (encounter != null) {
-          encounterTitle = encounter.title;
-        }
+        if (encounter != null) encounterTitle = encounter.title;
       } catch (e) {
         debugPrint('Fehler beim Laden des Encounters: $e');
       }
     }
-
-    // Falls kein Encounter-Titel vorhanden, verwende Szenen-Namen
     encounterTitle ??= activeScene.name;
-
     if (!mounted) return;
-
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         builder: (ctx) => encounter_setup.EncounterSetupScreen(
@@ -1988,28 +1140,19 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     );
   }
 
-  /// Startet einen Encounter für eine spezifische Scene (aus Combat-Szene)
   Future<void> _startEncounterForScene(Scene scene) async {
-    // Lade den verknüpften Encounter um den Titel zu erhalten
     String? encounterTitle;
-
     if (scene.linkedEncounterId != null && scene.linkedEncounterId!.isNotEmpty) {
       try {
         final encounterRepo = context.read<EncounterModelRepository>();
         final encounter = await encounterRepo.findById(scene.linkedEncounterId!);
-        if (encounter != null) {
-          encounterTitle = encounter.title;
-        }
+        if (encounter != null) encounterTitle = encounter.title;
       } catch (e) {
         debugPrint('Fehler beim Laden des Encounters: $e');
       }
     }
-
-    // Falls kein Encounter-Titel vorhanden, verwende Szenen-Namen
     encounterTitle ??= scene.name;
-
     if (!mounted) return;
-
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         builder: (ctx) => encounter_setup.EncounterSetupScreen(

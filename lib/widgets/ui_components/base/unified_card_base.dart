@@ -1,21 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../../theme/app_theme.dart';
 
-/// Abstrakte Basisklasse für alle Card-Widgets
-/// 
-/// Stellt gemeinsame Layout-Logik und Standard-Styling bereit
+/// Abstrakte Basisklasse für alle Card-Widgets.
+/// Neue Optik: weißes/dunkles Panel, 1px Border, 8px Radius, kein Schatten.
 abstract class UnifiedCardBase extends StatelessWidget {
-  /// Konfiguration für die Card
-  final VoidCallback? onTap;
-  final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
-  final VoidCallback? onToggleFavorite;
-  final bool isFavorite;
-  final bool isSelected;
-  final bool showActions;
-  final double? elevation;
-  final EdgeInsets? margin;
-  final double borderRadius;
-
   const UnifiedCardBase({
     super.key,
     this.onTap,
@@ -27,45 +15,53 @@ abstract class UnifiedCardBase extends StatelessWidget {
     this.showActions = true,
     this.elevation,
     this.margin,
-    this.borderRadius = 12.0,
+    this.borderRadius = 8.0,
   });
 
-  /// Baut den Card-Inhalt - muss von Unterklassen implementiert werden
+  final VoidCallback? onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+  final VoidCallback? onToggleFavorite;
+  final bool isFavorite;
+  final bool isSelected;
+  final bool showActions;
+  final double? elevation;
+  final EdgeInsets? margin;
+  final double borderRadius;
+
   Widget buildCardContent(BuildContext context);
 
-  /// Baut optionale benutzerdefinierte trailing Widgets
   Widget? buildCustomTrailing(BuildContext context) => null;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: elevation ?? (isSelected ? 8 : 2),
-      margin: margin ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      shape: RoundedRectangleBorder(
+    final C = context.appColors;
+
+    return Container(
+      margin: margin ?? EdgeInsets.zero,
+      decoration: BoxDecoration(
+        color: C.bgPanel,
+        border: Border.all(
+          color: isSelected ? C.accent : C.border,
+          width: isSelected ? 1.5 : 1,
+        ),
         borderRadius: BorderRadius.circular(borderRadius),
-        side: isSelected
-            ? BorderSide(
-                color: getAccentColor(context),
-                width: 2,
-              )
-            : BorderSide.none,
       ),
-      child: InkWell(
-        onTap: onTap,
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(borderRadius),
-        child: buildCardContent(context),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(borderRadius),
+          hoverColor: C.bgHover,
+          child: buildCardContent(context),
+        ),
       ),
     );
   }
 
-  /// Gibt die Akzentfarbe für diese Card zurück
-  Color getAccentColor(BuildContext context) {
-    return Theme.of(context).primaryColor;
-  }
+  Color getAccentColor(BuildContext context) =>
+      context.appColors.accent;
 
-  /// Standard-Padding für Card-Inhalte
-  static const double defaultPadding = 16.0;
-
-  /// Standard-Spacing zwischen Elementen
+  static const double defaultPadding = 14.0;
   static const double defaultSpacing = 8.0;
 }

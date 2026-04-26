@@ -7,13 +7,14 @@ import '../../database/repositories/sound_model_repository.dart';
 import '../../models/sound.dart';
 import '../../models/scene_sound_link.dart';
 import '../../viewmodels/sound_library_viewmodel.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 import '../../widgets/ui_components/states/loading_state_widget.dart';
 import '../../widgets/ui_components/feedback/snackbar_helper.dart';
 
 class AddSoundToSceneScreen extends StatefulWidget {
-  final String sceneId;
   const AddSoundToSceneScreen({super.key, required this.sceneId});
+
+  final String sceneId;
 
   @override
   State<AddSoundToSceneScreen> createState() => _AddSoundToSceneScreenState();
@@ -52,11 +53,7 @@ class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
 
   Future<void> _deleteSceneSoundLink(String linkId) async {
     final db = await DatabaseConnection.instance.database;
-    await db.delete(
-      'scene_sound_links',
-      where: 'id = ?',
-      whereArgs: [linkId],
-    );
+    await db.delete('scene_sound_links', where: 'id = ?', whereArgs: [linkId]);
   }
 
   Future<void> _previewSound(Sound sound) async {
@@ -66,110 +63,103 @@ class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return ChangeNotifierProvider<SoundLibraryViewModel>(
       create: (context) => SoundLibraryViewModel(),
       builder: (context, viewModel) {
         return FutureBuilder(
           future: _soundRepository.findAll(),
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.done) {
-              if (snapshot.hasError) {
-                return Center(child: Text('Fehler: ${snapshot.error}'));
-              }
-
-              final sounds = snapshot.data ?? [];
-
-              return FutureBuilder(
-                future: _getAllSceneSoundLinks(),
-                builder: (context, linksSnapshot) {
-                  if (linksSnapshot.connectionState == ConnectionState.done) {
-                    if (linksSnapshot.hasError) {
-                      return Center(child: Text('Fehler: ${linksSnapshot.error}'));
-                    }
-
-                    final sceneLinks = linksSnapshot.data ?? [];
-
-                    return Scaffold(
-                      appBar: AppBar(
-                        title: const Text('Sound zur Szene hinzufügen'),
-                        backgroundColor: DnDTheme.stoneGrey,
-                      ),
-                      body: Column(
-                        children: [
-                          if (sceneLinks.isNotEmpty) ...[
-                            Container(
-                              margin: const EdgeInsets.all(8),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: DnDTheme.slateGrey,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: DnDTheme.charcoalGrey),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Bereits existierende Sounds:',
-                                    style: Theme.of(context).textTheme.titleSmall,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  ...sceneLinks.map((link) {
-                                    final sound = sounds.firstWhere(
-                                      (s) => s.id == link.soundId,
-                                      orElse: () => sounds.first,
-                                    );
-                                    return Container(
-                                      margin: const EdgeInsets.only(bottom: 8),
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              sound.name,
-                                              style: Theme.of(context).textTheme.bodyMedium,
-                                            ),
-                                          ),
-                                          Text(
-                                            ' (Lautstärke: ${link.volume})',
-                                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                              color: DnDTheme.charcoalGrey,
-                                            ),
-                                          ),
-                                          IconButton(
-                                            icon: const Icon(Icons.delete),
-                                            onPressed: () async {
-                                              await _deleteSceneSoundLink(link.id);
-                                              setState(() {});
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }),
-                                ],
-                              ),
-                            ),
-                          ],
-                          Expanded(
-                            child: buildSoundSelectionSection(sounds),
-                          ),
-                        ],
-                      ),
-                    );
-                  } else {
-                    return const LoadingStateWidget();
-                  }
-                },
-              );
-            } else {
+            if (snapshot.connectionState != ConnectionState.done) {
               return const LoadingStateWidget();
             }
+            if (snapshot.hasError) {
+              return Center(child: Text('Fehler: ${snapshot.error}'));
+            }
+            final sounds = snapshot.data ?? [];
+            return FutureBuilder(
+              future: _getAllSceneSoundLinks(),
+              builder: (context, linksSnapshot) {
+                if (linksSnapshot.connectionState != ConnectionState.done) {
+                  return const LoadingStateWidget();
+                }
+                if (linksSnapshot.hasError) {
+                  return Center(child: Text('Fehler: ${linksSnapshot.error}'));
+                }
+                final sceneLinks = linksSnapshot.data ?? [];
+                return Scaffold(
+                  appBar: AppBar(
+                    title: const Text('Sound zur Szene hinzufügen'),
+                    backgroundColor: C.bgPanel,
+                  ),
+                  body: Column(
+                    children: [
+                      if (sceneLinks.isNotEmpty)
+                        Container(
+                          margin: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: C.bgHover,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: C.border),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Bereits existierende Sounds:',
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                              const SizedBox(height: 8),
+                              ...sceneLinks.map((link) {
+                                final sound = sounds.firstWhere(
+                                  (s) => s.id == link.soundId,
+                                  orElse: () => sounds.first,
+                                );
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          sound.name,
+                                          style: Theme.of(context).textTheme.bodyMedium,
+                                        ),
+                                      ),
+                                      Text(
+                                        ' (Lautstärke: ${link.volume})',
+                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                          color: C.textSoft,
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete),
+                                        onPressed: () async {
+                                          await _deleteSceneSoundLink(link.id);
+                                          setState(() {});
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
+                        ),
+                      Expanded(child: _buildSoundSelectionSection(sounds)),
+                    ],
+                  ),
+                );
+              },
+            );
           },
         );
       },
     );
   }
 
-  Widget buildSoundSelectionSection(List<Sound> sounds) {
+  Widget _buildSoundSelectionSection(List<Sound> sounds) {
+    final C = context.appColors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -182,7 +172,6 @@ class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
         ),
         Expanded(
           child: ListView.builder(
-            shrinkWrap: true,
             itemCount: sounds.length,
             itemBuilder: (context, index) {
               final sound = sounds[index];
@@ -197,7 +186,6 @@ class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
                     );
                     await _insertSceneSoundLink(newLink);
                     setState(() {});
-
                     if (mounted) {
                       SnackBarHelper.showSuccess(context, '${sound.name} zur Szene hinzugefügt');
                     }
@@ -206,11 +194,7 @@ class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
                     padding: const EdgeInsets.all(12),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.music_note,
-                          color: Theme.of(context).colorScheme.primary,
-                          size: 20,
-                        ),
+                        Icon(Icons.music_note, color: C.accent, size: 20),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
@@ -228,7 +212,7 @@ class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
                               Text(
                                 sound.soundType.toString().split('.').last,
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: DnDTheme.charcoalGrey,
+                                  color: C.textSoft,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -238,7 +222,7 @@ class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
                         ),
                         IconButton(
                           icon: const Icon(Icons.volume_up),
-                          tooltip: "Vorschau",
+                          tooltip: 'Vorschau',
                           onPressed: () => _previewSound(sound),
                         ),
                       ],

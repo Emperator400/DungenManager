@@ -1,25 +1,19 @@
 import 'package:flutter/material.dart';
 import '../../models/creature.dart';
+import '../../models/official_monster.dart';
 import '../../models/player_character.dart';
+import '../../theme/app_theme.dart';
+import '../../viewmodels/character_editor_viewmodel.dart';
+import '../../widgets/character_editor/character_editor_controller.dart' show CharacterType;
+import '../../widgets/character_editor/character_inventory_handler.dart';
+import '../../widgets/character_editor/character_tab_manager.dart';
 import '../../widgets/character_editor/enhanced_character_editor_controller.dart'
     show EnhancedCharacterEditorController;
-import '../../widgets/character_editor/character_editor_controller.dart'
-    show CharacterType;
-import '../../viewmodels/character_editor_viewmodel.dart';
-import '../../widgets/character_editor/character_tab_manager.dart';
-import '../../widgets/character_editor/character_inventory_handler.dart';
-import '../bestiary/official_monsters_screen.dart';
-import '../../models/official_monster.dart';
-import '../../theme/dnd_theme.dart';
 import '../../widgets/ui_components/feedback/snackbar_helper.dart';
 import '../../widgets/ui_components/states/loading_state_widget.dart';
+import '../bestiary/official_monsters_screen.dart';
 
 class UnifiedCharacterEditorScreen extends StatefulWidget {
-  final CharacterType characterType;
-  final String? campaignId; // Nur für Player Characters benötigt
-  final Creature? creatureToEdit;
-  final PlayerCharacter? pcToEdit;
-  
   const UnifiedCharacterEditorScreen({
     super.key,
     required this.characterType,
@@ -28,13 +22,18 @@ class UnifiedCharacterEditorScreen extends StatefulWidget {
     this.pcToEdit,
   });
 
+  final CharacterType characterType;
+  final String? campaignId;
+  final Creature? creatureToEdit;
+  final PlayerCharacter? pcToEdit;
+
   @override
-  State<UnifiedCharacterEditorScreen> createState() => _UnifiedCharacterEditorScreenState();
+  State<UnifiedCharacterEditorScreen> createState() =>
+      _UnifiedCharacterEditorScreenState();
 }
 
-class _UnifiedCharacterEditorScreenState extends State<UnifiedCharacterEditorScreen> 
+class _UnifiedCharacterEditorScreenState extends State<UnifiedCharacterEditorScreen>
     with TickerProviderStateMixin {
-  
   late EnhancedCharacterEditorController _controller;
   late CharacterTabManager _tabManager;
   late CharacterInventoryHandler _inventoryHandler;
@@ -49,20 +48,13 @@ class _UnifiedCharacterEditorScreenState extends State<UnifiedCharacterEditorScr
   }
 
   void _initializeComponents() {
-    // ViewModel erstellen
     final viewModel = CharacterEditorViewModel();
-    
-    // Vorhandene Character laden (falls vorhanden)
     if (widget.pcToEdit != null) {
       viewModel.initWithPlayerCharacter(widget.pcToEdit!.id);
     } else if (widget.creatureToEdit != null) {
       viewModel.initWithCreature(widget.creatureToEdit!.id);
-    } else {
-      // Neuen Character vorbereiten - ViewModel ist schon im richtigen Zustand
-      // Die initialen Werte werden vom Controller geladen
     }
-    
-    // Controller initialisieren
+
     _controller = EnhancedCharacterEditorController(
       characterType: widget.characterType,
       campaignId: widget.campaignId,
@@ -70,14 +62,12 @@ class _UnifiedCharacterEditorScreenState extends State<UnifiedCharacterEditorScr
     );
     _controller.initializeControllers();
 
-    // Inventory Handler initialisieren (vor Tab Manager)
     _inventoryHandler = CharacterInventoryHandler(
       controller: _controller,
       context: context,
       onInventoryChanged: () => setState(() {}),
     );
 
-    // Tab Manager initialisieren
     _tabManager = CharacterTabManager(
       controller: _controller,
       vsync: this,
@@ -86,29 +76,18 @@ class _UnifiedCharacterEditorScreenState extends State<UnifiedCharacterEditorScr
       inventoryHandler: _inventoryHandler,
     );
 
-    // Tab Controller erstellen
     _tabController = _tabManager.createTabController();
-
-    // Inventar laden
     _loadInventory();
   }
 
   Future<void> _loadInventory() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
     try {
       await _controller.loadInventory();
     } catch (e) {
-      if (mounted) {
-        SnackBarHelper.showError(context, 'Fehler beim Laden des Inventars: $e');
-      }
+      if (mounted) SnackBarHelper.showError(context, 'Fehler beim Laden des Inventars: $e');
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -116,31 +95,21 @@ class _UnifiedCharacterEditorScreenState extends State<UnifiedCharacterEditorScr
     if (_formKey.currentState?.validate() == true) {
       try {
         await _controller.saveForm();
-        if (mounted && context.mounted) {
-          Navigator.of(context).pop();
-        }
+        if (mounted) Navigator.of(context).pop();
       } catch (e) {
-        if (mounted && context.mounted) {
-          SnackBarHelper.showError(context, 'Fehler beim Speichern: $e');
-        }
+        if (mounted) SnackBarHelper.showError(context, 'Fehler beim Speichern: $e');
       }
     }
   }
 
   Future<void> _importFromOfficialMonster() async {
     final selectedMonster = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (ctx) => const OfficialMonstersScreen(),
-      ),
+      MaterialPageRoute(builder: (ctx) => const OfficialMonstersScreen()),
     );
-
     if (selectedMonster != null && selectedMonster is OfficialMonster && mounted) {
       _controller.importFromOfficialMonster(selectedMonster);
       setState(() {});
-      
-      if (mounted && context.mounted) {
-        SnackBarHelper.showSuccess(context, '${selectedMonster.name} wurde importiert');
-      }
+      SnackBarHelper.showSuccess(context, '${selectedMonster.name} wurde importiert');
     }
   }
 
@@ -153,76 +122,43 @@ class _UnifiedCharacterEditorScreenState extends State<UnifiedCharacterEditorScr
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Scaffold(
-      backgroundColor: DnDTheme.dungeonBlack,
+      backgroundColor: C.bg,
       appBar: AppBar(
+        backgroundColor: C.bgPanel,
         title: Text(
           _tabManager.getScreenTitle(),
-          style: DnDTheme.headline2.copyWith(
-            color: DnDTheme.ancientGold,
-          ),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: C.amber),
         ),
         bottom: TabBar(
           controller: _tabController,
-          labelColor: DnDTheme.ancientGold,
-          unselectedLabelColor: DnDTheme.mysticalPurple.withValues(alpha: 0.7),
-          indicatorColor: DnDTheme.ancientGold,
+          labelColor: C.amber,
+          unselectedLabelColor: C.textMid,
+          indicatorColor: C.amber,
           indicatorWeight: 3,
           tabs: _tabManager.getTabs(),
         ),
         actions: [
           if (widget.characterType != CharacterType.player)
-            Container(
-              margin: const EdgeInsets.only(right: DnDTheme.sm),
-              decoration: DnDTheme.getMysticalBorder(
-                borderColor: DnDTheme.arcaneBlue,
-                width: 2,
-              ),
-              child: IconButton(
-                icon: Icon(
-                  Icons.download,
-                  color: DnDTheme.arcaneBlue,
-                ),
-                onPressed: _importFromOfficialMonster,
-                tooltip: 'Aus offiziellem Monster importieren',
-              ),
+            IconButton(
+              icon: Icon(Icons.download, color: C.accent),
+              onPressed: _importFromOfficialMonster,
+              tooltip: 'Aus offiziellem Monster importieren',
             ),
-          Container(
-            margin: const EdgeInsets.only(right: DnDTheme.sm),
-            decoration: DnDTheme.getMysticalBorder(
-              borderColor: DnDTheme.successGreen,
-              width: 2,
-            ),
-            child: IconButton(
-              icon: Icon(
-                Icons.save,
-                color: DnDTheme.successGreen,
-              ),
-              onPressed: _saveForm,
-              tooltip: 'Speichern',
-            ),
+          IconButton(
+            icon: Icon(Icons.save, color: C.green),
+            onPressed: _saveForm,
+            tooltip: 'Speichern',
           ),
         ],
       ),
       body: _isLoading
           ? const LoadingStateWidget()
-          : Container(
-              decoration: BoxDecoration(
-                gradient: DnDTheme.getMysticalGradient(
-                  startColor: DnDTheme.dungeonBlack,
-                  endColor: DnDTheme.stoneGrey,
-                ),
-              ),
-              child: TabBarView(
-                controller: _tabController,
-                children: _buildTabViews(),
-              ),
+          : TabBarView(
+              controller: _tabController,
+              children: _tabManager.getTabViews(),
             ),
     );
   }
-
-  List<Widget> _buildTabViews() {
-    return _tabManager.getTabViews();
-  }
-
 }

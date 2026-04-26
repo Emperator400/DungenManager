@@ -1,369 +1,449 @@
 import 'package:flutter/material.dart';
-import '../../../models/campaign.dart';
-import '../../../viewmodels/campaign_viewmodel.dart';
-import '../base/unified_card_base.dart';
-import '../base/card_content_widget.dart';
-import '../base/card_metadata_widget.dart';
-import '../shared/unified_card_theme.dart';
 
-/// Unified Campaign Card
-/// 
-/// Kampagnen-Card mit vollständiger Logik
-/// - Delete: Dialog + Operation über ViewModel
-/// - Edit/Duplicate/ToggleActive: Callbacks vom Screen
+import '../../../models/campaign.dart';
+import '../../../theme/app_theme.dart';
+import '../../../viewmodels/campaign_viewmodel.dart';
+import '../../../widgets/ui_components/shared/app_icon.dart';
+import '../base/unified_card_base.dart';
+
 class UnifiedCampaignCard extends UnifiedCardBase {
+  const UnifiedCampaignCard({
+    required this.campaign,
+    required this.viewModel,
+    super.key,
+    this.onNavigate,
+    super.onEdit,
+    this.onDuplicate,
+    super.onToggleFavorite,
+    super.isSelected,
+  });
+
   final Campaign campaign;
   final CampaignViewModel viewModel;
   final VoidCallback? onNavigate;
-  final VoidCallback? onEdit;
   final VoidCallback? onDuplicate;
-  final VoidCallback? onToggleFavorite;
-
-  const UnifiedCampaignCard({
-    super.key,
-    required this.campaign,
-    required this.viewModel,
-    this.onNavigate,
-    this.onEdit,
-    this.onDuplicate,
-    this.onToggleFavorite,
-    super.onTap,
-    super.isSelected,
-    super.showActions,
-  });
-
-  /// Prüft ob die Kampagne als Favorit markiert ist
-  bool get isFavorite => campaign.isFavorite;
 
   @override
-  Widget buildCardContent(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return InkWell(
-      onTap: onTap ?? () => _navigateToCampaign(context),
-      child: Padding(
-        padding: const EdgeInsets.all(UnifiedCardBase.defaultPadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Prominenter Icon Header
-            Row(
-              children: [
-                // Großes Icon mit Hintergrund
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: UnifiedCardTheme.getIconBackgroundColor('campaign'),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: UnifiedCardTheme.getIconBackgroundColor('campaign').withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Icon(
-                      Icons.campaign,
-                      size: 36,
-                      color: UnifiedCardTheme.getIconColor('campaign'),
+  Widget buildCardContent(BuildContext context) =>
+      _CampaignCardContent(card: this);
+}
+
+// ── CARD CONTENT (StatefulWidget für Hover) ───────────────────────────────────
+
+class _CampaignCardContent extends StatefulWidget {
+  const _CampaignCardContent({required this.card});
+
+  final UnifiedCampaignCard card;
+
+  @override
+  State<_CampaignCardContent> createState() => _CampaignCardContentState();
+}
+
+class _CampaignCardContentState extends State<_CampaignCardContent> {
+  bool _hovered = false;
+
+  UnifiedCampaignCard get c => widget.card;
+
+  @override
+  Widget build(BuildContext context) {
+    final C = context.appColors;
+    final stats = c.viewModel.getStatsForCampaign(c.campaign.id);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: c.onNavigate ?? c.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          color: _hovered ? C.bgHover : C.bgPanel,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Farbstreifen
+              Container(height: 3, color: C.accent),
+
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Avatar
+                        _Avatar(
+                          letter: c.campaign.title.isNotEmpty
+                              ? c.campaign.title[0].toUpperCase()
+                              : '?',
+                          color: C.accent,
+                          bg: C.accentSoft,
+                        ),
+                        const SizedBox(width: 10),
+                        // Titel + Status
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                c.campaign.title,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: C.text,
+                                  height: 1.2,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              _StatusBadge(
+                                status: c.campaign.statusDescription,
+                                C: C,
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Aktionen (bei Hover)
+                        if (_hovered) ...[
+                          _IconBtn(
+                            C: C,
+                            icon: AppIconName.edit,
+                            onTap: c.onEdit,
+                          ),
+                          const SizedBox(width: 2),
+                          _PopupBtn(card: c, C: C),
+                        ],
+                      ],
                     ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                
-                // Titel und Info rechts daneben
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+
+                    // Beschreibung
+                    if (c.campaign.description.isNotEmpty) ...[
+                      const SizedBox(height: 8),
                       Text(
-                        campaign.title,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
+                        c.campaign.description,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: C.textMid,
+                          height: 1.5,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _buildSubtitle(),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[600],
-                          fontSize: 13,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Builder(
-                        builder: (context) {
-                          // Hole dynamische Statistiken aus dem ViewModel
-                          final stats = viewModel.getStatsForCampaign(campaign.id);
-                          return Wrap(
-                            spacing: 8,
-                            children: [
-                              _buildInfoChip(
-                                Icons.people,
-                                '${stats['heroCount'] ?? 0}',
-                              ),
-                              _buildInfoChip(
-                                Icons.calendar_today,
-                                '${stats['sessionCount'] ?? 0}',
-                              ),
-                              _buildInfoChip(
-                                Icons.assessment,
-                                '${stats['questCount'] ?? 0}',
-                              ),
-                            ],
-                          );
-                        },
-                      ),
                     ],
-                  ),
-                ),
-                
-                // Favorit-Stern
-                if (onToggleFavorite != null)
-                  IconButton(
-                    onPressed: onToggleFavorite,
-                    icon: Icon(
-                      isFavorite ? Icons.star : Icons.star_border,
-                      color: isFavorite ? Colors.amber : Colors.grey[600],
-                      size: 24,
+
+                    // Meta-Zeile
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        _MetaChip(
+                          icon: AppIconName.user,
+                          value: '${stats['heroCount'] ?? 0}',
+                          C: C,
+                        ),
+                        const SizedBox(width: 10),
+                        _MetaChip(
+                          icon: AppIconName.play,
+                          value: '${stats['sessionCount'] ?? 0}',
+                          C: C,
+                        ),
+                        const SizedBox(width: 10),
+                        _MetaChip(
+                          icon: AppIconName.scroll,
+                          value: '${stats['questCount'] ?? 0}',
+                          C: C,
+                        ),
+                        const Spacer(),
+                        Text(
+                          _formatDate(c.campaign.createdAt),
+                          style: TextStyle(fontSize: 10, color: C.textSoft),
+                        ),
+                      ],
                     ),
-                    tooltip: isFavorite ? 'Als Favorit entfernen' : 'Als Favorit markieren',
-                  ),
-                
-                // Einzelne Aktions-Schaltfläche
-                PopupMenuButton<String>(
-                  icon: Icon(
-                    Icons.more_vert,
-                    size: 28,
-                    color: Colors.grey[700],
-                  ),
-                  onSelected: (value) => _handlePopupMenuAction(context, value),
-                  itemBuilder: (context) => _buildAllMenuItems(context),
+                  ],
                 ),
-              ],
-            ),
-            
-            const SizedBox(height: UnifiedCardBase.defaultSpacing),
-            
-            // Content
-            if (campaign.description.isNotEmpty)
-              CardContentWidget(
-                description: campaign.description,
-                descriptionMaxLines: 2,
               ),
-            
-            const SizedBox(height: UnifiedCardBase.defaultSpacing),
-            
-            // Metadata
-            Builder(
-              builder: (context) {
-                final stats = viewModel.getStatsForCampaign(campaign.id);
-                return CardMetadataWidget(
-                  createdAt: campaign.createdAt,
-                  updatedAt: campaign.updatedAt,
-                  status: campaign.statusDescription,
-                  itemCount: stats['questCount'] ?? 0,
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _buildSubtitle() {
-    return '${campaign.typeDescription} • ${campaign.statusDescription}';
-  }
-
-  Widget _buildInfoChip(IconData icon, String text) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 12, color: Colors.grey[600]),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 11,
-            color: Colors.grey[700],
-            fontWeight: FontWeight.w500,
+            ],
           ),
         ),
-      ],
-    );
-  }
-
-  List<PopupMenuEntry<String>> _buildAllMenuItems(BuildContext context) {
-    return <PopupMenuEntry<String>>[
-      const PopupMenuItem(
-        value: 'edit',
-        child: Row(
-          children: [
-            Icon(Icons.edit, size: 18),
-            SizedBox(width: 12),
-            Text('Bearbeiten'),
-          ],
-        ),
-      ),
-      const PopupMenuItem(
-        value: 'duplicate',
-        child: Row(
-          children: [
-            Icon(Icons.copy, size: 18),
-            SizedBox(width: 12),
-            Text('Duplizieren'),
-          ],
-        ),
-      ),
-      const PopupMenuDivider(),
-      PopupMenuItem(
-        value: 'delete',
-        child: Row(
-          children: [
-            Icon(
-              Icons.delete,
-              size: 18,
-              color: UnifiedCardTheme.deleteActionColor,
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Löschen',
-              style: TextStyle(color: UnifiedCardTheme.deleteActionColor),
-            ),
-          ],
-        ),
-      ),
-    ];
-  }
-
-  void _handlePopupMenuAction(BuildContext context, String action) {
-    switch (action) {
-      case 'edit':
-        if (onEdit != null) {
-          onEdit!();
-        } else {
-          _showNotImplementedMessage(context, 'Bearbeiten');
-        }
-        break;
-      case 'duplicate':
-        if (onDuplicate != null) {
-          onDuplicate!();
-        } else {
-          _duplicateCampaign(context);
-        }
-        break;
-      case 'delete':
-        _showDeleteConfirmationDialog(context);
-        break;
-      default:
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Aktion: $action')),
-        );
-    }
-  }
-
-  /// Navigation zur Kampagne
-  void _navigateToCampaign(BuildContext context) async {
-    if (onNavigate != null) {
-      onNavigate!();
-    }
-  }
-
-  /// Zeigt eine Nachricht für noch nicht implementierte Funktionen
-  void _showNotImplementedMessage(BuildContext context, String action) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$action... (noch nicht implementiert)')),
-    );
-  }
-
-  /// Kampagne duplizieren
-  Future<void> _duplicateCampaign(BuildContext context) async {
-    try {
-      await viewModel.duplicateCampaign(campaign);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Kampagne dupliziert'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fehler beim Duplizieren: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  /// Kampagne löschen
-  Future<void> _deleteCampaign() async {
-    try {
-      await viewModel.deleteCampaign(campaign);
-    } catch (e) {
-      // Error handling wird vom ViewModel übernommen
-    }
-  }
-
-
-  /// Zeigt den Delete-Bestätigungsdialog an
-  void _showDeleteConfirmationDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(
-          'Kampagne löschen',
-          style: TextStyle(
-            color: Color.fromARGB(255, 134, 37, 37),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Text(
-          'Möchtest du die Kampagne "${campaign.title}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
-          style: const TextStyle(color: Colors.white70),
-        ),
-        backgroundColor: const Color(0xFF2A2A2A),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(
-            color: Color.fromARGB(255, 134, 37, 37),
-            width: 1,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.white70,
-            ),
-            child: const Text('Abbrechen'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              await _deleteCampaign();
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: const Color.fromARGB(255, 134, 37, 37),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text('Löschen'),
-          ),
-        ],
       ),
     );
   }
 }
+
+// ── POPUP MENU ────────────────────────────────────────────────────────────────
+
+class _PopupBtn extends StatelessWidget {
+  const _PopupBtn({required this.card, required this.C});
+
+  final UnifiedCampaignCard card;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) => PopupMenuButton<String>(
+        tooltip: '',
+        color: C.bgPanel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: C.border),
+        ),
+        offset: const Offset(0, 30),
+        onSelected: (v) => _handle(context, v),
+        itemBuilder: (_) => [
+          _item('duplicate', AppIconName.copy, 'Duplizieren', C),
+          _item('delete', AppIconName.trash, 'Löschen', C, color: C.red),
+        ],
+        child: Container(
+          width: 26,
+          height: 26,
+          decoration: BoxDecoration(
+            color: C.bgHover,
+            borderRadius: BorderRadius.circular(5),
+          ),
+          child: Center(
+            child: AppIcon(AppIconName.dots, size: 12, color: C.textSoft),
+          ),
+        ),
+      );
+
+  PopupMenuItem<String> _item(
+    String value,
+    AppIconName icon,
+    String label,
+    AppColorsExtension C, {
+    Color? color,
+  }) =>
+      PopupMenuItem(
+        value: value,
+        child: Row(
+          children: [
+            AppIcon(icon, size: 13, color: color ?? C.textMid),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(fontSize: 13, color: color ?? C.text),
+            ),
+          ],
+        ),
+      );
+
+  void _handle(BuildContext context, String action) {
+    switch (action) {
+      case 'duplicate':
+        card.onDuplicate?.call();
+      case 'delete':
+        _showDeleteDialog(context);
+    }
+  }
+
+  Future<void> _showDeleteDialog(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => _DeleteDialog(title: card.campaign.title, C: C),
+    );
+    if ((confirmed ?? false) && context.mounted) {
+      try {
+        await card.viewModel.deleteCampaign(card.campaign);
+      } catch (_) {}
+    }
+  }
+}
+
+class _DeleteDialog extends StatelessWidget {
+  const _DeleteDialog({required this.title, required this.C});
+
+  final String title;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) => Dialog(
+        backgroundColor: C.bgPanel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: C.border),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Kampagne löschen',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: C.red,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Möchtest du "$title" wirklich löschen? '
+                'Diese Aktion kann nicht rückgängig gemacht werden.',
+                style: TextStyle(fontSize: 13, color: C.textMid),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: C.border),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                    ),
+                    child: Text(
+                      'Abbrechen',
+                      style: TextStyle(color: C.textMid, fontSize: 13),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: C.red,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                    ),
+                    child: const Text('Löschen', style: TextStyle(fontSize: 13)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+}
+
+// ── HILFSWIDGETS ──────────────────────────────────────────────────────────────
+
+class _Avatar extends StatelessWidget {
+  const _Avatar({
+    required this.letter,
+    required this.color,
+    required this.bg,
+  });
+
+  final String letter;
+  final Color color;
+  final Color bg;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: bg,
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Center(
+          child: Text(
+            letter,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ),
+      );
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.status, required this.C});
+
+  final String status;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = _fg();
+    final bg = _bg();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: fg),
+      ),
+    );
+  }
+
+  Color _fg() {
+    final s = status.toLowerCase();
+    if (s.contains('aktiv')) {
+      return C.green;
+    }
+    if (s.contains('archiv')) {
+      return C.textSoft;
+    }
+    return C.amber;
+  }
+
+  Color _bg() {
+    final s = status.toLowerCase();
+    if (s.contains('aktiv')) {
+      return C.greenSoft;
+    }
+    if (s.contains('archiv')) {
+      return C.bgHover;
+    }
+    return C.amberSoft;
+  }
+}
+
+class _MetaChip extends StatelessWidget {
+  const _MetaChip({required this.icon, required this.value, required this.C});
+
+  final AppIconName icon;
+  final String value;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppIcon(icon, size: 11, color: C.textSoft),
+          const SizedBox(width: 3),
+          Text(
+            value,
+            style: TextStyle(fontSize: 11, color: C.textSoft),
+          ),
+        ],
+      );
+}
+
+class _IconBtn extends StatelessWidget {
+  const _IconBtn({required this.C, required this.icon, this.onTap});
+
+  final AppColorsExtension C;
+  final AppIconName icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 26,
+          height: 26,
+          decoration: BoxDecoration(
+            color: C.bgActive,
+            borderRadius: BorderRadius.circular(5),
+          ),
+          child: Center(
+            child: AppIcon(icon, size: 12, color: C.textSoft),
+          ),
+        ),
+      );
+}
+
+String _formatDate(DateTime date) =>
+    '${date.day}.${date.month}.${date.year}';

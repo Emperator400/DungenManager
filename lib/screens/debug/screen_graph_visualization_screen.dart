@@ -1,10 +1,9 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 import '../../models/screen_node.dart';
 import '../../services/screen_graph_service.dart';
 
-/// Screen für die interaktive Visualisierung aller Screens und ihrer Navigation-Verbindungen
 class ScreenGraphVisualizationScreen extends StatefulWidget {
   const ScreenGraphVisualizationScreen({super.key});
 
@@ -19,6 +18,9 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
   bool _showConnections = true;
   bool _showParameters = true;
   String _selectedScreen = '';
+
+  static const Color _warningOrange = Color(0xFFEA580C);
+  static const Color _mysticalPurple = Color(0xFF7C3AED);
 
   @override
   void initState() {
@@ -44,112 +46,73 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Scaffold(
-      backgroundColor: DnDTheme.dungeonBlack,
+      backgroundColor: C.bg,
       appBar: _buildAppBar(context),
       body: Column(
         children: [
           _buildFilterBar(context),
           Expanded(
             child: _screens.isEmpty
-                ? _buildLoadingIndicator()
+                ? _buildLoadingIndicator(C)
                 : Row(
                     children: [
-                      Expanded(
-                        child: _buildGraphArea(),
-                      ),
-                      if (_selectedScreen.isNotEmpty) _buildScreenDetails(),
+                      Expanded(child: _buildGraphArea(context)),
+                      if (_selectedScreen.isNotEmpty) _buildScreenDetails(context),
                     ],
                   ),
           ),
-          _buildLegend(),
+          _buildLegend(context),
         ],
       ),
     );
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
+    final C = context.appColors;
     return AppBar(
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Screen Navigation Graph',
-            style: TextStyle(
-              color: DnDTheme.ancientGold,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(color: C.amber, fontSize: 18, fontWeight: FontWeight.bold),
           ),
           Text(
             '${_screens.length} Screens mit Navigation-Verbindungen',
-            style: TextStyle(
-              color: DnDTheme.ancientGold.withValues(alpha: 0.7),
-              fontSize: 12,
-            ),
+            style: TextStyle(color: C.amber.withValues(alpha: 0.7), fontSize: 12),
           ),
         ],
       ),
-      backgroundColor: DnDTheme.mysticalPurple,
+      backgroundColor: _mysticalPurple,
       elevation: 4,
       actions: [
         IconButton(
-          icon: Icon(
-            _showConnections ? Icons.link : Icons.link_off,
-            color: DnDTheme.ancientGold,
-          ),
-          onPressed: () {
-            setState(() {
-              _showConnections = !_showConnections;
-            });
-          },
+          icon: Icon(_showConnections ? Icons.link : Icons.link_off, color: C.amber),
+          onPressed: () => setState(() => _showConnections = !_showConnections),
           tooltip: 'Verbindungen anzeigen/ausblenden',
         ),
         IconButton(
-          icon: Icon(
-            _showParameters ? Icons.visibility : Icons.visibility_off,
-            color: DnDTheme.ancientGold,
-          ),
-          onPressed: () {
-            setState(() {
-              _showParameters = !_showParameters;
-            });
-          },
+          icon: Icon(_showParameters ? Icons.visibility : Icons.visibility_off, color: C.amber),
+          onPressed: () => setState(() => _showParameters = !_showParameters),
           tooltip: 'Parameter anzeigen/ausblenden',
         ),
         PopupMenuButton<String>(
-          icon: Icon(Icons.more_vert, color: DnDTheme.ancientGold),
+          icon: Icon(Icons.more_vert, color: C.amber),
           onSelected: _handleMenuAction,
           itemBuilder: (context) => [
             PopupMenuItem(
               value: 'refresh',
-              child: Row(
-                children: [
-                  Icon(Icons.refresh, color: DnDTheme.emeraldGreen),
-                  SizedBox(width: 8),
-                  Text('Aktualisieren'),
-                ],
-              ),
+              child: Row(children: [Icon(Icons.refresh, color: C.green), const SizedBox(width: 8), const Text('Aktualisieren')]),
             ),
             PopupMenuItem(
               value: 'listView',
-              child: Row(
-                children: [
-                  Icon(Icons.list, color: DnDTheme.emeraldGreen),
-                  SizedBox(width: 8),
-                  Text('Listenansicht'),
-                ],
-              ),
+              child: Row(children: [Icon(Icons.list, color: C.green), const SizedBox(width: 8), const Text('Listenansicht')]),
             ),
             PopupMenuItem(
               value: 'info',
-              child: Row(
-                children: [
-                  Icon(Icons.info, color: DnDTheme.emeraldGreen),
-                  SizedBox(width: 8),
-                  Text('Info'),
-                ],
-              ),
+              child: Row(children: [Icon(Icons.info, color: C.green), const SizedBox(width: 8), const Text('Info')]),
             ),
           ],
         ),
@@ -158,58 +121,57 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
   }
 
   Widget _buildFilterBar(BuildContext context) {
+    final C = context.appColors;
     return Container(
-      padding: EdgeInsets.all(DnDTheme.md),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: DnDTheme.stoneGrey.withValues(alpha: 0.5),
+        color: C.bgPanel.withValues(alpha: 0.5),
         border: Border(
-          bottom: BorderSide(
-            color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
-            width: 1,
-          ),
+          bottom: BorderSide(color: _mysticalPurple.withValues(alpha: 0.3)),
         ),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            _buildFilterChip('All', Icons.all_inclusive),
-            SizedBox(width: DnDTheme.sm),
-            _buildFilterChip('Navigation', Icons.navigation),
-            SizedBox(width: DnDTheme.sm),
-            _buildFilterChip('Campaign', Icons.campaign),
-            SizedBox(width: DnDTheme.sm),
-            _buildFilterChip('Quest Management', Icons.assignment),
-            SizedBox(width: DnDTheme.sm),
-            _buildFilterChip('Wiki/Lore', Icons.menu_book),
-            SizedBox(width: DnDTheme.sm),
-            _buildFilterChip('Character', Icons.person),
-            SizedBox(width: DnDTheme.sm),
-            _buildFilterChip('Bestiary', Icons.pets),
-            SizedBox(width: DnDTheme.sm),
-            _buildFilterChip('Item', Icons.inventory_2),
-            SizedBox(width: DnDTheme.sm),
-            _buildFilterChip('Audio', Icons.music_note),
-            SizedBox(width: DnDTheme.sm),
-            _buildFilterChip('Session', Icons.play_circle),
-            SizedBox(width: DnDTheme.sm),
-            _buildFilterChip('Utility', Icons.build),
-            SizedBox(width: DnDTheme.sm),
-            _buildFilterChip('Testing', Icons.bug_report),
+            _buildFilterChip(context, 'All', Icons.all_inclusive),
+            const SizedBox(width: 8),
+            _buildFilterChip(context, 'Navigation', Icons.navigation),
+            const SizedBox(width: 8),
+            _buildFilterChip(context, 'Campaign', Icons.campaign),
+            const SizedBox(width: 8),
+            _buildFilterChip(context, 'Quest Management', Icons.assignment),
+            const SizedBox(width: 8),
+            _buildFilterChip(context, 'Wiki/Lore', Icons.menu_book),
+            const SizedBox(width: 8),
+            _buildFilterChip(context, 'Character', Icons.person),
+            const SizedBox(width: 8),
+            _buildFilterChip(context, 'Bestiary', Icons.pets),
+            const SizedBox(width: 8),
+            _buildFilterChip(context, 'Item', Icons.inventory_2),
+            const SizedBox(width: 8),
+            _buildFilterChip(context, 'Audio', Icons.music_note),
+            const SizedBox(width: 8),
+            _buildFilterChip(context, 'Session', Icons.play_circle),
+            const SizedBox(width: 8),
+            _buildFilterChip(context, 'Utility', Icons.build),
+            const SizedBox(width: 8),
+            _buildFilterChip(context, 'Testing', Icons.bug_report),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildFilterChip(String category, IconData icon) {
+  Widget _buildFilterChip(BuildContext context, String category, IconData icon) {
+    final C = context.appColors;
     final isSelected = _selectedCategory == category;
     return FilterChip(
       label: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: isSelected ? DnDTheme.dungeonBlack : DnDTheme.ancientGold),
-          SizedBox(width: 4),
+          Icon(icon, size: 16, color: isSelected ? C.bg : C.amber),
+          const SizedBox(width: 4),
           Text(category),
         ],
       ),
@@ -222,30 +184,30 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
           });
         }
       },
-      selectedColor: DnDTheme.mysticalPurple,
-      backgroundColor: DnDTheme.stoneGrey.withValues(alpha: 0.3),
-      labelStyle: TextStyle(
-        color: isSelected ? DnDTheme.dungeonBlack : DnDTheme.ancientGold,
-      ),
+      selectedColor: _mysticalPurple,
+      backgroundColor: C.bgPanel.withValues(alpha: 0.3),
+      labelStyle: TextStyle(color: isSelected ? C.bg : C.amber),
     );
   }
 
-  Widget _buildGraphArea() {
+  Widget _buildGraphArea(BuildContext context) {
+    final C = context.appColors;
     final screens = _filteredScreens;
-    
     return CustomPaint(
       painter: _GraphPainter(
         screens: screens,
         showConnections: _showConnections,
         showParameters: _showParameters,
         selectedScreen: _selectedScreen,
-        categoryColors: _getCategoryColors(),
+        categoryColors: _getCategoryColors(C),
         connectionColors: {
-          ConnectionType.navigation: DnDTheme.emeraldGreen,
-          ConnectionType.modal: DnDTheme.warningOrange,
-          ConnectionType.deepLink: DnDTheme.mysticalPurple,
-          ConnectionType.action: DnDTheme.infoBlue,
+          ConnectionType.navigation: C.green,
+          ConnectionType.modal: _warningOrange,
+          ConnectionType.deepLink: _mysticalPurple,
+          ConnectionType.action: C.accent,
         },
+        warningColor: _warningOrange,
+        labelColor: C.amber,
         onScreenTap: (screenName) {
           setState(() {
             _selectedScreen = _selectedScreen == screenName ? '' : screenName;
@@ -255,174 +217,136 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
       child: Container(
         width: double.infinity,
         height: double.infinity,
-        color: DnDTheme.dungeonBlack.withValues(alpha: 0.3),
+        color: C.bg.withValues(alpha: 0.3),
       ),
     );
   }
 
-  Widget _buildScreenDetails() {
+  Widget _buildScreenDetails(BuildContext context) {
+    final C = context.appColors;
     final screen = _screens[_selectedScreen];
     if (screen == null) return const SizedBox();
 
     return Container(
       width: 350,
       decoration: BoxDecoration(
-        color: DnDTheme.stoneGrey.withValues(alpha: 0.9),
-        border: Border(
-          left: BorderSide(
-            color: DnDTheme.mysticalPurple,
-            width: 2,
-          ),
-        ),
+        color: C.bgPanel.withValues(alpha: 0.9),
+        border: const Border(left: BorderSide(color: _mysticalPurple, width: 2)),
       ),
       child: ListView(
-        padding: EdgeInsets.all(DnDTheme.md),
+        padding: const EdgeInsets.all(16),
         children: [
           Row(
             children: [
-              Icon(
-                _getCategoryIcon(screen.category),
-                color: _getCategoryColor(screen.category),
-                size: 24,
-              ),
-              SizedBox(width: 12),
+              Icon(_getCategoryIcon(screen.category), color: _getCategoryColor(screen.category, C), size: 24),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   screen.name,
-                  style: TextStyle(
-                    color: DnDTheme.ancientGold,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(color: C.amber, fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
               IconButton(
-                icon: Icon(Icons.close, color: DnDTheme.ancientGold),
+                icon: Icon(Icons.close, color: C.amber),
                 onPressed: () => setState(() => _selectedScreen = ''),
               ),
             ],
           ),
-          Divider(color: DnDTheme.mysticalPurple.withValues(alpha: 0.3)),
-          SizedBox(height: DnDTheme.md),
-          _buildDetailRow('Dateiname', screen.fileName),
-          SizedBox(height: DnDTheme.sm),
-          _buildDetailRow('Kategorie', screen.category),
-          SizedBox(height: DnDTheme.md),
+          Divider(color: _mysticalPurple.withValues(alpha: 0.3)),
+          const SizedBox(height: 16),
+          _buildDetailRow(C, 'Dateiname', screen.fileName),
+          const SizedBox(height: 8),
+          _buildDetailRow(C, 'Kategorie', screen.category),
+          const SizedBox(height: 16),
           if (screen.requiresParameters) ...[
             Container(
-              padding: EdgeInsets.all(DnDTheme.sm),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: DnDTheme.warningOrange.withValues(alpha: 0.2),
+                color: _warningOrange.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: DnDTheme.warningOrange.withValues(alpha: 0.5),
-                  width: 1,
-                ),
+                border: Border.all(color: _warningOrange.withValues(alpha: 0.5)),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.warning, color: DnDTheme.warningOrange, size: 20),
-                  SizedBox(width: 8),
+                  const Icon(Icons.warning, color: _warningOrange, size: 20),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       screen.parameterInfo ?? 'Benötigt Parameter',
-                      style: TextStyle(color: DnDTheme.warningOrange),
+                      style: const TextStyle(color: _warningOrange),
                     ),
                   ),
                 ],
               ),
             ),
-            SizedBox(height: DnDTheme.md),
+            const SizedBox(height: 16),
           ],
           Text(
             'Verbindungen (${screen.connections.length})',
-            style: TextStyle(
-              color: DnDTheme.ancientGold,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
+            style: TextStyle(color: C.amber, fontWeight: FontWeight.bold, fontSize: 16),
           ),
-          SizedBox(height: DnDTheme.sm),
-          ...screen.connections.map((conn) => _buildConnectionCard(conn)),
+          const SizedBox(height: 8),
+          ...screen.connections.map((conn) => _buildConnectionCard(C, conn)),
         ],
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(AppColorsExtension C, String label, String value) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
           width: 80,
           child: Text(
-            label + ':',
-            style: TextStyle(
-              color: DnDTheme.ancientGold.withValues(alpha: 0.7),
-              fontWeight: FontWeight.bold,
-            ),
+            '$label:',
+            style: TextStyle(color: C.amber.withValues(alpha: 0.7), fontWeight: FontWeight.bold),
           ),
         ),
         Expanded(
-          child: Text(
-            value,
-            style: TextStyle(color: DnDTheme.ancientGold),
-          ),
+          child: Text(value, style: TextStyle(color: C.amber)),
         ),
       ],
     );
   }
 
-  Widget _buildConnectionCard(ScreenConnection connection) {
+  Widget _buildConnectionCard(AppColorsExtension C, ScreenConnection connection) {
+    final connColor = _getConnectionColor(connection.type, C);
     return Container(
-      margin: EdgeInsets.only(bottom: DnDTheme.sm),
-      padding: EdgeInsets.all(DnDTheme.sm),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: _getConnectionColor(connection.type).withValues(alpha: 0.1),
+        color: connColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: _getConnectionColor(connection.type).withValues(alpha: 0.5),
-          width: 1,
-        ),
+        border: Border.all(color: connColor.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(_getConnectionIcon(connection.type), size: 16, color: _getConnectionColor(connection.type)),
-              SizedBox(width: 6),
+              Icon(_getConnectionIcon(connection.type), size: 16, color: connColor),
+              const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   connection.targetScreen,
-                  style: TextStyle(
-                    color: DnDTheme.ancientGold,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: C.amber, fontWeight: FontWeight.bold, fontSize: 14),
                 ),
               ),
             ],
           ),
           if (connection.triggerAction != null) ...[
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Text(
               'Trigger: ${connection.triggerAction}',
-              style: TextStyle(
-                color: DnDTheme.ancientGold.withValues(alpha: 0.7),
-                fontSize: 12,
-              ),
+              style: TextStyle(color: C.amber.withValues(alpha: 0.7), fontSize: 12),
             ),
           ],
           if (connection.description != null) ...[
-            SizedBox(height: 2),
+            const SizedBox(height: 2),
             Text(
               connection.description!,
-              style: TextStyle(
-                color: DnDTheme.ancientGold.withValues(alpha: 0.5),
-                fontSize: 11,
-                fontStyle: FontStyle.italic,
-              ),
+              style: TextStyle(color: C.amber.withValues(alpha: 0.5), fontSize: 11, fontStyle: FontStyle.italic),
             ),
           ],
         ],
@@ -430,38 +354,27 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
     );
   }
 
-  Widget _buildLegend() {
+  Widget _buildLegend(BuildContext context) {
+    final C = context.appColors;
     return Container(
-      padding: EdgeInsets.all(DnDTheme.md),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: DnDTheme.stoneGrey.withValues(alpha: 0.3),
-        border: Border(
-          top: BorderSide(
-            color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
-            width: 1,
-          ),
-        ),
+        color: C.bgPanel.withValues(alpha: 0.3),
+        border: Border(top: BorderSide(color: _mysticalPurple.withValues(alpha: 0.3))),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Legende',
-            style: TextStyle(
-              color: DnDTheme.ancientGold,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: DnDTheme.sm),
+          Text('Legende', style: TextStyle(color: C.amber, fontSize: 14, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
           Wrap(
-            spacing: DnDTheme.md,
-            runSpacing: DnDTheme.sm,
+            spacing: 16,
+            runSpacing: 8,
             children: [
-              _buildLegendItem('Navigation', DnDTheme.emeraldGreen),
-              _buildLegendItem('Deep Link', DnDTheme.mysticalPurple),
-              _buildLegendItem('Modal', DnDTheme.warningOrange),
-              _buildLegendItem('Action', DnDTheme.infoBlue),
+              _buildLegendItem(C, 'Navigation', C.green),
+              _buildLegendItem(C, 'Deep Link', _mysticalPurple),
+              _buildLegendItem(C, 'Modal', _warningOrange),
+              _buildLegendItem(C, 'Action', C.accent),
             ],
           ),
         ],
@@ -469,150 +382,107 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
     );
   }
 
-  Widget _buildLegendItem(String label, Color color) {
+  Widget _buildLegendItem(AppColorsExtension C, String label, Color color) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           width: 20,
           height: 3,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(2),
-          ),
+          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
         ),
-        SizedBox(width: 6),
-        Text(
-          label,
-          style: TextStyle(
-            color: DnDTheme.ancientGold,
-            fontSize: 12,
-          ),
-        ),
+        const SizedBox(width: 6),
+        Text(label, style: TextStyle(color: C.amber, fontSize: 12)),
       ],
     );
   }
 
-  Widget _buildLoadingIndicator() {
+  Widget _buildLoadingIndicator(AppColorsExtension C) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(DnDTheme.ancientGold),
-          ),
-          SizedBox(height: DnDTheme.md),
-          Text(
-            'Lade Screens...',
-            style: TextStyle(
-              color: DnDTheme.ancientGold,
-              fontSize: 16,
-            ),
-          ),
+          CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(C.amber)),
+          const SizedBox(height: 16),
+          Text('Lade Screens...', style: TextStyle(color: C.amber, fontSize: 16)),
         ],
       ),
     );
   }
 
-  Color _getCategoryColor(String category) {
-    final colors = _getCategoryColors();
-    return colors[category] ?? DnDTheme.stoneGrey;
+  Color _getCategoryColor(String category, AppColorsExtension C) {
+    return _getCategoryColors(C)[category] ?? C.bgPanel;
   }
 
-  Map<String, Color> _getCategoryColors() {
+  Map<String, Color> _getCategoryColors(AppColorsExtension C) {
     return {
-      'Navigation': DnDTheme.mysticalPurple,
-      'Campaign': DnDTheme.ancientGold,
-      'Quest Management': DnDTheme.emeraldGreen,
-      'Wiki/Lore': DnDTheme.infoBlue,
-      'Character': DnDTheme.warningOrange,
-      'Bestiary': DnDTheme.deepRed,
-      'Item': DnDTheme.stoneGrey,
-      'Audio': DnDTheme.infoBlue,
-      'Session': DnDTheme.emeraldGreen,
-      'Utility': DnDTheme.warningOrange,
-      'Testing': DnDTheme.mysticalPurple,
+      'Navigation': _mysticalPurple,
+      'Campaign': C.amber,
+      'Quest Management': C.green,
+      'Wiki/Lore': C.accent,
+      'Character': _warningOrange,
+      'Bestiary': C.red,
+      'Item': C.bgPanel,
+      'Audio': C.accent,
+      'Session': C.green,
+      'Utility': _warningOrange,
+      'Testing': _mysticalPurple,
     };
   }
 
-  Color _getConnectionColor(ConnectionType type) {
-    switch (type) {
-      case ConnectionType.navigation:
-        return DnDTheme.emeraldGreen;
-      case ConnectionType.modal:
-        return DnDTheme.warningOrange;
-      case ConnectionType.deepLink:
-        return DnDTheme.mysticalPurple;
-      case ConnectionType.action:
-        return DnDTheme.infoBlue;
-    }
+  Color _getConnectionColor(ConnectionType type, AppColorsExtension C) {
+    return switch (type) {
+      ConnectionType.navigation => C.green,
+      ConnectionType.modal => _warningOrange,
+      ConnectionType.deepLink => _mysticalPurple,
+      ConnectionType.action => C.accent,
+    };
   }
 
   IconData _getConnectionIcon(ConnectionType type) {
-    switch (type) {
-      case ConnectionType.navigation:
-        return Icons.arrow_forward;
-      case ConnectionType.modal:
-        return Icons.open_in_new;
-      case ConnectionType.deepLink:
-        return Icons.link;
-      case ConnectionType.action:
-        return Icons.touch_app;
-    }
+    return switch (type) {
+      ConnectionType.navigation => Icons.arrow_forward,
+      ConnectionType.modal => Icons.open_in_new,
+      ConnectionType.deepLink => Icons.link,
+      ConnectionType.action => Icons.touch_app,
+    };
   }
 
   IconData _getCategoryIcon(String category) {
-    switch (category) {
-      case 'Navigation':
-        return Icons.navigation;
-      case 'Campaign':
-        return Icons.campaign;
-      case 'Quest Management':
-        return Icons.assignment;
-      case 'Wiki/Lore':
-        return Icons.menu_book;
-      case 'Character':
-        return Icons.person;
-      case 'Bestiary':
-        return Icons.pets;
-      case 'Item':
-        return Icons.inventory_2;
-      case 'Audio':
-        return Icons.music_note;
-      case 'Session':
-        return Icons.play_circle;
-      case 'Utility':
-        return Icons.build;
-      case 'Testing':
-        return Icons.bug_report;
-      default:
-        return Icons.screen_share;
-    }
+    return switch (category) {
+      'Navigation' => Icons.navigation,
+      'Campaign' => Icons.campaign,
+      'Quest Management' => Icons.assignment,
+      'Wiki/Lore' => Icons.menu_book,
+      'Character' => Icons.person,
+      'Bestiary' => Icons.pets,
+      'Item' => Icons.inventory_2,
+      'Audio' => Icons.music_note,
+      'Session' => Icons.play_circle,
+      'Utility' => Icons.build,
+      'Testing' => Icons.bug_report,
+      _ => Icons.screen_share,
+    };
   }
 
   void _handleMenuAction(String action) {
     switch (action) {
       case 'refresh':
         _loadScreens();
-        break;
       case 'listView':
         _showListView();
-        break;
       case 'info':
         _showInfoDialog();
-        break;
     }
   }
 
   void _showListView() {
-    showDialog(
+    final C = context.appColors;
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
-        title: Text(
-          'Alle Screens',
-          style: TextStyle(color: DnDTheme.ancientGold),
-        ),
+        backgroundColor: C.bgPanel,
+        title: Text('Alle Screens', style: TextStyle(color: C.amber)),
         content: SizedBox(
           width: double.maxFinite,
           height: 400,
@@ -621,20 +491,14 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
             itemBuilder: (context, index) {
               final screen = _screens.values.elementAt(index);
               return ListTile(
-                leading: Icon(
-                  _getCategoryIcon(screen.category),
-                  color: _getCategoryColor(screen.category),
-                ),
-                title: Text(
-                  screen.name,
-                  style: TextStyle(color: DnDTheme.ancientGold),
-                ),
+                leading: Icon(_getCategoryIcon(screen.category), color: _getCategoryColor(screen.category, C)),
+                title: Text(screen.name, style: TextStyle(color: C.amber)),
                 subtitle: Text(
                   '${screen.fileName} • ${screen.category}',
-                  style: TextStyle(color: DnDTheme.ancientGold.withValues(alpha: 0.7)),
+                  style: TextStyle(color: C.amber.withValues(alpha: 0.7)),
                 ),
                 trailing: screen.requiresParameters
-                    ? Icon(Icons.warning, color: DnDTheme.warningOrange, size: 20)
+                    ? const Icon(Icons.warning, color: _warningOrange, size: 20)
                     : null,
               );
             },
@@ -643,8 +507,8 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            style: TextButton.styleFrom(foregroundColor: DnDTheme.emeraldGreen),
-            child: Text('Schließen'),
+            style: TextButton.styleFrom(foregroundColor: C.green),
+            child: const Text('Schließen'),
           ),
         ],
       ),
@@ -652,18 +516,16 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
   }
 
   void _showInfoDialog() {
-    showDialog(
+    final C = context.appColors;
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
+        backgroundColor: C.bgPanel,
         title: Row(
           children: [
-            Icon(Icons.info, color: DnDTheme.mysticalPurple),
-            SizedBox(width: 8),
-            Text(
-              'Screen Graph Visualizer',
-              style: TextStyle(color: DnDTheme.ancientGold),
-            ),
+            const Icon(Icons.info, color: _mysticalPurple),
+            const SizedBox(width: 8),
+            Text('Screen Graph Visualizer', style: TextStyle(color: C.amber)),
           ],
         ),
         content: SingleChildScrollView(
@@ -671,58 +533,40 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildInfoSection(
-                'Was ist das?',
-                'Dieses Tool visualisiert alle Screens der Anwendung und ihre Navigation-Verbindungen als interaktiven Graph.',
-              ),
-              _buildInfoSection(
-                'Bedienung',
-                '• Klick auf Screen: Details anzeigen\n• Filter: Screens nach Kategorie filtern\n• Listenansicht: Alle Screens auflisten',
-              ),
-              _buildInfoSection(
-                'Verbindungstypen',
-                '• Grün: Normale Navigation\n• Lila: Deep Link (mit Parametern)\n• Orange: Modal/Dialog\n• Blau: Button/Action',
-              ),
-              _buildInfoSection(
-                'Screens',
-                '${_screens.length} Screens in ${_getUniqueCategories().length} Kategorien',
-              ),
+              _buildInfoSection(C, 'Was ist das?',
+                  'Dieses Tool visualisiert alle Screens der Anwendung und ihre Navigation-Verbindungen als interaktiven Graph.'),
+              _buildInfoSection(C, 'Bedienung',
+                  '• Klick auf Screen: Details anzeigen\n• Filter: Screens nach Kategorie filtern\n• Listenansicht: Alle Screens auflisten'),
+              _buildInfoSection(C, 'Verbindungstypen',
+                  '• Grün: Normale Navigation\n• Lila: Deep Link (mit Parametern)\n• Orange: Modal/Dialog\n• Blau: Button/Action'),
+              _buildInfoSection(C, 'Screens',
+                  '${_screens.length} Screens in ${_getUniqueCategories().length} Kategorien'),
             ],
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            style: TextButton.styleFrom(foregroundColor: DnDTheme.emeraldGreen),
-            child: Text('Verstanden'),
+            style: TextButton.styleFrom(foregroundColor: C.green),
+            child: const Text('Verstanden'),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildInfoSection(String title, String content) {
+  Widget _buildInfoSection(AppColorsExtension C, String title, String content) {
     return Padding(
-      padding: EdgeInsets.only(bottom: DnDTheme.md),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: TextStyle(
-              color: DnDTheme.mysticalPurple,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
+            style: const TextStyle(color: _mysticalPurple, fontWeight: FontWeight.bold, fontSize: 14),
           ),
-          SizedBox(height: 4),
-          Text(
-            content,
-            style: TextStyle(
-              color: DnDTheme.ancientGold,
-              fontSize: 12,
-            ),
-          ),
+          const SizedBox(height: 4),
+          Text(content, style: TextStyle(color: C.amber, fontSize: 12)),
         ],
       ),
     );
@@ -733,7 +577,6 @@ class _ScreenGraphVisualizationScreenState extends State<ScreenGraphVisualizatio
   }
 }
 
-/// Custom Painter für die Graph-Visualisierung
 class _GraphPainter extends CustomPainter {
   final List<ScreenNode> screens;
   final bool showConnections;
@@ -741,6 +584,8 @@ class _GraphPainter extends CustomPainter {
   final String selectedScreen;
   final Map<String, Color> categoryColors;
   final Map<ConnectionType, Color> connectionColors;
+  final Color warningColor;
+  final Color labelColor;
   final Function(String) onScreenTap;
 
   _GraphPainter({
@@ -750,62 +595,54 @@ class _GraphPainter extends CustomPainter {
     required this.selectedScreen,
     required this.categoryColors,
     required this.connectionColors,
+    required this.warningColor,
+    required this.labelColor,
     required this.onScreenTap,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     if (screens.isEmpty) return;
-
     final nodePositions = _calculateNodePositions(size);
-    
-    // Verbindungen zeichnen
     if (showConnections) {
       _drawConnections(canvas, nodePositions);
     }
-    
-    // Knoten zeichnen
     _drawNodes(canvas, nodePositions);
   }
 
   Map<String, Offset> _calculateNodePositions(Size size) {
     final positions = <String, Offset>{};
     final categoryGroups = <String, List<ScreenNode>>{};
-    
-    // Screens nach Kategorie gruppieren
+
     for (var screen in screens) {
       categoryGroups.putIfAbsent(screen.category, () => []).add(screen);
     }
-    
+
     final categories = categoryGroups.keys.toList();
-    final columns = 3;
+    const columns = 3;
     final columnWidth = size.width / columns;
-    final rows = ((categories.length / columns).ceil());
+    final rows = (categories.length / columns).ceil();
     final rowHeight = size.height / rows;
-    
-    // Positionen berechnen
+
     for (var i = 0; i < categories.length; i++) {
       final category = categories[i];
       final categoryScreens = categoryGroups[category]!;
-      
       final col = i % columns;
       final row = i ~/ columns;
-      
       final categoryX = col * columnWidth + columnWidth / 2;
       final categoryY = row * rowHeight + rowHeight / 2;
-      
+
       for (var j = 0; j < categoryScreens.length; j++) {
         final screen = categoryScreens[j];
         final angle = (2 * pi * j) / categoryScreens.length;
-        final radius = 40.0;
-        
+        const radius = 40.0;
         positions[screen.name] = Offset(
           categoryX + radius * cos(angle),
           categoryY + radius * sin(angle),
         );
       }
     }
-    
+
     return positions;
   }
 
@@ -813,35 +650,22 @@ class _GraphPainter extends CustomPainter {
     for (var screen in screens) {
       final fromPosition = positions[screen.name];
       if (fromPosition == null) continue;
-      
       for (var connection in screen.connections) {
-        // Nur exakte Übereinstimmung akzeptieren
         final toPosition = positions[connection.targetScreen];
-        
-        // Nur zeichnen wenn Ziel-Screen existiert
         if (toPosition != null) {
-          // Verbindungstyp bestimmen
-          final connectionType = connection.type;
-          final color = connectionColors[connectionType] ?? Colors.grey;
-          
-          // Linienstärke je nach Verbindungstyp
-          final strokeWidth = switch (connectionType) {
+          final color = connectionColors[connection.type] ?? Colors.grey;
+          final strokeWidth = switch (connection.type) {
             ConnectionType.navigation => 2.5,
             ConnectionType.deepLink => 3.0,
             ConnectionType.modal => 2.0,
             ConnectionType.action => 2.0,
           };
-          
-          // Linie zeichnen
           final paint = Paint()
             ..color = color
             ..strokeWidth = strokeWidth
             ..style = PaintingStyle.stroke
             ..strokeCap = StrokeCap.round;
-          
           canvas.drawLine(fromPosition, toPosition, paint);
-          
-          // Pfeilspitze zeichnen
           _drawArrow(canvas, fromPosition, toPosition, color, strokeWidth);
         }
       }
@@ -849,87 +673,47 @@ class _GraphPainter extends CustomPainter {
   }
 
   void _drawArrow(Canvas canvas, Offset from, Offset to, Color color, double strokeWidth) {
-    final direction = (to - from);
+    final direction = to - from;
     final length = direction.distance;
     if (length < 20) return;
-    
+
     final angle = direction.direction;
-    final nodeRadius = 32.0; // Etwas größer als die Knoten
-    
-    // Pfeil am Rand des Zielknotens starten lassen
+    const nodeRadius = 32.0;
     final arrowPoint = from + direction * ((length - nodeRadius) / length);
-    final arrowLength = 12.0;
-    final arrowAngle = 0.4; // Schärferer Winkel
-    
-    // Linke Flügel
-    final leftWing = arrowPoint + Offset(
-      cos(angle + pi - arrowAngle),
-      sin(angle + pi - arrowAngle),
-    ) * arrowLength;
-    
-    // Rechte Flügel
-    final rightWing = arrowPoint + Offset(
-      cos(angle + pi + arrowAngle),
-      sin(angle + pi + arrowAngle),
-    ) * arrowLength;
-    
-    // Pfeil zeichnen
+    const arrowLength = 12.0;
+    const arrowAngle = 0.4;
+
+    final leftWing = arrowPoint + Offset(cos(angle + pi - arrowAngle), sin(angle + pi - arrowAngle)) * arrowLength;
+    final rightWing = arrowPoint + Offset(cos(angle + pi + arrowAngle), sin(angle + pi + arrowAngle)) * arrowLength;
+
     final path = Path()
       ..moveTo(arrowPoint.dx, arrowPoint.dy)
       ..lineTo(leftWing.dx, leftWing.dy)
       ..lineTo(rightWing.dx, rightWing.dy)
       ..close();
-    
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-    
-    canvas.drawPath(path, paint);
-    
-    // Schwarzen Rand um Pfeil für bessere Sichtbarkeit
-    final borderPaint = Paint()
-      ..color = Colors.black
-      ..strokeWidth = 1.0
-      ..style = PaintingStyle.stroke;
-    
-    canvas.drawPath(path, borderPaint);
+
+    canvas.drawPath(path, Paint()..color = color..style = PaintingStyle.fill);
+    canvas.drawPath(path, Paint()..color = Colors.black..strokeWidth = 1.0..style = PaintingStyle.stroke);
   }
 
   void _drawNodes(Canvas canvas, Map<String, Offset> positions) {
     for (var screen in screens) {
       final position = positions[screen.name];
       if (position == null) continue;
-      
       final isSelected = screen.name == selectedScreen;
       final color = categoryColors[screen.category] ?? Colors.grey;
       final radius = isSelected ? 35.0 : 30.0;
-      
-      // Kreis zeichnen
-      final paint = Paint()
-        ..color = color.withValues(alpha: 0.3)
-        ..style = PaintingStyle.fill;
-      
-      canvas.drawCircle(position, radius, paint);
-      
-      // Rahmen zeichnen
-      final borderPaint = Paint()
-        ..color = color
-        ..strokeWidth = isSelected ? 3.0 : 2.0
-        ..style = PaintingStyle.stroke;
-      
-      canvas.drawCircle(position, radius, borderPaint);
-      
-      // Screen-Name zeichnen
+
+      canvas.drawCircle(position, radius, Paint()..color = color.withValues(alpha: 0.3)..style = PaintingStyle.fill);
+      canvas.drawCircle(position, radius, Paint()..color = color..strokeWidth = isSelected ? 3.0 : 2.0..style = PaintingStyle.stroke);
       _drawText(canvas, screen.name, position, color, isSelected);
-      
-      // Parameter-Indikator
+
       if (showParameters && screen.requiresParameters) {
-        final paramPaint = Paint()
-          ..color = DnDTheme.warningOrange
-          ..strokeWidth = 3.0
-          ..style = PaintingStyle.stroke;
-        
-        canvas.drawCircle(position + Offset(radius * 0.7, -radius * 0.7), 6, paramPaint);
+        canvas.drawCircle(
+          position + Offset(radius * 0.7, -radius * 0.7),
+          6,
+          Paint()..color = warningColor..strokeWidth = 3.0..style = PaintingStyle.stroke,
+        );
       }
     }
   }
@@ -939,16 +723,10 @@ class _GraphPainter extends CustomPainter {
       text: TextSpan(
         text: text,
         style: TextStyle(
-          color: DnDTheme.ancientGold,
+          color: labelColor,
           fontSize: isSelected ? 11 : 10,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          shadows: [
-            Shadow(
-              color: Colors.black,
-              blurRadius: 2,
-              offset: Offset(0, 1),
-            ),
-          ],
+          shadows: const [Shadow(color: Colors.black, blurRadius: 2, offset: Offset(0, 1))],
         ),
       ),
       textDirection: TextDirection.ltr,
@@ -956,37 +734,25 @@ class _GraphPainter extends CustomPainter {
       maxLines: 2,
       ellipsis: '...',
     );
-
     textPainter.layout();
-    
+
     final textSize = textPainter.size;
     final textX = position.dx - textSize.width / 2;
     final textY = position.dy - textSize.height / 2;
 
-    // Hintergrund für Text
-    final bgPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.7)
-      ..style = PaintingStyle.fill;
-    
-    final bgRect = Rect.fromLTWH(
-      textX - 2,
-      textY - 2,
-      textSize.width + 4,
-      textSize.height + 4,
+    final bgRect = Rect.fromLTWH(textX - 2, textY - 2, textSize.width + 4, textSize.height + 4);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(bgRect, const Radius.circular(4)),
+      Paint()..color = Colors.black.withValues(alpha: 0.7)..style = PaintingStyle.fill,
     );
-    
-    final rRect = RRect.fromRectAndRadius(bgRect, Radius.circular(4));
-    canvas.drawRRect(rRect, bgPaint);
-    
-    // Text zeichnen
     textPainter.paint(canvas, Offset(textX, textY));
   }
 
   @override
   bool shouldRepaint(_GraphPainter oldDelegate) {
     return oldDelegate.screens != screens ||
-           oldDelegate.showConnections != showConnections ||
-           oldDelegate.showParameters != showParameters ||
-           oldDelegate.selectedScreen != selectedScreen;
+        oldDelegate.showConnections != showConnections ||
+        oldDelegate.showParameters != showParameters ||
+        oldDelegate.selectedScreen != selectedScreen;
   }
 }

@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../models/creature.dart';
 import '../../database/repositories/creature_model_repository.dart';
 import '../../database/repositories/player_character_model_repository.dart';
-import '../../theme/dnd_theme.dart';
+import '../../models/creature.dart';
+import '../../theme/app_theme.dart';
 
-/// Screen zur Auswahl von Charakteren für eine Scene
-/// Unterstützt PCs, NPCs und Monster
 class SelectCharacterForSceneScreen extends StatefulWidget {
+  const SelectCharacterForSceneScreen({
+    super.key,
+    required this.previouslySelectedIds,
+  });
+
   final List<String> previouslySelectedIds;
 
-  const SelectCharacterForSceneScreen({
-    Key? key,
-    required this.previouslySelectedIds,
-  }) : super(key: key);
-
   @override
-  State<SelectCharacterForSceneScreen> createState() => _SelectCharacterForSceneScreenState();
+  State<SelectCharacterForSceneScreen> createState() =>
+      _SelectCharacterForSceneScreenState();
 }
 
 class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneScreen>
@@ -24,7 +23,6 @@ class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneS
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
 
-  // State
   List<Creature> _creatures = [];
   List<Map<String, dynamic>> _playerCharacters = [];
   List<String> _selectedIds = [];
@@ -48,31 +46,23 @@ class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneS
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-
     try {
       final creatureRepo = context.read<CreatureModelRepository>();
       final pcRepo = context.read<PlayerCharacterModelRepository>();
-
       final creatures = await creatureRepo.findAll();
       final pcs = await pcRepo.findAll();
-
       setState(() {
         _creatures = creatures;
-        _playerCharacters = pcs.map((pc) => {
-          'id': pc.id,
-          'name': pc.name,
-          'level': pc.level,
-        }).toList();
+        _playerCharacters = pcs
+            .map((pc) => {'id': pc.id, 'name': pc.name, 'level': pc.level})
+            .toList();
         _isLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Fehler beim Laden: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Fehler beim Laden: $e'), backgroundColor: Colors.red),
       );
     }
   }
@@ -103,68 +93,63 @@ class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneS
 
   bool _isSelected(String id) => _selectedIds.contains(id);
 
-  void _confirmSelection() {
-    Navigator.pop(context, _selectedIds);
-  }
+  void _confirmSelection() => Navigator.pop(context, _selectedIds);
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Charaktere auswählen'),
-        backgroundColor: DnDTheme.mysticalPurple,
-        iconTheme: IconThemeData(color: Colors.white),
+        title: const Text('Charaktere auswählen'),
+        backgroundColor: C.bgPanel,
+        foregroundColor: C.text,
         actions: [
           TextButton(
             onPressed: _confirmSelection,
             child: Text(
               'Fertig (${_selectedIds.length})',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: TextStyle(color: C.amber, fontWeight: FontWeight.bold),
             ),
           ),
         ],
       ),
       body: Column(
         children: [
-          // Search Bar
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Suchen...',
-                prefixIcon: Icon(Icons.search, color: DnDTheme.mysticalPurple),
+                prefixIcon: Icon(Icons.search, color: C.accent),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
-                  borderSide: BorderSide(color: DnDTheme.mysticalPurple.withValues(alpha: 0.3)),
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: C.border),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
-                  borderSide: BorderSide(color: DnDTheme.mysticalPurple),
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: C.accent),
                 ),
+                filled: true,
+                fillColor: C.bgHover,
               ),
-              onChanged: (value) {
-                setState(() => _searchQuery = value);
-              },
+              onChanged: (value) => setState(() => _searchQuery = value),
             ),
           ),
-
-          // Tabs
           TabBar(
             controller: _tabController,
-            labelColor: DnDTheme.mysticalPurple,
-            unselectedLabelColor: Colors.grey,
-            tabs: [
+            labelColor: C.accent,
+            unselectedLabelColor: C.textMid,
+            indicatorColor: C.accent,
+            tabs: const [
               Tab(text: 'Player Characters'),
               Tab(text: 'NPCs'),
               Tab(text: 'Monster'),
             ],
           ),
-
-          // Content
           Expanded(
             child: _isLoading
-                ? Center(child: CircularProgressIndicator(color: DnDTheme.mysticalPurple))
+                ? Center(child: CircularProgressIndicator(color: C.accent))
                 : TabBarView(
                     controller: _tabController,
                     children: [
@@ -180,56 +165,48 @@ class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneS
   }
 
   Widget _buildPCList() {
-    if (_filteredPCs.isEmpty) {
-      return _buildEmptyState('Keine Player Characters gefunden');
-    }
-
+    if (_filteredPCs.isEmpty) return _buildEmptyState('Keine Player Characters gefunden');
     return ListView.builder(
       itemCount: _filteredPCs.length,
       itemBuilder: (context, index) {
         final pc = _filteredPCs[index];
-        final isSelected = _isSelected(pc['id'].toString());
+        final id = pc['id'].toString();
         return _buildCharacterTile(
-          id: pc['id'].toString(),
+          id: id,
           name: pc['name'].toString(),
           subtitle: 'Level ${pc['level']}',
           type: 'PC',
-          isSelected: isSelected,
-          onTap: () => _toggleSelection(pc['id'].toString()),
+          isSelected: _isSelected(id),
+          onTap: () => _toggleSelection(id),
         );
       },
     );
   }
 
   Widget _buildNPCList() {
-    // NPCs sind Humanoiden (Menschen, Elfen, Zwerge, etc.)
-    // Fallback: Creatures ohne type werden als NPCs angezeigt (für Abwärtskompatibilität)
     final npcs = _filteredCreatures.where((c) {
       if (c.isPlayer) return false;
       final typeLower = c.type?.toLowerCase();
-      // NPC wenn: type ist humanoid/npc, oder type ist null/leer (Fallback)
       if (typeLower == null || typeLower.isEmpty) return true;
       return typeLower == 'humanoid' || typeLower == 'npc';
     }).toList();
-    
+
     if (npcs.isEmpty) {
       return _buildEmptyState('Keine NPCs gefunden\n(Tip: NPCs haben den Typ "Humanoid")');
     }
-
     return ListView.builder(
       itemCount: npcs.length,
       itemBuilder: (context, index) {
         final npc = npcs[index];
-        final isSelected = _isSelected(npc.id);
-        final subtitle = npc.challengeRating != null 
-            ? 'CR ${npc.challengeRating.toString()} • ${npc.type ?? "Humanoid"}'
-            : (npc.type ?? 'Humanoid').toString();
+        final subtitle = npc.challengeRating != null
+            ? 'CR ${npc.challengeRating} • ${npc.type ?? "Humanoid"}'
+            : (npc.type ?? 'Humanoid');
         return _buildCharacterTile(
           id: npc.id,
           name: npc.name,
           subtitle: subtitle,
           type: 'NPC',
-          isSelected: isSelected,
+          isSelected: _isSelected(npc.id),
           onTap: () => _toggleSelection(npc.id),
         );
       },
@@ -237,34 +214,31 @@ class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneS
   }
 
   Widget _buildMonsterList() {
-    // Monster sind alle Nicht-Humanoiden (Bestien, Drachen, Untote, etc.)
-    // WICHTIG: Creatures ohne type werden im NPC-Tab angezeigt (Fallback)
     final monsters = _filteredCreatures.where((c) {
       if (c.isPlayer) return false;
       final typeLower = c.type?.toLowerCase();
-      // Monster wenn: type existiert UND ist nicht humanoid/npc/leer
       if (typeLower == null || typeLower.isEmpty) return false;
       return typeLower != 'humanoid' && typeLower != 'npc';
     }).toList();
-    
-    if (monsters.isEmpty) {
-      return _buildEmptyState('Keine Monster gefunden\n(Tip: Monster haben einen anderen Typ als "Humanoid"\nz.B. Beast, Dragon, Undead, etc.)');
-    }
 
+    if (monsters.isEmpty) {
+      return _buildEmptyState(
+        'Keine Monster gefunden\n(Tip: Monster haben einen anderen Typ als "Humanoid"\nz.B. Beast, Dragon, Undead, etc.)',
+      );
+    }
     return ListView.builder(
       itemCount: monsters.length,
       itemBuilder: (context, index) {
         final monster = monsters[index];
-        final isSelected = _isSelected(monster.id);
-        final subtitle = monster.challengeRating != null 
-            ? 'CR ${monster.challengeRating.toString()} • ${monster.type ?? "Unbekannt"}'
-            : (monster.type ?? 'Monster').toString();
+        final subtitle = monster.challengeRating != null
+            ? 'CR ${monster.challengeRating} • ${monster.type ?? "Unbekannt"}'
+            : (monster.type ?? 'Monster');
         return _buildCharacterTile(
           id: monster.id,
           name: monster.name,
           subtitle: subtitle,
           type: 'Monster',
-          isSelected: isSelected,
+          isSelected: _isSelected(monster.id),
           onTap: () => _toggleSelection(monster.id),
         );
       },
@@ -279,23 +253,14 @@ class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneS
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    Color typeColor;
-    switch (type) {
-      case 'PC':
-        typeColor = Colors.green;
-        break;
-      case 'NPC':
-        typeColor = Colors.blue;
-        break;
-      case 'Monster':
-        typeColor = Colors.red;
-        break;
-      default:
-        typeColor = Colors.grey;
-    }
-
+    final C = context.appColors;
+    final typeColor = switch (type) {
+      'PC' => C.green,
+      'NPC' => C.accent,
+      _ => C.red,
+    };
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: typeColor,
@@ -309,26 +274,28 @@ class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneS
           style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
         ),
         subtitle: Text(subtitle),
-        trailing: isSelected
-            ? Icon(Icons.check_circle, color: DnDTheme.mysticalPurple)
-            : Icon(Icons.radio_button_unchecked, color: Colors.grey),
+        trailing: Icon(
+          isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
+          color: isSelected ? C.accent : C.textSoft,
+        ),
         onTap: onTap,
       ),
     );
   }
 
   Widget _buildEmptyState(String message) {
+    final C = context.appColors;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.search_off, size: 64, color: Colors.grey),
+            Icon(Icons.search_off, size: 64, color: C.textSoft),
             const SizedBox(height: 16),
             Text(
               message,
-              style: TextStyle(fontSize: 16, color: Colors.grey),
+              style: TextStyle(fontSize: 16, color: C.textSoft),
               textAlign: TextAlign.center,
             ),
           ],

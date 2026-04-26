@@ -80,7 +80,10 @@ class DatabaseMigration {
   
   // Füge creature_id Spalte zu encounter_participants hinzu (für Loot-Verteilung)
   await _addCreatureIdColumn(db);
-  
+
+  // Füge last_opened_at Spalte zur campaigns Tabelle hinzu
+  await _addLastOpenedAtColumn(db);
+
   debugPrint('Database migration completed successfully');
   }
   
@@ -1256,6 +1259,19 @@ class DatabaseMigration {
       }
     } catch (e) {
       debugPrint('Error adding creature_id column: $e');
+    }
+  }
+
+  Future<void> _addLastOpenedAtColumn(Database db) async {
+    try {
+      final tableInfo = await db.rawQuery('PRAGMA table_info(campaigns)');
+      final hasColumn = tableInfo.any((col) => col['name'] == 'last_opened_at');
+      if (!hasColumn) {
+        await db.execute('ALTER TABLE campaigns ADD COLUMN last_opened_at TEXT');
+        debugPrint('Added last_opened_at column to campaigns');
+      }
+    } catch (e) {
+      debugPrint('Error adding last_opened_at column: $e');
     }
   }
 }

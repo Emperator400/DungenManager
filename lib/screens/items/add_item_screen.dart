@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/item.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 import '../../services/inventory_service.dart';
 import '../../widgets/ui_components/feedback/snackbar_helper.dart';
 
-/// Add Item From Library Screen
-/// 
-/// Screen zum Hinzufügen von Gegenständen aus der Ausrüstung zum Inventar.
-/// Verwendet den InventoryService für vollständige Funktionalität.
 class AddItemFromLibraryScreen extends StatefulWidget {
   final String characterId;
   const AddItemFromLibraryScreen({super.key, required this.characterId});
@@ -21,7 +17,7 @@ class _AddItemFromLibraryScreenState extends State<AddItemFromLibraryScreen> {
   late InventoryService _inventoryService;
   late Future<List<Item>> _itemsFuture;
   String _searchQuery = '';
-  
+
   @override
   void initState() {
     super.initState();
@@ -37,44 +33,39 @@ class _AddItemFromLibraryScreenState extends State<AddItemFromLibraryScreen> {
 
   Future<void> _onItemTapped(Item item) async {
     final quantityController = TextEditingController(text: '1');
-    
+    final C = context.appColors;
+
     final quantity = await showDialog<int>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
+        backgroundColor: C.bgPanel,
         title: Text(
           'Menge für "${item.name}"',
-          style: DnDTheme.headline3.copyWith(
-            color: DnDTheme.ancientGold,
-          ),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: C.amber),
         ),
         content: TextField(
           controller: quantityController,
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           autofocus: true,
-          style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+          style: const TextStyle(fontSize: 16, color: Colors.white),
           decoration: InputDecoration(
             filled: true,
-            fillColor: DnDTheme.slateGrey,
+            fillColor: C.bgHover,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-              borderSide: const BorderSide(color: DnDTheme.mysticalPurple),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: C.border),
             ),
             hintText: 'Menge',
-            hintStyle: DnDTheme.bodyText2.copyWith(
-              color: Colors.white60,
-            ),
+            hintStyle: const TextStyle(fontSize: 14, color: Colors.white60),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(
+            child: const Text(
               'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(
-                color: DnDTheme.mysticalPurple,
-              ),
+              style: TextStyle(fontSize: 16, color: Color(0xFF7C3AED)),
             ),
           ),
           ElevatedButton(
@@ -83,7 +74,7 @@ class _AddItemFromLibraryScreenState extends State<AddItemFromLibraryScreen> {
               Navigator.of(ctx).pop(amount > 0 ? amount : null);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.successGreen,
+              backgroundColor: C.green,
               foregroundColor: Colors.white,
             ),
             child: const Text('Hinzufügen'),
@@ -99,35 +90,27 @@ class _AddItemFromLibraryScreenState extends State<AddItemFromLibraryScreen> {
           itemId: item.id,
           quantity: quantity,
         );
-        
         if (mounted) {
-          SnackBarHelper.showSuccess(
-            context,
-            '$quantity× ${item.name} zum Inventar hinzugefügt',
-          );
+          SnackBarHelper.showSuccess(context, '$quantity× ${item.name} zum Inventar hinzugefügt');
           Navigator.of(context).pop();
         }
       } catch (e) {
-        if (mounted) {
-          SnackBarHelper.showError(context, 'Fehler beim Hinzufügen: $e');
-        }
+        if (mounted) SnackBarHelper.showError(context, 'Fehler beim Hinzufügen: $e');
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Scaffold(
-      backgroundColor: DnDTheme.dungeonBlack,
+      backgroundColor: C.bg,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Gegenstand aus Ausrüstung wählen',
-          style: TextStyle(
-            color: DnDTheme.ancientGold,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: C.amber, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: DnDTheme.stoneGrey,
+        backgroundColor: C.bgPanel,
         foregroundColor: Colors.white,
       ),
       body: Column(
@@ -137,48 +120,41 @@ class _AddItemFromLibraryScreenState extends State<AddItemFromLibraryScreen> {
             child: FutureBuilder<List<Item>>(
               future: _itemsFuture,
               builder: (context, snapshot) {
+                final C = context.appColors;
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      color: DnDTheme.ancientGold,
-                    ),
-                  );
+                  return Center(child: CircularProgressIndicator(color: C.amber));
                 }
 
                 if (snapshot.hasError) {
                   return Center(
                     child: Padding(
-                      padding: const EdgeInsets.all(DnDTheme.xl),
+                      padding: const EdgeInsets.all(32),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            Icons.error_outline,
-                            color: DnDTheme.errorRed,
-                            size: 64,
-                          ),
-                          const SizedBox(height: DnDTheme.lg),
+                          Icon(Icons.error_outline, color: C.red, size: 64),
+                          const SizedBox(height: 24),
                           Text(
                             'Fehler beim Laden',
-                            style: DnDTheme.headline2.copyWith(
-                              color: DnDTheme.errorRed,
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: C.red,
                             ),
                           ),
-                          const SizedBox(height: DnDTheme.sm),
+                          const SizedBox(height: 8),
                           Text(
                             snapshot.error.toString(),
-                            style: DnDTheme.bodyText1.copyWith(
-                              color: Colors.white70,
-                            ),
+                            style: const TextStyle(fontSize: 16, color: Colors.white70),
                             textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: DnDTheme.xl),
+                          const SizedBox(height: 32),
                           ElevatedButton.icon(
                             onPressed: _loadItems,
                             icon: const Icon(Icons.refresh),
                             label: const Text('Erneut versuchen'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: DnDTheme.arcaneBlue,
+                              backgroundColor: C.accent,
                               foregroundColor: Colors.white,
                             ),
                           ),
@@ -191,35 +167,33 @@ class _AddItemFromLibraryScreenState extends State<AddItemFromLibraryScreen> {
                 final items = snapshot.data ?? [];
                 final filteredItems = _searchQuery.isEmpty
                     ? items
-                    : items.where((item) =>
-                        item.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+                    : items
+                        .where((item) =>
+                            item.name.toLowerCase().contains(_searchQuery.toLowerCase()))
+                        .toList();
 
                 if (filteredItems.isEmpty) {
                   return Center(
                     child: Padding(
-                      padding: const EdgeInsets.all(DnDTheme.xl),
+                      padding: const EdgeInsets.all(32),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
                             Icons.inventory_2_outlined,
                             size: 80,
-                            color: DnDTheme.mysticalPurple.withValues(alpha: 0.4),
+                            color: const Color(0xFF7C3AED).withValues(alpha: 0.4),
                           ),
-                          const SizedBox(height: DnDTheme.lg),
+                          const SizedBox(height: 24),
                           Text(
                             'Keine Gegenstände gefunden',
-                            style: DnDTheme.bodyText1.copyWith(
-                              color: Colors.white60,
-                            ),
+                            style: TextStyle(fontSize: 16, color: C.textSoft),
                           ),
                           if (_searchQuery.isNotEmpty) ...[
-                            const SizedBox(height: DnDTheme.sm),
+                            const SizedBox(height: 8),
                             Text(
                               'Versuche eine andere Suche',
-                              style: DnDTheme.bodyText2.copyWith(
-                                color: Colors.white38,
-                              ),
+                              style: TextStyle(fontSize: 14, color: C.textSoft),
                             ),
                           ],
                         ],
@@ -229,12 +203,9 @@ class _AddItemFromLibraryScreenState extends State<AddItemFromLibraryScreen> {
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.all(DnDTheme.md),
+                  padding: const EdgeInsets.all(16),
                   itemCount: filteredItems.length,
-                  itemBuilder: (context, index) {
-                    final item = filteredItems[index];
-                    return _buildItemCard(item);
-                  },
+                  itemBuilder: (context, index) => _buildItemCard(filteredItems[index]),
                 );
               },
             ),
@@ -245,103 +216,84 @@ class _AddItemFromLibraryScreenState extends State<AddItemFromLibraryScreen> {
   }
 
   Widget _buildSearchBar() {
+    final C = context.appColors;
     return Container(
-      padding: const EdgeInsets.all(DnDTheme.lg),
-      color: DnDTheme.stoneGrey,
+      padding: const EdgeInsets.all(24),
+      color: C.bgPanel,
       child: TextField(
-        onChanged: (value) {
-          setState(() {
-            _searchQuery = value;
-          });
-        },
+        onChanged: (value) => setState(() => _searchQuery = value),
         decoration: InputDecoration(
           hintText: 'Gegenstände durchsuchen...',
-          hintStyle: DnDTheme.bodyText2.copyWith(
-            color: Colors.white60,
-          ),
-          prefixIcon: Icon(Icons.search, color: DnDTheme.ancientGold),
+          hintStyle: const TextStyle(fontSize: 14, color: Colors.white60),
+          prefixIcon: Icon(Icons.search, color: C.amber),
           filled: true,
-          fillColor: DnDTheme.slateGrey,
+          fillColor: C.bgHover,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+            borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
           ),
-          contentPadding: const EdgeInsets.all(DnDTheme.md),
+          contentPadding: const EdgeInsets.all(16),
         ),
-        style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+        style: const TextStyle(fontSize: 16, color: Colors.white),
       ),
     );
   }
 
   Widget _buildItemCard(Item item) {
-    Color typeColor = DnDTheme.mysticalPurple;
+    final C = context.appColors;
+    Color typeColor = const Color(0xFF7C3AED);
     IconData typeIcon = Icons.inventory_2_outlined;
-    
+
     switch (item.itemType) {
       case ItemType.Weapon:
-        typeColor = DnDTheme.errorRed;
+        typeColor = C.red;
         typeIcon = Icons.gavel;
-        break;
       case ItemType.Armor:
-        typeColor = DnDTheme.arcaneBlue;
+        typeColor = C.accent;
         typeIcon = Icons.shield;
-        break;
       case ItemType.Shield:
-        typeColor = DnDTheme.warningOrange;
+        typeColor = const Color(0xFFEA580C);
         typeIcon = Icons.shield_outlined;
-        break;
       case ItemType.Consumable:
-        typeColor = DnDTheme.emeraldGreen;
+        typeColor = C.green;
         typeIcon = Icons.restaurant;
-        break;
       case ItemType.Tool:
-        typeColor = DnDTheme.warningOrange;
+        typeColor = const Color(0xFFEA580C);
         typeIcon = Icons.build;
-        break;
       case ItemType.MagicItem:
-        typeColor = DnDTheme.ancientGold;
+        typeColor = C.amber;
         typeIcon = Icons.auto_awesome;
-        break;
       case ItemType.Potion:
-        typeColor = DnDTheme.emeraldGreen;
+        typeColor = C.green;
         typeIcon = Icons.local_drink;
-        break;
       case ItemType.Scroll:
-        typeColor = DnDTheme.mysticalPurple;
+        typeColor = const Color(0xFF7C3AED);
         typeIcon = Icons.description;
-        break;
       case ItemType.Treasure:
-        typeColor = DnDTheme.ancientGold;
+        typeColor = C.amber;
         typeIcon = Icons.diamond;
-        break;
       case ItemType.Currency:
-        typeColor = DnDTheme.successGreen;
+        typeColor = C.green;
         typeIcon = Icons.monetization_on;
-        break;
       case ItemType.Material:
-        typeColor = DnDTheme.warningOrange;
+        typeColor = const Color(0xFFEA580C);
         typeIcon = Icons.science;
-        break;
       case ItemType.Component:
-        typeColor = DnDTheme.warningOrange;
+        typeColor = const Color(0xFFEA580C);
         typeIcon = Icons.category;
-        break;
       default:
         typeIcon = Icons.inventory_2_outlined;
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: DnDTheme.md),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: DnDTheme.slateGrey,
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-        border: Border.all(
-          color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
-          width: 1,
-        ),
+        color: C.bgHover,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF7C3AED).withValues(alpha: 0.3)),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.all(DnDTheme.md),
+        contentPadding: const EdgeInsets.all(16),
         leading: Container(
           width: 48,
           height: 48,
@@ -349,87 +301,57 @@ class _AddItemFromLibraryScreenState extends State<AddItemFromLibraryScreen> {
           decoration: BoxDecoration(
             color: typeColor.withValues(alpha: 0.2),
             shape: BoxShape.circle,
-            border: Border.all(
-              color: typeColor,
-              width: 2,
-            ),
+            border: Border.all(color: typeColor, width: 2),
           ),
           child: Icon(typeIcon, color: typeColor, size: 24),
         ),
         title: Text(
           item.name,
-          style: DnDTheme.bodyText1.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               _getItemTypeDisplayName(item.itemType),
-              style: DnDTheme.bodyText2.copyWith(
-                color: typeColor,
-              ),
+              style: TextStyle(fontSize: 14, color: typeColor),
             ),
             if (item.description.isNotEmpty)
               Text(
                 item.description,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: DnDTheme.bodyText2.copyWith(
-                  color: Colors.white60,
-                ),
+                style: const TextStyle(fontSize: 14, color: Colors.white60),
               ),
             if (item.cost > 0)
               Text(
                 '${item.cost.toStringAsFixed(2)} Gold',
-                style: DnDTheme.bodyText2.copyWith(
-                  color: DnDTheme.ancientGold,
-                ),
+                style: TextStyle(fontSize: 14, color: C.amber),
               ),
           ],
         ),
-        trailing: Icon(
-          Icons.add_circle,
-          color: DnDTheme.successGreen,
-          size: 32,
-        ),
+        trailing: Icon(Icons.add_circle, color: C.green, size: 32),
         onTap: () => _onItemTapped(item),
       ),
     );
   }
 
   String _getItemTypeDisplayName(ItemType type) {
-    switch (type) {
-      case ItemType.Weapon:
-        return 'Waffe';
-      case ItemType.Armor:
-        return 'Rüstung';
-      case ItemType.Shield:
-        return 'Schild';
-      case ItemType.Consumable:
-        return 'Verbrauchsgegenstand';
-      case ItemType.Tool:
-        return 'Werkzeug';
-      case ItemType.Material:
-        return 'Material';
-      case ItemType.Component:
-        return 'Komponente';
-      case ItemType.MagicItem:
-        return 'Magischer Gegenstand';
-      case ItemType.Scroll:
-        return 'Schriftrolle';
-      case ItemType.Potion:
-        return 'Trank';
-      case ItemType.Treasure:
-        return 'Schatz';
-      case ItemType.Currency:
-        return 'Währung';
-      case ItemType.AdventuringGear:
-        return 'Ausrüstung';
-      case ItemType.SPELL_WEAPON:
-        return 'Zauberwaffe';
-    }
+    return switch (type) {
+      ItemType.Weapon => 'Waffe',
+      ItemType.Armor => 'Rüstung',
+      ItemType.Shield => 'Schild',
+      ItemType.Consumable => 'Verbrauchsgegenstand',
+      ItemType.Tool => 'Werkzeug',
+      ItemType.Material => 'Material',
+      ItemType.Component => 'Komponente',
+      ItemType.MagicItem => 'Magischer Gegenstand',
+      ItemType.Scroll => 'Schriftrolle',
+      ItemType.Potion => 'Trank',
+      ItemType.Treasure => 'Schatz',
+      ItemType.Currency => 'Währung',
+      ItemType.AdventuringGear => 'Ausrüstung',
+      ItemType.SPELL_WEAPON => 'Zauberwaffe',
+    };
   }
 }

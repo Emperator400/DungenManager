@@ -5,14 +5,12 @@ import '../../models/player_character.dart';
 import 'edit_pc_screen.dart';
 import '../../widgets/ui_components/cards/unified_hero_card.dart';
 import '../../widgets/character_list/character_list_helpers.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 import '../../viewmodels/character_editor_viewmodel.dart';
 import '../../database/core/database_connection.dart';
 import '../../database/repositories/player_character_model_repository.dart';
 import '../../widgets/ui_components/states/loading_state_widget.dart';
 import '../../widgets/ui_components/feedback/snackbar_helper.dart';
-// ignore: unused_import
-// '../../widgets/ui_components/feedback/confirmation_dialog.dart';
 
 class PlayerCharacterListScreen extends StatefulWidget {
   final Campaign campaign;
@@ -51,41 +49,32 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
       await _viewModel.loadPlayerCharacters(widget.campaign.id);
       setState(() {});
     } catch (e) {
-      if (mounted) {
-        SnackBarHelper.showError(context, 'Fehler beim Laden der Helden: $e');
-      }
+      if (mounted) SnackBarHelper.showError(context, 'Fehler beim Laden der Helden: $e');
     }
   }
 
   List<PlayerCharacter> get _filteredCharacters {
-    final allPcs = _viewModel.playerCharacters;
-    
-    var filteredPcs = allPcs.where((pc) {
+    final filteredPcs = _viewModel.playerCharacters.where((pc) {
       final matchesSearch = _searchQuery.isEmpty ||
           pc.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           pc.className.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           pc.playerName.toLowerCase().contains(_searchQuery.toLowerCase());
-
       final matchesFavorite = !_showFavoritesOnly || pc.isFavorite;
-      
       return matchesSearch && matchesFavorite;
     }).toList();
-
     filteredPcs.sort((a, b) => CharacterListHelpers.compareCharacters(a, b, _sortOption));
-    
     return filteredPcs;
   }
 
-  Future<void> _refreshCharacterList() async {
-    await _loadCharacters();
-  }
+  Future<void> _refreshCharacterList() => _loadCharacters();
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return ChangeNotifierProvider<CharacterEditorViewModel>.value(
       value: _viewModel,
       child: Scaffold(
-        backgroundColor: DnDTheme.dungeonBlack,
+        backgroundColor: C.bg,
         appBar: AppBar(
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
@@ -93,193 +82,164 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
           ),
           title: Text(
             widget.campaign.title,
-            style: DnDTheme.headline2.copyWith(
-              color: DnDTheme.ancientGold,
-            ),
+            style: TextStyle(fontSize: 22, color: C.amber, fontWeight: FontWeight.bold),
           ),
-          backgroundColor: DnDTheme.stoneGrey,
+          backgroundColor: C.bgPanel,
           foregroundColor: Colors.white,
         ),
         body: SafeArea(
           top: false,
           child: Column(
             children: [
-              // Suchleiste direkt im Body
               _buildSearchAndFilterBar(),
-              // Liste der Helden
               Expanded(
                 child: Consumer<CharacterEditorViewModel>(
-          builder: (context, viewModel, child) {
-            if (viewModel.isLoading) {
-              return LoadingStateWidget.withMessage(message: 'Lade Helden...');
-            }
+                  builder: (context, viewModel, child) {
+                    final C = context.appColors;
+                    if (viewModel.isLoading) {
+                      return LoadingStateWidget.withMessage(message: 'Lade Helden...');
+                    }
 
-            if (viewModel.error != null) {
-              return Center(
-                child: Container(
-                  padding: const EdgeInsets.all(DnDTheme.lg),
-                  decoration: DnDTheme.getDungeonWallDecoration(),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        color: DnDTheme.errorRed,
-                        size: 48,
-                      ),
-                      const SizedBox(height: DnDTheme.md),
-                      Text(
-                        'Fehler beim Laden',
-                        style: DnDTheme.headline3.copyWith(
-                          color: DnDTheme.errorRed,
-                        ),
-                      ),
-                      const SizedBox(height: DnDTheme.sm),
-                      Text(
-                        viewModel.error!,
-                        style: DnDTheme.bodyText2.copyWith(
-                          color: Colors.white70,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: DnDTheme.md),
-                      ElevatedButton.icon(
-                        onPressed: () async {
-                          viewModel.clearError();
-                          await _refreshCharacterList();
-                        },
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Erneut versuchen'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: DnDTheme.errorRed,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-
-            final filteredPcs = _filteredCharacters;
-            
-            if (filteredPcs.isEmpty) {
-              return Center(
-                child: Container(
-                  padding: const EdgeInsets.all(DnDTheme.lg),
-                  decoration: DnDTheme.getDungeonWallDecoration(),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.people_outline,
-                        size: 64,
-                        color: DnDTheme.mysticalPurple.withValues(alpha: 0.6),
-                      ),
-                      const SizedBox(height: DnDTheme.md),
-                      Text(
-                        _searchQuery.isNotEmpty || _showFavoritesOnly 
-                            ? "Keine Helden gefunden, die den Filterkriterien entsprechen."
-                            : "Keine Helden für diese Kampagne erstellt.",
-                        style: DnDTheme.bodyText1.copyWith(
-                          color: Colors.white70,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      if (_searchQuery.isNotEmpty || _showFavoritesOnly)
-                        Padding(
-                          padding: const EdgeInsets.only(top: DnDTheme.md),
-                          child: ElevatedButton.icon(
-                            onPressed: () async {
-                              setState(() {
-                                _searchQuery = '';
-                                _showFavoritesOnly = false;
-                                _searchController.clear();
-                              });
-                              await _refreshCharacterList();
-                            },
-                            icon: const Icon(Icons.clear),
-                            label: const Text('Filter zurücksetzen'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: DnDTheme.arcaneBlue,
-                              foregroundColor: Colors.white,
-                            ),
+                    if (viewModel.error != null) {
+                      return Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: C.bgPanel,
+                            border: Border.all(color: C.border),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.error_outline, color: C.red, size: 48),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Fehler beim Laden',
+                                style: TextStyle(fontSize: 18, color: C.red),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                viewModel.error!,
+                                style: const TextStyle(fontSize: 14, color: Colors.white70),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                onPressed: () async {
+                                  viewModel.clearError();
+                                  await _refreshCharacterList();
+                                },
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('Erneut versuchen'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: C.red,
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                    ],
-                  ),
-                ),
-              );
-            }
+                      );
+                    }
 
-            return Container(
-              decoration: BoxDecoration(
-                gradient: DnDTheme.getMysticalGradient(
-                  startColor: DnDTheme.dungeonBlack,
-                  endColor: DnDTheme.stoneGrey,
+                    final filteredPcs = _filteredCharacters;
+
+                    if (filteredPcs.isEmpty) {
+                      return Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: C.bgPanel,
+                            border: Border.all(color: C.border),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.people_outline,
+                                size: 64,
+                                color: const Color(0xFF7C3AED).withValues(alpha: 0.6),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                _searchQuery.isNotEmpty || _showFavoritesOnly
+                                    ? 'Keine Helden gefunden, die den Filterkriterien entsprechen.'
+                                    : 'Keine Helden für diese Kampagne erstellt.',
+                                style: const TextStyle(fontSize: 16, color: Colors.white70),
+                                textAlign: TextAlign.center,
+                              ),
+                              if (_searchQuery.isNotEmpty || _showFavoritesOnly)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 16),
+                                  child: ElevatedButton.icon(
+                                    onPressed: () async {
+                                      setState(() {
+                                        _searchQuery = '';
+                                        _showFavoritesOnly = false;
+                                        _searchController.clear();
+                                      });
+                                      await _refreshCharacterList();
+                                    },
+                                    icon: const Icon(Icons.clear),
+                                    label: const Text('Filter zurücksetzen'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: C.accent,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    return _buildCharacterList(filteredPcs);
+                  },
                 ),
-              ),
-              child: _buildCharacterList(filteredPcs),
-            );
-          },
-        ),
               ),
             ],
           ),
         ),
-        floatingActionButton: Container(
-          margin: const EdgeInsets.only(bottom: 16, right: 16),
-          child: FloatingActionButton.extended(
-            tooltip: "Neuen Helden hinzufügen",
-            backgroundColor: DnDTheme.successGreen,
-            foregroundColor: Colors.white,
-            icon: const Icon(Icons.add),
-            label: const Text('Held hinzufügen'),
-            onPressed: () async {
-              debugPrint('DEBUG: FloatingActionButton pressed - Opening Enhanced Edit PC Screen');
-              try {
-                await Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (ctx) => EditPCScreen(
-                      campaignId: widget.campaign.id,
-                    ),
+        floatingActionButton: FloatingActionButton.extended(
+          tooltip: 'Neuen Helden hinzufügen',
+          backgroundColor: C.green,
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.add),
+          label: const Text('Held hinzufügen'),
+          onPressed: () async {
+            try {
+              await Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (ctx) => EditPCScreen(campaignId: widget.campaign.id),
+                ),
+              );
+              await _refreshCharacterList();
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Fehler beim Öffnen des Charakter-Editors: $e'),
+                    backgroundColor: context.appColors.red,
                   ),
                 );
-                debugPrint('DEBUG: Enhanced Edit PC Screen closed');
-                await _refreshCharacterList();
-                debugPrint('DEBUG: Character list refreshed successfully');
-              } catch (e) {
-                debugPrint('DEBUG: Error opening Enhanced Edit PC Screen: $e');
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Fehler beim Öffnen des Charakter-Editors: $e'),
-                      backgroundColor: DnDTheme.errorRed,
-                    ),
-                  );
-                }
               }
-            },
-          ),
+            }
+          },
         ),
       ),
     );
   }
 
   Widget _buildSearchAndFilterBar() {
+    final C = context.appColors;
     return Container(
-      padding: const EdgeInsets.all(DnDTheme.md),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: DnDTheme.getMysticalGradient(
-          startColor: DnDTheme.stoneGrey,
-          endColor: DnDTheme.slateGrey,
-        ),
-        border: Border(
-          bottom: BorderSide(
-            color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
-            width: 1,
-          ),
-        ),
+        color: C.bgPanel,
+        border: Border(bottom: BorderSide(color: C.border)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -288,13 +248,11 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
             controller: _searchController,
             decoration: InputDecoration(
               hintText: 'Helden suchen...',
-              hintStyle: DnDTheme.bodyText2.copyWith(
-                color: Colors.white54,
-              ),
-              prefixIcon: Icon(Icons.search, color: DnDTheme.ancientGold),
+              hintStyle: const TextStyle(fontSize: 14, color: Colors.white54),
+              prefixIcon: Icon(Icons.search, color: C.amber),
               suffixIcon: _searchQuery.isNotEmpty
                   ? IconButton(
-                      icon: Icon(Icons.clear, color: DnDTheme.errorRed),
+                      icon: Icon(Icons.clear, color: C.red),
                       onPressed: () async {
                         setState(() {
                           _searchQuery = '';
@@ -305,98 +263,79 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
                     )
                   : null,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                borderSide: BorderSide(color: DnDTheme.mysticalPurple),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: C.border),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                borderSide: BorderSide(
-                  color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
-                ),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: C.border),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: C.amber, width: 2),
               ),
               filled: true,
-              fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
+              fillColor: C.bgHover,
             ),
-            style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+            style: const TextStyle(fontSize: 16, color: Colors.white),
             onChanged: (value) {
-              setState(() {
-                _searchQuery = value;
-              });
+              setState(() => _searchQuery = value);
               Future.delayed(const Duration(milliseconds: 300), () {
                 if (mounted) _refreshCharacterList();
               });
             },
           ),
-          
-          const SizedBox(height: DnDTheme.sm),
-          
+          const SizedBox(height: 8),
           Row(
             children: [
               FilterChip(
                 label: Text(
                   'Nur Favoriten',
                   style: TextStyle(
-                    color: _showFavoritesOnly ? Colors.white : DnDTheme.mysticalPurple,
+                    color: _showFavoritesOnly ? Colors.white : const Color(0xFF7C3AED),
                   ),
                 ),
                 selected: _showFavoritesOnly,
                 onSelected: (selected) async {
-                  setState(() {
-                    _showFavoritesOnly = selected;
-                  });
+                  setState(() => _showFavoritesOnly = selected);
                   await _refreshCharacterList();
                 },
-                backgroundColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
-                selectedColor: DnDTheme.ancientGold,
+                backgroundColor: C.bgHover,
+                selectedColor: C.amber,
                 showCheckmark: false,
-                avatar: _showFavoritesOnly 
-                    ? Icon(Icons.star, size: 16, color: Colors.white)
-                    : Icon(Icons.star_border, size: 16, color: DnDTheme.mysticalPurple),
+                avatar: _showFavoritesOnly
+                    ? const Icon(Icons.star, size: 16, color: Colors.white)
+                    : const Icon(Icons.star_border, size: 16, color: Color(0xFF7C3AED)),
               ),
-              
-              const SizedBox(width: DnDTheme.sm),
-              
+              const SizedBox(width: 8),
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                    border: Border.all(
-                      color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
-                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: C.border),
                   ),
                   child: DropdownButtonFormField<SortOption>(
                     value: _sortOption,
                     decoration: InputDecoration(
                       labelText: 'Sortieren',
-                      labelStyle: DnDTheme.bodyText2.copyWith(
-                        color: DnDTheme.ancientGold,
-                      ),
+                      labelStyle: TextStyle(fontSize: 14, color: C.amber),
                       border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: DnDTheme.sm,
-                        vertical: DnDTheme.xs,
-                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     ),
-                    dropdownColor: DnDTheme.stoneGrey,
-                    style: DnDTheme.bodyText2.copyWith(color: Colors.white),
+                    dropdownColor: C.bgPanel,
+                    style: const TextStyle(fontSize: 14, color: Colors.white),
                     items: SortOption.values.map((option) {
                       return DropdownMenuItem(
                         value: option,
                         child: Text(
                           _getSortOptionLabel(option),
-                          style: DnDTheme.bodyText2.copyWith(color: Colors.white),
+                          style: const TextStyle(fontSize: 14, color: Colors.white),
                         ),
                       );
                     }).toList(),
                     onChanged: (value) async {
                       if (value != null) {
-                        setState(() {
-                          _sortOption = value;
-                        });
+                        setState(() => _sortOption = value);
                         await _refreshCharacterList();
                       }
                     },
@@ -412,18 +351,17 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
 
   Widget _buildCharacterList(List<PlayerCharacter> pcs) {
     return ListView.builder(
-      padding: const EdgeInsets.all(DnDTheme.sm),
+      padding: const EdgeInsets.all(8),
       itemCount: pcs.length,
       itemBuilder: (context, index) {
         final pc = pcs[index];
         return Padding(
-          padding: const EdgeInsets.only(bottom: DnDTheme.md),
+          padding: const EdgeInsets.only(bottom: 16),
           child: UnifiedHeroCard(
             hero: pc,
             onTap: () => _editCharacter(context, pc),
             onEdit: () => _editCharacter(context, pc),
             onToggleFavorite: () => _toggleFavorite(pc),
-            onQuickAction: () => _showQuickActions(context, pc),
             onDelete: () => _showDeleteConfirmation(context, pc),
           ),
         );
@@ -432,29 +370,20 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
   }
 
   String _getSortOptionLabel(SortOption option) {
-    switch (option) {
-      case SortOption.name:
-        return 'Name';
-      case SortOption.level:
-        return 'Level';
-      case SortOption.className:
-        return 'Klasse';
-      case SortOption.playerName:
-        return 'Spieler';
-      case SortOption.favorites:
-        return 'Favoriten';
-      case SortOption.recentlyEdited:
-        return 'Zuletzt bearbeitet';
-    }
+    return switch (option) {
+      SortOption.name => 'Name',
+      SortOption.level => 'Level',
+      SortOption.className => 'Klasse',
+      SortOption.playerName => 'Spieler',
+      SortOption.favorites => 'Favoriten',
+      SortOption.recentlyEdited => 'Zuletzt bearbeitet',
+    };
   }
 
   void _editCharacter(BuildContext context, PlayerCharacter pc) async {
     await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (ctx) => EditPCScreen(
-          campaignId: widget.campaign.id,
-          pcToEdit: pc,
-        ),
+      MaterialPageRoute<void>(
+        builder: (ctx) => EditPCScreen(campaignId: widget.campaign.id, pcToEdit: pc),
       ),
     );
     await _refreshCharacterList();
@@ -464,16 +393,15 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
     try {
       await _viewModel.toggleFavorite(pc);
       await _refreshCharacterList();
-      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              pc.isFavorite 
+              pc.isFavorite
                   ? '${pc.name} zu Favoriten hinzugefügt'
                   : '${pc.name} aus Favoriten entfernt',
             ),
-            backgroundColor: DnDTheme.successGreen,
+            backgroundColor: context.appColors.green,
           ),
         );
       }
@@ -482,114 +410,33 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Fehler beim Aktualisieren: $e'),
-            backgroundColor: DnDTheme.errorRed,
+            backgroundColor: context.appColors.red,
           ),
         );
       }
     }
   }
 
-  void _showQuickActions(BuildContext context, PlayerCharacter pc) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: DnDTheme.stoneGrey,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(DnDTheme.radiusMedium)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(DnDTheme.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Aktionen für ${pc.name}',
-              style: DnDTheme.headline3.copyWith(
-                color: DnDTheme.ancientGold,
-              ),
-            ),
-            const SizedBox(height: DnDTheme.md),
-            ListTile(
-              leading: Icon(Icons.edit, color: DnDTheme.arcaneBlue),
-              title: Text(
-                'Bearbeiten',
-                style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _editCharacter(context, pc);
-              },
-            ),
-            ListTile(
-              leading: Icon(
-                pc.isFavorite ? Icons.star : Icons.star_border,
-                color: pc.isFavorite ? DnDTheme.ancientGold : DnDTheme.mysticalPurple,
-              ),
-              title: Text(
-                pc.isFavorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen',
-                style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _toggleFavorite(pc);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.copy, color: DnDTheme.infoBlue),
-              title: Text(
-                'Duplizieren',
-                style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Duplizieren wird in Kürze implementiert'),
-                    backgroundColor: DnDTheme.infoBlue,
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.delete, color: DnDTheme.errorRed),
-              title: Text(
-                'Löschen',
-                style: DnDTheme.bodyText1.copyWith(color: DnDTheme.errorRed),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _showDeleteConfirmation(context, pc);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showDeleteConfirmation(BuildContext context, PlayerCharacter pc) {
-    showDialog(
+    final C = context.appColors;
+    showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
+        backgroundColor: C.bgPanel,
         title: Text(
           'Löschen bestätigen',
-          style: DnDTheme.headline3.copyWith(
-            color: DnDTheme.errorRed,
-          ),
+          style: TextStyle(fontSize: 18, color: C.red, fontWeight: FontWeight.bold),
         ),
         content: Text(
           'Möchten Sie ${pc.name} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
-          style: DnDTheme.bodyText1.copyWith(color: Colors.white70),
+          style: const TextStyle(fontSize: 16, color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: Text(
+            child: const Text(
               'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(
-                color: DnDTheme.mysticalPurple,
-              ),
+              style: TextStyle(fontSize: 16, color: Color(0xFF7C3AED)),
             ),
           ),
           ElevatedButton(
@@ -598,12 +445,11 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
               try {
                 await _viewModel.deletePlayerCharacter(pc.id);
                 await _refreshCharacterList();
-                
                 if (mounted) {
                   ScaffoldMessenger.of(this.context).showSnackBar(
                     SnackBar(
                       content: Text('${pc.name} wurde gelöscht'),
-                      backgroundColor: DnDTheme.successGreen,
+                      backgroundColor: this.context.appColors.green,
                     ),
                   );
                 }
@@ -612,14 +458,14 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
                   ScaffoldMessenger.of(this.context).showSnackBar(
                     SnackBar(
                       content: Text('Fehler beim Löschen: $e'),
-                      backgroundColor: DnDTheme.errorRed,
+                      backgroundColor: this.context.appColors.red,
                     ),
                   );
                 }
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.errorRed,
+              backgroundColor: C.red,
               foregroundColor: Colors.white,
             ),
             child: const Text('Löschen'),

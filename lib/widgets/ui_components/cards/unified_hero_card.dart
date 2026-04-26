@@ -1,565 +1,605 @@
 import 'package:flutter/material.dart';
+
 import '../../../models/player_character.dart';
-import '../../../theme/dnd_theme.dart';
 import '../../../services/armor_calculation_service.dart';
-import '../chips/unified_info_chip.dart';
+import '../../../theme/app_colors_map.dart';
+import '../../../theme/app_theme.dart';
+import '../../../widgets/ui_components/shared/app_icon.dart';
+import '../base/unified_card_base.dart';
 
-/// Unified Hero Card
-/// 
-/// Erweiterte Heldenkarte mit ArmorCalculationService, 
-/// UnifiedInfoChip Integration und DnDTheme-Styling
-class UnifiedHeroCard extends StatefulWidget {
-  final PlayerCharacter hero;
-  final VoidCallback? onTap;
-  final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
-  final VoidCallback? onToggleFavorite;
-  final VoidCallback? onQuickAction;
-  final bool isSelected;
-  final bool showActions;
-
+class UnifiedHeroCard extends UnifiedCardBase {
   const UnifiedHeroCard({
-    super.key,
     required this.hero,
-    this.onTap,
-    this.onEdit,
-    this.onDelete,
-    this.onToggleFavorite,
-    this.onQuickAction,
-    this.isSelected = false,
-    this.showActions = true,
+    super.key,
+    super.onTap,
+    super.onEdit,
+    super.onDelete,
+    super.onToggleFavorite,
+    super.isSelected,
   });
 
+  final PlayerCharacter hero;
+
   @override
-  State<UnifiedHeroCard> createState() => _UnifiedHeroCardState();
+  Widget buildCardContent(BuildContext context) =>
+      _HeroCardContent(card: this);
 }
 
-class _UnifiedHeroCardState extends State<UnifiedHeroCard> {
-  final ArmorCalculationService _armorService = ArmorCalculationService();
+// ── CARD CONTENT ──────────────────────────────────────────────────────────────
+
+class _HeroCardContent extends StatefulWidget {
+  const _HeroCardContent({required this.card});
+
+  final UnifiedHeroCard card;
+
+  @override
+  State<_HeroCardContent> createState() => _HeroCardContentState();
+}
+
+class _HeroCardContentState extends State<_HeroCardContent> {
+  bool _hovered = false;
+  final _armorService = ArmorCalculationService();
   ArmorClassResult? _armorResult;
-  bool _isLoadingAc = true;
+  bool _loadingAc = true;
+
+  UnifiedHeroCard get c => widget.card;
 
   @override
   void initState() {
     super.initState();
-    _loadArmorClass();
+    _loadAc();
   }
 
   @override
-  void didUpdateWidget(UnifiedHeroCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.hero.id != widget.hero.id) {
-      _loadArmorClass();
+  void didUpdateWidget(_HeroCardContent old) {
+    super.didUpdateWidget(old);
+    if (old.card.hero.id != c.hero.id) {
+      _loadAc();
     }
   }
 
-  Future<void> _loadArmorClass() async {
+  Future<void> _loadAc() async {
     if (!mounted) return;
-    
-    setState(() {
-      _isLoadingAc = true;
-    });
-
+    setState(() => _loadingAc = true);
     try {
       final result = await _armorService.calculateArmorClass(
-        characterId: widget.hero.id,
-        dexterity: widget.hero.dexterity,
+        characterId: c.hero.id,
+        dexterity: c.hero.dexterity,
         baseArmorClass: 10,
       );
-      
       if (mounted) {
-        setState(() {
-          _armorResult = result;
-          _isLoadingAc = false;
-        });
+        setState(() { _armorResult = result; _loadingAc = false; });
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
-        setState(() {
-          _armorResult = null;
-          _isLoadingAc = false;
-        });
+        setState(() { _armorResult = null; _loadingAc = false; });
       }
-    }
-  }
-
-  int _calculateModifier(int score) {
-    return ((score - 10) / 2).floor();
-  }
-
-  Color _getClassColor() {
-    final className = widget.hero.className.toLowerCase();
-    switch (className) {
-      case 'barbarian':
-        return Colors.red.shade700;
-      case 'bard':
-        return Colors.purple.shade400;
-      case 'cleric':
-        return Colors.grey.shade300;
-      case 'druid':
-        return Colors.orange.shade600;
-      case 'fighter':
-        return Colors.brown.shade600;
-      case 'monk':
-        return Colors.blue.shade300;
-      case 'paladin':
-        return Colors.pink.shade300;
-      case 'ranger':
-        return Colors.green.shade600;
-      case 'rogue':
-        return Colors.grey.shade600;
-      case 'sorcerer':
-        return Colors.red.shade400;
-      case 'warlock':
-        return Colors.purple.shade700;
-      case 'wizard':
-        return Colors.blue.shade600;
-      default:
-        return DnDTheme.mysticalPurple;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final classColor = _getClassColor();
-    
-    return Container(
-      decoration: DnDTheme.getFantasyCardDecoration(
-        borderColor: widget.isSelected ? DnDTheme.ancientGold : classColor,
-        isLegendary: widget.hero.isFavorite,
-      ).copyWith(
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-          child: Padding(
-            padding: const EdgeInsets.all(DnDTheme.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // === HEADER: Avatar und Basis-Info ===
-                _buildHeader(classColor),
-                
-                const Divider(
-                  color: DnDTheme.slateGrey,
-                  height: 24,
-                  thickness: 1,
+    final C = context.appColors;
+    final bright = Theme.of(context).brightness == Brightness.light;
+    final typeName = _classTypeName(c.hero.className);
+    final typeConfig = AppTypeColors.of(typeName);
+    final classColor = typeConfig.color;
+    final classBg = bright ? typeConfig.bgLight : typeConfig.bgDark;
+
+    final acValue = _loadingAc
+        ? c.hero.armorClass
+        : (_armorResult?.totalAc ?? c.hero.armorClass);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: c.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          color: _hovered ? C.bgHover : C.bgPanel,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Farbstreifen
+              Container(height: 3, color: classColor),
+
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _Avatar(
+                          letter: c.hero.name.isNotEmpty
+                              ? c.hero.name[0].toUpperCase()
+                              : '?',
+                          level: c.hero.level,
+                          color: classColor,
+                          bg: classBg,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                c.hero.name,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: C.text,
+                                  height: 1.2,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              _ClassBadge(
+                                label:
+                                    '${c.hero.raceName} ${c.hero.className}',
+                                color: classColor,
+                                bg: classBg,
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (_hovered) ...[
+                          _IconBtn(
+                            C: C,
+                            icon: AppIconName.edit,
+                            onTap: c.onEdit,
+                          ),
+                          const SizedBox(width: 2),
+                          _PopupBtn(card: c, C: C),
+                        ],
+                      ],
+                    ),
+
+                    // Spielername
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        AppIcon(AppIconName.user, size: 11, color: C.textSoft),
+                        const SizedBox(width: 4),
+                        Text(
+                          c.hero.playerName,
+                          style:
+                              TextStyle(fontSize: 11, color: C.textSoft),
+                        ),
+                      ],
+                    ),
+
+                    // Kampfwerte
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        _StatChip(
+                          icon: AppIconName.shield,
+                          label: 'AC',
+                          value: '$acValue',
+                          C: C,
+                        ),
+                        const SizedBox(width: 8),
+                        _StatChip(
+                          icon: AppIconName.heart,
+                          label: 'HP',
+                          value: '${c.hero.maxHp}',
+                          C: C,
+                        ),
+                        const SizedBox(width: 8),
+                        _StatChip(
+                          icon: AppIconName.star,
+                          label: 'INIT',
+                          value: _signedMod(c.hero.dexterity,
+                              bonus: c.hero.initiativeBonus),
+                          C: C,
+                        ),
+                        const SizedBox(width: 8),
+                        _StatChip(
+                          icon: AppIconName.play,
+                          label: 'ft',
+                          value: '${c.hero.speed}',
+                          C: C,
+                        ),
+                      ],
+                    ),
+
+                    // Attribute
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _AttrCell(name: 'STR', score: c.hero.strength, C: C),
+                        _AttrCell(name: 'DEX', score: c.hero.dexterity, C: C),
+                        _AttrCell(name: 'CON', score: c.hero.constitution, C: C),
+                        _AttrCell(name: 'INT', score: c.hero.intelligence, C: C),
+                        _AttrCell(name: 'WIS', score: c.hero.wisdom, C: C),
+                        _AttrCell(name: 'CHA', score: c.hero.charisma, C: C),
+                      ],
+                    ),
+
+                    // Beschreibung
+                    if (c.hero.description != null &&
+                        c.hero.description!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        c.hero.description!,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: C.textMid,
+                          height: 1.4,
+                          fontStyle: FontStyle.italic,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
                 ),
-                
-                // === KAMPF-CHIPS ===
-                _buildCombatChips(),
-                
-                const SizedBox(height: DnDTheme.sm),
-                
-                // === ATTRIBUT-CHIPS ===
-                _buildAttributeChips(),
-                
-                const SizedBox(height: DnDTheme.sm),
-                
-                // === WÄHRUNGS-CHIPS ===
-                _buildCurrencyChips(),
-                
-                // === GESINNUNG (falls vorhanden) ===
-                if (widget.hero.alignment != null && widget.hero.alignment!.isNotEmpty) ...[
-                  const SizedBox(height: DnDTheme.sm),
-                  _buildAlignmentChip(),
-                ],
-                
-                // === BESCHREIBUNG (falls vorhanden) ===
-                if (widget.hero.description != null && widget.hero.description!.isNotEmpty) ...[
-                  const SizedBox(height: DnDTheme.sm),
-                  _buildDescription(),
-                ],
-                
-                // === AKTIONS-LEISTE ===
-                if (widget.showActions) ...[
-                  const SizedBox(height: DnDTheme.sm),
-                  _buildActionBar(classColor),
-                ],
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
+}
 
-  /// Header mit Avatar, Name und Basis-Info
-  Widget _buildHeader(Color classColor) {
-    return Row(
-      children: [
-        // Avatar mit Level-Badge
-        _buildAvatar(),
-        
-        const SizedBox(width: 12),
-        
-        // Name und Info
-        Expanded(
+// ── POPUP MENU ────────────────────────────────────────────────────────────────
+
+class _PopupBtn extends StatelessWidget {
+  const _PopupBtn({required this.card, required this.C});
+
+  final UnifiedHeroCard card;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) => PopupMenuButton<String>(
+        tooltip: '',
+        color: C.bgPanel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: C.border),
+        ),
+        offset: const Offset(0, 30),
+        onSelected: (v) => _handle(context, v),
+        itemBuilder: (_) => [
+          _item('delete', AppIconName.trash, 'Löschen', C, color: C.red),
+        ],
+        child: Container(
+          width: 26,
+          height: 26,
+          decoration: BoxDecoration(
+            color: C.bgHover,
+            borderRadius: BorderRadius.circular(5),
+          ),
+          child: Center(
+            child: AppIcon(AppIconName.dots, size: 12, color: C.textSoft),
+          ),
+        ),
+      );
+
+  PopupMenuItem<String> _item(
+    String value,
+    AppIconName icon,
+    String label,
+    AppColorsExtension C, {
+    Color? color,
+  }) =>
+      PopupMenuItem(
+        value: value,
+        child: Row(
+          children: [
+            AppIcon(icon, size: 13, color: color ?? C.textMid),
+            const SizedBox(width: 8),
+            Text(label,
+                style: TextStyle(fontSize: 13, color: color ?? C.text)),
+          ],
+        ),
+      );
+
+  void _handle(BuildContext context, String action) {
+    switch (action) {
+      case 'delete':
+        _showDeleteDialog(context);
+    }
+  }
+
+  Future<void> _showDeleteDialog(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => _DeleteDialog(name: card.hero.name, C: C),
+    );
+    if ((confirmed ?? false) && context.mounted) {
+      card.onDelete?.call();
+    }
+  }
+}
+
+class _DeleteDialog extends StatelessWidget {
+  const _DeleteDialog({required this.name, required this.C});
+
+  final String name;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) => Dialog(
+        backgroundColor: C.bgPanel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: C.border),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Name mit Favorit-Stern
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      widget.hero.name,
-                      style: DnDTheme.headline3.copyWith(
-                        fontSize: 18,
-                        color: widget.isSelected ? DnDTheme.ancientGold : Colors.white,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (widget.onToggleFavorite != null)
-                    IconButton(
-                      icon: Icon(
-                        widget.hero.isFavorite ? Icons.star : Icons.star_border,
-                        color: widget.hero.isFavorite 
-                            ? DnDTheme.ancientGold 
-                            : DnDTheme.stoneGrey,
-                        size: 22,
-                      ),
-                      onPressed: widget.onToggleFavorite,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 28,
-                        minHeight: 28,
-                      ),
-                    ),
-                ],
-              ),
-              
-              const SizedBox(height: 2),
-              
-              // Klasse und Rasse
               Text(
-                '${widget.hero.raceName} ${widget.hero.className}',
-                style: DnDTheme.bodyText2.copyWith(
-                  fontSize: 13,
-                  color: classColor,
+                'Held löschen',
+                style: TextStyle(
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
+                  color: C.red,
                 ),
               ),
-              
-              const SizedBox(height: 2),
-              
-              // Spielername
+              const SizedBox(height: 10),
+              Text(
+                'Möchtest du "$name" wirklich löschen? '
+                'Diese Aktion kann nicht rückgängig gemacht werden.',
+                style: TextStyle(fontSize: 13, color: C.textMid),
+              ),
+              const SizedBox(height: 20),
               Row(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Icon(
-                    Icons.person_outline,
-                    size: 14,
-                    color: Colors.white54,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    widget.hero.playerName,
-                    style: DnDTheme.caption.copyWith(
-                      fontSize: 12,
-                      color: Colors.white54,
+                  OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: C.border),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(7),
+                      ),
                     ),
+                    child: Text('Abbrechen',
+                        style: TextStyle(color: C.textMid, fontSize: 13)),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: C.red,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                    ),
+                    child: const Text('Löschen',
+                        style: TextStyle(fontSize: 13)),
                   ),
                 ],
               ),
             ],
           ),
         ),
+      );
+}
+
+// ── HELPER WIDGETS ────────────────────────────────────────────────────────────
+
+class _Avatar extends StatelessWidget {
+  const _Avatar({
+    required this.letter,
+    required this.level,
+    required this.color,
+    required this.bg,
+  });
+
+  final String letter;
+  final int level;
+  final Color color;
+  final Color bg;
+
+  @override
+  Widget build(BuildContext context) => Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: bg,
+              border: Border.all(color: color.withValues(alpha: 0.3)),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: Text(
+                letter,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            right: -4,
+            bottom: -4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                '$level',
+                style: const TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+}
+
+class _ClassBadge extends StatelessWidget {
+  const _ClassBadge({
+    required this.label,
+    required this.color,
+    required this.bg,
+  });
+
+  final String label;
+  final Color color;
+  final Color bg;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+            color: color,
+          ),
+        ),
+      );
+}
+
+class _StatChip extends StatelessWidget {
+  const _StatChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.C,
+  });
+
+  final AppIconName icon;
+  final String label;
+  final String value;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppIcon(icon, size: 11, color: C.textSoft),
+          const SizedBox(width: 3),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: C.text,
+            ),
+          ),
+          const SizedBox(width: 1),
+          Text(label, style: TextStyle(fontSize: 9, color: C.textSoft)),
+        ],
+      );
+}
+
+class _AttrCell extends StatelessWidget {
+  const _AttrCell({
+    required this.name,
+    required this.score,
+    required this.C,
+  });
+
+  final String name;
+  final int score;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) {
+    final mod = ((score - 10) / 2).floor();
+    final modStr = mod >= 0 ? '+$mod' : '$mod';
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(name, style: TextStyle(fontSize: 9, color: C.textSoft)),
+        Text(
+          '$score',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: C.text,
+          ),
+        ),
+        Text(modStr, style: TextStyle(fontSize: 9, color: C.textSoft)),
       ],
     );
   }
+}
 
-  /// Avatar mit Level-Badge
-  Widget _buildAvatar() {
-    return Stack(
-      children: [
-        Container(
-          width: 56,
-          height: 56,
+class _IconBtn extends StatelessWidget {
+  const _IconBtn({required this.C, required this.icon, this.onTap});
+
+  final AppColorsExtension C;
+  final AppIconName icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 26,
+          height: 26,
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: DnDTheme.getMysticalGradient(
-              startColor: _getClassColor(),
-              endColor: DnDTheme.slateGrey,
-            ),
-            border: Border.all(
-              color: DnDTheme.ancientGold.withValues(alpha: 0.5),
-              width: 2,
-            ),
+            color: C.bgActive,
+            borderRadius: BorderRadius.circular(5),
           ),
           child: Center(
-            child: Text(
-              widget.hero.name.isNotEmpty ? widget.hero.name[0].toUpperCase() : '?',
-              style: DnDTheme.headline2.copyWith(
-                color: Colors.white,
-                fontSize: 24,
-              ),
-            ),
+            child: AppIcon(icon, size: 12, color: C.textSoft),
           ),
         ),
-        // Level-Badge
-        Positioned(
-          right: 0,
-          bottom: 0,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: DnDTheme.ancientGold,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: DnDTheme.dungeonBlack,
-                width: 1,
-              ),
-            ),
-            child: Text(
-              'Lvl ${widget.hero.level}',
-              style: DnDTheme.caption.copyWith(
-                fontSize: 9,
-                color: DnDTheme.dungeonBlack,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+      );
+}
 
-  /// Kampf-Stat Chips (AC, HP, INIT, SPEED)
-  Widget _buildCombatChips() {
-    final dexMod = _calculateModifier(widget.hero.dexterity);
-    final initiative = dexMod + widget.hero.initiativeBonus;
-    
-    // AC-Wert: Berechnet oder Fallback
-    String acDisplay;
-    String? acTooltip;
-    
-    if (_isLoadingAc) {
-      acDisplay = '${widget.hero.armorClass}';
-      acTooltip = 'Wird berechnet...';
-    } else if (_armorResult != null) {
-      acDisplay = '${_armorResult!.totalAc}';
-      if (_armorResult!.formula.isNotEmpty) {
-        acTooltip = _armorResult!.formula;
-      }
-    } else {
-      acDisplay = '${widget.hero.armorClass}';
-    }
-    
-    return UnifiedChipSection(
-      title: 'Kampfwerte',
-      titleIcon: Icons.shield,
-      titleColor: DnDTheme.ancientGold,
-      chips: [
-        // AC-Chip mit Tooltip für Formel
-        Tooltip(
-          message: acTooltip ?? 'Basis AC',
-          child: UnifiedInfoChip.combat(
-            label: 'AC',
-            value: acDisplay,
-            icon: Icons.shield_outlined,
-            color: DnDTheme.infoBlue,
-            onTap: widget.onEdit,
-          ),
-        ),
-        UnifiedInfoChip.combat(
-          label: 'HP',
-          value: '${widget.hero.maxHp}',
-          icon: Icons.favorite_outlined,
-          color: DnDTheme.successGreen,
-          onTap: widget.onEdit,
-        ),
-        UnifiedInfoChip.combat(
-          label: 'INIT',
-          value: initiative >= 0 ? '+$initiative' : '$initiative',
-          icon: Icons.bolt_outlined,
-          color: DnDTheme.arcaneBlue,
-          onTap: widget.onEdit,
-        ),
-        UnifiedInfoChip.combat(
-          label: 'SPEED',
-          value: '${widget.hero.speed} ft',
-          icon: Icons.directions_run_outlined,
-          color: DnDTheme.mysticalPurple,
-          onTap: widget.onEdit,
-        ),
-      ],
-    );
-  }
+// ── HELPERS ───────────────────────────────────────────────────────────────────
 
-  /// Alle 6 Attribut-Chips
-  Widget _buildAttributeChips() {
-    return UnifiedChipSection(
-      title: 'Attribute',
-      titleIcon: Icons.auto_graph,
-      titleColor: DnDTheme.ancientGold,
-      chips: [
-        UnifiedInfoChip.attribute(
-          name: 'STR',
-          value: widget.hero.strength,
-          modifier: _calculateModifier(widget.hero.strength),
-          onTap: widget.onEdit,
-        ),
-        UnifiedInfoChip.attribute(
-          name: 'DEX',
-          value: widget.hero.dexterity,
-          modifier: _calculateModifier(widget.hero.dexterity),
-          onTap: widget.onEdit,
-        ),
-        UnifiedInfoChip.attribute(
-          name: 'CON',
-          value: widget.hero.constitution,
-          modifier: _calculateModifier(widget.hero.constitution),
-          onTap: widget.onEdit,
-        ),
-        UnifiedInfoChip.attribute(
-          name: 'INT',
-          value: widget.hero.intelligence,
-          modifier: _calculateModifier(widget.hero.intelligence),
-          onTap: widget.onEdit,
-        ),
-        UnifiedInfoChip.attribute(
-          name: 'WIS',
-          value: widget.hero.wisdom,
-          modifier: _calculateModifier(widget.hero.wisdom),
-          onTap: widget.onEdit,
-        ),
-        UnifiedInfoChip.attribute(
-          name: 'CHA',
-          value: widget.hero.charisma,
-          modifier: _calculateModifier(widget.hero.charisma),
-          onTap: widget.onEdit,
-        ),
-      ],
-    );
+String _classTypeName(String className) {
+  switch (className.toLowerCase()) {
+    case 'barbarian':
+      return 'Barbar';
+    case 'bard':
+      return 'Barde';
+    case 'cleric':
+      return 'Kleriker';
+    case 'druid':
+      return 'Druide';
+    case 'fighter':
+      return 'Kämpfer';
+    case 'monk':
+      return 'Mönch';
+    case 'paladin':
+      return 'Paladin';
+    case 'ranger':
+      return 'Waldläufer';
+    case 'rogue':
+      return 'Schurke';
+    case 'sorcerer':
+    case 'warlock':
+    case 'wizard':
+      return 'Zauberer';
+    default:
+      return className;
   }
+}
 
-  /// Währungs-Chips
-  Widget _buildCurrencyChips() {
-    final hasCurrency = widget.hero.gold > 0 || widget.hero.silver > 0 || widget.hero.copper > 0;
-    
-    if (!hasCurrency) {
-      return const SizedBox.shrink();
-    }
-    
-    final chips = <Widget>[];
-    
-    if (widget.hero.gold > 0) {
-      chips.add(UnifiedInfoChip.currency(
-        label: '',
-        amount: widget.hero.gold,
-        icon: Icons.monetization_on,
-        color: Colors.amber,
-      ));
-    }
-    
-    if (widget.hero.silver > 0) {
-      chips.add(UnifiedInfoChip.currency(
-        label: '',
-        amount: widget.hero.silver,
-        icon: Icons.monetization_on_outlined,
-        color: Colors.blueGrey,
-      ));
-    }
-    
-    if (widget.hero.copper > 0) {
-      chips.add(UnifiedInfoChip.currency(
-        label: '',
-        amount: widget.hero.copper,
-        icon: Icons.circle_outlined,
-        color: Colors.brown,
-      ));
-    }
-    
-    return UnifiedChipSection(
-      title: 'Vermögen',
-      titleIcon: Icons.account_balance_wallet_outlined,
-      titleColor: DnDTheme.ancientGold,
-      chips: chips,
-    );
-  }
-
-  /// Gesinnungs-Chip
-  Widget _buildAlignmentChip() {
-    return UnifiedChipRow(
-      chips: [
-        UnifiedInfoChip.alignment(
-          alignment: widget.hero.alignment!,
-          onTap: widget.onEdit,
-        ),
-      ],
-    );
-  }
-
-  /// Beschreibungstext
-  Widget _buildDescription() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(DnDTheme.sm),
-      decoration: BoxDecoration(
-        color: DnDTheme.slateGrey.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-        border: Border.all(
-          color: DnDTheme.mysticalPurple.withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
-      child: Text(
-        widget.hero.description!,
-        style: DnDTheme.bodyText2.copyWith(
-          fontSize: 12,
-          color: Colors.white70,
-          fontStyle: FontStyle.italic,
-        ),
-        maxLines: 3,
-        overflow: TextOverflow.ellipsis,
-      ),
-    );
-  }
-
-  /// Aktionsleiste mit Buttons
-  Widget _buildActionBar(Color classColor) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        if (widget.onQuickAction != null)
-          TextButton.icon(
-            onPressed: widget.onQuickAction,
-            icon: const Icon(Icons.more_horiz, size: 18),
-            label: const Text('Aktionen'),
-            style: TextButton.styleFrom(
-              foregroundColor: DnDTheme.mysticalPurple,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            ),
-          ),
-        if (widget.onEdit != null) ...[
-          const SizedBox(width: 8),
-          ElevatedButton.icon(
-            onPressed: widget.onEdit,
-            icon: const Icon(Icons.edit_outlined, size: 18),
-            label: const Text('Bearbeiten'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: classColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-              ),
-            ),
-          ),
-        ],
-        if (widget.onDelete != null) ...[
-          const SizedBox(width: 8),
-          IconButton(
-            onPressed: widget.onDelete,
-            icon: Icon(Icons.delete_outline, color: DnDTheme.errorRed),
-            tooltip: 'Löschen',
-          ),
-        ],
-      ],
-    );
-  }
+String _signedMod(int score, {int bonus = 0}) {
+  final mod = ((score - 10) / 2).floor() + bonus;
+  return mod >= 0 ? '+$mod' : '$mod';
 }

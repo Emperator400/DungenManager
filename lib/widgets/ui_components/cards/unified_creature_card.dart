@@ -1,369 +1,303 @@
 import 'package:flutter/material.dart';
+
 import '../../../models/creature.dart';
-import '../../../theme/dnd_theme.dart';
+import '../../../theme/app_theme.dart';
+import '../../../widgets/ui_components/shared/app_icon.dart';
 import '../base/unified_card_base.dart';
-import '../base/card_header_widget.dart';
-import '../base/card_content_widget.dart';
-import '../base/card_actions_widget.dart';
-import '../base/card_metadata_widget.dart';
-import '../shared/unified_card_theme.dart';
-import '../chips/unified_info_chip.dart';
 
-/// Unified Creature Card für das Bestiary
-/// 
-/// Erbt von UnifiedCardBase und nutzt die einheitlichen Chip-Komponenten
 class UnifiedCreatureCard extends UnifiedCardBase {
-  final Creature creature;
-  final VoidCallback? onTap;
-
   const UnifiedCreatureCard({
-    super.key,
     required this.creature,
+    super.key,
+    super.onTap,
     super.onEdit,
     super.onDelete,
     super.onToggleFavorite,
-    this.onTap,
-    super.isFavorite,
     super.isSelected,
-    super.showActions,
-    super.elevation,
-    super.margin,
-    super.borderRadius,
   });
 
-  @override
-  bool get isFavorite => creature.isFavorite;
+  final Creature creature;
 
   @override
-  Color getAccentColor(BuildContext context) {
-    return _getSourceColor(creature.sourceType);
-  }
+  Widget buildCardContent(BuildContext context) =>
+      _CreatureCardContent(card: this);
+}
 
-  /// Gibt die Farbe basierend auf dem Quelltyp zurück
-  Color _getSourceColor(String sourceType) {
-    switch (sourceType) {
-      case 'official':
-        return DnDTheme.arcaneBlue;
-      case 'custom':
-        return DnDTheme.successGreen;
-      case 'hybrid':
-        return DnDTheme.mysticalPurple;
-      default:
-        return DnDTheme.slateGrey;
-    }
-  }
+// ── CARD CONTENT ──────────────────────────────────────────────────────────────
 
-  /// Gibt das Icon basierend auf dem Quelltyp zurück
-  IconData _getSourceIcon(String sourceType) {
-    switch (sourceType) {
-      case 'official':
-        return Icons.public;
-      case 'custom':
-        return Icons.person;
-      case 'hybrid':
-        return Icons.sync;
-      default:
-        return Icons.pets;
-    }
-  }
-
-  /// Gibt das Icon für den Kreatur-Typ zurück
-  IconData _getCreatureTypeIcon(String? type) {
-    if (type == null) return Icons.help_outline;
-    
-    final lowerType = type.toLowerCase();
-    switch (lowerType) {
-      case 'dragon':
-      case 'drache':
-        return Icons.local_fire_department; // Ersatzicon für dragon
-      case 'undead':
-      case 'untot':
-        return Icons.nightlife;
-      case 'fiend':
-      case 'dämon':
-      case 'teufel':
-        return Icons.whatshot;
-      case 'beast':
-      case 'tier':
-        return Icons.pets;
-      case 'humanoid':
-        return Icons.person;
-      case 'giant':
-      case 'riese':
-        return Icons.accessibility_new;
-      case 'fey':
-        return Icons.auto_awesome;
-      case 'construct':
-        return Icons.smart_toy;
-      case 'elemental':
-      case 'elementar':
-        return Icons.bubble_chart;
-      case 'ooze':
-        return Icons.water_drop;
-      case 'plant':
-      case 'pflanze':
-        return Icons.grass;
-      case 'aberration':
-        return Icons.bug_report;
-      case 'celestial':
-        return Icons.star;
-      case 'monstrosity':
-        return Icons.warning;
-      default:
-        return Icons.pets;
-    }
-  }
+class _CreatureCardContent extends StatefulWidget {
+  const _CreatureCardContent({required this.card});
+  final UnifiedCreatureCard card;
 
   @override
-  Widget buildCardContent(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(UnifiedCardBase.defaultPadding),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header mit Name und Typ
-          CardHeaderWidget(
-            title: creature.name,
-            subtitle: _buildSubtitle(),
-            leadingIcon: _getSourceIcon(creature.sourceType),
-            iconColor: _getSourceColor(creature.sourceType),
-            iconBackgroundColor: _getSourceColor(creature.sourceType).withValues(alpha: 0.2),
-            additionalInfo: [
-              if (creature.sourceType == 'official')
-                UnifiedInfoChip.tag(
-                  tag: 'Offiziell',
-                  icon: Icons.verified,
-                  color: DnDTheme.arcaneBlue,
+  State<_CreatureCardContent> createState() => _CreatureCardContentState();
+}
+
+class _CreatureCardContentState extends State<_CreatureCardContent> {
+  bool _hovered = false;
+  UnifiedCreatureCard get c => widget.card;
+
+  @override
+  Widget build(BuildContext context) {
+    final C = context.appColors;
+    final stripeColor = _typeColor(c.creature.type, C);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: c.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          color: _hovered ? C.bgHover : C.bgPanel,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(height: 3, color: stripeColor),
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _Avatar(
+                          letter: c.creature.name.isNotEmpty
+                              ? c.creature.name[0].toUpperCase()
+                              : '?',
+                          color: stripeColor,
+                          bg: stripeColor.withValues(alpha: 0.12),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                c.creature.name,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: C.text,
+                                  height: 1.2,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              _TypeBadge(creature: c.creature, color: stripeColor, C: C),
+                            ],
+                          ),
+                        ),
+                        if (_hovered) ...[
+                          _IconBtn(C: C, icon: AppIconName.edit, onTap: c.onEdit),
+                          const SizedBox(width: 2),
+                          _PopupBtn(card: c, C: C),
+                        ],
+                      ],
+                    ),
+
+                    // Beschreibung / Fähigkeiten
+                    if (c.creature.specialAbilities != null &&
+                        c.creature.specialAbilities!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        c.creature.specialAbilities!,
+                        style: TextStyle(fontSize: 12, color: C.textMid, height: 1.5),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+
+                    // Kampfwerte
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        _StatChip(icon: AppIconName.shield, label: 'AC', value: '${c.creature.armorClass}', C: C),
+                        const SizedBox(width: 8),
+                        _StatChip(icon: AppIconName.heart, label: 'HP', value: '${c.creature.maxHp}', C: C),
+                        if (c.creature.challengeRating != null) ...[
+                          const SizedBox(width: 8),
+                          _StatChip(icon: AppIconName.star, label: 'CR', value: '${c.creature.challengeRating}', C: C),
+                        ],
+                        const Spacer(),
+                        if (c.creature.size != null)
+                          Text(
+                            c.creature.size!,
+                            style: TextStyle(fontSize: 10, color: C.textSoft),
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
-              if (creature.sourceType == 'custom')
-                UnifiedInfoChip.tag(
-                  tag: 'Eigen',
-                  icon: Icons.person,
-                  color: DnDTheme.successGreen,
-                ),
+              ),
             ],
-            onFavoriteToggle: onToggleFavorite,
-            isFavorite: isFavorite,
-            popupMenuItems: _buildPopupMenuItems(context),
-            onPopupMenuItemSelected: (value) => _handlePopupMenuAction(context, value),
           ),
-          
-          const SizedBox(height: UnifiedCardBase.defaultSpacing),
-          
-          // Kampf-Statistiken
-          _buildCombatStatsRow(),
-          
-          const SizedBox(height: UnifiedCardBase.defaultSpacing),
-          
-          // Typ und Größe
-          if (creature.type != null || creature.size != null)
-            _buildTypeAndSizeRow(),
-          
-          const SizedBox(height: UnifiedCardBase.defaultSpacing),
-          
-          // Beschreibung (falls vorhanden)
-          if (creature.description != null && creature.description!.isNotEmpty)
-            CardContentWidget(
-              description: creature.description!,
-              descriptionMaxLines: 2,
-            ),
-          
-          const SizedBox(height: UnifiedCardBase.defaultSpacing),
-          
-          // Metadaten
-          CardMetadataWidget(
-            customMetadata: _buildMetadata(),
-          ),
-          
-          const SizedBox(height: UnifiedCardBase.defaultSpacing),
-          
-          // Aktionen
-          CardActionsWidget(
-            onEdit: onEdit,
-            onDelete: onDelete,
-            onQuickAction: onTap,
-            alignment: MainAxisAlignment.end,
-          ),
-        ],
+        ),
       ),
     );
   }
+}
 
-  String _buildSubtitle() {
-    final parts = <String>[];
-    
-    if (creature.type != null) {
-      var typeText = creature.type!;
-      if (creature.subtype != null) {
-        typeText += ' (${creature.subtype})';
-      }
-      parts.add(typeText);
-    }
-    
-    if (creature.challengeRating != null) {
-      parts.add('CR ${creature.challengeRating}');
-    }
-    
-    return parts.join(' • ');
-  }
+// ── POPUP ─────────────────────────────────────────────────────────────────────
 
-  Widget _buildCombatStatsRow() {
-    final stats = <UnifiedStatItem>[];
-    
-    // HP
-    stats.add(UnifiedStatItem.hp(
-      creature.currentHp,
-      creature.maxHp,
-    ));
-    
-    // AC
-    stats.add(UnifiedStatItem.ac(creature.armorClass));
-    
-    // Initiative (falls vorhanden)
-    final initMod = ((creature.dexterity - 10) / 2).floor();
-    stats.add(UnifiedStatItem.initiative(initMod));
-    
-    // Speed als String parsen für Anzeige (nicht als Zahl)
-    // Wir zeigen die Geschwindigkeit als Info-Chip statt als StatItem
-    
-    return UnifiedStatsRow(stats: stats);
-  }
+class _PopupBtn extends StatelessWidget {
+  const _PopupBtn({required this.card, required this.C});
+  final UnifiedCreatureCard card;
+  final AppColorsExtension C;
 
-  Widget _buildTypeAndSizeRow() {
-    final chips = <Widget>[];
-    
-    // Kreatur-Typ
-    if (creature.type != null) {
-      chips.add(
-        UnifiedInfoChip.type(
-          type: creature.type!,
-          icon: _getCreatureTypeIcon(creature.type),
-          color: UnifiedCardTheme.getIconColor('creature'),
+  @override
+  Widget build(BuildContext context) => PopupMenuButton<String>(
+        tooltip: '',
+        color: C.bgPanel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: C.border),
+        ),
+        offset: const Offset(0, 30),
+        onSelected: (v) {
+          if (v == 'delete') {
+            card.onDelete?.call();
+          }
+        },
+        itemBuilder: (_) => [
+          PopupMenuItem(
+            value: 'delete',
+            child: Row(
+              children: [
+                AppIcon(AppIconName.trash, size: 13, color: C.red),
+                const SizedBox(width: 8),
+                Text('Löschen', style: TextStyle(fontSize: 13, color: C.red)),
+              ],
+            ),
+          ),
+        ],
+        child: Container(
+          width: 26,
+          height: 26,
+          decoration: BoxDecoration(color: C.bgHover, borderRadius: BorderRadius.circular(5)),
+          child: Center(child: AppIcon(AppIconName.dots, size: 12, color: C.textSoft)),
         ),
       );
-    }
-    
-    // Größe
-    if (creature.size != null) {
-      chips.add(
-        UnifiedInfoChip.tag(
-          tag: creature.size!,
-          icon: Icons.straighten,
-          color: Colors.teal,
+}
+
+// ── HILFSWIDGETS ──────────────────────────────────────────────────────────────
+
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.letter, required this.color, required this.bg});
+  final String letter;
+  final Color color;
+  final Color bg;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: bg,
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Center(
+          child: Text(
+            letter,
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: color),
+          ),
         ),
       );
-    }
-    
-    // Alignment (falls vorhanden)
-    if (creature.alignment != null && creature.alignment!.isNotEmpty) {
-      chips.add(
-        UnifiedInfoChip.alignment(
-          alignment: creature.alignment!,
+}
+
+class _TypeBadge extends StatelessWidget {
+  const _TypeBadge({required this.creature, required this.color, required this.C});
+  final Creature creature;
+  final Color color;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = [
+      if (creature.type != null) creature.type!,
+      if (creature.subtype != null) '(${creature.subtype})',
+    ].join(' ');
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label.isNotEmpty ? label : 'Kreatur',
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: color),
+      ),
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  const _StatChip({required this.icon, required this.label, required this.value, required this.C});
+  final AppIconName icon;
+  final String label;
+  final String value;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppIcon(icon, size: 11, color: C.textSoft),
+          const SizedBox(width: 3),
+          Text(
+            value,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: C.text),
+          ),
+          const SizedBox(width: 1),
+          Text(label, style: TextStyle(fontSize: 9, color: C.textSoft)),
+        ],
+      );
+}
+
+class _IconBtn extends StatelessWidget {
+  const _IconBtn({required this.C, required this.icon, this.onTap});
+  final AppColorsExtension C;
+  final AppIconName icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 26,
+          height: 26,
+          decoration: BoxDecoration(color: C.bgActive, borderRadius: BorderRadius.circular(5)),
+          child: Center(child: AppIcon(icon, size: 12, color: C.textSoft)),
         ),
       );
-    }
-    
-    // Speed anzeigen
-    if (creature.speed.isNotEmpty) {
-      chips.add(
-        UnifiedInfoChip.combat(
-          label: 'Bew.',
-          value: creature.speed,
-          icon: Icons.directions_run,
-          color: Colors.green,
-        ),
-      );
-    }
-    
-    return UnifiedChipRow(chips: chips);
-  }
+}
 
-  Map<String, String> _buildMetadata() {
-    final metadata = <String, String>{};
-    
-    if (creature.challengeRating != null) {
-      metadata['CR'] = '${creature.challengeRating}';
-    }
-    
-    if (creature.armorClass > 0) {
-      metadata['RK'] = '${creature.armorClass}';
-    }
-    
-    if (creature.gold > 0 || creature.silver > 0 || creature.copper > 0) {
-      final total = creature.gold + (creature.silver / 10) + (creature.copper / 100);
-      metadata['Gold'] = total.toStringAsFixed(1);
-    }
-    
-    return metadata;
-  }
+// ── HELPERS ───────────────────────────────────────────────────────────────────
 
-  List<PopupMenuItem<String>> _buildPopupMenuItems(BuildContext context) {
-    return [
-      const PopupMenuItem(
-        value: 'duplicate',
-        child: Row(
-          children: [
-            Icon(Icons.copy, size: 16),
-            SizedBox(width: 8),
-            Text('Duplizieren'),
-          ],
-        ),
-      ),
-      const PopupMenuItem(
-        value: 'export',
-        child: Row(
-          children: [
-            Icon(Icons.file_download, size: 16),
-            SizedBox(width: 8),
-            Text('Exportieren'),
-          ],
-        ),
-      ),
-      const PopupMenuItem(
-        value: 'addToEncounter',
-        child: Row(
-          children: [
-            Icon(Icons.group_add, size: 16),
-            SizedBox(width: 8),
-            Text('Zu Encounter hinzufügen'),
-          ],
-        ),
-      ),
-      const PopupMenuItem(
-        value: 'share',
-        child: Row(
-          children: [
-            Icon(Icons.share, size: 16),
-            SizedBox(width: 8),
-            Text('Teilen'),
-          ],
-        ),
-      ),
-    ];
+Color _typeColor(String? type, AppColorsExtension C) {
+  final t = (type ?? '').toLowerCase();
+  if (t.contains('dragon')) {
+    return const Color(0xFFC93A3A);
   }
-
-  void _handlePopupMenuAction(BuildContext context, String action) {
-    switch (action) {
-      case 'duplicate':
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Kreatur duplizieren...')),
-        );
-        break;
-      case 'export':
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Kreatur exportieren...')),
-        );
-        break;
-      case 'addToEncounter':
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Zu Encounter hinzufügen...')),
-        );
-        break;
-      case 'share':
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Kreatur teilen...')),
-        );
-        break;
-    }
+  if (t.contains('undead')) {
+    return const Color(0xFF7C3AED);
   }
+  if (t.contains('fiend') || t.contains('devil') || t.contains('demon')) {
+    return const Color(0xFFBE185D);
+  }
+  if (t.contains('beast')) {
+    return const Color(0xFF1A7F4B);
+  }
+  if (t.contains('humanoid')) {
+    return const Color(0xFF2F6FEB);
+  }
+  if (t.contains('elemental')) {
+    return const Color(0xFF0891B2);
+  }
+  return C.textMid;
 }

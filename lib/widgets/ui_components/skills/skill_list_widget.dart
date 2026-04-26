@@ -1,148 +1,130 @@
 import 'package:flutter/material.dart';
-import '../../../game_data/dnd_models.dart';
-import '../../../theme/dnd_theme.dart';
 
-/// Widget für einzelne Fertigkeit
+import '../../../game_data/dnd_models.dart';
+import '../../../theme/app_theme.dart';
+
 class SkillItemWidget extends StatelessWidget {
+  const SkillItemWidget({
+    required this.skill,
+    required this.bonus,
+    required this.isProficient,
+    required this.onTap,
+    super.key,
+  });
+
   final DndSkill skill;
   final String bonus;
   final bool isProficient;
   final VoidCallback onTap;
 
-  const SkillItemWidget({
-    super.key,
-    required this.skill,
-    required this.bonus,
-    required this.isProficient,
-    required this.onTap,
-  });
-
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
       decoration: BoxDecoration(
-        color: isProficient 
-            ? DnDTheme.successGreen.withValues(alpha: 0.2)
-            : DnDTheme.stoneGrey,
-        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+        color: isProficient ? C.greenSoft : C.bgPanel,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: isProficient ? C.green.withValues(alpha: 0.4) : C.border),
       ),
       child: ListTile(
         dense: true,
+        onTap: onTap,
         leading: Container(
           width: 32,
           height: 32,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: isProficient ? DnDTheme.successGreen : DnDTheme.slateGrey,
+            color: isProficient ? C.green : C.bgHover,
             shape: BoxShape.circle,
           ),
           child: isProficient
-              ? Icon(Icons.check, color: Colors.white, size: 20)
-              : Icon(Icons.check_box_outline_blank, color: Colors.white.withValues(alpha: 0.6), size: 20),
+              ? const Icon(Icons.check, color: Colors.white, size: 18)
+              : Icon(Icons.check_box_outline_blank, color: C.textSoft, size: 18),
         ),
         title: Text(
           skill.name,
           style: TextStyle(
-            color: Colors.white,
-            fontWeight: isProficient ? FontWeight.bold : FontWeight.normal,
+            color: C.text,
+            fontWeight: isProficient ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
         trailing: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 8,
-            vertical: 4,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: DnDTheme.ancientGold,
-            borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+            color: C.amber.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: C.amber.withValues(alpha: 0.3)),
           ),
           child: Text(
             bonus,
-            style: const TextStyle(
-              color: DnDTheme.dungeonBlack,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(color: C.amber, fontWeight: FontWeight.bold, fontSize: 12),
           ),
         ),
-        onTap: onTap,
       ),
     );
   }
 }
 
-/// Widget für eine Sektion von Fertigkeiten (nach Attribut gruppiert)
-class SkillSectionWidget extends StatelessWidget {
-  final Ability ability;
-  final List<DndSkill> skills;
-  final Map<String, String> skillBonuses;
-  final Set<String> proficientSkills;
-  final Function(String) onSkillToggle;
+// ── SKILL SECTION ─────────────────────────────────────────────────────────────
 
+class SkillSectionWidget extends StatelessWidget {
   const SkillSectionWidget({
-    super.key,
     required this.ability,
     required this.skills,
     required this.skillBonuses,
     required this.proficientSkills,
     required this.onSkillToggle,
+    super.key,
   });
 
+  final Ability ability;
+  final List<DndSkill> skills;
+  final Map<String, String> skillBonuses;
+  final Set<String> proficientSkills;
+  final void Function(String) onSkillToggle;
+
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader(),
-        const SizedBox(height: 4),
-        ...skills.map((skill) {
-          final bonus = skillBonuses[skill.name] ?? '+0';
-          final isProficient = proficientSkills.contains(skill.name);
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(context),
+          const SizedBox(height: 4),
+          ...skills.map((skill) => SkillItemWidget(
+                skill: skill,
+                bonus: skillBonuses[skill.name] ?? '+0',
+                isProficient: proficientSkills.contains(skill.name),
+                onTap: () => onSkillToggle(skill.name),
+              )),
+          const SizedBox(height: 12),
+        ],
+      );
 
-          return SkillItemWidget(
-            skill: skill,
-            bonus: bonus,
-            isProficient: isProficient,
-            onTap: () => onSkillToggle(skill.name),
-          );
-        }).toList(),
-        const SizedBox(height: 12),
-      ],
-    );
-  }
-
-  Widget _buildSectionHeader() {
+  Widget _buildHeader(BuildContext context) {
+    final C = context.appColors;
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: DnDTheme.md,
-        vertical: DnDTheme.sm,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: DnDTheme.stoneGrey,
-        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+        color: C.bgPanel,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: C.border),
       ),
       child: Row(
         children: [
-          Icon(
-            _getAbilityIcon(ability),
-            color: DnDTheme.ancientGold,
-            size: 20,
-          ),
-          const SizedBox(width: DnDTheme.sm),
+          Icon(_abilityIcon(ability), color: C.amber, size: 18),
+          const SizedBox(width: 8),
           Text(
-            _getAbilityName(ability),
-            style: const TextStyle(
-              color: DnDTheme.ancientGold,
-              fontWeight: FontWeight.bold,
-            ),
+            _abilityName(ability),
+            style: TextStyle(color: C.amber, fontWeight: FontWeight.w600),
           ),
         ],
       ),
     );
   }
 
-  IconData _getAbilityIcon(Ability ability) {
-    switch (ability) {
+  IconData _abilityIcon(Ability a) {
+    switch (a) {
       case Ability.strength:
         return Icons.fitness_center;
       case Ability.dexterity:
@@ -158,8 +140,8 @@ class SkillSectionWidget extends StatelessWidget {
     }
   }
 
-  String _getAbilityName(Ability ability) {
-    switch (ability) {
+  String _abilityName(Ability a) {
+    switch (a) {
       case Ability.strength:
         return 'Stärke';
       case Ability.dexterity:
@@ -176,170 +158,137 @@ class SkillSectionWidget extends StatelessWidget {
   }
 }
 
-/// Vollständiges Widget für die Fertigkeitsauswahl
-class SkillSelectionWidget extends StatelessWidget {
-  final Map<Ability, List<DndSkill>> skillsByAbility;
-  final Map<String, String> skillBonuses;
-  final Set<String> proficientSkills;
-  final Function(String) onSkillToggle;
-  final String searchQuery;
+// ── SKILL SELECTION ───────────────────────────────────────────────────────────
 
+class SkillSelectionWidget extends StatelessWidget {
   const SkillSelectionWidget({
-    super.key,
     required this.skillsByAbility,
     required this.skillBonuses,
     required this.proficientSkills,
     required this.onSkillToggle,
+    super.key,
     this.searchQuery = '',
   });
 
+  final Map<Ability, List<DndSkill>> skillsByAbility;
+  final Map<String, String> skillBonuses;
+  final Set<String> proficientSkills;
+  final void Function(String) onSkillToggle;
+  final String searchQuery;
+
   @override
   Widget build(BuildContext context) {
-    final filteredSections = skillsByAbility.entries
-        .where((entry) {
-          if (searchQuery.isEmpty) return true;
-          return entry.value.any((skill) =>
-              skill.name.toLowerCase().contains(searchQuery));
-        })
+    final C = context.appColors;
+    final filtered = skillsByAbility.entries
+        .where((e) => searchQuery.isEmpty || e.value.any((s) => s.name.toLowerCase().contains(searchQuery)))
         .toList();
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: DnDTheme.dungeonBlack,
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        color: C.bgPanel,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: C.border),
       ),
       child: Column(
         children: [
           if (searchQuery.isNotEmpty) ...[
-            _buildSearchIndicator(searchQuery),
+            _buildSearchIndicator(searchQuery, filtered.length, C),
             const SizedBox(height: 12),
           ],
-          ...filteredSections.map((entry) {
-            return SkillSectionWidget(
-              ability: entry.key,
-              skills: entry.value
-                  .where((skill) => searchQuery.isEmpty ||
-                      skill.name.toLowerCase().contains(searchQuery))
-                  .toList(),
-              skillBonuses: skillBonuses,
-              proficientSkills: proficientSkills,
-              onSkillToggle: onSkillToggle,
-            );
-          }).toList(),
+          ...filtered.map((e) => SkillSectionWidget(
+                ability: e.key,
+                skills: searchQuery.isEmpty
+                    ? e.value
+                    : e.value.where((s) => s.name.toLowerCase().contains(searchQuery)).toList(),
+                skillBonuses: skillBonuses,
+                proficientSkills: proficientSkills,
+                onSkillToggle: onSkillToggle,
+              )),
         ],
       ),
     );
   }
 
-  Widget _buildSearchIndicator(String query) {
-    final count = filteredSectionsCount;
-    return Row(
-      children: [
-        Icon(Icons.search, color: DnDTheme.ancientGold),
-        const SizedBox(width: DnDTheme.sm),
-        Text(
-          'Suchergebnisse für: "$query"',
-          style: TextStyle(
-            color: DnDTheme.ancientGold,
-            fontStyle: FontStyle.italic,
+  Widget _buildSearchIndicator(String query, int count, AppColorsExtension C) => Row(
+        children: [
+          Icon(Icons.search, color: C.amber),
+          const SizedBox(width: 8),
+          Text(
+            'Suchergebnisse für: "$query"',
+            style: TextStyle(color: C.amber, fontStyle: FontStyle.italic),
           ),
-        ),
-        const Spacer(),
-        Text(
-          '$count Sektionen',
-          style: TextStyle(
-            color: DnDTheme.ancientGold,
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
-  }
-
-  int get filteredSectionsCount {
-    return skillsByAbility.entries
-        .where((entry) {
-          if (searchQuery.isEmpty) return true;
-          return entry.value.any((skill) =>
-              skill.name.toLowerCase().contains(searchQuery));
-        })
-        .length;
-  }
+          const Spacer(),
+          Text('$count Sektionen', style: TextStyle(color: C.amber, fontSize: 12)),
+        ],
+      );
 }
 
-/// Suchfeld für Fertigkeiten
-class SkillSearchField extends StatelessWidget {
-  final String query;
-  final Function(String) onChanged;
+// ── SKILL SEARCH FIELD ────────────────────────────────────────────────────────
 
-  const SkillSearchField({
-    super.key,
-    required this.query,
-    required this.onChanged,
-  });
+class SkillSearchField extends StatelessWidget {
+  const SkillSearchField({required this.query, required this.onChanged, super.key});
+
+  final String query;
+  final void Function(String) onChanged;
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
+
     return Container(
-      padding: const EdgeInsets.all(DnDTheme.md),
       decoration: BoxDecoration(
-        color: DnDTheme.stoneGrey,
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        color: C.bgPanel,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: C.border),
       ),
       child: TextField(
         onChanged: onChanged,
         decoration: InputDecoration(
           hintText: 'Fertigkeiten durchsuchen...',
-          hintStyle: DnDTheme.bodyText2.copyWith(
-            color: Colors.white60,
-          ),
-          prefixIcon: Icon(Icons.search, color: DnDTheme.ancientGold),
+          hintStyle: TextStyle(color: C.textSoft, fontSize: 13),
+          prefixIcon: Icon(Icons.search, color: C.amber),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.all(DnDTheme.sm),
+          contentPadding: const EdgeInsets.all(12),
         ),
-        style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+        style: TextStyle(color: C.text, fontSize: 13),
       ),
     );
   }
 }
 
-/// Komplettes Widget für die Fertigkeitsauswahl mit Suche
-class SkillSelectionWithSearch extends StatelessWidget {
-  final Map<Ability, List<DndSkill>> skillsByAbility;
-  final Map<String, String> skillBonuses;
-  final Set<String> proficientSkills;
-  final Function(String) onSkillToggle;
-  final String searchQuery;
-  final Function(String) onSearchChanged;
+// ── SKILL SELECTION WITH SEARCH ───────────────────────────────────────────────
 
+class SkillSelectionWithSearch extends StatelessWidget {
   const SkillSelectionWithSearch({
-    super.key,
     required this.skillsByAbility,
     required this.skillBonuses,
     required this.proficientSkills,
     required this.onSkillToggle,
     required this.searchQuery,
     required this.onSearchChanged,
+    super.key,
   });
 
+  final Map<Ability, List<DndSkill>> skillsByAbility;
+  final Map<String, String> skillBonuses;
+  final Set<String> proficientSkills;
+  final void Function(String) onSkillToggle;
+  final String searchQuery;
+  final void Function(String) onSearchChanged;
+
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SkillSearchField(
-          query: searchQuery,
-          onChanged: onSearchChanged,
-        ),
-        const SizedBox(height: 16),
-        SkillSelectionWidget(
-          skillsByAbility: skillsByAbility,
-          skillBonuses: skillBonuses,
-          proficientSkills: proficientSkills,
-          onSkillToggle: onSkillToggle,
-          searchQuery: searchQuery,
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Column(
+        children: [
+          SkillSearchField(query: searchQuery, onChanged: onSearchChanged),
+          const SizedBox(height: 16),
+          SkillSelectionWidget(
+            skillsByAbility: skillsByAbility,
+            skillBonuses: skillBonuses,
+            proficientSkills: proficientSkills,
+            onSkillToggle: onSkillToggle,
+            searchQuery: searchQuery,
+          ),
+        ],
+      );
 }

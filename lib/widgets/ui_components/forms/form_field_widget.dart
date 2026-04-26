@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 class FormFieldWidget extends StatelessWidget {
   final String label;
   final String? value;
-  final Function(String) onChanged;
+  final void Function(String) onChanged;
   final String? Function(String?)? validator;
   final IconData? icon;
   final TextInputType? keyboardType;
@@ -86,7 +86,7 @@ class DropdownFormFieldWidget<T> extends StatelessWidget {
   final String label;
   final T? value;
   final List<T> items;
-  final Function(T?) onChanged;
+  final void Function(T?) onChanged;
   final String? Function(T?)? validator;
   final IconData? icon;
   final bool enabled;

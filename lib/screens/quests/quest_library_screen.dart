@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../models/quest.dart';
 import '../../screens/quests/edit_quest_screen.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 import '../../viewmodels/edit_quest_viewmodel.dart';
 import '../../viewmodels/quest_library_viewmodel.dart';
 import '../../widgets/quest_library/enhanced_quest_filter_chips_widget.dart';
@@ -11,8 +11,6 @@ import '../../widgets/quest_library/quest_search_delegate.dart';
 import '../../widgets/ui_components/cards/unified_quest_card.dart';
 
 class QuestLibraryScreen extends StatefulWidget {
-  /// Wenn gesetzt, läuft der Screen im Kampagnen-Modus:
-  /// Quests können zur Kampagne hinzugefügt werden.
   final String? campaignId;
 
   const QuestLibraryScreen({super.key, this.campaignId});
@@ -89,7 +87,6 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
     }
   }
 
-  /// Neue Quest erstellen und direkt mit Kampagne verknüpfen
   Future<void> _navigateToCreateQuestForCampaign() async {
     final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -109,22 +106,24 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
       ),
     );
 
-    if (result == true && _isCampaignMode) {
-      _viewModel.initCampaignMode(widget.campaignId!);
+    if ((result ?? false) && _isCampaignMode) {
+      await _viewModel.initCampaignMode(widget.campaignId!);
     }
   }
 
-  /// Ausgewählte Quests zur Kampagne hinzufügen und Screen schließen
   Future<void> _addSelectedToCampaign() async {
+    final C = context.appColors;
     final count = _viewModel.selectedCount;
     final success = await _viewModel.addSelectedToCampaign();
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('$count Quest(s) zur Kampagne hinzugefügt'),
-          backgroundColor: DnDTheme.successGreen,
+          backgroundColor: C.green,
         ),
       );
       Navigator.of(context).pop(true);
@@ -132,7 +131,7 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_viewModel.error ?? 'Fehler beim Hinzufügen'),
-          backgroundColor: DnDTheme.errorRed,
+          backgroundColor: C.red,
         ),
       );
     }
@@ -140,21 +139,24 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
 
   Future<void> _deleteQuest(Quest quest) async {
     final confirmed = await _showDeleteConfirmation(quest);
-    if (!confirmed) return;
+    if (!confirmed) {
+      return;
+    }
 
     await _viewModel.deleteQuest(quest);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Quest erfolgreich gelöscht'),
-          backgroundColor: DnDTheme.successGreen,
+        SnackBar(
+          content: const Text('Quest erfolgreich gelöscht'),
+          backgroundColor: context.appColors.green,
         ),
       );
     }
   }
 
   Future<bool> _showDeleteConfirmation(Quest quest) async {
+    final C = context.appColors;
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -167,7 +169,7 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: DnDTheme.errorRed),
+            style: TextButton.styleFrom(foregroundColor: C.red),
             child: const Text('Löschen'),
           ),
         ],
@@ -178,6 +180,7 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return ChangeNotifierProvider<QuestLibraryViewModel>.value(
       value: _viewModel,
       child: Scaffold(
@@ -185,14 +188,14 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
           title: Text(
             _isCampaignMode ? 'Quest zur Kampagne hinzufügen' : 'Quest-Bibliothek',
           ),
-          backgroundColor: DnDTheme.stoneGrey,
-          foregroundColor: Colors.white,
-          elevation: 4,
+          backgroundColor: C.bgPanel,
+          foregroundColor: C.text,
+          elevation: 0,
           bottom: TabBar(
             controller: _tabController,
-            indicatorColor: DnDTheme.ancientGold,
-            labelColor: DnDTheme.ancientGold,
-            unselectedLabelColor: Colors.white70,
+            indicatorColor: C.amber,
+            labelColor: C.amber,
+            unselectedLabelColor: C.textSoft,
             onTap: (index) => _viewModel.setCurrentTab(index),
             tabs: const [
               Tab(text: 'Alle', icon: Icon(Icons.list)),
@@ -256,18 +259,18 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
             _buildQuestList(),
           ],
         ),
-        floatingActionButton: _buildFab(),
+        floatingActionButton: _buildFab(C),
       ),
     );
   }
 
-  Widget _buildFab() {
+  Widget _buildFab(AppColorsExtension C) {
     if (_isCampaignMode) {
       return Consumer<QuestLibraryViewModel>(
         builder: (context, vm, _) {
           if (vm.selectedCount > 0) {
             return FloatingActionButton.extended(
-              backgroundColor: DnDTheme.ancientGold,
+              backgroundColor: C.amber,
               foregroundColor: Colors.black87,
               icon: const Icon(Icons.add_task),
               label: Text('${vm.selectedCount} Quest(s) hinzufügen'),
@@ -275,7 +278,7 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
             );
           }
           return FloatingActionButton(
-            backgroundColor: DnDTheme.mysticalPurple,
+            backgroundColor: const Color(0xFF7C3AED),
             tooltip: 'Neue Quest erstellen',
             onPressed: _navigateToCreateQuestForCampaign,
             child: const Icon(Icons.add),
@@ -286,7 +289,7 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
 
     return FloatingActionButton(
       onPressed: () => _navigateToEditQuest(),
-      backgroundColor: DnDTheme.mysticalPurple,
+      backgroundColor: const Color(0xFF7C3AED),
       tooltip: 'Neue Quest',
       child: const Icon(Icons.add),
     );
@@ -295,6 +298,8 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
   Widget _buildQuestList() {
     return Consumer<QuestLibraryViewModel>(
       builder: (context, viewModel, child) {
+        final C = context.appColors;
+
         if (viewModel.isLoading) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -304,16 +309,16 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.error_outline, size: 64, color: DnDTheme.errorRed),
+                Icon(Icons.error_outline, size: 64, color: C.red),
                 const SizedBox(height: 16),
                 Text(
                   'Fehler beim Laden',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: DnDTheme.errorRed),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: C.red),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   viewModel.error!,
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 14, color: C.textMid),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
@@ -325,7 +330,7 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
                   icon: const Icon(Icons.refresh),
                   label: const Text('Erneut versuchen'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: DnDTheme.mysticalPurple,
+                    backgroundColor: const Color(0xFF7C3AED),
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -335,7 +340,7 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
         }
 
         if (viewModel.filteredQuests.isEmpty) {
-          return _buildEmptyState(viewModel);
+          return _buildEmptyState(viewModel, C);
         }
 
         return RefreshIndicator(
@@ -350,7 +355,7 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
                   itemCount: viewModel.filteredQuests.length,
                   itemBuilder: (context, index) {
                     final quest = viewModel.filteredQuests[index];
-                    return _buildQuestItem(quest, viewModel);
+                    return _buildQuestItem(quest, viewModel, C);
                   },
                 ),
               ),
@@ -361,7 +366,7 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
     );
   }
 
-  Widget _buildQuestItem(Quest quest, QuestLibraryViewModel viewModel) {
+  Widget _buildQuestItem(Quest quest, QuestLibraryViewModel viewModel, AppColorsExtension C) {
     if (_isCampaignMode) {
       final linked = viewModel.isLinked(quest);
       final selected = viewModel.isSelected(quest);
@@ -371,21 +376,19 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
           UnifiedQuestCard(
             quest: quest,
             isSelected: selected,
-            showActions: false,
             onTap: linked ? null : () => viewModel.toggleSelection(quest),
             onEdit: null,
             onDelete: null,
             onToggleFavorite: null,
-            isFavorite: quest.isFavorite,
           ),
           if (linked)
             Positioned(
-              top: 10,
-              right: 10,
+              bottom: 10,
+              right: 14,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: DnDTheme.successGreen,
+                  color: C.green,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Row(
@@ -415,20 +418,19 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
       onEdit: () => _navigateToEditQuest(quest),
       onDelete: () => _deleteQuest(quest),
       onToggleFavorite: () => viewModel.toggleFavorite(quest),
-      isFavorite: quest.isFavorite,
     );
   }
 
-  Widget _buildEmptyState(QuestLibraryViewModel viewModel) {
-    return Center(
+  Widget _buildEmptyState(QuestLibraryViewModel viewModel, AppColorsExtension C) =>
+      Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.assignment_outlined, size: 64, color: Colors.grey[400]),
+          Icon(Icons.assignment_outlined, size: 64, color: C.border),
           const SizedBox(height: 16),
           Text(
             'Keine Quests gefunden',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: C.textMid),
           ),
           const SizedBox(height: 8),
           Text(
@@ -437,7 +439,7 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
                 : _isCampaignMode
                     ? 'Erstelle eine neue Quest für diese Kampagne'
                     : 'Erstelle deine erste Quest',
-            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            style: TextStyle(fontSize: 14, color: C.textSoft),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
@@ -447,7 +449,7 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
               icon: const Icon(Icons.clear_all),
               label: const Text('Filter zurücksetzen'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: DnDTheme.mysticalPurple,
+                backgroundColor: const Color(0xFF7C3AED),
                 foregroundColor: Colors.white,
               ),
             )
@@ -459,12 +461,11 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
               icon: const Icon(Icons.add),
               label: const Text('Neue Quest erstellen'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: DnDTheme.mysticalPurple,
+                backgroundColor: const Color(0xFF7C3AED),
                 foregroundColor: Colors.white,
               ),
             ),
         ],
       ),
     );
-  }
 }

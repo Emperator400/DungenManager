@@ -155,12 +155,9 @@ class _EnhancedInventoryTabWidgetState extends State<EnhancedInventoryTabWidget>
                 style: const TextStyle(color: Colors.white),
                 keyboardType: TextInputType.number,
                 onChanged: (value) {
-                  if (viewModel.isPlayerCharacter && viewModel.playerCharacter != null) {
-                    // Player Characters werden über ViewModel aktualisiert
-                    // TODO: Implementiere updateGold in ViewModel
-                  } else if (!viewModel.isPlayerCharacter && viewModel.creature != null) {
-                    // NPCs/Monster werden über Service aktualisiert
-                    // TODO: Implementiere updateCreatureGold in ViewModel
+                  final parsed = double.tryParse(value);
+                  if (parsed != null) {
+                    viewModel.updateGold(parsed);
                   }
                 },
               ),

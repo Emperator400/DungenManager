@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../database/core/database_connection.dart';
 import '../../database/repositories/quest_model_repository.dart';
 import '../../models/quest.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 
 class LinkQuestToSceneScreen extends StatefulWidget {
   final List<String> previouslyLinkedIds;
@@ -30,38 +30,28 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Scaffold(
-      backgroundColor: DnDTheme.dungeonBlack,
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: DnDTheme.getMysticalGradient(),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(),
-              Expanded(
-                child: _buildQuestList(),
-              ),
-            ],
-          ),
+      backgroundColor: C.bg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(),
+            Expanded(
+              child: _buildQuestList(),
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildHeader() {
+    final C = context.appColors;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            DnDTheme.mysticalPurple,
-            DnDTheme.arcaneBlue,
-          ],
-        ),
+        color: C.accent,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.4),
@@ -87,9 +77,9 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Quest verknüpfen',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -117,7 +107,7 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: DnDTheme.ancientGold,
+                color: C.amber,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
               ),
@@ -143,13 +133,14 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
   }
 
   Widget _buildQuestList() {
+    final C = context.appColors;
     return FutureBuilder<List<Quest>>(
       future: _questRepository.findAll(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
+          return Center(
             child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(DnDTheme.ancientGold),
+              valueColor: AlwaysStoppedAnimation<Color>(C.amber),
             ),
           );
         }
@@ -159,18 +150,14 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 64,
-                  color: DnDTheme.errorRed,
-                ),
+                Icon(Icons.error_outline, size: 64, color: C.red),
                 const SizedBox(height: 16),
                 Text(
                   'Fehler beim Laden',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: DnDTheme.errorRed,
+                    color: C.red,
                   ),
                 ),
               ],
@@ -185,11 +172,7 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.assignment_outlined,
-                  size: 64,
-                  color: Colors.grey[400],
-                ),
+                Icon(Icons.assignment_outlined, size: 64, color: Colors.grey[400]),
                 const SizedBox(height: 16),
                 Text(
                   'Keine Quests vorhanden',
@@ -202,10 +185,7 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
                 const SizedBox(height: 8),
                 Text(
                   'Erstelle zuerst Quests in der Quest-Bibliothek',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[500],
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey[500]),
                 ),
               ],
             ),
@@ -218,10 +198,7 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.list_alt,
-                    color: DnDTheme.ancientGold,
-                  ),
+                  Icon(Icons.list_alt, color: C.amber),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -238,9 +215,7 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
                       onPressed: _handleSave,
                       icon: const Icon(Icons.check, size: 16),
                       label: const Text('Fertig'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: DnDTheme.ancientGold,
-                      ),
+                      style: TextButton.styleFrom(foregroundColor: C.amber),
                     ),
                 ],
               ),
@@ -253,7 +228,6 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
                   final quest = quests[index];
                   final questIdString = quest.id.toString();
                   final isSelected = _selectedIds.contains(questIdString);
-                  
                   return _buildQuestCard(quest, isSelected);
                 },
               ),
@@ -265,6 +239,7 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
   }
 
   Widget _buildQuestCard(Quest quest, bool isSelected) {
+    final C = context.appColors;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: InkWell(
@@ -282,29 +257,17 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: isSelected
-                  ? [
-                      DnDTheme.arcaneBlue.withValues(alpha: 0.4),
-                      DnDTheme.mysticalPurple.withValues(alpha: 0.4),
-                    ]
-                  : [
-                      DnDTheme.dungeonBlack.withValues(alpha: 0.7),
-                      DnDTheme.dungeonBlack.withValues(alpha: 0.6),
-                    ],
-            ),
+            color: isSelected
+                ? C.accent.withValues(alpha: 0.25)
+                : C.bgPanel,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isSelected
-                  ? DnDTheme.arcaneBlue
-                  : DnDTheme.ancientGold.withValues(alpha: 0.5),
+              color: isSelected ? C.accent : C.amber.withValues(alpha: 0.5),
               width: isSelected ? 2 : 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: DnDTheme.ancientGold.withValues(alpha: 0.15),
+                color: C.amber.withValues(alpha: 0.15),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -315,14 +278,9 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isSelected
-                        ? [DnDTheme.arcaneBlue, DnDTheme.mysticalPurple]
-                        : [
-                            DnDTheme.arcaneBlue.withValues(alpha: 0.7),
-                            DnDTheme.mysticalPurple.withValues(alpha: 0.7),
-                          ],
-                  ),
+                  color: isSelected
+                      ? C.accent
+                      : C.accent.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
@@ -341,7 +299,7 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: isSelected ? DnDTheme.arcaneBlue : Colors.white,
+                        color: isSelected ? C.accent : Colors.white,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -351,7 +309,7 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
                         style: TextStyle(
                           fontSize: 13,
                           color: isSelected
-                              ? DnDTheme.arcaneBlue.withValues(alpha: 0.8)
+                              ? C.accent.withValues(alpha: 0.8)
                               : Colors.grey[400],
                         ),
                       ),
@@ -377,14 +335,14 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: DnDTheme.mysticalPurple.withValues(alpha: 0.15),
+        color: const Color(0xFF7C3AED).withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: DnDTheme.mysticalPurple.withValues(alpha: 0.4)),
+        border: Border.all(color: const Color(0xFF7C3AED).withValues(alpha: 0.4)),
       ),
       child: Text(
         _getQuestTypeDisplayName(type),
-        style: TextStyle(
-          color: DnDTheme.mysticalPurple,
+        style: const TextStyle(
+          color: Color(0xFF7C3AED),
           fontSize: 11,
           fontWeight: FontWeight.w600,
         ),
@@ -393,17 +351,18 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
   }
 
   Widget _buildDifficultyChip(QuestDifficulty difficulty) {
+    final color = _getDifficultyColor(difficulty);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: _getDifficultyColor(difficulty).withValues(alpha: 0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _getDifficultyColor(difficulty).withValues(alpha: 0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Text(
         _getDifficultyDisplayName(difficulty),
         style: TextStyle(
-          color: _getDifficultyColor(difficulty),
+          color: color,
           fontSize: 11,
           fontWeight: FontWeight.w600,
         ),
@@ -412,49 +371,33 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
   }
 
   String _getQuestTypeDisplayName(QuestType type) {
-    switch (type) {
-      case QuestType.main:
-        return 'Hauptquest';
-      case QuestType.side:
-        return 'Nebenquest';
-      case QuestType.personal:
-        return 'Persönlich';
-      case QuestType.faction:
-        return 'Fraktions-Quest';
-    }
+    return switch (type) {
+      QuestType.main => 'Hauptquest',
+      QuestType.side => 'Nebenquest',
+      QuestType.personal => 'Persönlich',
+      QuestType.faction => 'Fraktions-Quest',
+    };
   }
 
   String _getDifficultyDisplayName(QuestDifficulty difficulty) {
-    switch (difficulty) {
-      case QuestDifficulty.easy:
-        return 'Leicht';
-      case QuestDifficulty.medium:
-        return 'Mittel';
-      case QuestDifficulty.hard:
-        return 'Schwer';
-      case QuestDifficulty.deadly:
-        return 'Tödlich';
-      case QuestDifficulty.epic:
-        return 'Episch';
-      case QuestDifficulty.legendary:
-        return 'Legendär';
-    }
+    return switch (difficulty) {
+      QuestDifficulty.easy => 'Leicht',
+      QuestDifficulty.medium => 'Mittel',
+      QuestDifficulty.hard => 'Schwer',
+      QuestDifficulty.deadly => 'Tödlich',
+      QuestDifficulty.epic => 'Episch',
+      QuestDifficulty.legendary => 'Legendär',
+    };
   }
 
   Color _getDifficultyColor(QuestDifficulty difficulty) {
-    switch (difficulty) {
-      case QuestDifficulty.easy:
-        return Colors.green;
-      case QuestDifficulty.medium:
-        return Colors.blue;
-      case QuestDifficulty.hard:
-        return Colors.orange;
-      case QuestDifficulty.deadly:
-        return Colors.red;
-      case QuestDifficulty.epic:
-        return Colors.purple;
-      case QuestDifficulty.legendary:
-        return DnDTheme.ancientGold;
-    }
+    return switch (difficulty) {
+      QuestDifficulty.easy => Colors.green,
+      QuestDifficulty.medium => Colors.blue,
+      QuestDifficulty.hard => Colors.orange,
+      QuestDifficulty.deadly => Colors.red,
+      QuestDifficulty.epic => Colors.purple,
+      QuestDifficulty.legendary => context.appColors.amber,
+    };
   }
 }

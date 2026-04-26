@@ -1,38 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../../theme/dnd_theme.dart';
 
-/// Wiederverwendbares Widget für D&D 5e Kampfwerte
-/// 
-/// Beispiele:
-/// ```dart
-/// CombatStatsWidget(
-///   maxHp: viewModel.maxHp,
-///   currentHp: viewModel.currentHp,
-///   armorClass: viewModel.armorClass,
-///   challengeRating: viewModel.challengeRating,
-///   speed: viewModel.speed,
-///   onMaxHpChanged: (value) => viewModel.updateMaxHp(value),
-///   onCurrentHpChanged: (value) => viewModel.updateCurrentHp(value),
-///   onArmorClassChanged: (value) => viewModel.updateArmorClass(value),
-///   onChallengeRatingChanged: (value) => viewModel.updateChallengeRating(value),
-///   onSpeedChanged: (value) => viewModel.updateSpeed(value),
-/// )
-/// ```
+import '../../../theme/app_theme.dart';
+
 class CombatStatsWidget extends StatelessWidget {
-  final int? maxHp;
-  final int? currentHp;
-  final int? armorClass;
-  final int? challengeRating;
-  final String? speed;
-  final Function(int)? onMaxHpChanged;
-  final Function(int)? onCurrentHpChanged;
-  final Function(int)? onArmorClassChanged;
-  final Function(int)? onChallengeRatingChanged;
-  final Function(String)? onSpeedChanged;
-  final bool isEditable;
-
   const CombatStatsWidget({
-    Key? key,
+    super.key,
     this.maxHp,
     this.currentHp,
     this.armorClass,
@@ -44,67 +16,42 @@ class CombatStatsWidget extends StatelessWidget {
     this.onChallengeRatingChanged,
     this.onSpeedChanged,
     this.isEditable = true,
-  }) : super(key: key);
+  });
+
+  final int? maxHp;
+  final int? currentHp;
+  final int? armorClass;
+  final int? challengeRating;
+  final String? speed;
+  final void Function(int)? onMaxHpChanged;
+  final void Function(int)? onCurrentHpChanged;
+  final void Function(int)? onArmorClassChanged;
+  final void Function(int)? onChallengeRatingChanged;
+  final void Function(String)? onSpeedChanged;
+  final bool isEditable;
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
+
     return Column(
       children: [
-        // HP Row
         _buildStatRow(
           label: 'Lebenspunkte',
           icon: Icons.favorite,
+          C: C,
           children: [
-            Expanded(
-              child: _buildNumberField(
-                label: 'Max. LP',
-                value: maxHp,
-                onChanged: onMaxHpChanged,
-                isEditable: isEditable,
-              ),
-            ),
+            Expanded(child: _buildNumberField(label: 'Max. LP', value: maxHp, onChanged: onMaxHpChanged, C: C)),
             const SizedBox(width: 12),
-            Expanded(
-              child: _buildNumberField(
-                label: 'Aktuelle LP',
-                value: currentHp,
-                onChanged: onCurrentHpChanged,
-                isEditable: isEditable,
-              ),
-            ),
+            Expanded(child: _buildNumberField(label: 'Aktuelle LP', value: currentHp, onChanged: onCurrentHpChanged, C: C)),
           ],
         ),
         const SizedBox(height: 12),
-        
-        // RK
-        _buildNumberField(
-          label: 'Rüstungsklasse',
-          icon: Icons.shield,
-          value: armorClass,
-          onChanged: onArmorClassChanged,
-          isEditable: isEditable,
-        ),
+        _buildNumberField(label: 'Rüstungsklasse', icon: Icons.shield, value: armorClass, onChanged: onArmorClassChanged, C: C),
         const SizedBox(height: 12),
-        
-        // SG
-        _buildNumberField(
-          label: 'Herausforderungsgrad',
-          icon: Icons.star,
-          value: challengeRating,
-          onChanged: onChallengeRatingChanged,
-          isEditable: isEditable,
-          allowZero: true,
-        ),
+        _buildNumberField(label: 'Herausforderungsgrad', icon: Icons.star, value: challengeRating, onChanged: onChallengeRatingChanged, C: C, allowZero: true),
         const SizedBox(height: 12),
-        
-        // Bewegungsrate
-        _buildTextField(
-          label: 'Bewegungsrate',
-          icon: Icons.speed,
-          value: speed ?? '30ft',
-          onChanged: onSpeedChanged,
-          isEditable: isEditable,
-        ),
+        _buildTextField(label: 'Bewegungsrate', icon: Icons.speed, value: speed ?? '30ft', onChanged: onSpeedChanged, C: C),
       ],
     );
   }
@@ -113,82 +60,66 @@ class CombatStatsWidget extends StatelessWidget {
     required String label,
     required IconData icon,
     required List<Widget> children,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: DnDTheme.stoneGrey,
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: DnDTheme.ancientGold, size: 16),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: DnDTheme.bodyText2.copyWith(
-                  color: Colors.grey.shade400,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(children: children),
-        ],
-      ),
-    );
-  }
+    required AppColorsExtension C,
+  }) =>
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: C.bgPanel,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: C.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: C.amber, size: 16),
+                const SizedBox(width: 8),
+                Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: C.textSoft)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(children: children),
+          ],
+        ),
+      );
 
   Widget _buildNumberField({
     required String label,
     required int? value,
-    required Function(int)? onChanged,
+    required void Function(int)? onChanged,
+    required AppColorsExtension C,
     IconData? icon,
-    bool isEditable = true,
     bool allowZero = false,
   }) {
     final controller = TextEditingController(text: value?.toString() ?? '');
-
     return TextField(
       controller: controller,
       keyboardType: TextInputType.number,
       enabled: isEditable,
-      style: DnDTheme.bodyText1.copyWith(
-        color: Colors.white,
-        fontSize: 16,
-      ),
+      style: TextStyle(fontSize: 16, color: C.text),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: icon != null
-            ? Icon(icon, color: DnDTheme.ancientGold, size: 20)
-            : null,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-        ),
+        prefixIcon: icon != null ? Icon(icon, color: C.amber, size: 20) : null,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-          borderSide: BorderSide(color: Colors.grey.shade600),
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(color: C.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-          borderSide: BorderSide(color: DnDTheme.ancientGold),
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(color: C.accent),
         ),
         filled: true,
-        fillColor: isEditable ? DnDTheme.slateGrey : DnDTheme.stoneGrey,
-        labelStyle: DnDTheme.bodyText2.copyWith(
-          color: Colors.grey.shade400,
-        ),
+        fillColor: C.bgPanel,
+        labelStyle: TextStyle(color: C.textSoft, fontSize: 13),
       ),
       onChanged: onChanged != null && isEditable
-          ? (newValue) {
-              final parsedValue = int.tryParse(newValue);
-              if (parsedValue != null && (allowZero || parsedValue > 0)) {
-                onChanged(parsedValue);
+          ? (v) {
+              final parsed = int.tryParse(v);
+              if (parsed != null && (allowZero || parsed > 0)) {
+                onChanged(parsed);
               }
             }
           : null,
@@ -198,46 +129,159 @@ class CombatStatsWidget extends StatelessWidget {
   Widget _buildTextField({
     required String label,
     required String value,
-    required Function(String)? onChanged,
+    required void Function(String)? onChanged,
+    required AppColorsExtension C,
     IconData? icon,
-    bool isEditable = true,
   }) {
     final controller = TextEditingController(text: value);
-
     return TextField(
       controller: controller,
       enabled: isEditable,
-      style: DnDTheme.bodyText1.copyWith(
-        color: Colors.white,
-        fontSize: 16,
-      ),
+      style: TextStyle(fontSize: 16, color: C.text),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: icon != null
-            ? Icon(icon, color: DnDTheme.ancientGold, size: 20)
-            : null,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-        ),
+        prefixIcon: icon != null ? Icon(icon, color: C.amber, size: 20) : null,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-          borderSide: BorderSide(color: Colors.grey.shade600),
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(color: C.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-          borderSide: BorderSide(color: DnDTheme.ancientGold),
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(color: C.accent),
         ),
         filled: true,
-        fillColor: isEditable ? DnDTheme.slateGrey : DnDTheme.stoneGrey,
-        labelStyle: DnDTheme.bodyText2.copyWith(
-          color: Colors.grey.shade400,
-        ),
+        fillColor: C.bgPanel,
+        labelStyle: TextStyle(color: C.textSoft, fontSize: 13),
       ),
-      onChanged: onChanged != null && isEditable
-          ? (newValue) {
-              onChanged(newValue);
-            }
-          : null,
+      onChanged: onChanged != null && isEditable ? onChanged : null,
     );
   }
+}
+
+// ── COMBAT STAT CHIP ──────────────────────────────────────────────────────────
+
+class CombatStatChip extends StatelessWidget {
+  const CombatStatChip({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+    super.key,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 12, color: color),
+                const SizedBox(width: 4),
+                Text(label, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(value, style: TextStyle(fontSize: 14, color: color, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      );
+}
+
+// ── COMBAT STATS ROW ─────────────────────────────────────────────────────────
+
+class CombatStatsRow extends StatelessWidget {
+  const CombatStatsRow({
+    required this.maxHp,
+    required this.armorClass,
+    required this.initiativeBonus,
+    required this.speed,
+    super.key,
+  });
+
+  final int maxHp;
+  final int armorClass;
+  final int initiativeBonus;
+  final int speed;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Expanded(child: CombatStatChip(icon: Icons.favorite, label: 'HP', value: '$maxHp', color: Colors.red)),
+          const SizedBox(width: 8),
+          Expanded(child: CombatStatChip(icon: Icons.shield, label: 'AC', value: '$armorClass', color: Colors.blue)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: CombatStatChip(
+              icon: Icons.flash_on,
+              label: 'Init',
+              value: initiativeBonus >= 0 ? '+$initiativeBonus' : '$initiativeBonus',
+              color: Colors.orange,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(child: CombatStatChip(icon: Icons.speed, label: 'Bew.', value: '$speed ft', color: Colors.green)),
+        ],
+      );
+}
+
+// ── CURRENCY WIDGET ───────────────────────────────────────────────────────────
+
+class CurrencyWidget extends StatelessWidget {
+  const CurrencyWidget({
+    required this.gold,
+    required this.silver,
+    required this.copper,
+    super.key,
+  });
+
+  final double gold;
+  final double silver;
+  final double copper;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.amber[50]?.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.amber[200]!.withValues(alpha: 0.5)),
+        ),
+        child: Row(
+          children: [
+            if (gold > 0) ...[
+              Icon(Icons.monetization_on, size: 14, color: Colors.amber[700]),
+              const SizedBox(width: 4),
+              Text('${gold.toStringAsFixed(0)} Gold',
+                  style: TextStyle(fontSize: 11, color: Colors.amber[800], fontWeight: FontWeight.w600)),
+              if (silver > 0 || copper > 0) const SizedBox(width: 12),
+            ],
+            if (silver > 0) ...[
+              Icon(Icons.circle, size: 8, color: Colors.grey[500]),
+              const SizedBox(width: 4),
+              Text('${silver.toStringAsFixed(0)} Silber',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[700], fontWeight: FontWeight.w600)),
+              if (copper > 0) const SizedBox(width: 12),
+            ],
+            if (copper > 0) ...[
+              Icon(Icons.circle, size: 8, color: Colors.brown[400]),
+              const SizedBox(width: 4),
+              Text('${copper.toStringAsFixed(0)} Kupfer',
+                  style: TextStyle(fontSize: 11, color: Colors.brown[700], fontWeight: FontWeight.w600)),
+            ],
+          ],
+        ),
+      );
 }

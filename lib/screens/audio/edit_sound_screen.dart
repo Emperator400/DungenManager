@@ -2,18 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/sound.dart';
 import '../../viewmodels/edit_sound_viewmodel.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 import '../../widgets/ui_components/states/loading_state_widget.dart';
 import '../../widgets/ui_components/feedback/snackbar_helper.dart';
 
-/// Enhanced Screen zur Bearbeitung von Sounds mit modernem Design
 class EditSoundScreen extends StatefulWidget {
-  final Sound? sound;
+  const EditSoundScreen({super.key, this.sound});
 
-  const EditSoundScreen({
-    Key? key,
-    this.sound,
-  }) : super(key: key);
+  final Sound? sound;
 
   @override
   State<EditSoundScreen> createState() => _EditSoundScreenState();
@@ -31,7 +27,6 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
   @override
   void initState() {
     super.initState();
-    // ViewModel initialisieren
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<EditSoundViewModel>().initialize(widget.sound);
       _controllersFromViewModel();
@@ -50,7 +45,6 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
   void _controllersFromViewModel() {
     final viewModel = context.read<EditSoundViewModel>();
     final sound = viewModel.sound;
-    
     if (sound != null) {
       _nameController.text = sound.name;
       _filePathController.text = sound.filePath;
@@ -63,7 +57,6 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
 
   void _updateViewModel() {
     final viewModel = context.read<EditSoundViewModel>();
-    
     viewModel.updateName(_nameController.text);
     viewModel.updateFilePath(_filePathController.text);
     viewModel.updateDescription(_descriptionController.text);
@@ -74,7 +67,6 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
 
   String _formatDuration(Duration? duration) {
     if (duration == null) return 'Unbekannt';
-    
     final minutes = duration.inMinutes;
     final seconds = duration.inSeconds % 60;
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
@@ -82,69 +74,58 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          widget.sound == null ? 'Neuer Sound' : 'Sound bearbeiten',
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: DnDTheme.mysticalPurple,
-        iconTheme: IconThemeData(color: Colors.white),
+        title: Text(widget.sound == null ? 'Neuer Sound' : 'Sound bearbeiten'),
+        backgroundColor: C.bgPanel,
         actions: [
           Consumer<EditSoundViewModel>(
-            builder: (context, viewModel, child) {
-              return IconButton(
-                icon: Icon(Icons.save, color: Colors.white),
-                onPressed: viewModel.canSave ? _saveSound : null,
-                tooltip: 'Speichern',
-              );
-            },
+            builder: (context, viewModel, child) => IconButton(
+              icon: const Icon(Icons.save),
+              onPressed: viewModel.canSave ? _saveSound : null,
+              tooltip: 'Speichern',
+            ),
           ),
         ],
       ),
       body: Consumer<EditSoundViewModel>(
         builder: (context, viewModel, child) {
-          if (viewModel.isLoading) {
-            return const LoadingStateWidget();
-          }
-
+          if (viewModel.isLoading) return const LoadingStateWidget();
           return Form(
             key: _formKey,
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Fehlermeldung
                   if (viewModel.errorMessage != null)
                     Container(
-                      margin: const EdgeInsets.only(bottom: 16.0),
-                      padding: const EdgeInsets.all(12.0),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: DnDTheme.errorRed.withValues(alpha: 0.1),
-                        border: Border.all(color: DnDTheme.errorRed.withValues(alpha: 0.4)),
-                        borderRadius: BorderRadius.circular(8.0),
+                        color: C.red.withValues(alpha: 0.1),
+                        border: Border.all(color: C.red.withValues(alpha: 0.4)),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error, color: DnDTheme.errorRed, size: 20),
+                          Icon(Icons.error, color: C.red, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               viewModel.errorMessage!,
-                              style: const TextStyle(color: DnDTheme.errorRed),
+                              style: TextStyle(color: C.red),
                             ),
                           ),
                           IconButton(
                             icon: const Icon(Icons.close, size: 16),
                             onPressed: viewModel.clearError,
-                            color: DnDTheme.errorRed,
+                            color: C.red,
                           ),
                         ],
                       ),
                     ),
-
-                  // Grundinformationen
                   _buildSectionCard(
                     title: 'Grundinformationen',
                     icon: Icons.info_outline,
@@ -153,56 +134,36 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
                         TextFormField(
                           controller: _nameController,
                           decoration: _buildInputDecoration('Name', Icons.title),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Name ist erforderlich';
-                            }
-                            return null;
-                          },
+                          validator: (value) =>
+                              (value == null || value.trim().isEmpty) ? 'Name ist erforderlich' : null,
                           onChanged: (_) => _updateViewModel(),
                         ),
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: _filePathController,
                           decoration: _buildInputDecoration('Dateipfad', Icons.audio_file),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Dateipfad ist erforderlich';
-                            }
-                            return null;
-                          },
+                          validator: (value) =>
+                              (value == null || value.trim().isEmpty) ? 'Dateipfad ist erforderlich' : null,
                           onChanged: (_) => _updateViewModel(),
                         ),
                         const SizedBox(height: 12),
-                        Consumer<EditSoundViewModel>(
-                          builder: (context, viewModel, child) {
-                            return DropdownButtonFormField<SoundType>(
-                              value: _selectedSoundType,
-                              decoration: _buildInputDecoration('Sound-Typ', Icons.category),
-                              items: SoundType.values.map((type) {
-                                return DropdownMenuItem(
-                                  value: type,
-                                  child: Text(type.name),
-                                );
-                              }).toList(),
-                              onChanged: (value) {
-                                if (value != null) {
-                                  setState(() {
-                                    _selectedSoundType = value;
-                                  });
-                                  _updateViewModel();
-                                }
-                              },
-                            );
+                        DropdownButtonFormField<SoundType>(
+                          value: _selectedSoundType,
+                          decoration: _buildInputDecoration('Sound-Typ', Icons.category),
+                          items: SoundType.values
+                              .map((type) => DropdownMenuItem(value: type, child: Text(type.name)))
+                              .toList(),
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _selectedSoundType = value);
+                              _updateViewModel();
+                            }
                           },
                         ),
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
-                  // Sound-Details
                   _buildSectionCard(
                     title: 'Sound-Details',
                     icon: Icons.music_note,
@@ -222,78 +183,69 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
                         ),
                         const SizedBox(height: 12),
                         Consumer<EditSoundViewModel>(
-                          builder: (context, viewModel, child) {
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Text(
-                                      'Dauer: ${_formatDuration(_duration)}',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                        color: Colors.white,
+                          builder: (context, vm, child) => Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    'Dauer: ${_formatDuration(_duration)}',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                      color: C.text,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  if (_duration != null)
+                                    ElevatedButton.icon(
+                                      onPressed: () {
+                                        setState(() => _duration = null);
+                                        _updateViewModel();
+                                      },
+                                      icon: const Icon(Icons.clear, size: 16),
+                                      label: const Text('Entfernen'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: C.bgActive,
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                       ),
                                     ),
-                                    const SizedBox(width: 12),
-                                    if (_duration != null)
-                                      ElevatedButton.icon(
-                                        onPressed: () {
-                                          setState(() {
-                                            _duration = null;
-                                          });
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ElevatedButton(
+                                      onPressed: () async {
+                                        final picked = await _showDurationPicker();
+                                        if (picked != null) {
+                                          setState(() => _duration = picked);
                                           _updateViewModel();
-                                        },
-                                        icon: const Icon(Icons.clear, size: 16),
-                                        label: const Text('Entfernen'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: DnDTheme.charcoalGrey,
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                        ),
+                                        }
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF7C3AED),
                                       ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: ElevatedButton(
-                                        onPressed: () async {
-                                          final pickedDuration = await _showDurationPicker();
-                                          if (pickedDuration != null) {
-                                            setState(() {
-                                              _duration = pickedDuration;
-                                            });
-                                            _updateViewModel();
-                                          }
-                                        },
-                                        child: Text('Dauer wählen'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: DnDTheme.mysticalPurple,
-                                        ),
-                                      ),
+                                      child: const Text('Dauer wählen'),
                                     ),
-                                    if (viewModel.sound?.fileSize != null) ...[
-                                      const SizedBox(width: 12),
-                                      Text(
-                                        'Größe: ${viewModel.sound!.formattedFileSize}',
-                                        style: const TextStyle(color: DnDTheme.charcoalGrey),
-                                      ),
-                                    ],
+                                  ),
+                                  if (vm.sound?.fileSize != null) ...[
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      'Größe: ${vm.sound!.formattedFileSize}',
+                                      style: TextStyle(color: C.textSoft),
+                                    ),
                                   ],
-                                ),
-                              ],
-                            );
-                          },
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 24),
-
-                  // Aktionen
                   _buildActionButtons(viewModel),
                 ],
               ),
@@ -309,25 +261,23 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
     required IconData icon,
     required Widget child,
   }) {
+    final C = context.appColors;
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: C.bgPanel,
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(icon, color: DnDTheme.mysticalPurple, size: 20),
+                Icon(icon, color: const Color(0xFF7C3AED), size: 20),
                 const SizedBox(width: 8),
                 Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: C.text),
                 ),
               ],
             ),
@@ -340,23 +290,25 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
   }
 
   InputDecoration _buildInputDecoration(String label, IconData icon) {
+    final C = context.appColors;
     return InputDecoration(
       labelText: label,
-      prefixIcon: Icon(icon, color: DnDTheme.mysticalPurple),
+      prefixIcon: Icon(icon, color: const Color(0xFF7C3AED)),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(color: DnDTheme.mysticalPurple.withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: C.border),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: const BorderSide(color: DnDTheme.mysticalPurple),
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Color(0xFF7C3AED)),
       ),
       filled: true,
-      fillColor: DnDTheme.slateGrey,
+      fillColor: C.bgHover,
     );
   }
 
   Widget _buildActionButtons(EditSoundViewModel viewModel) {
+    final C = context.appColors;
     return Row(
       children: [
         Expanded(
@@ -364,7 +316,7 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
             onPressed: () => Navigator.pop(context),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              side: const BorderSide(color: DnDTheme.charcoalGrey),
+              side: BorderSide(color: C.border),
             ),
             child: const Text('Abbrechen'),
           ),
@@ -374,101 +326,92 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
           child: ElevatedButton(
             onPressed: viewModel.canSave ? _saveSound : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.mysticalPurple,
+              backgroundColor: const Color(0xFF7C3AED),
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
-            child: Text(
-              'Speichern',
-              style: TextStyle(color: Colors.white),
-            ),
+            child: const Text('Speichern', style: TextStyle(color: Colors.white)),
           ),
         ),
-        const SizedBox(width: 12),
-        if (viewModel.isEditing)
+        if (viewModel.isEditing) ...[
+          const SizedBox(width: 12),
           Expanded(
             child: ElevatedButton.icon(
               onPressed: _duplicateSound,
               icon: const Icon(Icons.copy, color: Colors.white),
               label: const Text('Duplizieren'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: DnDTheme.warningOrange,
+                backgroundColor: const Color(0xFFEA580C),
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
             ),
           ),
+        ],
       ],
     );
   }
 
   Future<Duration?> _showDurationPicker() async {
-    // Simple Duration picker implementation
-    final TextEditingController minutesController = TextEditingController(text: '0');
-    final TextEditingController secondsController = TextEditingController(text: '0');
-
+    final minutesController = TextEditingController(text: '0');
+    final secondsController = TextEditingController(text: '0');
     return showDialog<Duration>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Dauer auswählen'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: minutesController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Minuten',
-                        border: OutlineInputBorder(),
-                      ),
+      builder: (context) => AlertDialog(
+        title: const Text('Dauer auswählen'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: minutesController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Minuten',
+                      border: OutlineInputBorder(),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  const Text(':', style: TextStyle(fontSize: 20)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
-                      controller: secondsController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Sekunden',
-                        border: OutlineInputBorder(),
-                      ),
+                ),
+                const SizedBox(width: 8),
+                const Text(':', style: TextStyle(fontSize: 20)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: secondsController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Sekunden',
+                      border: OutlineInputBorder(),
                     ),
                   ),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Abbrechen'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final minutes = int.tryParse(minutesController.text) ?? 0;
-                final seconds = int.tryParse(secondsController.text) ?? 0;
-                Navigator.pop(context, Duration(minutes: minutes, seconds: seconds));
-              },
-              child: const Text('OK'),
+                ),
+              ],
             ),
           ],
-        );
-      },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Abbrechen'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final minutes = int.tryParse(minutesController.text) ?? 0;
+              final seconds = int.tryParse(secondsController.text) ?? 0;
+              Navigator.pop(context, Duration(minutes: minutes, seconds: seconds));
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
     );
   }
 
   Future<void> _saveSound() async {
     final viewModel = context.read<EditSoundViewModel>();
-    
     if (!_formKey.currentState!.validate()) return;
-
     final success = await viewModel.saveSound();
     if (!mounted) return;
-
     if (success) {
       SnackBarHelper.showSuccess(context, 'Sound erfolgreich gespeichert');
       Navigator.pop(context, true);
@@ -479,7 +422,6 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
     final viewModel = context.read<EditSoundViewModel>();
     await viewModel.duplicateSound();
     if (!mounted) return;
-
     SnackBarHelper.showInfo(context, 'Sound dupliziert');
   }
 }

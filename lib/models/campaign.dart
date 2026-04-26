@@ -389,6 +389,7 @@ class Campaign {
   final DateTime? completedAt;
   final String? dungeonMasterId;
   final bool isFavorite;
+  final DateTime? lastOpenedAt;
   final List<String> playerCharacterIds;
   final List<String> questIds;
   final List<String> wikiEntryIds;
@@ -411,6 +412,7 @@ class Campaign {
     this.completedAt,
     this.dungeonMasterId,
     this.isFavorite = false,
+    this.lastOpenedAt,
     this.playerCharacterIds = const [],
     this.questIds = const [],
     this.wikiEntryIds = const [],
@@ -559,6 +561,7 @@ class Campaign {
         completedAt: map['completed_at'] != null ? DateTime.tryParse(map['completed_at'] as String) : null,
         dungeonMasterId: map['dungeon_master_id'] as String?,
         isFavorite: (map['is_favorite'] as int? ?? 0) == 1,
+        lastOpenedAt: map['last_opened_at'] != null ? DateTime.tryParse(map['last_opened_at'] as String) : null,
         playerCharacterIds: _deserializeStringList(map['player_character_ids'] as String?),
         questIds: _deserializeStringList(map['quest_ids'] as String?),
         wikiEntryIds: _deserializeStringList(map['wiki_entry_ids'] as String?),
@@ -668,6 +671,7 @@ class Campaign {
       'completed_at': completedAt?.toIso8601String(),
       'dungeon_master_id': dungeonMasterId,
       'is_favorite': isFavorite ? 1 : 0,
+      'last_opened_at': lastOpenedAt?.toIso8601String(),
       'player_character_ids': _serializeStringList(playerCharacterIds),
       'quest_ids': _serializeStringList(questIds),
       'wiki_entry_ids': _serializeStringList(wikiEntryIds),
@@ -690,6 +694,7 @@ class Campaign {
     DateTime? completedAt,
     String? dungeonMasterId,
     bool? isFavorite,
+    DateTime? lastOpenedAt,
     List<String>? playerCharacterIds,
     List<String>? questIds,
     List<String>? wikiEntryIds,
@@ -709,6 +714,7 @@ class Campaign {
       completedAt: completedAt ?? this.completedAt,
       dungeonMasterId: dungeonMasterId ?? this.dungeonMasterId,
       isFavorite: isFavorite ?? this.isFavorite,
+      lastOpenedAt: lastOpenedAt ?? this.lastOpenedAt,
       playerCharacterIds: playerCharacterIds ?? this.playerCharacterIds,
       questIds: questIds ?? this.questIds,
       wikiEntryIds: wikiEntryIds ?? this.wikiEntryIds,

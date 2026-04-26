@@ -1,632 +1,814 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../database/core/database_connection.dart';
+import '../../database/repositories/player_character_model_repository.dart';
+import '../../database/repositories/session_model_repository.dart';
 import '../../models/campaign.dart';
-import '../../theme/dnd_theme.dart';
-import '../../viewmodels/bestiary_viewmodel.dart';
+import '../../models/player_character.dart';
+import '../../models/session.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/theme_notifier.dart';
 import '../../viewmodels/campaign_viewmodel.dart';
-import '../../viewmodels/character_editor_viewmodel.dart';
-import '../../viewmodels/item_library_viewmodel.dart';
-import '../../viewmodels/official_monsters_viewmodel.dart';
-import '../../viewmodels/quest_library_viewmodel.dart';
 import '../../viewmodels/session_list_for_campaign_viewmodel.dart';
-import '../../viewmodels/sound_library_viewmodel.dart';
-import '../../viewmodels/wiki_viewmodel.dart';
+import '../../widgets/ui_components/shared/app_icon.dart';
+import '../../widgets/ui_components/shared/app_logo.dart';
 
-// Screens
-import '../bestiary/bestiary_screen.dart';
-import '../campaign/campaign_selection_screen.dart';
-import '../campaign/campaign_quests_screen.dart';
 import '../campaign/edit_campaign_screen.dart';
-import '../items/item_library_screen.dart';
-import '../lore/lore_keeper_screen.dart';
-import '../bestiary/official_monsters_screen.dart';
-import '../characters/pc_list_screen.dart';
-import '../quests/quest_library_screen.dart';
-import '../audio/sound_library_screen.dart';
+import '../characters/edit_pc_screen.dart';
 import '../campaign/session_list_for_campaign_screen.dart';
+import '../session/edit_session_screen.dart';
 
-/// Enhanced Main Navigation Screen
-/// 
-/// Zentrale Navigation für alle D&D Kampagnen-Management Funktionen
-class EnhancedMainNavigationScreen extends StatelessWidget {
+// Klassenfarben nach JSX-Vorlage
+const Map<String, Color> _klasseColor = {
+  'Barbar':      Color(0xFFC93A3A),
+  'Barde':       Color(0xFF7C3AED),
+  'Kleriker':    Color(0xFFD4890A),
+  'Druide':      Color(0xFF1A7F4B),
+  'Kämpfer':     Color(0xFF6B6B66),
+  'Mönch':       Color(0xFF0891B2),
+  'Paladin':     Color(0xFF2F6FEB),
+  'Waldläufer':  Color(0xFF065F46),
+  'Schurke':     Color(0xFF4A4A4A),
+  'Zauberer':    Color(0xFFBE185D),
+  'Hexenmeister':Color(0xFF4A235A),
+  'Magier':      Color(0xFF1B4F72),
+};
+
+Color _colorForClass(String className, Color fallback) =>
+    _klasseColor.entries
+        .firstWhere(
+          (e) => className.toLowerCase().contains(e.key.toLowerCase()),
+          orElse: () => MapEntry('', fallback),
+        )
+        .value;
+
+String _formatDate(DateTime? d) =>
+    d == null ? '' : '${d.day}.${d.month}.${d.year}';
+
+// ── SCREEN ────────────────────────────────────────────────────────────────────
+
+class EnhancedMainNavigationScreen extends StatefulWidget {
+  const EnhancedMainNavigationScreen({super.key, this.campaign});
+
   final Campaign? campaign;
-  
-  const EnhancedMainNavigationScreen({
-    Key? key, 
-    this.campaign,
-  }) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        // CampaignViewModel von übergeordnetem Provider übernehmen
-        if (campaign != null)
-          ChangeNotifierProvider<CampaignViewModel>.value(
-            value: context.read<CampaignViewModel>(),
-          ),
-        // Alle ViewModels registrieren
-        ChangeNotifierProvider(create: (_) => QuestLibraryViewModel()),
-        ChangeNotifierProvider(create: (_) => WikiViewModel()),
-        ChangeNotifierProvider(create: (_) => ItemLibraryViewModel()),
-        ChangeNotifierProvider(create: (_) => BestiaryViewModel()),
-        ChangeNotifierProvider(create: (_) => SoundLibraryViewModel()),
-        ChangeNotifierProvider(create: (_) => OfficialMonstersViewModel()),
-      ],
-      child: _MainNavigationLayout(campaign: campaign),
-    );
-  }
+  State<EnhancedMainNavigationScreen> createState() =>
+      _EnhancedMainNavigationScreenState();
 }
 
-class _MainNavigationLayout extends StatelessWidget {
-  final Campaign? campaign;
-  
-  const _MainNavigationLayout({Key? key, this.campaign}) : super(key: key);
+class _EnhancedMainNavigationScreenState
+    extends State<EnhancedMainNavigationScreen> {
+  late final PlayerCharacterModelRepository _heroRepo;
+  late final SessionModelRepository _sessionRepo;
+
+  List<PlayerCharacter> _heroes = [];
+  List<Session> _sessions = [];
+  bool _loadingHeroes = true;
+  bool _loadingSessions = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _heroRepo = PlayerCharacterModelRepository(DatabaseConnection.instance);
+    _sessionRepo = SessionModelRepository(DatabaseConnection.instance);
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    if (widget.campaign == null) return;
+    await Future.wait([_loadHeroes(), _loadSessions()]);
+  }
+
+  Future<void> _loadHeroes() async {
+    setState(() => _loadingHeroes = true);
+    try {
+      final heroes = await _heroRepo.findByCampaign(widget.campaign!.id);
+      if (mounted) setState(() { _heroes = heroes; _loadingHeroes = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loadingHeroes = false);
+    }
+  }
+
+  Future<void> _loadSessions() async {
+    setState(() => _loadingSessions = true);
+    try {
+      final sessions = await _sessionRepo.findByCampaign(widget.campaign!.id);
+      sessions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      if (mounted) setState(() { _sessions = sessions; _loadingSessions = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loadingSessions = false);
+    }
+  }
+
+  void _goToHero(PlayerCharacter? hero) {
+    final campaign = widget.campaign;
+    if (campaign == null) return;
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(
+          builder: (_) => EditPCScreen(
+            campaignId: campaign.id,
+            pcToEdit: hero,
+          ),
+        ))
+        .then((_) => _loadHeroes());
+  }
+
+  void _goToSession(Session? session) {
+    final campaign = widget.campaign;
+    if (campaign == null) return;
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(
+          builder: (_) => EditSessionScreen(
+            session: session,
+            isNewSession: session == null,
+          ),
+        ))
+        .then((_) => _loadSessions());
+  }
+
+  void _goToSessionList() {
+    final campaign = widget.campaign;
+    if (campaign == null) return;
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(
+          builder: (_) => ChangeNotifierProvider<SessionListForCampaignViewModel>(
+            create: (_) => SessionListForCampaignViewModel(),
+            child: SessionListForCampaignScreen(campaign: campaign),
+          ),
+        ))
+        .then((_) => _loadSessions());
+  }
+
+  void _goToEditCampaign() {
+    final campaign = widget.campaign;
+    if (campaign == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (ctx) => ChangeNotifierProvider.value(
+          value: ctx.read<CampaignViewModel>(),
+          child: EditCampaignScreen(campaign: campaign),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Scaffold(
-      backgroundColor: DnDTheme.dungeonBlack,
-      body: CustomScrollView(
-        slivers: [
-          _buildSliverAppBar(context),
-          
-          if (campaign != null) _buildCampaignSection(context, campaign!),
-          _buildContentSection(context),
-          
-          const SliverToBoxAdapter(child: SizedBox(height: 100)),
+      backgroundColor: C.bg,
+      body: Column(
+        children: [
+          _TopBar(campaign: widget.campaign, C: C, onEdit: _goToEditCampaign),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 60),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Session starten
+                  if (widget.campaign != null) ...[
+                    _SessionStartBanner(C: C, onTap: _goToSessionList),
+                    const SizedBox(height: 28),
+                  ],
+
+                  // Helden
+                  if (widget.campaign != null) ...[
+                    _SectionHeader(
+                      title: 'Helden',
+                      subtitle: '${_heroes.length} Charakter${_heroes.length != 1 ? "e" : ""} in dieser Kampagne',
+                      actionLabel: 'Held hinzufügen',
+                      onAction: () => _goToHero(null),
+                      C: C,
+                    ),
+                    const SizedBox(height: 12),
+                    _HeroGrid(
+                      heroes: _heroes,
+                      loading: _loadingHeroes,
+                      C: C,
+                      onTap: _goToHero,
+                      onAdd: () => _goToHero(null),
+                    ),
+                    const SizedBox(height: 28),
+                  ],
+
+                  // Sessions
+                  if (widget.campaign != null) ...[
+                    _SectionHeader(
+                      title: 'Sessions',
+                      subtitle: '${_sessions.length} Session${_sessions.length != 1 ? "s" : ""}',
+                      actionLabel: 'Session hinzufügen',
+                      onAction: () => _goToSession(null),
+                      C: C,
+                    ),
+                    const SizedBox(height: 12),
+                    _SessionList(
+                      sessions: _sessions,
+                      loading: _loadingSessions,
+                      C: C,
+                      onTap: _goToSession,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildSliverAppBar(BuildContext context) {
-    return SliverAppBar(
-      expandedHeight: 60,
-      floating: false,
-      pinned: true,
-      backgroundColor: DnDTheme.mysticalPurple,
-      title: Text(
-        campaign?.title ?? 'Dungeon Manager',
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: 18,
+// ── TOP BAR ───────────────────────────────────────────────────────────────────
+
+class _TopBar extends StatelessWidget {
+  const _TopBar({required this.campaign, required this.C, required this.onEdit});
+
+  final Campaign? campaign;
+  final AppColorsExtension C;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final notifier = context.watch<ThemeNotifier>();
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SafeArea(
+          bottom: false,
+          child: SizedBox(
+            height: 48,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  _IconBtn(
+                    C: C,
+                    icon: AppIconName.back,
+                    onTap: () => Navigator.of(context).pop(),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(width: 1, height: 18, color: C.border),
+                  const SizedBox(width: 10),
+
+                  if (campaign != null) ...[
+                    _CampaignAvatar(campaign: campaign!, size: 22, C: C),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            campaign!.title,
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.text),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (campaign!.description.isNotEmpty)
+                            Text(
+                              campaign!.description,
+                              style: TextStyle(fontSize: 11, color: C.textSoft),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    const AppLogo(size: 22),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Dungeon Manager',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.text),
+                      ),
+                    ),
+                  ],
+
+                  if (campaign != null) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: C.greenSoft,
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: Text('Aktiv', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: C.green)),
+                    ),
+                    const SizedBox(width: 4),
+                    _IconBtn(C: C, icon: AppIconName.edit, onTap: onEdit),
+                    const SizedBox(width: 4),
+                  ],
+
+                  _IconBtn(
+                    C: C,
+                    icon: notifier.isDark ? AppIconName.sun : AppIconName.moon,
+                    onTap: notifier.toggle,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Divider(height: 1, thickness: 1, color: C.border),
+      ],
+    );
+  }
+}
+
+// ── SESSION START BANNER ──────────────────────────────────────────────────────
+
+class _SessionStartBanner extends StatelessWidget {
+  const _SessionStartBanner({required this.C, required this.onTap});
+
+  final AppColorsExtension C;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: onTap,
+        icon: const AppIcon(AppIconName.play, size: 15, color: Colors.white),
+        label: const Text('Session starten'),
+        style: FilledButton.styleFrom(
+          backgroundColor: C.accent,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
-      flexibleSpace: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              DnDTheme.mysticalPurple,
-              DnDTheme.mysticalPurple.withValues(alpha: 0.9),
-              DnDTheme.arcaneBlue.withValues(alpha: 0.85),
-              DnDTheme.ancientGold.withValues(alpha: 0.3),
+    );
+  }
+}
+
+// ── SECTION HEADER ────────────────────────────────────────────────────────────
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.title,
+    required this.subtitle,
+    required this.actionLabel,
+    required this.onAction,
+    required this.C,
+  });
+
+  final String title;
+  final String subtitle;
+  final String actionLabel;
+  final VoidCallback onAction;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: C.text)),
+              const SizedBox(height: 2),
+              Text(subtitle, style: TextStyle(fontSize: 12, color: C.textSoft)),
             ],
-            stops: const [0.0, 0.4, 0.7, 1.0],
           ),
-          boxShadow: [
-            BoxShadow(
-              color: DnDTheme.mysticalPurple.withValues(alpha: 0.4),
-              blurRadius: 16,
-              spreadRadius: 3,
-            ),
-            BoxShadow(
-              color: DnDTheme.ancientGold.withValues(alpha: 0.2),
-              blurRadius: 20,
-              spreadRadius: 2,
-            ),
-          ],
         ),
-      ),
-      actions: [
-        if (campaign != null)
-          IconButton(
-            icon: const Icon(Icons.play_circle, color: Colors.white),
-            onPressed: () => _navigateToScreen(context, ScreenType.sessions, campaign: campaign),
-            tooltip: 'Sessions',
-          ),
-        IconButton(
-          icon: const Icon(Icons.settings, color: Colors.white),
-          onPressed: () => _showSettingsDialog(context),
-          tooltip: 'Einstellungen',
+        _OutlineBtn(label: actionLabel, C: C, onTap: onAction),
+      ],
+    );
+  }
+}
+
+// ── HERO GRID ─────────────────────────────────────────────────────────────────
+
+class _HeroGrid extends StatelessWidget {
+  const _HeroGrid({
+    required this.heroes,
+    required this.loading,
+    required this.C,
+    required this.onTap,
+    required this.onAdd,
+  });
+
+  final List<PlayerCharacter> heroes;
+  final bool loading;
+  final AppColorsExtension C;
+  final void Function(PlayerCharacter) onTap;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return SizedBox(
+        height: 110,
+        child: Center(child: CircularProgressIndicator(color: C.accent, strokeWidth: 2)),
+      );
+    }
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        ...heroes.map((h) => SizedBox(
+          width: _cardWidth(context),
+          child: _HeroCard(hero: h, C: C, onTap: () => onTap(h)),
+        )),
+        SizedBox(
+          width: _cardWidth(context),
+          child: _AddHeroCard(C: C, onTap: onAdd),
         ),
       ],
     );
   }
 
-  Widget _buildCampaignSection(BuildContext context, Campaign campaign) {
-    return SliverToBoxAdapter(
+  double _cardWidth(BuildContext context) {
+    final available = MediaQuery.of(context).size.width - 40;
+    if (available >= 600) return (available - 30) / 4;
+    if (available >= 400) return (available - 20) / 3;
+    return (available - 10) / 2;
+  }
+}
+
+class _HeroCard extends StatelessWidget {
+  const _HeroCard({required this.hero, required this.C, required this.onTap});
+
+  final PlayerCharacter hero;
+  final AppColorsExtension C;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _colorForClass(hero.className, C.accent);
+    return GestureDetector(
+      onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              DnDTheme.ancientGold.withValues(alpha: 0.1),
-              DnDTheme.ancientGold.withValues(alpha: 0.05),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: DnDTheme.ancientGold.withValues(alpha: 0.3),
-            width: 2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: DnDTheme.ancientGold.withValues(alpha: 0.2),
-              blurRadius: 8,
-              spreadRadius: 1,
-            ),
-          ],
+          color: C.bgPanel,
+          border: Border.all(color: C.border),
+          borderRadius: BorderRadius.circular(10),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(Icons.campaign, color: DnDTheme.ancientGold, size: 20),
-                const SizedBox(width: 6),
-                Text(
-                  'Aktuelle Kampagne',
-                  style: DnDTheme.headline3.copyWith(
-                    color: DnDTheme.ancientGold,
-                    fontSize: 16,
+            // Farbstreifen
+            Container(
+              height: 4,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      // Avatar
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.13),
+                          border: Border.all(color: color.withValues(alpha: 0.3)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Center(
+                          child: Text(
+                            hero.name.isNotEmpty ? hero.name[0].toUpperCase() : '?',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: color),
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      AppIcon(AppIconName.chevronRight, size: 12, color: C.textSoft),
+                    ],
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    hero.name,
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.text),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Lvl ${hero.level} · ${hero.className}',
+                    style: TextStyle(fontSize: 11, color: C.textMid),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: C.bgHover,
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AppIcon(AppIconName.user, size: 10, color: C.textSoft),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            hero.playerName,
+                            style: TextStyle(fontSize: 11, color: C.textSoft),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AddHeroCard extends StatelessWidget {
+  const _AddHeroCard({required this.C, required this.onTap});
+
+  final AppColorsExtension C;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 110),
+        decoration: BoxDecoration(
+          border: Border.all(color: C.border, width: 1.5, style: BorderStyle.solid),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 20),
+            AppIcon(AppIconName.plus, size: 18, color: C.textSoft),
+            const SizedBox(height: 6),
+            Text('Neuer Held', style: TextStyle(fontSize: 11, color: C.textSoft)),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── SESSION LIST ──────────────────────────────────────────────────────────────
+
+class _SessionList extends StatelessWidget {
+  const _SessionList({
+    required this.sessions,
+    required this.loading,
+    required this.C,
+    required this.onTap,
+  });
+
+  final List<Session> sessions;
+  final bool loading;
+  final AppColorsExtension C;
+  final void Function(Session) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return SizedBox(
+        height: 80,
+        child: Center(child: CircularProgressIndicator(color: C.accent, strokeWidth: 2)),
+      );
+    }
+
+    if (sessions.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        decoration: BoxDecoration(
+          color: C.bgPanel,
+          border: Border.all(color: C.border),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Center(
+          child: Text('Noch keine Sessions', style: TextStyle(fontSize: 13, color: C.textSoft)),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: C.bgPanel,
+        border: Border.all(color: C.border),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        children: [
+          for (int i = 0; i < sessions.length; i++)
+            _SessionRow(
+              session: sessions[i],
+              C: C,
+              isLast: i == sessions.length - 1,
+              onTap: () => onTap(sessions[i]),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SessionRow extends StatelessWidget {
+  const _SessionRow({
+    required this.session,
+    required this.C,
+    required this.isLast,
+    required this.onTap,
+  });
+
+  final Session session;
+  final AppColorsExtension C;
+  final bool isLast;
+  final VoidCallback onTap;
+
+  bool get _isActive => session.startedAt != null && session.completedAt == null;
+  bool get _isDone => session.completedAt != null;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.vertical(
+        top: isLast ? Radius.zero : Radius.zero,
+        bottom: isLast ? const Radius.circular(10) : Radius.zero,
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          border: isLast ? null : Border(bottom: BorderSide(color: C.border)),
+        ),
+        child: Row(
+          children: [
+            // Status dot
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _isActive ? C.green : (_isDone ? C.textSoft : C.amber),
+                boxShadow: _isActive
+                    ? [BoxShadow(color: C.green.withValues(alpha: 0.5), blurRadius: 5)]
+                    : null,
+              ),
+            ),
+            const SizedBox(width: 12),
+
+            // Title
+            Expanded(
+              child: Text(
+                session.title,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: C.text,
+                  fontWeight: _isActive ? FontWeight.w500 : FontWeight.normal,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+
+            // Datum
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppIcon(AppIconName.calendar, size: 11, color: C.textSoft),
+                const SizedBox(width: 4),
+                Text(
+                  _formatDate(session.startedAt ?? session.createdAt),
+                  style: TextStyle(fontSize: 11, color: C.textSoft),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            _CampaignInfoRow(
-              icon: Icons.title,
-              label: 'Name',
-              value: campaign.title,
-            ),
-            const SizedBox(height: 6),
-            _CampaignInfoRow(
-              icon: Icons.description,
-              label: 'Beschreibung',
-              value: campaign.description.isNotEmpty
-                  ? campaign.description
-                  : 'Keine Beschreibung',
-            ),
-            const SizedBox(height: 6),
-            _CampaignInfoRow(
-              icon: Icons.calendar_today,
-              label: 'Erstellt am',
-              value: _formatDate(campaign.createdAt),
-            ),
-            const SizedBox(height: 12),
-            _CampaignActionButtons(context, campaign),
+
+            // Aktiv-Badge
+            if (_isActive) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: C.greenSoft,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text('Aktiv', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: C.green)),
+              ),
+            ],
+
+            const SizedBox(width: 8),
+            AppIcon(AppIconName.chevronRight, size: 12, color: C.textSoft),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildContentSection(BuildContext context) {
-    return SliverToBoxAdapter(
-      child: Container(
-        margin: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    DnDTheme.mysticalPurple.withValues(alpha: 0.1),
-                    DnDTheme.mysticalPurple.withValues(alpha: 0.05),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
-                  width: 1,
-                ),
-              ),
-              child: Text(
-                'Inhaltsbibliotheken',
-                style: DnDTheme.headline3.copyWith(
-                  color: DnDTheme.mysticalPurple,
-                  fontSize: 18,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            
-            if (campaign != null) _ContentListItem(
-              title: 'Helden',
-              subtitle: 'Charaktere erstellen & verwalten',
-              icon: Icons.person,
-              color: DnDTheme.emeraldGreen,
-              onTap: () => _navigateToScreen(context, ScreenType.characters, campaign: campaign),
-            ),
-            if (campaign != null) _ContentListItem(
-              title: 'Quests',
-              subtitle: 'Aufgaben & Missionen',
-              icon: Icons.assignment,
-              color: DnDTheme.arcaneBlue,
-              onTap: () => _navigateToScreen(context, ScreenType.quests, campaign: campaign),
-            ),
-            _ContentListItem(
-              title: 'Wiki',
-              subtitle: 'Wissen & Lore',
-              icon: Icons.menu_book,
-              color: DnDTheme.mysticalPurple,
-              onTap: () => _navigateToScreen(context, ScreenType.wiki),
-            ),
-            _ContentListItem(
-              title: 'Items',
-              subtitle: 'Ausrüstung',
-              icon: Icons.inventory_2,
-              color: DnDTheme.stoneGrey,
-              onTap: () => _navigateToScreen(context, ScreenType.items),
-            ),
-            _ContentListItem(
-              title: 'Bestiarium',
-              subtitle: 'Monster & Kreaturen',
-              icon: Icons.pets,
-              color: DnDTheme.arcaneBlue,
-              onTap: () => _navigateToScreen(context, ScreenType.bestiary),
-            ),
-            _ContentListItem(
-              title: 'Sounds',
-              subtitle: 'Audio Bibliothek',
-              icon: Icons.music_note,
-              color: DnDTheme.deepRed,
-              onTap: () => _navigateToScreen(context, ScreenType.sounds),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
 }
 
-// ============================================================================
-// Helper Widgets
-// ============================================================================
+// ── SHARED WIDGETS ────────────────────────────────────────────────────────────
 
-class _CampaignInfoRow extends StatelessWidget {
-  final IconData icon;
+class _OutlineBtn extends StatelessWidget {
+  const _OutlineBtn({required this.label, required this.C, required this.onTap});
+
   final String label;
-  final String value;
-
-  const _CampaignInfoRow({
-    Key? key,
-    required this.icon,
-    required this.label,
-    required this.value,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: DnDTheme.ancientGold.withValues(alpha: 0.7)),
-        const SizedBox(width: 8),
-        Text(
-          '$label: ',
-          style: TextStyle(
-            color: DnDTheme.ancientGold.withValues(alpha: 0.7),
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(color: Colors.white, fontSize: 14),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _CampaignActionButtons extends StatelessWidget {
-  final BuildContext context;
-  final Campaign campaign;
-
-  const _CampaignActionButtons(
-    this.context, 
-    this.campaign, {
-    Key? key,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: () => _navigateToScreen(context, ScreenType.sessions, campaign: campaign),
-            icon: const Icon(Icons.play_circle),
-            label: const Text('Sessions'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.mysticalPurple,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              elevation: 4,
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => _navigateToEditCampaign(context, campaign),
-            icon: const Icon(Icons.edit),
-            label: const Text('Bearbeiten'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: DnDTheme.ancientGold,
-              side: BorderSide(color: DnDTheme.ancientGold),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ContentListItem extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Color color;
+  final AppColorsExtension C;
   final VoidCallback onTap;
 
-  const _ContentListItem({
-    Key? key,
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  }) : super(key: key);
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: C.bgPanel,
+          border: Border.all(color: C.border),
+          borderRadius: BorderRadius.circular(7),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppIcon(AppIconName.plus, size: 13, color: C.textMid),
+            const SizedBox(width: 5),
+            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: C.textMid)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CampaignAvatar extends StatelessWidget {
+  const _CampaignAvatar({required this.campaign, required this.size, required this.C});
+
+  final Campaign campaign;
+  final double size;
+  final AppColorsExtension C;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      width: size,
+      height: size,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [color.withValues(alpha: 0.15), color.withValues(alpha: 0.08)],
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.15),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: C.accentSoft,
+        border: Border.all(color: C.accent.withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(5),
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          splashColor: color.withValues(alpha: 0.2),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(icon, color: color, size: 24),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.white.withValues(alpha: 0.7),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.arrow_forward_ios, color: color.withValues(alpha: 0.6), size: 16),
-              ],
-            ),
-          ),
+      child: Center(
+        child: Text(
+          campaign.title.isNotEmpty ? campaign.title[0].toUpperCase() : '?',
+          style: TextStyle(fontSize: size * 0.5, fontWeight: FontWeight.w700, color: C.accent),
         ),
       ),
     );
   }
 }
 
-class _PlaceholderScreen extends StatelessWidget {
-  final String title;
+class _IconBtn extends StatefulWidget {
+  const _IconBtn({required this.C, required this.icon, required this.onTap});
 
-  const _PlaceholderScreen({Key? key, required this.title}) : super(key: key);
+  final AppColorsExtension C;
+  final AppIconName icon;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: DnDTheme.dungeonBlack,
-      appBar: AppBar(
-        title: Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
+  State<_IconBtn> createState() => _IconBtnState();
+}
+
+class _IconBtnState extends State<_IconBtn> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: _hovered ? widget.C.bgHover : Colors.transparent,
+              border: Border.all(color: _hovered ? widget.C.border : Colors.transparent),
+              borderRadius: BorderRadius.circular(7),
+            ),
+            child: Center(child: AppIcon(widget.icon, size: 14, color: widget.C.textMid)),
           ),
         ),
-        backgroundColor: DnDTheme.mysticalPurple,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.construction,
-            size: 80,
-            color: DnDTheme.ancientGold.withValues(alpha: 0.6),
-          ),
-          const SizedBox(height: DnDTheme.lg),
-          Text(
-            'In Arbeit',
-            style: DnDTheme.headline2.copyWith(
-              color: DnDTheme.ancientGold,
-            ),
-          ),
-          const SizedBox(height: DnDTheme.sm),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              'Dieser Bereich wird aktuell überarbeitet.\nDemnächst verfügbar!',
-              style: DnDTheme.bodyText1.copyWith(
-                color: Colors.white70,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ============================================================================
-// Navigation & Helper Functions
-// ============================================================================
-
-enum ScreenType {
-  campaigns,
-  quests,
-  wiki,
-  characters,
-  party,
-  items,
-  bestiary,
-  sessions,
-  sounds,
-  monsters,
-}
-
-void _navigateToScreen(BuildContext context, ScreenType screenType, {Campaign? campaign}) {
-  Widget screen;
-
-  switch (screenType) {
-    case ScreenType.campaigns:
-      screen = ChangeNotifierProvider<CampaignViewModel>(
-        create: (_) => CampaignViewModel(),
-        child: const CampaignSelectionScreen(),
       );
-      break;
-    case ScreenType.quests:
-      if (campaign != null) {
-        screen = CampaignQuestsScreen(campaign: campaign);
-      } else {
-        screen = const QuestLibraryScreen();
-      }
-      break;
-    case ScreenType.wiki:
-      screen = const LoreKeeperScreen();
-      break;
-    case ScreenType.characters:
-      if (campaign != null) {
-        screen = ChangeNotifierProvider(
-          create: (_) => CharacterEditorViewModel(),
-          child: PlayerCharacterListScreen(campaign: campaign),
-        );
-      } else {
-        screen = const _PlaceholderScreen(title: 'Helden - Keine Kampagne ausgewählt');
-      }
-      break;
-    case ScreenType.party:
-      screen = const _PlaceholderScreen(title: 'Gruppe');
-      break;
-    case ScreenType.items:
-      screen = const ItemLibraryScreen();
-      break;
-    case ScreenType.bestiary:
-      screen = const BestiaryScreen();
-      break;
-    case ScreenType.sessions:
-      if (campaign != null) {
-        screen = ChangeNotifierProvider<SessionListForCampaignViewModel>(
-          create: (_) => SessionListForCampaignViewModel(),
-          child: SessionListForCampaignScreen(campaign: campaign),
-        );
-      } else {
-        screen = const _PlaceholderScreen(title: 'Sessions - Keine Kampagne ausgewählt');
-      }
-      break;
-    case ScreenType.sounds:
-      screen = const SoundLibraryScreen();
-      break;
-    case ScreenType.monsters:
-      screen = const OfficialMonstersScreen();
-      break;
-  }
-
-  Navigator.of(context).push(
-    MaterialPageRoute(builder: (context) => screen),
-  );
-}
-
-void _showSettingsDialog(BuildContext context) {
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Einstellungen'),
-      content: const Text('Einstellungen werden in zukünftigen Versionen verfügbar sein.'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('OK'),
-        ),
-      ],
-    ),
-  );
-}
-
-String _formatDate(DateTime? date) {
-  if (date == null) return 'Unbekannt';
-  return '${date.day}.${date.month}.${date.year}';
-}
-
-void _navigateToEditCampaign(BuildContext context, Campaign campaign) {
-  Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (context) => ChangeNotifierProvider.value(
-        value: context.read<CampaignViewModel>(),
-        child: EditCampaignScreen(campaign: campaign),
-      ),
-    ),
-  );
 }

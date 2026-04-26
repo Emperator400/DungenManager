@@ -4,28 +4,9 @@ import 'package:provider/provider.dart';
 import '../../models/sound.dart';
 import '../../services/multi_stream_sound_service.dart';
 import '../../database/repositories/sound_model_repository.dart';
+import '../../theme/app_theme.dart';
 import 'sound_mixer_channel.dart';
 import 'sound_picker_widget.dart';
-
-/// Modern Audio Design Colors (Spotify-inspired)
-class ModernAudioColors {
-  static const Color background = Color(0xFF121212);
-  static const Color surface = Color(0xFF181818);
-  static const Color surfaceLight = Color(0xFF282828);
-  static const Color surfaceHighlight = Color(0xFF404040);
-  
-  static const Color accentGreen = Color(0xFF1DB954);
-  static const Color accentGreenLight = Color(0xFF1ED760);
-  static const Color accentCyan = Color(0xFF00D4AA);
-  
-  static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFFB3B3B3);
-  static const Color textMuted = Color(0xFF727272);
-  
-  static const Color playingGlow = Color(0xFF1DB954);
-  static const Color progressBar = Color(0xFF1DB954);
-  static const Color progressBackground = Color(0xFF4D4D4D);
-}
 
 /// Size-Enumeration für das SoundMixerWidget
 /// 
@@ -560,10 +541,13 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     if (!_isInitialized) {
-      return const Center(
-        child: CircularProgressIndicator(
-          color: ModernAudioColors.accentGreen,
+      return Center(
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2, color: C.green),
         ),
       );
     }
@@ -571,95 +555,85 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
     return AnimatedBuilder(
       animation: _mixerService,
       builder: (context, child) {
-        // Maximale Höhe anwenden falls konfiguriert
         if (_config.maxHeight != null) {
           return ConstrainedBox(
             constraints: BoxConstraints(maxHeight: _config.maxHeight!),
-            child: _buildContent(),
+            child: _buildContent(C),
           );
         }
-
-        return _buildContent();
+        return _buildContent(C);
       },
     );
   }
 
-    /// Modernes Spotify-inspiriertes Design (für alle Größen)
-  Widget _buildContent() {
+  Widget _buildContent(AppColorsExtension C) {
     final isCompact = _config.compactMode;
-    final padding = isCompact ? 8.0 : 16.0;
-    final borderRadius = isCompact ? 8.0 : 16.0;
-    
-    return Container(
-      decoration: BoxDecoration(
-        color: ModernAudioColors.background,
-        borderRadius: BorderRadius.circular(borderRadius),
-      ),
-      padding: EdgeInsets.all(padding),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Moderner Header
-          if (_config.showHeader || _config.showMasterVolume || _config.showStopAllButton)
-            _buildModernHeader(),
-          
-          if (_config.showHeader || _config.showMasterVolume)
-            SizedBox(height: isCompact ? 8 : 16),
-          
-          // Master-Lautstärke (modern)
-          if (_config.showMasterVolume) _buildModernMasterVolumeControl(),
-          
-          // Divider
-          if (_config.showDivider && _config.showMasterVolume && _mixerService.channels.isNotEmpty)
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: isCompact ? 4 : 8),
-              child: Container(
-                height: 1,
-                color: ModernAudioColors.surfaceHighlight.withValues(alpha: 0.3),
-              ),
-            ),
-          
-          // Aktive Kanäle
-          if (_mixerService.channels.isEmpty)
-            _buildModernEmptyState()
-          else
-            _buildChannelsList(),
-          
-          // Action Buttons (modern)
-          if (_config.showAddButtons || 
-              (_config.showStopAllButton && _mixerService.channels.isNotEmpty) ||
-              _config.showChannelCounter)
-            _buildModernActionButtons(),
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_config.showHeader)
+          _buildMixerHeader(C, isCompact),
+
+        if (_config.showMasterVolume) ...[
+          if (_config.showHeader) SizedBox(height: isCompact ? 8 : 12),
+          _buildMasterVolumeRow(C, isCompact),
         ],
-      ),
+
+        if (_config.showDivider && _config.showMasterVolume && _mixerService.channels.isNotEmpty)
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: isCompact ? 6 : 10),
+            child: Divider(height: 1, thickness: 1, color: C.border),
+          ),
+
+        if (_mixerService.channels.isEmpty)
+          _buildEmptyState(C, isCompact)
+        else
+          _buildChannelsList(C),
+
+        if (_config.showAddButtons && !_config.readOnly) ...[
+          SizedBox(height: isCompact ? 8 : 12),
+          _buildAddButtons(C, isCompact),
+        ],
+
+        if (_config.showStopAllButton &&
+            !_config.showAddButtons &&
+            _mixerService.channels.isNotEmpty) ...[
+          SizedBox(height: isCompact ? 6 : 10),
+          _buildStopAllRow(C, isCompact),
+        ],
+
+        if (_config.showChannelCounter) ...[
+          SizedBox(height: isCompact ? 6 : 10),
+          Center(
+            child: Text(
+              '${_mixerService.channelCount}/${MultiStreamSoundService.maxChannels} Kanäle',
+              style: TextStyle(fontSize: isCompact ? 10 : 12, color: C.textSoft),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
-  /// Moderner Header
-  Widget _buildModernHeader() {
-    final isCompact = _config.compactMode;
+  Widget _buildMixerHeader(AppColorsExtension C, bool isCompact) {
     final playingCount = _mixerService.playingCount;
-    final iconSize = isCompact ? 32.0 : 48.0;
-    final iconInnerSize = isCompact ? 18.0 : 28.0;
-    
+    final iconSize = isCompact ? 32.0 : 40.0;
+
     return Row(
       children: [
-        // Spotify-Style Icon
         Container(
           width: iconSize,
           height: iconSize,
           decoration: BoxDecoration(
-            color: ModernAudioColors.accentGreen,
-            borderRadius: BorderRadius.circular(isCompact ? 6 : 8),
+            color: C.greenSoft,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: C.green.withValues(alpha: 0.4)),
           ),
-          child: Icon(
-            Icons.graphic_eq,
-            color: ModernAudioColors.background,
-            size: iconInnerSize,
-          ),
+          child: Icon(Icons.graphic_eq, color: C.green, size: isCompact ? 16 : 20),
         ),
-        SizedBox(width: isCompact ? 8 : 12),
+        SizedBox(width: isCompact ? 8 : 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -667,267 +641,161 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
               Text(
                 'Sound Mixer',
                 style: TextStyle(
-                  color: ModernAudioColors.textPrimary,
-                  fontSize: isCompact ? 14 : 18,
-                  fontWeight: FontWeight.bold,
+                  fontSize: isCompact ? 12 : 14,
+                  fontWeight: FontWeight.w500,
+                  color: C.text,
                 ),
               ),
-              SizedBox(height: isCompact ? 0 : 2),
               Text(
                 '$playingCount von ${_mixerService.channelCount} spielen',
-                style: TextStyle(
-                  color: ModernAudioColors.textSecondary,
-                  fontSize: isCompact ? 10 : 12,
-                ),
+                style: TextStyle(fontSize: 10, color: C.textSoft),
               ),
             ],
           ),
         ),
-        // Stop All Button (im Header wenn nicht showHeader)
-        if (_config.showStopAllButton && _mixerService.channels.isNotEmpty && !_config.showHeader)
+        if (_config.showStopAllButton && _mixerService.channels.isNotEmpty)
           GestureDetector(
-            onTap: () {
-              _mixerService.stopAll();
-            },
+            onTap: _mixerService.stopAll,
             child: Container(
-              padding: EdgeInsets.all(isCompact ? 6 : 10),
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: ModernAudioColors.surfaceLight,
-                borderRadius: BorderRadius.circular(isCompact ? 6 : 8),
+                color: C.bgHover,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: C.border),
               ),
-              child: Icon(
-                Icons.stop,
-                color: ModernAudioColors.textSecondary,
-                size: isCompact ? 16 : 20,
-              ),
+              child: Icon(Icons.stop, color: C.textMid, size: 14),
             ),
           ),
       ],
     );
   }
 
-  /// Moderner Master-Lautstärke-Regler
-  Widget _buildModernMasterVolumeControl() {
-    final isCompact = _config.compactMode;
-    final padding = isCompact ? 8.0 : 12.0;
-    final iconSize = isCompact ? 16.0 : 20.0;
-    
-    return Container(
-      padding: EdgeInsets.all(padding),
-      decoration: BoxDecoration(
-        color: ModernAudioColors.surface,
-        borderRadius: BorderRadius.circular(isCompact ? 8 : 12),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            _mixerService.masterVolume == 0 ? Icons.volume_off : Icons.volume_up,
-            color: _mixerService.masterVolume > 0 
-                ? ModernAudioColors.accentGreen 
-                : ModernAudioColors.textMuted,
-            size: iconSize,
-          ),
-          SizedBox(width: isCompact ? 8 : 12),
-          Text(
-            'Master',
-            style: TextStyle(
-              color: ModernAudioColors.textPrimary,
-              fontSize: isCompact ? 12 : 14,
-              fontWeight: FontWeight.w500,
+  Widget _buildMasterVolumeRow(AppColorsExtension C, bool isCompact) {
+    return Row(
+      children: [
+        Icon(
+          _mixerService.masterVolume == 0 ? Icons.volume_off : Icons.volume_up,
+          color: _mixerService.masterVolume > 0 ? C.green : C.textSoft,
+          size: 13,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          'Master',
+          style: TextStyle(fontSize: 11, color: C.textMid),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: SliderTheme(
+            data: SliderThemeData(
+              trackHeight: 3,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+              activeTrackColor: C.green,
+              inactiveTrackColor: C.border,
+              thumbColor: C.text,
+              overlayColor: C.green.withValues(alpha: 0.15),
+            ),
+            child: Slider(
+              value: _mixerService.masterVolume,
+              min: 0.0,
+              max: 1.0,
+              onChanged: _mixerService.setMasterVolume,
             ),
           ),
-          SizedBox(width: isCompact ? 8 : 12),
-          Expanded(
-            child: SliderTheme(
-              data: SliderThemeData(
-                trackHeight: isCompact ? 3 : 4,
-                thumbShape: RoundSliderThumbShape(enabledThumbRadius: isCompact ? 5 : 7),
-                overlayShape: RoundSliderOverlayShape(overlayRadius: isCompact ? 10 : 14),
-                activeTrackColor: ModernAudioColors.accentGreen,
-                inactiveTrackColor: ModernAudioColors.progressBackground,
-                thumbColor: ModernAudioColors.textPrimary,
-                overlayColor: ModernAudioColors.accentGreen.withValues(alpha: 0.2),
-              ),
-              child: Slider(
-                value: _mixerService.masterVolume,
-                min: 0.0,
-                max: 1.0,
-                onChanged: (value) {
-                  _mixerService.setMasterVolume(value);
-                },
-              ),
-            ),
+        ),
+        const SizedBox(width: 4),
+        SizedBox(
+          width: 30,
+          child: Text(
+            '${(_mixerService.masterVolume * 100).toInt()}%',
+            style: TextStyle(fontSize: 10, color: C.textSoft),
+            textAlign: TextAlign.right,
           ),
-          SizedBox(width: isCompact ? 4 : 8),
-          SizedBox(
-            width: isCompact ? 35 : 45,
-            child: Text(
-              '${(_mixerService.masterVolume * 100).toInt()}%',
-              style: TextStyle(
-                color: ModernAudioColors.textSecondary,
-                fontSize: isCompact ? 10 : 12,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.right,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  /// Moderner Empty State
-  Widget _buildModernEmptyState() {
-    final isCompact = _config.compactMode;
-    final padding = isCompact ? 16.0 : 32.0;
-    final iconContainerSize = isCompact ? 40.0 : 64.0;
-    final iconSize = isCompact ? 20.0 : 32.0;
-    
-    return Container(
-      padding: EdgeInsets.all(padding),
+  Widget _buildEmptyState(AppColorsExtension C, bool isCompact) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: isCompact ? 12 : 20),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: iconContainerSize,
-            height: iconContainerSize,
-            decoration: BoxDecoration(
-              color: ModernAudioColors.surfaceLight,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.music_note_outlined,
-              color: ModernAudioColors.textMuted,
-              size: iconSize,
-            ),
-          ),
-          SizedBox(height: isCompact ? 8 : 16),
+          Icon(Icons.music_note_outlined, color: C.textSoft, size: isCompact ? 20 : 28),
+          SizedBox(height: isCompact ? 4 : 8),
           Text(
             'Keine Sounds aktiv',
-            style: TextStyle(
-              color: ModernAudioColors.textSecondary,
-              fontSize: isCompact ? 12 : 14,
-            ),
+            style: TextStyle(fontSize: isCompact ? 11 : 13, color: C.textSoft),
           ),
         ],
       ),
     );
   }
 
-  /// Liste der aktiven Kanäle
-  Widget _buildChannelsList() {
-    final channels = _mixerService.channels;
-    
+  Widget _buildChannelsList(AppColorsExtension C) {
     return Column(
       mainAxisSize: MainAxisSize.min,
-      children: channels.map((channel) {
-        return SoundMixerChannel(
-          channel: channel,
-          mixerService: _mixerService,
-          config: _config,
-          onRemove: _config.readOnly ? null : () => _removeChannel(channel.id),
-        );
-      }).toList(),
+      children: _mixerService.channels.map((channel) => SoundMixerChannel(
+        channel: channel,
+        mixerService: _mixerService,
+        config: _config,
+        onRemove: _config.readOnly ? null : () => _removeChannel(channel.id),
+      )).toList(),
     );
   }
 
-  /// Moderne Action Buttons
-  Widget _buildModernActionButtons() {
-    final isCompact = _config.compactMode;
-    final paddingTop = isCompact ? 8.0 : 16.0;
-    
-    return Container(
-      padding: EdgeInsets.only(top: paddingTop),
-      child: Column(
-        children: [
-          // Add Buttons
-          if (_config.showAddButtons && !_config.readOnly) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: _buildModernAddButton(
-                    icon: Icons.waves,
-                    label: 'Ambiente',
-                    color: ModernAudioColors.accentCyan,
-                    onPressed: _mixerService.channelCount < MultiStreamSoundService.maxChannels
-                        ? () => _showSoundPicker(SoundType.Ambiente)
-                        : null,
-                  ),
-                ),
-                SizedBox(width: isCompact ? 8 : 12),
-                Expanded(
-                  child: _buildModernAddButton(
-                    icon: Icons.speaker,
-                    label: 'Effekt',
-                    color: ModernAudioColors.accentGreen,
-                    onPressed: _mixerService.channelCount < MultiStreamSoundService.maxChannels
-                        ? () => _showSoundPicker(SoundType.Effekt)
-                        : null,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: isCompact ? 8 : 12),
-          ],
-          
-          // Counter
-          if (_config.showChannelCounter)
-            Center(
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isCompact ? 8 : 12, 
-                  vertical: isCompact ? 4 : 6
-                ),
-                decoration: BoxDecoration(
-                  color: ModernAudioColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(isCompact ? 12 : 16),
-                ),
-                child: Text(
-                  '${_mixerService.channelCount}/${MultiStreamSoundService.maxChannels} Kanäle',
-                  style: TextStyle(
-                    color: ModernAudioColors.textMuted,
-                    fontSize: isCompact ? 10 : 12,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
+  Widget _buildAddButtons(AppColorsExtension C, bool isCompact) {
+    final canAdd = _mixerService.channelCount < MultiStreamSoundService.maxChannels;
+    return Row(
+      children: [
+        Expanded(child: _buildAddButton(
+          label: 'Ambiente',
+          icon: Icons.waves,
+          color: C.green,
+          onTap: canAdd ? () => _showSoundPicker(SoundType.Ambiente) : null,
+          C: C,
+        )),
+        const SizedBox(width: 8),
+        Expanded(child: _buildAddButton(
+          label: 'Effekt',
+          icon: Icons.music_note,
+          color: C.accent,
+          onTap: canAdd ? () => _showSoundPicker(SoundType.Effekt) : null,
+          C: C,
+        )),
+      ],
     );
   }
 
-  Widget _buildModernAddButton({
-    required IconData icon,
+  Widget _buildAddButton({
     required String label,
+    required IconData icon,
     required Color color,
-    required VoidCallback? onPressed,
+    required VoidCallback? onTap,
+    required AppColorsExtension C,
   }) {
-    final isCompact = _config.compactMode;
-    final isDisabled = onPressed == null;
-    final verticalPadding = isCompact ? 10.0 : 14.0;
-    
+    final disabled = onTap == null;
     return GestureDetector(
-      onTap: onPressed,
+      onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: verticalPadding),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
-          color: isDisabled ? ModernAudioColors.surfaceLight : color,
-          borderRadius: BorderRadius.circular(isCompact ? 16 : 24),
+          color: disabled ? C.bgHover : color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: disabled ? C.border : color.withValues(alpha: 0.35)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              color: isDisabled ? ModernAudioColors.textMuted : ModernAudioColors.background,
-              size: isCompact ? 16 : 20,
-            ),
-            SizedBox(width: isCompact ? 6 : 8),
+            Icon(icon, color: disabled ? C.textSoft : color, size: 13),
+            const SizedBox(width: 5),
             Text(
               label,
               style: TextStyle(
-                color: isDisabled ? ModernAudioColors.textMuted : ModernAudioColors.background,
-                fontSize: isCompact ? 12 : 14,
-                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: disabled ? C.textSoft : color,
               ),
             ),
           ],
@@ -936,13 +804,32 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
     );
   }
 
-  /// Zeigt den Sound-Picker Dialog
+  Widget _buildStopAllRow(AppColorsExtension C, bool isCompact) {
+    return GestureDetector(
+      onTap: _mixerService.stopAll,
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: isCompact ? 6 : 8),
+        decoration: BoxDecoration(
+          color: C.bgHover,
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: C.border),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.stop, color: C.textMid, size: 13),
+            const SizedBox(width: 5),
+            Text('Alle stoppen', style: TextStyle(fontSize: 12, color: C.textMid)),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _showSoundPicker(SoundType filterType) async {
-    // Für die Vorauswahl im Picker: gespeicherte IDs aus dem Widget (DB-Stand) verwenden,
-    // NICHT den Mixer-Service — der lädt asynchron und ist beim ersten Öffnen evtl. noch leer.
-    // activeSoundIds (Mixer-State) bleibt für das Diff beim tatsächlichen Hinzufügen/Entfernen.
     final savedSoundIds = widget.initialSoundIds ?? [];
     final activeSoundIds = _mixerService.channels.map((c) => c.sound.id).toList();
+    final C = context.appColors;
 
     final result = await showModalBottomSheet<List<String>>(
       context: context,
@@ -953,9 +840,9 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
         minChildSize: 0.5,
         maxChildSize: 0.95,
         builder: (context, scrollController) => Container(
-          decoration: const BoxDecoration(
-            color: ModernAudioColors.background,
-            borderRadius: BorderRadius.only(
+          decoration: BoxDecoration(
+            color: C.bgPanel,
+            borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(16),
               topRight: Radius.circular(16),
             ),

@@ -1,97 +1,82 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/scene.dart';
-import '../../models/quest.dart';
-import '../../models/sound.dart';
-import '../../models/wiki_entry.dart';
 import '../../viewmodels/edit_scene_viewmodel.dart';
-import '../../theme/dnd_theme.dart';
-import '../../services/sound_service.dart';
+import '../../theme/app_theme.dart';
 import '../characters/select_character_screen.dart';
 
-/// Enhanced Screen zur Bearbeitung von Scenes mit D&D Theme
+const _purple = Color(0xFF7C3AED);
+
+const Map<SceneType, Color> _typeColor = {
+  SceneType.Introduction: Color(0xFF2F6FEB),
+  SceneType.Social:       Color(0xFF7C3AED),
+  SceneType.Exploration:  Color(0xFF1A7F4B),
+  SceneType.Combat:       Color(0xFFC93A3A),
+  SceneType.Puzzle:       Color(0xFFB45309),
+  SceneType.Climax:       Color(0xFF0891B2),
+  SceneType.Resolution:   Color(0xFF065F46),
+};
+
+const Map<SceneType, String> _typeLabel = {
+  SceneType.Introduction: 'Einführung',
+  SceneType.Social:       'Sozial',
+  SceneType.Exploration:  'Erforschung',
+  SceneType.Combat:       'Kampf',
+  SceneType.Puzzle:       'Rätsel',
+  SceneType.Climax:       'Höhepunkt',
+  SceneType.Resolution:   'Auflösung',
+};
+
 class EditSceneScreen extends StatefulWidget {
   final Scene? scene;
-  final String? sessionId; // Für neue Scenes
+  final String? sessionId;
 
-  const EditSceneScreen({
-    Key? key,
-    this.scene,
-    this.sessionId,
-  }) : super(key: key);
+  const EditSceneScreen({Key? key, this.scene, this.sessionId}) : super(key: key);
 
   @override
   State<EditSceneScreen> createState() => _EditSceneScreenState();
 }
 
 class _EditSceneScreenState extends State<EditSceneScreen> {
-  final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
-  double _volume = 1.0;
-  bool _isPlaying = false;
-  String? _currentPlayingSoundId;
 
   @override
   void initState() {
     super.initState();
-    // ViewModel initialisieren
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeViewModel();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initializeViewModel());
   }
 
   Future<void> _initializeViewModel() async {
-    // Prüfe ob Widget noch gemounted ist
     if (!mounted) return;
-    
-    final viewModel = context.read<EditSceneViewModel>();
-    
-    // Initialisiere zuerst die Scene
-    await viewModel.initialize(
-      widget.scene,
-      sessionId: widget.sessionId,
-    );
-    
+    final vm = context.read<EditSceneViewModel>();
+    await vm.initialize(widget.scene, sessionId: widget.sessionId);
     if (!mounted) return;
     _controllersFromViewModel();
-    
-    // Lade verfügbare Daten
-    await viewModel.loadAvailableQuests();
+    await vm.loadAvailableQuests();
     if (!mounted) return;
-    
-    await viewModel.loadAvailableSounds();
+    await vm.loadAvailableSounds();
     if (!mounted) return;
-    
-    await viewModel.loadAvailableWikiEntries();
+    await vm.loadAvailableWikiEntries();
     if (!mounted) return;
-    
-    // Jetzt baue die verknüpften Listen auf (nachdem die Scene initialisiert ist)
-    await viewModel.buildLinkedCharactersList();
+    await vm.buildLinkedCharactersList();
     if (!mounted) return;
-    
-    await viewModel.buildLinkedQuestsList();
+    await vm.buildLinkedQuestsList();
     if (!mounted) return;
-    
-    await viewModel.buildLinkedSoundsList();
+    await vm.buildLinkedSoundsList();
     if (!mounted) return;
-    
-    await viewModel.buildLinkedWikiEntriesList();
+    await vm.buildLinkedWikiEntriesList();
   }
 
   @override
   void dispose() {
-    // Sound stoppen bevor Widget disposed wird
-    SoundService.stopSound();
     _nameController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
 
   void _controllersFromViewModel() {
-    final viewModel = context.read<EditSceneViewModel>();
-    final scene = viewModel.scene;
-    
+    final scene = context.read<EditSceneViewModel>().scene;
     if (scene != null) {
       _nameController.text = scene.name;
       _descriptionController.text = scene.description;
@@ -99,2054 +84,1021 @@ class _EditSceneScreenState extends State<EditSceneScreen> {
   }
 
   void _updateViewModel() {
-    final viewModel = context.read<EditSceneViewModel>();
-    
-    viewModel.updateName(_nameController.text);
-    viewModel.updateDescription(_descriptionController.text);
-    // Location und Notes werden im Moment nicht unterstützt
+    final vm = context.read<EditSceneViewModel>();
+    vm.updateName(_nameController.text);
+    vm.updateDescription(_descriptionController.text);
   }
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Scaffold(
-      backgroundColor: DnDTheme.dungeonBlack,
-      appBar: _buildAppBar(),
+      backgroundColor: C.bg,
       body: Consumer<EditSceneViewModel>(
-        builder: (context, viewModel, child) {
-          if (viewModel.isLoading) {
-            return Center(
-              child: CircularProgressIndicator(
-                color: DnDTheme.ancientGold,
-              ),
-            );
+        builder: (context, vm, _) {
+          if (vm.isLoading) {
+            return Center(child: CircularProgressIndicator(color: C.accent, strokeWidth: 2));
           }
 
-          return Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(DnDTheme.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Fehlermeldung
-                  if (viewModel.errorMessage != null)
-                    _buildErrorWidget(viewModel.errorMessage!, viewModel),
+          final sceneType = vm.scene?.sceneType ?? SceneType.Exploration;
+          final typeColor = _typeColor[sceneType] ?? C.accent;
+          final isNew = widget.scene == null;
 
-                  // Grundinformationen
-                  _buildSectionCard(
-                    title: 'Grundinformationen',
-                    icon: Icons.info_outline,
-                    child: Column(
-                      children: [
-                        TextFormField(
-                          controller: _nameController,
-                          decoration: _buildInputDecoration('Name', Icons.title),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Name ist erforderlich';
-                            }
-                            return null;
-                          },
-                          onChanged: (_) => _updateViewModel(),
-                        ),
-                        const SizedBox(height: DnDTheme.md),
-                        Consumer<EditSceneViewModel>(
-                          builder: (context, viewModel, child) {
-                            return DropdownButtonFormField<SceneType>(
-                              value: viewModel.scene?.sceneType ?? SceneType.Exploration,
-                              decoration: _buildInputDecoration('Szenen-Typ', Icons.category),
-                              items: SceneType.values.map((type) {
-                                return DropdownMenuItem(
-                                  value: type,
-                                  child: Text(
-                                    type.name,
-                                    style: DnDTheme.bodyText1.copyWith(
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                              dropdownColor: DnDTheme.stoneGrey,
-                              onChanged: (SceneType? value) {
-                                if (value != null) {
-                                  viewModel.updateSceneType(value);
-                                }
-                              },
-                            );
-                          },
-                        ),
+          return Column(
+            children: [
+              _buildHeader(C, typeColor, isNew),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (vm.errorMessage != null) _buildErrorBanner(C, vm),
+                      _buildBasicInfoCard(C, vm, sceneType),
+                      const SizedBox(height: 12),
+                      _buildDescriptionCard(C),
+                      const SizedBox(height: 12),
+                      _buildLinkedCard(
+                        C: C,
+                        icon: Icons.person_outline,
+                        label: 'Charaktere',
+                        color: C.accent,
+                        count: vm.linkedCharacters.length,
+                        tags: vm.linkedCharacters
+                            .map((ch) => _buildTagChip(C, ch['name'].toString(), C.accent,
+                                () => vm.removeCharacter(ch['id'].toString())))
+                            .toList(),
+                        onAdd: () => _showCharacterSelector(vm),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildLinkedCard(
+                        C: C,
+                        icon: Icons.flag_outlined,
+                        label: 'Quests',
+                        color: C.amber,
+                        count: vm.linkedQuests.length,
+                        tags: vm.linkedQuests
+                            .map((q) => _buildTagChip(C, q.title, C.amber,
+                                () => vm.removeQuest(q.id.toString())))
+                            .toList(),
+                        onAdd: () => _showQuestSelector(vm),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildLinkedCard(
+                        C: C,
+                        icon: Icons.music_note_outlined,
+                        label: 'Sounds',
+                        color: C.green,
+                        count: vm.linkedSounds.length,
+                        tags: vm.linkedSounds
+                            .map((s) => _buildTagChip(C, s.name, C.green,
+                                () => vm.removeSound(s.id)))
+                            .toList(),
+                        onAdd: () => _showSoundSelector(vm),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildLinkedCard(
+                        C: C,
+                        icon: Icons.book_outlined,
+                        label: 'Wiki-Einträge',
+                        color: _purple,
+                        count: vm.linkedWikiEntries.length,
+                        tags: vm.linkedWikiEntries
+                            .map((w) => _buildTagChip(C, w.title, _purple,
+                                () => vm.removeWikiEntry(w.id)))
+                            .toList(),
+                        onAdd: () => _showWikiEntrySelector(vm),
+                      ),
+                      if (sceneType == SceneType.Combat) ...[
+                        const SizedBox(height: 12),
+                        _buildCombatCard(C, vm),
                       ],
-                    ),
+                      const SizedBox(height: 8),
+                    ],
                   ),
-
-                  const SizedBox(height: DnDTheme.md),
-
-                  // Beschreibung
-                  _buildSectionCard(
-                    title: 'Beschreibung',
-                    icon: Icons.description,
-                    child: TextFormField(
-                      controller: _descriptionController,
-                      decoration: _buildInputDecoration('Beschreibung', Icons.article),
-                      maxLines: 5,
-                      onChanged: (_) => _updateViewModel(),
-                    ),
-                  ),
-
-                  const SizedBox(height: DnDTheme.md),
-
-                  // Charaktere
-                  Consumer<EditSceneViewModel>(
-                    builder: (context, viewModel, child) {
-                      return _buildSectionCard(
-                        title: 'Charaktere (${viewModel.linkedCharacters.length})',
-                        icon: Icons.people,
-                        child: Column(
-                          children: [
-                            if (viewModel.linkedCharacters.isEmpty)
-                              Padding(
-                                padding: const EdgeInsets.all(DnDTheme.md),
-                                child: Text(
-                                  'Keine Charaktere verknüpft',
-                                  style: DnDTheme.bodyText2.copyWith(
-                                    color: Colors.white54,
-                                  ),
-                                ),
-                              )
-                            else
-                              ...viewModel.linkedCharacters.map((char) => 
-                                _buildCharacterCard(char)
-                              ),
-                            const SizedBox(height: DnDTheme.md),
-                            ElevatedButton.icon(
-                              onPressed: () => _showCharacterSelector(viewModel),
-                              icon: const Icon(Icons.add, size: 16),
-                              label: const Text('Charakter hinzufügen'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: DnDTheme.arcaneBlue,
-                                foregroundColor: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-
-                  const SizedBox(height: DnDTheme.md),
-
-                  // Quests
-                  Consumer<EditSceneViewModel>(
-                    builder: (context, viewModel, child) {
-                      return _buildSectionCard(
-                        title: 'Quests (${viewModel.linkedQuests.length})',
-                        icon: Icons.flag,
-                        child: Column(
-                          children: [
-                            if (viewModel.linkedQuests.isEmpty)
-                              Padding(
-                                padding: const EdgeInsets.all(DnDTheme.md),
-                                child: Text(
-                                  'Keine Quests verknüpft',
-                                  style: DnDTheme.bodyText2.copyWith(
-                                    color: Colors.white54,
-                                  ),
-                                ),
-                              )
-                            else
-                              ...viewModel.linkedQuests.map((quest) => 
-                                _buildQuestCard(quest)
-                              ),
-                            const SizedBox(height: DnDTheme.md),
-                            ElevatedButton.icon(
-                              onPressed: () => _showQuestSelector(viewModel),
-                              icon: const Icon(Icons.add, size: 16),
-                              label: const Text('Quest hinzufügen'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: DnDTheme.ancientGold,
-                                foregroundColor: DnDTheme.dungeonBlack,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-
-                  const SizedBox(height: DnDTheme.md),
-
-                  // Sounds - Vollständige Playback-Sektion
-                  Consumer<EditSceneViewModel>(
-                    builder: (context, viewModel, child) {
-                      return _buildSectionCard(
-                        title: 'Sounds (${viewModel.linkedSounds.length})',
-                        icon: Icons.music_note,
-                        child: Column(
-                          children: [
-                            if (viewModel.linkedSounds.isEmpty)
-                              Padding(
-                                padding: const EdgeInsets.all(DnDTheme.md),
-                                child: Center(
-                                  child: Column(
-                                    children: [
-                                      Icon(
-                                        Icons.music_note_outlined,
-                                        size: 48,
-                                        color: Colors.white38,
-                                      ),
-                                      const SizedBox(height: DnDTheme.md),
-                                      Text(
-                                        'Keine Sounds verknüpft',
-                                        style: DnDTheme.bodyText1.copyWith(
-                                          color: Colors.white54,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              )
-                            else
-                              ...viewModel.linkedSounds.map((sound) => 
-                                _buildSoundCard(sound)
-                              ),
-                            const SizedBox(height: DnDTheme.lg),
-                            // Button zum Hinzufügen (immer sichtbar)
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                onPressed: () => _showSoundSelector(viewModel),
-                                icon: const Icon(Icons.add, size: 20),
-                                label: const Text('Sound hinzufügen'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: DnDTheme.successGreen,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: DnDTheme.md,
-                                    horizontal: DnDTheme.lg,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-
-                  const SizedBox(height: DnDTheme.md),
-
-                  // Combat-Sektion (nur wenn SceneType.Combat)
-                  Consumer<EditSceneViewModel>(
-                    builder: (context, viewModel, child) {
-                      if (viewModel.scene?.sceneType != SceneType.Combat) {
-                        return const SizedBox.shrink();
-                      }
-                      
-                      return _buildCombatSection(viewModel);
-                    },
-                  ),
-
-                  const SizedBox(height: DnDTheme.md),
-
-                  // Wiki-Einträge
-                  Consumer<EditSceneViewModel>(
-                    builder: (context, viewModel, child) {
-                      return _buildSectionCard(
-                        title: 'Wiki-Einträge (${viewModel.linkedWikiEntries.length})',
-                        icon: Icons.book,
-                        child: Column(
-                          children: [
-                            if (viewModel.linkedWikiEntries.isEmpty)
-                              Padding(
-                                padding: const EdgeInsets.all(DnDTheme.md),
-                                child: Text(
-                                  'Keine Wiki-Einträge verknüpft',
-                                  style: DnDTheme.bodyText2.copyWith(
-                                    color: Colors.white54,
-                                  ),
-                                ),
-                              )
-                            else
-                              ...viewModel.linkedWikiEntries.map((wikiEntry) => 
-                                _buildWikiEntryCard(wikiEntry)
-                              ),
-                            const SizedBox(height: DnDTheme.md),
-                            ElevatedButton.icon(
-                              onPressed: () => _showWikiEntrySelector(viewModel),
-                              icon: const Icon(Icons.add, size: 16),
-                              label: const Text('Wiki-Eintrag hinzufügen'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: DnDTheme.mysticalPurple,
-                                foregroundColor: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-
-                  const SizedBox(height: DnDTheme.lg),
-
-                  // Aktionen
-                  _buildActionButtons(viewModel),
-                ],
+                ),
               ),
-            ),
+              _buildFooter(C, vm, isNew),
+            ],
           );
         },
       ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      title: Text(
-        widget.scene == null ? 'Neue Scene' : 'Scene bearbeiten',
-        style: DnDTheme.headline2.copyWith(
-          color: Colors.white,
-        ),
-      ),
-      backgroundColor: DnDTheme.stoneGrey,
-      foregroundColor: Colors.white,
-      elevation: 4,
-      flexibleSpace: Container(
-        decoration: BoxDecoration(
-          gradient: DnDTheme.getMysticalGradient(
-            startColor: DnDTheme.stoneGrey,
-            endColor: DnDTheme.slateGrey,
-          ),
-        ),
-      ),
-      iconTheme: const IconThemeData(color: Colors.white),
-      actions: [
-        Consumer<EditSceneViewModel>(
-          builder: (context, viewModel, child) {
-            return Container(
-              margin: const EdgeInsets.only(right: DnDTheme.sm),
-              decoration: DnDTheme.getMysticalBorder(
-                borderColor: DnDTheme.ancientGold,
-                width: 2,
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.save, color: Colors.white),
-                onPressed: viewModel.canSave ? _saveScene : null,
-                tooltip: 'Speichern',
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
+  // ── HEADER ───────────────────────────────────────────────────────────────────
 
-  Widget _buildErrorWidget(String errorMessage, EditSceneViewModel viewModel) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: DnDTheme.md),
-      padding: const EdgeInsets.all(DnDTheme.md),
-      decoration: BoxDecoration(
-        gradient: DnDTheme.getMysticalGradient(
-          startColor: DnDTheme.errorRed.withValues(alpha: 0.2),
-          endColor: DnDTheme.errorRed.withValues(alpha: 0.1),
-        ),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-        border: Border.all(
-          color: DnDTheme.errorRed,
-          width: 2,
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.error, color: DnDTheme.errorRed, size: 20),
-          const SizedBox(width: DnDTheme.sm),
-          Expanded(
-            child: Text(
-              errorMessage,
-              style: DnDTheme.bodyText1.copyWith(
-                color: Colors.white,
-              ),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.close, size: 16),
-            onPressed: viewModel.clearError,
-            color: DnDTheme.errorRed,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionCard({
-    required String title,
-    required IconData icon,
-    required Widget child,
-  }) {
-    return Container(
-      decoration: DnDTheme.getFantasyCardDecoration(
-        borderColor: DnDTheme.arcaneBlue,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.all(DnDTheme.sm),
-            decoration: BoxDecoration(
-              gradient: DnDTheme.getMysticalGradient(
-                startColor: DnDTheme.arcaneBlue.withValues(alpha: 0.8),
-                endColor: DnDTheme.arcaneBlue.withValues(alpha: 0.4),
-              ),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(DnDTheme.radiusMedium),
-                topRight: Radius.circular(DnDTheme.radiusMedium),
-              ),
-            ),
+  Widget _buildHeader(AppColorsExtension C, Color typeColor, bool isNew) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
             child: Row(
               children: [
                 Container(
+                  width: 28,
+                  height: 28,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    shape: BoxShape.circle,
+                    color: typeColor.withValues(alpha: 0.12),
+                    border: Border.all(color: typeColor.withValues(alpha: 0.3)),
+                    borderRadius: BorderRadius.circular(7),
                   ),
-                  child: Icon(
-                    icon,
-                    color: DnDTheme.arcaneBlue,
-                    size: 16,
-                  ),
+                  child: Icon(Icons.article_outlined, size: 13, color: typeColor),
                 ),
-                const SizedBox(width: DnDTheme.sm),
+                const SizedBox(width: 10),
                 Text(
-                  title,
-                  style: DnDTheme.headline3.copyWith(
-                    color: Colors.white,
-                    fontSize: 16,
+                  isNew ? 'Neue Szene' : 'Szene bearbeiten',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: C.text),
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: C.border),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Icon(Icons.close, size: 14, color: C.textMid),
                   ),
                 ),
               ],
             ),
           ),
-          // Content
-          Padding(
-            padding: const EdgeInsets.all(DnDTheme.md),
-            child: child,
-          ),
-        ],
-      ),
-    );
-  }
-
-  InputDecoration _buildInputDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      labelStyle: DnDTheme.bodyText2.copyWith(
-        color: DnDTheme.ancientGold,
-      ),
-      prefixIcon: Icon(icon, color: DnDTheme.ancientGold),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-        borderSide: const BorderSide(color: DnDTheme.arcaneBlue, width: 2),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-        borderSide: BorderSide(
-          color: DnDTheme.arcaneBlue.withValues(alpha: 0.5),
         ),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-        borderSide: const BorderSide(color: DnDTheme.ancientGold, width: 2),
-      ),
-      filled: true,
-      fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
-    );
-  }
-
-  Widget _buildCharacterCard(Map<String, dynamic> char) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: DnDTheme.sm),
-      padding: const EdgeInsets.all(DnDTheme.sm),
-      decoration: BoxDecoration(
-        gradient: DnDTheme.getMysticalGradient(
-          startColor: DnDTheme.slateGrey,
-          endColor: DnDTheme.stoneGrey,
-        ),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-        border: Border.all(
-          color: _getCharacterColor(char['type']).withValues(alpha: 0.5),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          // Character Icon
-          Container(
-            decoration: BoxDecoration(
-              color: _getCharacterColor(char['type']).withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: _getCharacterColor(char['type']),
-                width: 2,
-              ),
-            ),
-            child: Icon(
-              _getCharacterIcon(char['type']),
-              color: _getCharacterColor(char['type']),
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: DnDTheme.sm),
-          // Character Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  char['name'].toString(),
-                  style: DnDTheme.bodyText1.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  _getCharacterSubtitle(char),
-                  style: DnDTheme.bodyText2.copyWith(
-                    color: Colors.white54,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Remove Button
-          GestureDetector(
-            onTap: () => _removeCharacter(char['id'].toString()),
-            child: Container(
-              padding: const EdgeInsets.all(DnDTheme.xs),
-              decoration: BoxDecoration(
-                color: DnDTheme.errorRed.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: DnDTheme.errorRed,
-                  width: 1,
-                ),
-              ),
-              child: Icon(
-                Icons.close,
-                color: DnDTheme.errorRed,
-                size: 16,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButtons(EditSceneViewModel viewModel) {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton(
-            onPressed: () => Navigator.pop(context),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: DnDTheme.md),
-              side: const BorderSide(
-                color: DnDTheme.arcaneBlue,
-                width: 2,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-              ),
-            ),
-            child: Text(
-              'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(
-                color: DnDTheme.arcaneBlue,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: DnDTheme.md),
-        Expanded(
-          child: ElevatedButton(
-            onPressed: viewModel.canSave ? _saveScene : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.ancientGold,
-              foregroundColor: DnDTheme.dungeonBlack,
-              padding: const EdgeInsets.symmetric(vertical: DnDTheme.md),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-              ),
-              elevation: 4,
-            ),
-            child: Text(
-              'Speichern',
-              style: DnDTheme.bodyText1.copyWith(
-                color: DnDTheme.dungeonBlack,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: DnDTheme.md),
-        if (viewModel.isEditing)
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: _duplicateScene,
-              icon: Icon(Icons.copy, color: DnDTheme.dungeonBlack, size: 16),
-              label: Text('Duplizieren'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: DnDTheme.mysticalPurple,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: DnDTheme.md),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                ),
-                elevation: 4,
-              ),
-            ),
-          ),
+        Divider(height: 1, thickness: 1, color: C.border),
       ],
     );
   }
 
-  Future<void> _saveScene() async {
-    final viewModel = context.read<EditSceneViewModel>();
-    
-    if (!_formKey.currentState!.validate()) return;
+  // ── FOOTER ───────────────────────────────────────────────────────────────────
 
-    final success = await viewModel.saveScene();
-    
-    if (!mounted) return;
-    
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              const SizedBox(width: DnDTheme.sm),
-              Text(
-                'Scene erfolgreich gespeichert',
-                style: DnDTheme.bodyText1.copyWith(
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: DnDTheme.successGreen,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-          ),
-        ),
-      );
-      Navigator.pop(context, true);
-    }
-  }
-
-  Future<void> _duplicateScene() async {
-    final viewModel = context.read<EditSceneViewModel>();
-    await viewModel.duplicateScene();
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.content_copy, color: Colors.white),
-            const SizedBox(width: DnDTheme.sm),
-            Text(
-              'Scene dupliziert',
-              style: DnDTheme.bodyText1.copyWith(
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: DnDTheme.mysticalPurple,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-        ),
-      ),
-    );
-  }
-
-  // Hilfsmethoden für Charaktere
-  Color _getCharacterColor(dynamic type) {
-    final typeStr = type.toString();
-    switch (typeStr) {
-      case 'PC':
-        return DnDTheme.successGreen;
-      case 'NPC':
-        return DnDTheme.arcaneBlue;
-      case 'Monster':
-        return DnDTheme.errorRed;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  IconData _getCharacterIcon(dynamic type) {
-    final typeStr = type.toString();
-    switch (typeStr) {
-      case 'PC':
-        return Icons.person;
-      case 'NPC':
-        return Icons.person_outline;
-      case 'Monster':
-        return Icons.pets;
-      default:
-        return Icons.help;
-    }
-  }
-
-  String _getCharacterSubtitle(Map<String, dynamic> char) {
-    final type = char['type']?.toString() ?? '';
-    if (type == 'PC') {
-      return 'Level ${char['level'] ?? '?'}';
-    } else if (char['challengeRating'] != null) {
-      return 'CR ${char['challengeRating']}';
-    } else {
-      return type;
-    }
-  }
-
-  void _removeCharacter(String characterId) {
-    final viewModel = context.read<EditSceneViewModel>();
-    viewModel.removeCharacter(characterId);
-  }
-
-  Future<void> _showCharacterSelector(EditSceneViewModel viewModel) async {
-    final selectedIds = await Navigator.push<List<String>>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => SelectCharacterForSceneScreen(
-          previouslySelectedIds: viewModel.scene?.linkedCharacterIds ?? [],
-        ),
-      ),
-    );
-
-    if (selectedIds != null) {
-      viewModel.updateLinkedCharacters(selectedIds);
-      viewModel.buildLinkedCharactersList();
-      await viewModel.loadAvailableQuests();
-      viewModel.buildLinkedQuestsList();
-    }
-  }
-
-  // ===== QUEST METHODEN =====
-
-  Widget _buildQuestCard(Quest quest) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: DnDTheme.sm),
-      padding: const EdgeInsets.all(DnDTheme.sm),
-      decoration: BoxDecoration(
-        gradient: DnDTheme.getMysticalGradient(
-          startColor: DnDTheme.slateGrey,
-          endColor: DnDTheme.stoneGrey,
-        ),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-        border: Border.all(
-          color: _getQuestStatusColor(quest.status).withValues(alpha: 0.5),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          // Quest Icon
-          Container(
-            decoration: BoxDecoration(
-              color: _getQuestStatusColor(quest.status).withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: _getQuestStatusColor(quest.status),
-                width: 2,
-              ),
-            ),
-            child: Icon(
-              _getQuestStatusIcon(quest.status),
-              color: _getQuestStatusColor(quest.status),
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: DnDTheme.sm),
-          // Quest Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  quest.title,
-                  style: DnDTheme.bodyText1.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                if (quest.location != null && quest.location!.isNotEmpty)
-                  Text(
-                    'Ort: ${quest.location}',
-                    style: DnDTheme.bodyText2.copyWith(
-                      color: Colors.white54,
-                      fontSize: 12,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          // Status Badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: DnDTheme.xs, vertical: 2),
-            decoration: BoxDecoration(
-              color: _getQuestStatusColor(quest.status).withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-              border: Border.all(
-                color: _getQuestStatusColor(quest.status),
-                width: 1,
-              ),
-            ),
-            child: Text(
-              _getQuestStatusText(quest.status),
-              style: DnDTheme.bodyText2.copyWith(
-                color: _getQuestStatusColor(quest.status),
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(width: DnDTheme.sm),
-          // Remove Button
-          GestureDetector(
-            onTap: () => _removeQuest(quest.id),
-            child: Container(
-              padding: const EdgeInsets.all(DnDTheme.xs),
-              decoration: BoxDecoration(
-                color: DnDTheme.errorRed.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: DnDTheme.errorRed,
-                  width: 1,
-                ),
-              ),
-              child: Icon(
-                Icons.close,
-                color: DnDTheme.errorRed,
-                size: 16,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _removeQuest(int questId) {
-    final viewModel = context.read<EditSceneViewModel>();
-    viewModel.removeQuest(questId.toString());
-  }
-
-  Future<void> _showQuestSelector(EditSceneViewModel viewModel) async {
-    // Zeige einen einfachen Dialog zur Quest-Auswahl
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
-        title: Text(
-          'Quest hinzufügen',
-          style: DnDTheme.headline3.copyWith(color: DnDTheme.ancientGold),
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: viewModel.availableQuests.isEmpty
-              ? Center(
-                  child: Text(
-                    'Keine Quests verfügbar',
-                    style: DnDTheme.bodyText2.copyWith(color: Colors.white54),
-                  ),
-                )
-              : ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: viewModel.availableQuests.length,
-                  itemBuilder: (context, index) {
-                    final quest = viewModel.availableQuests[index];
-                    final isLinked = viewModel.scene?.linkedQuestIds.contains(quest.id) ?? false;
-                    return ListTile(
-                      title: Text(
-                        quest.title,
-                        style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                      ),
-                      subtitle: quest.location != null && quest.location!.isNotEmpty
-                          ? Text(
-                              'Ort: ${quest.location}',
-                              style: DnDTheme.bodyText2.copyWith(color: Colors.white54),
-                            )
-                          : null,
-                      trailing: isLinked
-                          ? Icon(Icons.check_circle, color: DnDTheme.successGreen)
-                          : Icon(Icons.add_circle_outline, color: Colors.white54),
-                      onTap: isLinked
-                          ? null
-                          : () {
-                              Navigator.pop(context);
-                              viewModel.addQuest(quest.id.toString());
-                            },
-                      enabled: !isLinked,
-                    );
-                  },
-                ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Schließen',
-              style: DnDTheme.bodyText1.copyWith(color: DnDTheme.mysticalPurple),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Hilfsmethoden für Quests
-  Color _getQuestStatusColor(QuestStatus status) {
-    switch (status) {
-      case QuestStatus.active:
-        return Colors.grey;
-      case QuestStatus.onHold:
-        return DnDTheme.arcaneBlue;
-      case QuestStatus.completed:
-        return DnDTheme.successGreen;
-      case QuestStatus.failed:
-        return DnDTheme.errorRed;
-      case QuestStatus.abandoned:
-        return Colors.orange;
-    }
-  }
-
-  IconData _getQuestStatusIcon(QuestStatus status) {
-    switch (status) {
-      case QuestStatus.active:
-        return Icons.flag_outlined;
-      case QuestStatus.onHold:
-        return Icons.play_arrow;
-      case QuestStatus.completed:
-        return Icons.check_circle;
-      case QuestStatus.failed:
-        return Icons.cancel;
-      case QuestStatus.abandoned:
-        return Icons.remove_circle;
-    }
-  }
-
-  String _getQuestStatusText(QuestStatus status) {
-    switch (status) {
-      case QuestStatus.active:
-        return 'Aktiv';
-      case QuestStatus.onHold:
-        return 'In Arbeit';
-      case QuestStatus.completed:
-        return 'Abgeschlossen';
-      case QuestStatus.failed:
-        return 'Fehlgeschlagen';
-      case QuestStatus.abandoned:
-        return 'Aufgegeben';
-    }
-  }
-
-  // ===== WIKI ENTRY METHODEN =====
-
-  // Hilfsmethoden für Wiki-Einträge (muss vor Verwendung deklariert werden)
-  Color _getWikiEntryTypeColor(WikiEntryType type) {
-    switch (type) {
-      case WikiEntryType.Person:
-        return DnDTheme.successGreen;
-      case WikiEntryType.Place:
-        return DnDTheme.arcaneBlue;
-      case WikiEntryType.Lore:
-        return DnDTheme.ancientGold;
-      case WikiEntryType.Faction:
-        return DnDTheme.mysticalPurple;
-      case WikiEntryType.Magic:
-        return Colors.purple;
-      case WikiEntryType.History:
-        return Colors.orange;
-      case WikiEntryType.Item:
-        return DnDTheme.infoBlue;
-      case WikiEntryType.Quest:
-        return DnDTheme.successGreen;
-      case WikiEntryType.Creature:
-        return DnDTheme.errorRed;
-    }
-  }
-
-  IconData _getWikiEntryTypeIcon(WikiEntryType type) {
-    switch (type) {
-      case WikiEntryType.Person:
-        return Icons.person;
-      case WikiEntryType.Place:
-        return Icons.place;
-      case WikiEntryType.Lore:
-        return Icons.book;
-      case WikiEntryType.Faction:
-        return Icons.groups;
-      case WikiEntryType.Magic:
-        return Icons.auto_awesome;
-      case WikiEntryType.History:
-        return Icons.history;
-      case WikiEntryType.Item:
-        return Icons.inventory_2;
-      case WikiEntryType.Quest:
-        return Icons.flag;
-      case WikiEntryType.Creature:
-        return Icons.pets;
-    }
-  }
-
-  // Wiki-Entry UI Methoden
-  Widget _buildWikiEntryCard(WikiEntry wikiEntry) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: DnDTheme.sm),
-      padding: const EdgeInsets.all(DnDTheme.sm),
-      decoration: BoxDecoration(
-        gradient: DnDTheme.getMysticalGradient(
-          startColor: DnDTheme.slateGrey,
-          endColor: DnDTheme.stoneGrey,
-        ),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-        border: Border.all(
-          color: _getWikiEntryTypeColor(wikiEntry.entryType).withValues(alpha: 0.5),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          // WikiEntry Icon
-          Container(
-            decoration: BoxDecoration(
-              color: _getWikiEntryTypeColor(wikiEntry.entryType).withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: _getWikiEntryTypeColor(wikiEntry.entryType),
-                width: 2,
-              ),
-            ),
-            child: Icon(
-              _getWikiEntryTypeIcon(wikiEntry.entryType),
-              color: _getWikiEntryTypeColor(wikiEntry.entryType),
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: DnDTheme.sm),
-          // WikiEntry Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  wikiEntry.title,
-                  style: DnDTheme.bodyText1.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  wikiEntry.entryType.name,
-                  style: DnDTheme.bodyText2.copyWith(
-                    color: Colors.white54,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: DnDTheme.sm),
-          // Remove Button
-          GestureDetector(
-            onTap: () => _removeWikiEntry(wikiEntry.id),
-            child: Container(
-              padding: const EdgeInsets.all(DnDTheme.xs),
-              decoration: BoxDecoration(
-                color: DnDTheme.errorRed.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: DnDTheme.errorRed,
-                  width: 1,
-                ),
-              ),
-              child: Icon(
-                Icons.close,
-                color: DnDTheme.errorRed,
-                size: 16,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _removeWikiEntry(String wikiId) {
-    final viewModel = context.read<EditSceneViewModel>();
-    viewModel.removeWikiEntry(wikiId);
-  }
-
-  Future<void> _showWikiEntrySelector(EditSceneViewModel viewModel) async {
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
-        title: Text(
-          'Wiki-Eintrag hinzufügen',
-          style: DnDTheme.headline3.copyWith(color: DnDTheme.mysticalPurple),
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: viewModel.availableWikiEntries.isEmpty
-              ? Center(
-                  child: Text(
-                    'Keine Wiki-Einträge verfügbar',
-                    style: DnDTheme.bodyText2.copyWith(color: Colors.white54),
-                  ),
-                )
-              : ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: viewModel.availableWikiEntries.length,
-                  itemBuilder: (context, index) {
-                    final wikiEntry = viewModel.availableWikiEntries[index];
-                    final isLinked = viewModel.scene?.linkedWikiEntryIds.contains(wikiEntry.id) ?? false;
-                    return ListTile(
-                      title: Text(
-                        wikiEntry.title,
-                        style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                      ),
-                      subtitle: Text(
-                        wikiEntry.entryType.name,
-                        style: DnDTheme.bodyText2.copyWith(color: Colors.white54),
-                      ),
-                      trailing: isLinked
-                          ? Icon(Icons.check_circle, color: DnDTheme.successGreen)
-                          : Icon(Icons.add_circle_outline, color: Colors.white54),
-                      onTap: isLinked
-                          ? null
-                          : () {
-                              Navigator.pop(context);
-                              viewModel.addWikiEntry(wikiEntry.id);
-                            },
-                      enabled: !isLinked,
-                    );
-                  },
-                ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Schließen',
-              style: DnDTheme.bodyText1.copyWith(color: DnDTheme.mysticalPurple),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ===== SOUND METHODEN =====
-
-  Widget _buildSoundCard(Sound sound) {
-    final isCurrentlyPlaying = _currentPlayingSoundId == sound.id && _isPlaying;
-    
-    return Container(
-      margin: const EdgeInsets.only(bottom: DnDTheme.sm),
-      padding: const EdgeInsets.all(DnDTheme.sm),
-      decoration: BoxDecoration(
-        gradient: DnDTheme.getMysticalGradient(
-          startColor: DnDTheme.slateGrey,
-          endColor: DnDTheme.stoneGrey,
-        ),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-        border: Border.all(
-          color: isCurrentlyPlaying 
-            ? DnDTheme.ancientGold.withValues(alpha: 0.8)
-            : DnDTheme.successGreen.withValues(alpha: 0.5),
-          width: isCurrentlyPlaying ? 2 : 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Obere Reihe: Sound-Info und Buttons
-          Row(
-            children: [
-              // Sound Icon
-              Container(
-                decoration: BoxDecoration(
-                  color: isCurrentlyPlaying 
-                    ? DnDTheme.ancientGold.withValues(alpha: 0.2)
-                    : DnDTheme.successGreen.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isCurrentlyPlaying 
-                      ? DnDTheme.ancientGold
-                      : DnDTheme.successGreen,
-                    width: 2,
-                  ),
-                ),
-                child: Icon(
-                  isCurrentlyPlaying ? Icons.volume_up : Icons.music_note,
-                  color: isCurrentlyPlaying 
-                    ? DnDTheme.ancientGold
-                    : DnDTheme.successGreen,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: DnDTheme.sm),
-              // Sound Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      sound.name,
-                      style: DnDTheme.bodyText1.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    if (sound.categoryId != null && sound.categoryId!.isNotEmpty)
-                      Text(
-                        sound.categoryId!,
-                        style: DnDTheme.bodyText2.copyWith(
-                          color: Colors.white54,
-                          fontSize: 12,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              // Sound Type Badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: DnDTheme.xs, vertical: 2),
-                decoration: BoxDecoration(
-                  color: DnDTheme.successGreen.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                  border: Border.all(
-                    color: DnDTheme.successGreen,
-                    width: 1,
-                  ),
-                ),
-                child: Text(
-                  sound.soundType.name,
-                  style: DnDTheme.bodyText2.copyWith(
-                    color: DnDTheme.successGreen,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(width: DnDTheme.xs),
-              // Play/Pause Toggle
-              GestureDetector(
-                onTap: () => _togglePlayPause(sound.id, sound.filePath),
-                child: Container(
-                  padding: const EdgeInsets.all(DnDTheme.xs),
-                  decoration: BoxDecoration(
-                    color: isCurrentlyPlaying
-                      ? DnDTheme.ancientGold.withValues(alpha: 0.2)
-                      : DnDTheme.successGreen.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isCurrentlyPlaying
-                        ? DnDTheme.ancientGold
-                        : DnDTheme.successGreen,
-                      width: 1,
-                    ),
-                  ),
-                  child: Icon(
-                    isCurrentlyPlaying ? Icons.pause : Icons.play_arrow,
-                    color: isCurrentlyPlaying
-                      ? DnDTheme.ancientGold
-                      : DnDTheme.successGreen,
-                    size: 16,
-                  ),
-                ),
-              ),
-              const SizedBox(width: DnDTheme.xs),
-              // Stop Button (nur wenn aktiv)
-              if (isCurrentlyPlaying) ...[
-                GestureDetector(
-                  onTap: () => _stopSound(),
-                  child: Container(
-                    padding: const EdgeInsets.all(DnDTheme.xs),
-                    decoration: BoxDecoration(
-                      color: DnDTheme.errorRed.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: DnDTheme.errorRed,
-                        width: 1,
-                      ),
-                    ),
-                    child: Icon(
-                      Icons.stop,
-                      color: DnDTheme.errorRed,
-                      size: 16,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: DnDTheme.xs),
-              ],
-              // Remove Button
-              GestureDetector(
-                onTap: () => _removeSound(sound.id),
-                child: Container(
-                  padding: const EdgeInsets.all(DnDTheme.xs),
-                  decoration: BoxDecoration(
-                    color: DnDTheme.errorRed.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: DnDTheme.errorRed,
-                      width: 1,
-                    ),
-                  ),
-                  child: Icon(
-                    Icons.close,
-                    color: DnDTheme.errorRed,
-                    size: 16,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          
-          // Untere Reihe: Lautstärkeregler (nur wenn aktiv)
-          if (isCurrentlyPlaying) ...[
-            const SizedBox(height: DnDTheme.sm),
-            Row(
-              children: [
-                Icon(
-                  Icons.volume_down,
-                  color: DnDTheme.ancientGold,
-                  size: 16,
-                ),
-                const SizedBox(width: DnDTheme.sm),
-                Expanded(
-                  child: SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      activeTrackColor: DnDTheme.ancientGold,
-                      inactiveTrackColor: DnDTheme.successGreen.withValues(alpha: 0.3),
-                      thumbColor: DnDTheme.ancientGold,
-                      overlayColor: DnDTheme.ancientGold.withValues(alpha: 0.2),
-                      trackHeight: 4,
-                      thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-                    ),
-                    child: Slider(
-                      value: _volume,
-                      min: 0.0,
-                      max: 1.0,
-                      divisions: 20,
-                      onChanged: (value) {
-                        setState(() {
-                          _volume = value;
-                        });
-                        _updateVolume();
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(width: DnDTheme.sm),
-                Icon(
-                  Icons.volume_up,
-                  color: DnDTheme.ancientGold,
-                  size: 16,
-                ),
-                const SizedBox(width: DnDTheme.sm),
-                Text(
-                  '${(_volume * 100).toInt()}%',
-                  style: DnDTheme.bodyText2.copyWith(
-                    color: DnDTheme.ancientGold,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  void _removeSound(String soundId) {
-    final viewModel = context.read<EditSceneViewModel>();
-    viewModel.removeSound(soundId);
-  }
-
-  Future<void> _playSound(String filePath) async {
-    final success = await SoundService.playSound(filePath);
-    if (success) {
-      setState(() {
-        _isPlaying = true;
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.error, color: Colors.white),
-              const SizedBox(width: DnDTheme.sm),
-              Text(
-                'Fehler beim Abspielen des Sounds',
-                style: DnDTheme.bodyText1.copyWith(
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: DnDTheme.errorRed,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-          ),
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    }
-  }
-
-  Future<void> _togglePlayPause(String soundId, String filePath) async {
-    if (_currentPlayingSoundId == soundId && _isPlaying) {
-      // Pause
-      await SoundService.pauseSound();
-      setState(() {
-        _isPlaying = false;
-      });
-    } else {
-      // Play (neuer Sound oder nach Pause)
-      if (_currentPlayingSoundId != soundId) {
-        // Anderer Sound: zuerst stoppen
-        await SoundService.stopSound();
-        await _playSound(filePath);
-        setState(() {
-          _currentPlayingSoundId = soundId;
-          _isPlaying = true;
-          _volume = 1.0; // Lautstärke zurücksetzen
-        });
-        await SoundService.setVolume(_volume);
-      } else {
-        // Nach Pause weiterspielen
-        await _playSound(filePath);
-        setState(() {
-          _isPlaying = true;
-        });
-      }
-    }
-  }
-
-  Future<void> _stopSound() async {
-    await SoundService.stopSound();
-    setState(() {
-      _isPlaying = false;
-      _currentPlayingSoundId = null;
-    });
-  }
-
-  Future<void> _updateVolume() async {
-    await SoundService.setVolume(_volume);
-  }
-
-  // ===== COMBAT SECTION =====
-
-  Widget _buildCombatSection(EditSceneViewModel viewModel) {
-    final hasEncounter = viewModel.hasLinkedEncounter;
-    
-    return _buildSectionCard(
-      title: 'Kampf-Planung',
-      icon: Icons.gavel,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Info-Text
-          Container(
-            padding: const EdgeInsets.all(DnDTheme.sm),
-            decoration: BoxDecoration(
-              color: DnDTheme.errorRed.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-              border: Border.all(
-                color: DnDTheme.errorRed.withValues(alpha: 0.3),
-              ),
-            ),
+  Widget _buildFooter(AppColorsExtension C, EditSceneViewModel vm, bool isNew) {
+    final canSave = vm.canSave;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Divider(height: 1, thickness: 1, color: C.border),
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: Row(
               children: [
-                Icon(Icons.info_outline, color: DnDTheme.errorRed, size: 20),
-                const SizedBox(width: DnDTheme.sm),
                 Expanded(
-                  child: Text(
-                    'Diese Szene ist als Kampfszene markiert. '
-                    'Du kannst einen Encounter planen, der während der Session gestartet werden kann.',
-                    style: DnDTheme.bodyText2.copyWith(
-                      color: Colors.white70,
-                      fontSize: 12,
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 9),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: C.border),
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: Text(
+                        'Abbrechen',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: C.textMid),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: DnDTheme.md),
-          
-          // Encounter Status
-          if (hasEncounter) ...[
-            Container(
-              padding: const EdgeInsets.all(DnDTheme.md),
-              decoration: BoxDecoration(
-                gradient: DnDTheme.getMysticalGradient(
-                  startColor: DnDTheme.successGreen.withValues(alpha: 0.2),
-                  endColor: DnDTheme.successGreen.withValues(alpha: 0.1),
-                ),
-                borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                border: Border.all(
-                  color: DnDTheme.successGreen,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.gavel, color: DnDTheme.successGreen, size: 24),
-                  const SizedBox(width: DnDTheme.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Encounter geplant',
-                          style: DnDTheme.bodyText1.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          viewModel.linkedEncounter?.title ?? 'Unbenannter Encounter',
-                          style: DnDTheme.bodyText2.copyWith(
-                            color: DnDTheme.ancientGold,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            _buildEncounterStatusBadge(
-                              icon: Icons.people,
-                              label: '${viewModel.linkedEncounter?.participantIds.length ?? 0} Teilnehmer',
-                              color: DnDTheme.arcaneBlue,
-                            ),
-                            const SizedBox(width: 8),
-                            _buildEncounterStatusBadge(
-                              icon: _getEncounterStatusIcon(viewModel.linkedEncounter?.status.toString() ?? 'preparation'),
-                              label: _getEncounterStatusText(viewModel.linkedEncounter?.status.toString() ?? 'preparation'),
-                              color: _getEncounterStatusColor(viewModel.linkedEncounter?.status.toString() ?? 'preparation'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Encounter entfernen
-                  IconButton(
-                    onPressed: () => _deleteEncounter(viewModel),
-                    icon: Icon(Icons.delete, color: DnDTheme.errorRed),
-                    tooltip: 'Encounter löschen',
-                  ),
-                ],
-              ),
-            ),
-          ] else ...[
-            // Button zum Encounter planen
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => _planEncounter(viewModel),
-                icon: const Icon(Icons.gavel, size: 20),
-                label: const Text('Encounter planen'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: DnDTheme.errorRed,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: DnDTheme.md,
-                    horizontal: DnDTheme.lg,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                  ),
-                ),
-              ),
-            ),
-          ],
-          
-          const SizedBox(height: DnDTheme.md),
-          
-          // Teilnehmer-Info
-          if (viewModel.linkedCharacters.isNotEmpty) ...[
-            Text(
-              'Verfügbare Teilnehmer:',
-              style: DnDTheme.bodyText2.copyWith(
-                color: Colors.white70,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: DnDTheme.sm),
-            Wrap(
-              spacing: DnDTheme.xs,
-              runSpacing: DnDTheme.xs,
-              children: viewModel.linkedCharacters.map((char) => 
-                Chip(
-                  label: Text(
-                    char['name'].toString(),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                    ),
-                  ),
-                  backgroundColor: _getCharacterColor(char['type']).withValues(alpha: 0.3),
-                  side: BorderSide(
-                    color: _getCharacterColor(char['type']),
-                  ),
-                  avatar: Icon(
-                    _getCharacterIcon(char['type']),
-                    color: _getCharacterColor(char['type']),
-                    size: 16,
-                  ),
-                ),
-              ).toList(),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  /// Löscht den Encounter vollständig aus der Datenbank
-  void _deleteEncounter(EditSceneViewModel viewModel) async {
-    // Bestätigungsdialog
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
-        title: Row(
-          children: [
-            Icon(Icons.warning, color: DnDTheme.errorRed),
-            const SizedBox(width: DnDTheme.sm),
-            Text(
-              'Encounter löschen?',
-              style: DnDTheme.headline3.copyWith(color: DnDTheme.errorRed),
-            ),
-          ],
-        ),
-        content: Text(
-          'Möchtest du den Encounter "${viewModel.linkedEncounter?.title ?? "Unbenannt"}" wirklich löschen?\n\n'
-          'Diese Aktion kann nicht rückgängig gemacht werden.',
-          style: DnDTheme.bodyText1.copyWith(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Abbrechen'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.errorRed,
-              foregroundColor: Colors.white,
-            ),
-            child: Text('Löschen'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      final success = await viewModel.deleteLinkedEncounter();
-      if (!mounted) return;
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
                 const SizedBox(width: 8),
-                Text('Encounter erfolgreich gelöscht'),
+                Expanded(
+                  flex: 2,
+                  child: GestureDetector(
+                    onTap: canSave ? _saveScene : null,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 9),
+                      decoration: BoxDecoration(
+                        color: canSave ? C.accent : C.bgHover,
+                        border: canSave ? null : Border.all(color: C.border),
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.save_outlined, size: 13,
+                              color: canSave ? Colors.white : C.textSoft),
+                          const SizedBox(width: 6),
+                          Text(
+                            isNew ? 'Szene erstellen' : 'Speichern',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: canSave ? Colors.white : C.textSoft,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
-            backgroundColor: DnDTheme.successGreen,
-            behavior: SnackBarBehavior.floating,
           ),
-        );
-      }
-    }
+        ),
+      ],
+    );
   }
 
-  /// Baut ein Status-Badge für den Encounter
-  Widget _buildEncounterStatusBadge({
+  // ── SECTION CARDS ─────────────────────────────────────────────────────────────
+
+  Widget _buildBasicInfoCard(AppColorsExtension C, EditSceneViewModel vm, SceneType sceneType) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: C.bgHover,
+        border: Border.all(color: C.border),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('GRUNDINFORMATIONEN',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+                  color: C.textSoft, letterSpacing: 0.5)),
+          const SizedBox(height: 10),
+          Text('Name *', style: TextStyle(fontSize: 11, color: C.textSoft)),
+          const SizedBox(height: 4),
+          TextField(
+            controller: _nameController,
+            style: TextStyle(fontSize: 13, color: C.text),
+            decoration: _inputDeco(C, hint: 'Szenen-Name'),
+            onChanged: (_) => _updateViewModel(),
+          ),
+          const SizedBox(height: 10),
+          Text('Szenen-Typ', style: TextStyle(fontSize: 11, color: C.textSoft)),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 5,
+            runSpacing: 5,
+            children: SceneType.values.map((type) {
+              final color = _typeColor[type] ?? C.accent;
+              final label = _typeLabel[type] ?? type.name;
+              final isActive = sceneType == type;
+              return GestureDetector(
+                onTap: () => vm.updateSceneType(type),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isActive ? color.withValues(alpha: 0.15) : Colors.transparent,
+                    border: Border.all(color: isActive ? color : C.border),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: isActive ? FontWeight.w500 : FontWeight.normal,
+                      color: isActive ? color : C.textMid,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDescriptionCard(AppColorsExtension C) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: C.bgHover,
+        border: Border.all(color: C.border),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('BESCHREIBUNG',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+                  color: C.textSoft, letterSpacing: 0.5)),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _descriptionController,
+            maxLines: 5,
+            style: TextStyle(fontSize: 13, color: C.text, height: 1.6),
+            decoration: _inputDeco(C,
+                hint: 'Szenen-Beschreibung, DM-Notizen, wichtige Details...'),
+            onChanged: (_) => _updateViewModel(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLinkedCard({
+    required AppColorsExtension C,
     required IconData icon,
     required String label,
     required Color color,
+    required int count,
+    required List<Widget> tags,
+    required VoidCallback onAdd,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-        border: Border.all(
-          color: color.withValues(alpha: 0.5),
-          width: 1,
+        color: C.bgHover,
+        border: Border.all(color: C.border),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader(C, icon, label, count, color, onAdd),
+          const SizedBox(height: 8),
+          if (tags.isEmpty)
+            Text('Keine verknüpft',
+                style: TextStyle(fontSize: 12, color: C.textSoft, fontStyle: FontStyle.italic))
+          else
+            Wrap(spacing: 5, runSpacing: 5, children: tags),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(AppColorsExtension C, IconData icon, String label,
+      int count, Color color, VoidCallback onAdd) {
+    return Row(
+      children: [
+        Icon(icon, size: 13, color: color),
+        const SizedBox(width: 6),
+        Text(label,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: C.text)),
+        const SizedBox(width: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+          decoration: BoxDecoration(color: C.bgActive, borderRadius: BorderRadius.circular(4)),
+          child: Text('$count', style: TextStyle(fontSize: 10, color: C.textSoft)),
         ),
+        const Spacer(),
+        GestureDetector(
+          onTap: onAdd,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+            decoration: BoxDecoration(
+              border: Border.all(color: C.border),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.add, size: 11, color: C.textSoft),
+                const SizedBox(width: 4),
+                Text('Hinzufügen', style: TextStyle(fontSize: 11, color: C.textMid)),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTagChip(
+      AppColorsExtension C, String text, Color color, VoidCallback onRemove) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 3, 6, 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+        borderRadius: BorderRadius.circular(5),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 12),
+          Text(text, style: TextStyle(fontSize: 11, color: color)),
           const SizedBox(width: 4),
-          Text(
-            label,
-            style: DnDTheme.bodyText2.copyWith(
-              color: color,
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-            ),
+          GestureDetector(
+            onTap: onRemove,
+            child: Icon(Icons.close, size: 11, color: C.textSoft),
           ),
         ],
       ),
     );
   }
 
-  /// Gibt das Icon für den Encounter-Status zurück
-  IconData _getEncounterStatusIcon(String status) {
-    switch (status) {
-      case 'preparation':
-        return Icons.schedule;
-      case 'active':
-        return Icons.play_circle;
-      case 'completed':
-        return Icons.check_circle;
-      case 'paused':
-        return Icons.pause_circle;
-      default:
-        return Icons.help_outline;
-    }
-  }
-
-  /// Gibt den Text für den Encounter-Status zurück
-  String _getEncounterStatusText(String status) {
-    switch (status) {
-      case 'preparation':
-        return 'Vorbereitung';
-      case 'active':
-        return 'Aktiv';
-      case 'completed':
-        return 'Abgeschlossen';
-      case 'paused':
-        return 'Pausiert';
-      default:
-        return 'Unbekannt';
-    }
-  }
-
-  /// Gibt die Farbe für den Encounter-Status zurück
-  Color _getEncounterStatusColor(String status) {
-    switch (status) {
-      case 'preparation':
-        return DnDTheme.arcaneBlue;
-      case 'active':
-        return DnDTheme.errorRed;
-      case 'completed':
-        return DnDTheme.successGreen;
-      case 'paused':
-        return DnDTheme.ancientGold;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  void _planEncounter(EditSceneViewModel viewModel) async {
-    // Prüfe ob Widget noch gemounted ist
-    if (!mounted) return;
-    
-    // Navigiere zum Encounter Setup Screen
-    // Da wir keine Campaign und Scene direkt haben, nutzen wir einen Dialog
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
-        title: Row(
-          children: [
-            Icon(Icons.gavel, color: DnDTheme.errorRed),
-            const SizedBox(width: DnDTheme.sm),
-            Text(
-              'Encounter planen',
-              style: DnDTheme.headline3.copyWith(color: Colors.white),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Möchtest du einen Encounter für diese Szene planen?',
-              style: DnDTheme.bodyText1.copyWith(color: Colors.white70),
-            ),
-            const SizedBox(height: DnDTheme.md),
-            Text(
-              'Hinweis: Speichere die Szene zuerst, bevor du den Encounter planst.',
-              style: DnDTheme.bodyText2.copyWith(
-                color: DnDTheme.ancientGold,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Abbrechen'),
-          ),
-          ElevatedButton.icon(
-            onPressed: () async {
-              Navigator.pop(context);
-              
-              // Prüfe ob Widget noch gemounted ist
-              if (!mounted) return;
-              
-              // Erst speichern falls nötig
-              if (viewModel.hasUnsavedChanges || !viewModel.isEditing) {
-                final saved = await viewModel.saveScene();
-                if (!mounted) return;
-                if (!saved) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Fehler beim Speichern der Szene'),
-                      backgroundColor: DnDTheme.errorRed,
-                    ),
-                  );
-                  return;
-                }
-              }
-              
-              // Encounter-Dialog zeigen
-              _showEncounterTitleDialog(viewModel);
-            },
-            icon: Icon(Icons.gavel),
-            label: Text('Encounter erstellen'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.errorRed,
-              foregroundColor: Colors.white,
-            ),
+  Widget _buildErrorBanner(AppColorsExtension C, EditSceneViewModel vm) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: C.red.withValues(alpha: 0.08),
+        border: Border.all(color: C.red.withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline, color: C.red, size: 16),
+          const SizedBox(width: 8),
+          Expanded(child: Text(vm.errorMessage!, style: TextStyle(fontSize: 12, color: C.text))),
+          GestureDetector(
+            onTap: vm.clearError,
+            child: Icon(Icons.close, size: 14, color: C.textSoft),
           ),
         ],
       ),
     );
   }
 
-  void _showEncounterTitleDialog(EditSceneViewModel viewModel) {
-    // Standard-Titel ist der Szenenname (wie vom Nutzer gewünscht)
-    final sceneName = viewModel.scene?.name ?? 'Kampf';
-    final titleController = TextEditingController(
-      text: sceneName,  // Standardwert = Szenenname
+  InputDecoration _inputDeco(AppColorsExtension C, {required String hint}) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(fontSize: 13, color: C.textSoft),
+      filled: true,
+      fillColor: C.bgActive,
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(7), borderSide: BorderSide(color: C.border)),
+      enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(7), borderSide: BorderSide(color: C.border)),
+      focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(7), borderSide: BorderSide(color: C.accent)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
     );
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
-        title: Row(
-          children: [
-            Icon(Icons.gavel, color: DnDTheme.errorRed),
-            const SizedBox(width: DnDTheme.sm),
-            Text(
-              'Encounter erstellen',
-              style: DnDTheme.headline3.copyWith(color: DnDTheme.ancientGold),
+  }
+
+  // ── COMBAT CARD ───────────────────────────────────────────────────────────────
+
+  Widget _buildCombatCard(AppColorsExtension C, EditSceneViewModel vm) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: C.bgHover,
+        border: Border.all(color: C.border),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.gavel, size: 13, color: C.red),
+              const SizedBox(width: 6),
+              Text('Kampf-Planung',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: C.text)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: C.red.withValues(alpha: 0.06),
+              border: Border.all(color: C.red.withValues(alpha: 0.2)),
+              borderRadius: BorderRadius.circular(7),
             ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Gib einen Namen für den Encounter ein oder verwende den Szenennamen:',
-              style: DnDTheme.bodyText2.copyWith(color: Colors.white70),
-            ),
-            const SizedBox(height: DnDTheme.md),
-            TextField(
-              controller: titleController,
-              decoration: InputDecoration(
-                labelText: 'Encounter-Name (optional)',
-                labelStyle: TextStyle(color: DnDTheme.ancientGold),
-                hintText: 'Leer lassen für Szenennamen',
-                hintStyle: TextStyle(color: Colors.white38),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: DnDTheme.ancientGold),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: C.red, size: 14),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Kampfszene: Encounter planen, der während der Session gestartet werden kann.',
+                    style: TextStyle(fontSize: 12, color: C.textMid),
+                  ),
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          if (vm.hasLinkedEncounter)
+            _buildEncounterInfo(C, vm)
+          else
+            GestureDetector(
+              onTap: () => _planEncounter(vm),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 9),
+                decoration: BoxDecoration(
+                  color: C.red.withValues(alpha: 0.1),
+                  border: Border.all(color: C.red.withValues(alpha: 0.4)),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.gavel, size: 13, color: C.red),
+                    const SizedBox(width: 6),
+                    Text('Encounter planen',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: C.red)),
+                  ],
                 ),
               ),
-              style: TextStyle(color: Colors.white),
             ),
-            const SizedBox(height: DnDTheme.sm),
-            Text(
-              'Hinweis: Wenn das Feld leer ist, wird "${sceneName}" verwendet.',
-              style: DnDTheme.bodyText2.copyWith(
-                color: Colors.white54,
-                fontStyle: FontStyle.italic,
-                fontSize: 11,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Abbrechen',
-              style: TextStyle(color: DnDTheme.mysticalPurple),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEncounterInfo(AppColorsExtension C, EditSceneViewModel vm) {
+    final encounter = vm.linkedEncounter!;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: C.green.withValues(alpha: 0.08),
+        border: Border.all(color: C.green.withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.gavel, color: C.green, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Encounter geplant',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: C.text)),
+                const SizedBox(height: 2),
+                Text(encounter.title, style: TextStyle(fontSize: 12, color: C.amber)),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    _buildStatusBadge(C, Icons.people,
+                        '${encounter.participantIds.length} Teiln.', C.accent),
+                    const SizedBox(width: 6),
+                    _buildStatusBadge(
+                      C,
+                      _encounterStatusIcon(encounter.status.toString()),
+                      _encounterStatusLabel(encounter.status.toString()),
+                      _encounterStatusColor(C, encounter.status.toString()),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-          ElevatedButton.icon(
-            onPressed: () async {
-              // ScaffoldMessenger VOR dem Dialog-Schließen speichern
-              final scaffoldMessenger = ScaffoldMessenger.of(context);
-              
-              Navigator.pop(context);
-              
-              // Prüfe ob Widget noch gemounted ist
-              if (!mounted) return;
-              
-              // Echten Encounter in der Datenbank erstellen
-              final customTitle = titleController.text.trim();
-              final encounter = await viewModel.createEncounterForScene(
-                customTitle: customTitle.isEmpty ? null : customTitle,
-              );
-              
-              // Prüfe erneut ob Widget noch gemounted ist
-              if (!mounted) return;
-              
-              if (encounter != null) {
-                scaffoldMessenger.showSnackBar(
-                  SnackBar(
-                    content: Row(
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.white),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Encounter "${encounter.title}" erfolgreich erstellt!',
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    backgroundColor: DnDTheme.successGreen,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              } else {
-                scaffoldMessenger.showSnackBar(
-                  SnackBar(
-                    content: Row(
-                      children: [
-                        Icon(Icons.error, color: Colors.white),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            viewModel.errorMessage ?? 'Fehler beim Erstellen des Encounters',
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    backgroundColor: DnDTheme.errorRed,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.ancientGold,
-              foregroundColor: DnDTheme.dungeonBlack,
-            ),
-            icon: Icon(Icons.gavel),
-            label: Text('Erstellen'),
+          GestureDetector(
+            onTap: () => _deleteEncounter(vm),
+            child: Icon(Icons.delete_outline, color: C.red, size: 18),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _showSoundSelector(EditSceneViewModel viewModel) async {
-    // Zeige einen einfachen Dialog zur Sound-Auswahl
+  Widget _buildStatusBadge(AppColorsExtension C, IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 10, color: color),
+          const SizedBox(width: 3),
+          Text(label,
+              style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+
+  // ── SELECTION MODAL ───────────────────────────────────────────────────────────
+
+  Future<void> _showSelectionDialog({
+    required String title,
+    required List<({String id, String label})> allItems,
+    required Set<String> selectedIds,
+    required void Function(String id, bool add) onToggle,
+  }) async {
+    final C = context.appColors;
     await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
-        title: Text(
-          'Sound hinzufügen',
-          style: DnDTheme.headline3.copyWith(color: DnDTheme.successGreen),
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: viewModel.availableSounds.isEmpty
-              ? Center(
-                  child: Text(
-                    'Keine Sounds verfügbar',
-                    style: DnDTheme.bodyText2.copyWith(color: Colors.white54),
-                  ),
-                )
-              : ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: viewModel.availableSounds.length,
-                  itemBuilder: (context, index) {
-                    final sound = viewModel.availableSounds[index];
-                    final isLinked = viewModel.scene?.linkedSoundIds.contains(sound.id) ?? false;
-                    return ListTile(
-                      title: Text(
-                        sound.name,
-                        style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => Dialog(
+          backgroundColor: C.bgPanel,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: C.border),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+                  child: Row(
+                    children: [
+                      Text(title,
+                          style: TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.w600, color: C.text)),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(ctx),
+                        child: Icon(Icons.close, size: 16, color: C.textMid),
                       ),
-                      subtitle: sound.categoryId != null && sound.categoryId!.isNotEmpty
-                          ? Text(
-                              sound.categoryId!,
-                              style: DnDTheme.bodyText2.copyWith(color: Colors.white54),
-                            )
-                          : null,
-                      trailing: isLinked
-                          ? Icon(Icons.check_circle, color: DnDTheme.successGreen)
-                          : Icon(Icons.add_circle_outline, color: Colors.white54),
-                      onTap: isLinked
-                          ? null
-                          : () {
-                              Navigator.pop(context);
-                              viewModel.addSound(sound.id);
-                            },
-                      enabled: !isLinked,
-                    );
-                  },
+                    ],
+                  ),
                 ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Schließen',
-              style: DnDTheme.bodyText1.copyWith(color: DnDTheme.mysticalPurple),
+                Divider(height: 1, color: C.border),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 300),
+                  child: allItems.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Text('Keine Einträge verfügbar',
+                              style: TextStyle(fontSize: 13, color: C.textSoft),
+                              textAlign: TextAlign.center),
+                        )
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: allItems.length,
+                          itemBuilder: (ctx, i) {
+                            final item = allItems[i];
+                            final isSelected = selectedIds.contains(item.id);
+                            return GestureDetector(
+                              onTap: () {
+                                onToggle(item.id, !isSelected);
+                                setS(() {
+                                  if (isSelected) {
+                                    selectedIds.remove(item.id);
+                                  } else {
+                                    selectedIds.add(item.id);
+                                  }
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? C.bgActive : Colors.transparent,
+                                  border: Border(bottom: BorderSide(color: C.border)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 16,
+                                      height: 16,
+                                      decoration: BoxDecoration(
+                                        color: isSelected ? C.accent : Colors.transparent,
+                                        border: Border.all(
+                                          color: isSelected ? C.accent : C.borderStrong,
+                                          width: 1.5,
+                                        ),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: isSelected
+                                          ? const Icon(Icons.check,
+                                              size: 10, color: Colors.white)
+                                          : null,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(item.label,
+                                          style:
+                                              TextStyle(fontSize: 13, color: C.text)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+                Divider(height: 1, color: C.border),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(ctx),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                        decoration: BoxDecoration(
+                            color: C.accent,
+                            borderRadius: BorderRadius.circular(7)),
+                        child: const Text('Fertig',
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white)),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
+
+  // ── SELECTORS ─────────────────────────────────────────────────────────────────
+
+  Future<void> _showCharacterSelector(EditSceneViewModel vm) async {
+    final selectedIds = await Navigator.push<List<String>>(
+      context,
+      MaterialPageRoute<List<String>>(
+        builder: (ctx) => SelectCharacterForSceneScreen(
+          previouslySelectedIds: vm.scene?.linkedCharacterIds ?? [],
+        ),
+      ),
+    );
+    if (selectedIds != null) {
+      vm.updateLinkedCharacters(selectedIds);
+      vm.buildLinkedCharactersList();
+      await vm.loadAvailableQuests();
+      vm.buildLinkedQuestsList();
+    }
+  }
+
+  Future<void> _showQuestSelector(EditSceneViewModel vm) async {
+    final linkedIds =
+        Set<String>.from(vm.scene?.linkedQuestIds ?? []);
+    await _showSelectionDialog(
+      title: 'Quests verknüpfen',
+      allItems:
+          vm.availableQuests.map((q) => (id: q.id.toString(), label: q.title)).toList(),
+      selectedIds: linkedIds,
+      onToggle: (id, add) => add ? vm.addQuest(id) : vm.removeQuest(id),
+    );
+    if (mounted) await vm.buildLinkedQuestsList();
+  }
+
+  Future<void> _showSoundSelector(EditSceneViewModel vm) async {
+    final linkedIds = Set<String>.from(vm.scene?.linkedSoundIds ?? []);
+    await _showSelectionDialog(
+      title: 'Sounds verknüpfen',
+      allItems: vm.availableSounds.map((s) => (id: s.id, label: s.name)).toList(),
+      selectedIds: linkedIds,
+      onToggle: (id, add) => add ? vm.addSound(id) : vm.removeSound(id),
+    );
+    if (mounted) await vm.buildLinkedSoundsList();
+  }
+
+  Future<void> _showWikiEntrySelector(EditSceneViewModel vm) async {
+    final linkedIds = Set<String>.from(vm.scene?.linkedWikiEntryIds ?? []);
+    await _showSelectionDialog(
+      title: 'Wiki-Einträge verknüpfen',
+      allItems: vm.availableWikiEntries.map((w) => (id: w.id, label: w.title)).toList(),
+      selectedIds: linkedIds,
+      onToggle: (id, add) => add ? vm.addWikiEntry(id) : vm.removeWikiEntry(id),
+    );
+    if (mounted) await vm.buildLinkedWikiEntriesList();
+  }
+
+  // ── SAVE ──────────────────────────────────────────────────────────────────────
+
+  Future<void> _saveScene() async {
+    final C = context.appColors;
+    final vm = context.read<EditSceneViewModel>();
+    final success = await vm.saveScene();
+    if (!mounted) return;
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content:
+            const Text('Szene gespeichert', style: TextStyle(color: Colors.white)),
+        backgroundColor: C.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        duration: const Duration(seconds: 2),
+      ));
+      Navigator.pop(context, true);
+    }
+  }
+
+  // ── ENCOUNTER MANAGEMENT ──────────────────────────────────────────────────────
+
+  Future<void> _deleteEncounter(EditSceneViewModel vm) async {
+    final C = context.appColors;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: C.bgPanel,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12), side: BorderSide(color: C.border)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Icon(Icons.warning_outlined, color: C.red, size: 18),
+                const SizedBox(width: 8),
+                Text('Encounter löschen?',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: C.text)),
+              ]),
+              const SizedBox(height: 12),
+              Text(
+                'Möchtest du den Encounter "${vm.linkedEncounter?.title ?? "Unbenannt"}" wirklich löschen?',
+                style: TextStyle(fontSize: 13, color: C.textMid),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  _dialogBtn(C, 'Abbrechen', C.textMid, outlined: true,
+                      onTap: () => Navigator.pop(ctx, false)),
+                  const SizedBox(width: 8),
+                  _dialogBtn(C, 'Löschen', Colors.white, bgColor: C.red,
+                      onTap: () => Navigator.pop(ctx, true)),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (confirmed == true) {
+      final success = await vm.deleteLinkedEncounter();
+      if (!mounted) return;
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Text('Encounter gelöscht', style: TextStyle(color: Colors.white)),
+          backgroundColor: context.appColors.green,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ));
+      }
+    }
+  }
+
+  void _planEncounter(EditSceneViewModel vm) {
+    final C = context.appColors;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: C.bgPanel,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12), side: BorderSide(color: C.border)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Icon(Icons.gavel, color: C.red, size: 16),
+                const SizedBox(width: 8),
+                Text('Encounter planen',
+                    style: TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w600, color: C.text)),
+              ]),
+              const SizedBox(height: 12),
+              Text('Möchtest du einen Encounter für diese Kampfszene planen?',
+                  style: TextStyle(fontSize: 13, color: C.textMid)),
+              const SizedBox(height: 4),
+              Text('Tipp: Speichere die Szene zuerst.',
+                  style: TextStyle(
+                      fontSize: 12, color: C.amber, fontStyle: FontStyle.italic)),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  _dialogBtn(C, 'Abbrechen', C.textMid, outlined: true,
+                      onTap: () => Navigator.pop(ctx)),
+                  const SizedBox(width: 8),
+                  _dialogBtn(C, 'Encounter erstellen', Colors.white, bgColor: C.red,
+                      onTap: () async {
+                    Navigator.pop(ctx);
+                    if (!mounted) return;
+                    if (vm.hasUnsavedChanges || !vm.isEditing) {
+                      final saved = await vm.saveScene();
+                      if (!mounted) return;
+                      if (!saved) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: const Text('Fehler beim Speichern der Szene'),
+                          backgroundColor: context.appColors.red,
+                        ));
+                        return;
+                      }
+                    }
+                    _showEncounterTitleDialog(vm);
+                  }),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showEncounterTitleDialog(EditSceneViewModel vm) {
+    final C = context.appColors;
+    final titleController =
+        TextEditingController(text: vm.scene?.name ?? 'Kampf');
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: C.bgPanel,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12), side: BorderSide(color: C.border)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Encounter erstellen',
+                  style: TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w600, color: C.text)),
+              const SizedBox(height: 12),
+              Text('Name für den Encounter:',
+                  style: TextStyle(fontSize: 11, color: C.textSoft)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: titleController,
+                style: TextStyle(fontSize: 13, color: C.text),
+                decoration: _inputDeco(C, hint: 'Leer lassen für Szenennamen'),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  _dialogBtn(C, 'Abbrechen', C.textMid, outlined: true,
+                      onTap: () => Navigator.pop(ctx)),
+                  const SizedBox(width: 8),
+                  _dialogBtn(C, 'Erstellen', Colors.white, bgColor: C.accent,
+                      onTap: () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    Navigator.pop(ctx);
+                    if (!mounted) return;
+                    final customTitle = titleController.text.trim();
+                    final encounter = await vm.createEncounterForScene(
+                        customTitle: customTitle.isEmpty ? null : customTitle);
+                    if (!mounted) return;
+                    if (encounter != null) {
+                      messenger.showSnackBar(SnackBar(
+                        content: Text('Encounter "${encounter.title}" erstellt!',
+                            style: const TextStyle(color: Colors.white)),
+                        backgroundColor: context.appColors.green,
+                        behavior: SnackBarBehavior.floating,
+                        duration: const Duration(seconds: 2),
+                      ));
+                    } else {
+                      messenger.showSnackBar(SnackBar(
+                        content: Text(
+                            vm.errorMessage ?? 'Fehler beim Erstellen des Encounters',
+                            style: const TextStyle(color: Colors.white)),
+                        backgroundColor: context.appColors.red,
+                        behavior: SnackBarBehavior.floating,
+                        duration: const Duration(seconds: 2),
+                      ));
+                    }
+                  }),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _dialogBtn(AppColorsExtension C, String label, Color textColor,
+      {Color? bgColor, bool outlined = false, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: bgColor,
+          border: outlined ? Border.all(color: C.border) : null,
+          borderRadius: BorderRadius.circular(7),
+        ),
+        child: Text(label,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: textColor)),
+      ),
+    );
+  }
+
+  // ── ENCOUNTER STATUS ──────────────────────────────────────────────────────────
+
+  IconData _encounterStatusIcon(String status) => switch (status) {
+        'preparation' => Icons.schedule,
+        'active' => Icons.play_circle_outline,
+        'completed' => Icons.check_circle_outline,
+        'paused' => Icons.pause_circle_outline,
+        _ => Icons.help_outline,
+      };
+
+  String _encounterStatusLabel(String status) => switch (status) {
+        'preparation' => 'Vorbereitung',
+        'active' => 'Aktiv',
+        'completed' => 'Abgeschlossen',
+        'paused' => 'Pausiert',
+        _ => 'Unbekannt',
+      };
+
+  Color _encounterStatusColor(AppColorsExtension C, String status) => switch (status) {
+        'active' => C.red,
+        'completed' => C.green,
+        'paused' => C.amber,
+        _ => C.accent,
+      };
 }

@@ -3,9 +3,8 @@ import 'package:provider/provider.dart';
 import '../../viewmodels/edit_quest_viewmodel.dart';
 import '../../models/quest.dart';
 import '../../models/quest_reward.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 
-/// Enhanced Quest Edit Screen mit Provider-Pattern und modernem D&D Design
 class EditQuestScreen extends StatefulWidget {
   final Quest? quest;
 
@@ -25,7 +24,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
   final _locationController = TextEditingController();
   final _recommendedLevelController = TextEditingController();
   final _estimatedDurationController = TextEditingController();
-  
+
   final _titleFocusNode = FocusNode();
   final _descriptionFocusNode = FocusNode();
   final _locationFocusNode = FocusNode();
@@ -41,18 +40,13 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
       _viewModel = context.read<EditQuestViewModel>();
       _viewModel!.initialize(widget.quest);
       _populateFields();
-      
-      // Listener hinzufügen, um auf Änderungen am ViewModel zu reagieren
       _viewModel!.addListener(_onViewModelChanged);
     });
   }
 
   void _onViewModelChanged() {
-    // Aktualisiere die Controller nur wenn sich der Quest tatsächlich geändert hat
-    // und der Controller gerade nicht fokussiert ist (um Probleme beim Tippen zu vermeiden)
     final quest = _viewModel?.quest;
     if (quest != null && mounted) {
-      // Nur aktualisieren, wenn der Controller nicht den Fokus hat
       if (!_titleFocusNode.hasFocus && _titleController.text != quest.title) {
         _titleController.text = quest.title;
       }
@@ -62,11 +56,11 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
       if (!_locationFocusNode.hasFocus && _locationController.text != (quest.location ?? '')) {
         _locationController.text = quest.location ?? '';
       }
-      if (!_recommendedLevelFocusNode.hasFocus && 
+      if (!_recommendedLevelFocusNode.hasFocus &&
           _recommendedLevelController.text != (quest.recommendedLevel?.toString() ?? '')) {
         _recommendedLevelController.text = quest.recommendedLevel?.toString() ?? '';
       }
-      if (!_estimatedDurationFocusNode.hasFocus && 
+      if (!_estimatedDurationFocusNode.hasFocus &&
           _estimatedDurationController.text != (quest.estimatedDurationHours?.toString() ?? '')) {
         _estimatedDurationController.text = quest.estimatedDurationHours?.toString() ?? '';
       }
@@ -92,7 +86,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
   void _populateFields() {
     final viewModel = context.read<EditQuestViewModel>();
     final quest = viewModel.quest;
-    
+
     if (quest != null) {
       _titleController.text = quest.title;
       _descriptionController.text = quest.description;
@@ -104,52 +98,35 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Scaffold(
-      backgroundColor: DnDTheme.dungeonBlack,
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              DnDTheme.dungeonBlack.withValues(alpha: 0.95),
-              DnDTheme.dungeonBlack.withValues(alpha: 0.85),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Consumer<EditQuestViewModel>(
-            builder: (context, viewModel, child) {
-              return Column(
-                children: [
-                  _buildHeader(context, viewModel),
-                  Expanded(
-                    child: _buildForm(context, viewModel),
-                  ),
-                ],
-              );
-            },
-          ),
+      backgroundColor: C.bg,
+      body: SafeArea(
+        child: Consumer<EditQuestViewModel>(
+          builder: (context, viewModel, child) {
+            return Column(
+              children: [
+                _buildHeader(context, viewModel),
+                Expanded(
+                  child: _buildForm(context, viewModel),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
   }
 
   Widget _buildHeader(BuildContext context, EditQuestViewModel viewModel) {
+    final C = context.appColors;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            DnDTheme.dungeonBlack.withValues(alpha: 0.95),
-            DnDTheme.dungeonBlack.withValues(alpha: 0.85),
-          ],
-        ),
+        color: C.bgPanel,
         border: Border(
           bottom: BorderSide(
-            color: DnDTheme.ancientGold.withValues(alpha: 0.3),
+            color: C.amber.withValues(alpha: 0.3),
             width: 2,
           ),
         ),
@@ -208,16 +185,16 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: DnDTheme.ancientGold,
+                color: C.amber,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
               ),
-              child: Row(
+              child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.edit, color: Colors.black87, size: 14),
-                  const SizedBox(width: 4),
-                  const Text(
+                  Icon(Icons.edit, color: Colors.black87, size: 14),
+                  SizedBox(width: 4),
+                  Text(
                     'Bearbeitet',
                     style: TextStyle(
                       color: Colors.black87,
@@ -255,14 +232,13 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
   }
 
   Widget _buildSectionHeader(IconData icon, String title) {
+    final C = context.appColors;
     return Row(
       children: [
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [DnDTheme.arcaneBlue, DnDTheme.mysticalPurple],
-            ),
+            color: C.accent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, color: Colors.white, size: 20),
@@ -270,8 +246,9 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
         const SizedBox(width: 12),
         Text(
           title,
-          style: DnDTheme.headline2.copyWith(
+          style: const TextStyle(
             fontSize: 18,
+            fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
         ),
@@ -280,25 +257,19 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
   }
 
   Widget _buildBasicInfoSection(BuildContext context, EditQuestViewModel viewModel) {
+    final C = context.appColors;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            DnDTheme.dungeonBlack.withValues(alpha: 0.85),
-            DnDTheme.dungeonBlack.withValues(alpha: 0.75),
-          ],
-        ),
+        color: C.bgPanel,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: DnDTheme.arcaneBlue.withValues(alpha: 0.5),
+          color: C.accent.withValues(alpha: 0.5),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: DnDTheme.arcaneBlue.withValues(alpha: 0.3),
+            color: C.accent.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -357,25 +328,19 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
   }
 
   Widget _buildQuestDetailsSection(BuildContext context, EditQuestViewModel viewModel) {
+    final C = context.appColors;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            DnDTheme.dungeonBlack.withValues(alpha: 0.85),
-            DnDTheme.dungeonBlack.withValues(alpha: 0.75),
-          ],
-        ),
+        color: C.bgPanel,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: DnDTheme.arcaneBlue.withValues(alpha: 0.5),
+          color: C.accent.withValues(alpha: 0.5),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: DnDTheme.arcaneBlue.withValues(alpha: 0.2),
+            color: C.accent.withValues(alpha: 0.2),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -466,27 +431,21 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
   }
 
   Widget _buildRewardsSection(BuildContext context, EditQuestViewModel viewModel) {
+    final C = context.appColors;
     final rewards = viewModel.quest?.rewards ?? [];
-    
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            DnDTheme.dungeonBlack.withValues(alpha: 0.85),
-            DnDTheme.dungeonBlack.withValues(alpha: 0.75),
-          ],
-        ),
+        color: C.bgPanel,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: DnDTheme.arcaneBlue.withValues(alpha: 0.5),
+          color: C.accent.withValues(alpha: 0.5),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: DnDTheme.arcaneBlue.withValues(alpha: 0.3),
+            color: C.accent.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -504,7 +463,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
                 icon: const Icon(Icons.add, size: 20),
                 label: const Text('Belohnung'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: DnDTheme.ancientGold,
+                  backgroundColor: C.amber,
                   foregroundColor: Colors.black87,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   shape: RoundedRectangleBorder(
@@ -521,17 +480,11 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    DnDTheme.dungeonBlack.withValues(alpha: 0.1),
-                    DnDTheme.dungeonBlack.withValues(alpha: 0.15),
-                  ],
-                ),
+                color: C.bgHover,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: DnDTheme.arcaneBlue.withValues(alpha: 0.4),
+                  color: C.accent.withValues(alpha: 0.4),
                   width: 2,
-                  style: BorderStyle.solid,
                 ),
               ),
               child: Column(
@@ -539,7 +492,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
                   Icon(
                     Icons.card_giftcard_outlined,
                     size: 48,
-                    color: DnDTheme.arcaneBlue.withValues(alpha: 0.7),
+                    color: C.accent.withValues(alpha: 0.7),
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -563,9 +516,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
             )
           else
             Column(
-              children: rewards.map((reward) {
-                return _buildRewardCard(viewModel, reward);
-              }).toList(),
+              children: rewards.map((reward) => _buildRewardCard(viewModel, reward)).toList(),
             ),
         ],
       ),
@@ -573,19 +524,15 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
   }
 
   Widget _buildRewardCard(EditQuestViewModel viewModel, QuestReward reward) {
+    final C = context.appColors;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            DnDTheme.dungeonBlack.withValues(alpha: 0.03),
-            DnDTheme.dungeonBlack.withValues(alpha: 0.06),
-          ],
-        ),
+        color: C.bgHover,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: DnDTheme.arcaneBlue.withValues(alpha: 0.3),
+          color: C.accent.withValues(alpha: 0.3),
           width: 1.5,
         ),
       ),
@@ -594,9 +541,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [DnDTheme.arcaneBlue, DnDTheme.mysticalPurple],
-              ),
+              color: C.accent,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
@@ -606,7 +551,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
             ),
           ),
           const SizedBox(width: 16),
-              Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -625,14 +570,14 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
                       _buildRewardChip(
                         Icons.monetization_on,
                         '${reward.goldAmount} Gold',
-                        DnDTheme.ancientGold,
+                        C.amber,
                       ),
                     if (reward.experiencePoints != null && reward.experiencePoints! > 0) ...[
                       const SizedBox(width: 8),
                       _buildRewardChip(
                         Icons.auto_graph,
                         '${reward.experiencePoints} EP',
-                        DnDTheme.arcaneBlue,
+                        C.accent,
                       ),
                     ],
                   ],
@@ -642,14 +587,14 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
           ),
           Container(
             decoration: BoxDecoration(
-              color: DnDTheme.errorRed.withValues(alpha: 0.1),
+              color: C.red.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: IconButton(
               onPressed: () => _showDeleteRewardDialog(viewModel, reward),
               icon: Icon(
                 Icons.delete_outline,
-                color: DnDTheme.errorRed,
+                color: C.red,
                 size: 22,
               ),
               tooltip: 'Löschen',
@@ -707,29 +652,33 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
     String? Function(String?)? validator,
     void Function(String)? onChanged,
   }) {
+    final C = context.appColors;
     return TextFormField(
       controller: controller,
       focusNode: focusNode,
       maxLines: maxLines,
       keyboardType: keyboardType,
+      style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
+        labelStyle: TextStyle(color: C.accent),
+        hintStyle: const TextStyle(color: Colors.white54),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: DnDTheme.arcaneBlue.withValues(alpha: 0.4)),
+          borderSide: BorderSide(color: C.accent.withValues(alpha: 0.4)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: DnDTheme.arcaneBlue, width: 2),
+          borderSide: BorderSide(color: C.accent, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: DnDTheme.errorRed, width: 2),
+          borderSide: BorderSide(color: C.red, width: 2),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: DnDTheme.errorRed, width: 2),
+          borderSide: BorderSide(color: C.red, width: 2),
         ),
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.05),
@@ -749,17 +698,21 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
     required String Function(T) displayName,
     required void Function(T?) onChanged,
   }) {
+    final C = context.appColors;
     return DropdownButtonFormField<T>(
       value: value,
+      dropdownColor: C.bgPanel,
+      style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         labelText: label,
+        labelStyle: TextStyle(color: C.accent),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: DnDTheme.arcaneBlue.withValues(alpha: 0.4)),
+          borderSide: BorderSide(color: C.accent.withValues(alpha: 0.4)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: DnDTheme.arcaneBlue, width: 2),
+          borderSide: BorderSide(color: C.accent, width: 2),
         ),
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.05),
@@ -776,6 +729,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
   }
 
   Widget _buildActionButtons(BuildContext context, EditQuestViewModel viewModel) {
+    final C = context.appColors;
     return Column(
       children: [
         if (viewModel.errorMessage != null)
@@ -784,24 +738,19 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
             padding: const EdgeInsets.all(16),
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  DnDTheme.errorRed.withValues(alpha: 0.15),
-                  DnDTheme.errorRed.withValues(alpha: 0.1),
-                ],
-              ),
-              border: Border.all(color: DnDTheme.errorRed, width: 2),
+              color: C.red.withValues(alpha: 0.12),
+              border: Border.all(color: C.red, width: 2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               children: [
-                const Icon(Icons.error_outline, color: DnDTheme.errorRed),
+                Icon(Icons.error_outline, color: C.red),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     viewModel.errorMessage!,
-                    style: const TextStyle(
-                      color: DnDTheme.errorRed,
+                    style: TextStyle(
+                      color: C.red,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -815,14 +764,14 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
               child: ElevatedButton(
                 onPressed: viewModel.isLoading ? null : () => _handleSave(viewModel),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: DnDTheme.successGreen,
+                  backgroundColor: C.green,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   elevation: 4,
-                  shadowColor: DnDTheme.successGreen.withValues(alpha: 0.4),
+                  shadowColor: C.green.withValues(alpha: 0.4),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -889,8 +838,8 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
                 child: OutlinedButton(
                   onPressed: viewModel.isLoading ? null : () => _handleDuplicate(viewModel),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: DnDTheme.arcaneBlue,
-                    side: BorderSide(color: DnDTheme.arcaneBlue, width: 2),
+                    foregroundColor: C.accent,
+                    side: BorderSide(color: C.accent, width: 2),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -917,8 +866,8 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
                 child: OutlinedButton(
                   onPressed: viewModel.isLoading ? null : () => _handleDelete(viewModel),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: DnDTheme.errorRed,
-                    side: BorderSide(color: DnDTheme.errorRed, width: 2),
+                    foregroundColor: C.red,
+                    side: BorderSide(color: C.red, width: 2),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -948,54 +897,40 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
   }
 
   String _getQuestStatusDisplayName(QuestStatus status) {
-    switch (status) {
-      case QuestStatus.active:
-        return 'Aktiv';
-      case QuestStatus.completed:
-        return 'Abgeschlossen';
-      case QuestStatus.failed:
-        return 'Fehlgeschlagen';
-      case QuestStatus.abandoned:
-        return 'Aufgegeben';
-      case QuestStatus.onHold:
-        return 'Pausiert';
-    }
+    return switch (status) {
+      QuestStatus.active => 'Aktiv',
+      QuestStatus.completed => 'Abgeschlossen',
+      QuestStatus.failed => 'Fehlgeschlagen',
+      QuestStatus.abandoned => 'Aufgegeben',
+      QuestStatus.onHold => 'Pausiert',
+    };
   }
 
   String _getQuestTypeDisplayName(QuestType type) {
-    switch (type) {
-      case QuestType.main:
-        return 'Hauptquest';
-      case QuestType.side:
-        return 'Nebenquest';
-      case QuestType.personal:
-        return 'Persönlich';
-      case QuestType.faction:
-        return 'Fraktions-Quest';
-    }
+    return switch (type) {
+      QuestType.main => 'Hauptquest',
+      QuestType.side => 'Nebenquest',
+      QuestType.personal => 'Persönlich',
+      QuestType.faction => 'Fraktions-Quest',
+    };
   }
 
   String _getQuestDifficultyDisplayName(QuestDifficulty difficulty) {
-    switch (difficulty) {
-      case QuestDifficulty.easy:
-        return 'Leicht';
-      case QuestDifficulty.medium:
-        return 'Mittel';
-      case QuestDifficulty.hard:
-        return 'Schwer';
-      case QuestDifficulty.deadly:
-        return 'Tödlich';
-      case QuestDifficulty.epic:
-        return 'Episch';
-      case QuestDifficulty.legendary:
-        return 'Legendär';
-    }
+    return switch (difficulty) {
+      QuestDifficulty.easy => 'Leicht',
+      QuestDifficulty.medium => 'Mittel',
+      QuestDifficulty.hard => 'Schwer',
+      QuestDifficulty.deadly => 'Tödlich',
+      QuestDifficulty.epic => 'Episch',
+      QuestDifficulty.legendary => 'Legendär',
+    };
   }
 
   void _showAddRewardDialog(EditQuestViewModel viewModel) {
     final descriptionController = TextEditingController();
     final goldController = TextEditingController();
     final xpController = TextEditingController();
+    final C = context.appColors;
 
     showDialog<void>(
       context: context,
@@ -1009,9 +944,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [DnDTheme.arcaneBlue, DnDTheme.mysticalPurple],
-                ),
+                color: C.accent,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.card_giftcard, color: Colors.white, size: 24),
@@ -1081,16 +1014,16 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
             onPressed: () {
               final gold = int.tryParse(goldController.text) ?? 0;
               final xp = int.tryParse(xpController.text) ?? 0;
-              
+
               if (descriptionController.text.trim().isNotEmpty || gold > 0 || xp > 0) {
                 final reward = QuestReward(
                   id: DateTime.now().millisecondsSinceEpoch.toString(),
                   type: gold > 0 ? QuestRewardType.gold : QuestRewardType.experience,
-                  name: descriptionController.text.trim().isNotEmpty 
-                      ? descriptionController.text 
+                  name: descriptionController.text.trim().isNotEmpty
+                      ? descriptionController.text
                       : (gold > 0 ? 'Gold Belohnung' : 'EP Belohnung'),
-                  description: descriptionController.text.trim().isNotEmpty 
-                      ? descriptionController.text 
+                  description: descriptionController.text.trim().isNotEmpty
+                      ? descriptionController.text
                       : null,
                   goldAmount: gold > 0 ? gold : null,
                   experiencePoints: xp > 0 ? xp : null,
@@ -1100,7 +1033,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.ancientGold,
+              backgroundColor: C.amber,
               foregroundColor: Colors.black87,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -1113,6 +1046,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
   }
 
   void _showDeleteRewardDialog(EditQuestViewModel viewModel, QuestReward reward) {
+    final C = context.appColors;
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -1125,10 +1059,10 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: DnDTheme.errorRed.withValues(alpha: 0.1),
+                color: C.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(Icons.delete_outline, color: DnDTheme.errorRed),
+              child: Icon(Icons.delete_outline, color: C.red),
             ),
             const SizedBox(width: 12),
             const Text(
@@ -1156,7 +1090,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
               Navigator.of(context).pop();
             },
             style: TextButton.styleFrom(
-              foregroundColor: DnDTheme.errorRed,
+              foregroundColor: C.red,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
@@ -1208,6 +1142,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
   }
 
   Future<bool?> _showUnsavedChangesDialog(EditQuestViewModel viewModel) {
+    final C = context.appColors;
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -1215,11 +1150,11 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: DnDTheme.ancientGold, size: 28),
-            SizedBox(width: 12),
-            Text(
+            Icon(Icons.warning_amber_rounded, color: C.amber, size: 28),
+            const SizedBox(width: 12),
+            const Text(
               'Ungespeicherte Änderungen',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
@@ -1241,7 +1176,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.arcaneBlue,
+              backgroundColor: C.accent,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -1254,6 +1189,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
   }
 
   Future<bool?> _showDeleteConfirmationDialog() {
+    final C = context.appColors;
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -1264,15 +1200,15 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
         title: Row(
           children: [
             Container(
-              padding:  EdgeInsets.all(8),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: DnDTheme.errorRed.withValues(alpha: 0.1),
+                color: C.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(Icons.dangerous, color: DnDTheme.errorRed),
+              child: Icon(Icons.dangerous, color: C.red),
             ),
             const SizedBox(width: 12),
-            Text(
+            const Text(
               'Löschen bestätigen',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
@@ -1294,7 +1230,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: TextButton.styleFrom(
-              foregroundColor: DnDTheme.errorRed,
+              foregroundColor: C.red,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),

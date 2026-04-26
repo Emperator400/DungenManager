@@ -103,6 +103,27 @@ class CampaignModelRepository extends ModelRepository<Campaign> {
     );
   }
 
+  /// Setzt last_opened_at auf jetzt
+  Future<void> updateLastOpenedAt(String id) async {
+    final db = await connection.database;
+    await db.update(
+      tableName,
+      {'last_opened_at': DateTime.now().toIso8601String()},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Gibt die zuletzt geöffnete Kampagne zurück
+  Future<Campaign?> findLastOpened() async {
+    final results = await findWhere(
+      where: 'last_opened_at IS NOT NULL',
+      orderBy: 'last_opened_at DESC',
+      limit: 1,
+    );
+    return results.isEmpty ? null : results.first;
+  }
+
   /// Findet aktive Kampagnen
   Future<List<Campaign>> findActiveCampaigns() async {
     return await findByStatus(CampaignStatus.active);

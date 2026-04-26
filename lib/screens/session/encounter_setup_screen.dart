@@ -12,7 +12,7 @@ import '../../viewmodels/encounter_planning_viewmodel.dart';
 import '../../database/repositories/sound_model_repository.dart';
 import '../../database/core/database_connection.dart';
 import '../../services/sound_service.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 import 'encounter_tracker_screen.dart' as encounter_tracker;
 import '../bestiary/bestiary_screen.dart';
 
@@ -657,6 +657,7 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
   }
 
   Widget _buildSelectedList() {
+    final C = context.appColors;
     final selectedCharacters = _viewModel.selectedCharacters;
     final selectedMonsters = _viewModel.selectedMonsters;
     final sortedParticipants = _viewModel.getSortedParticipantsByInitiative();
@@ -678,22 +679,17 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
                 ElevatedButton.icon(
                   icon: const Icon(Icons.casino, size: 18),
                   label: const Text('Alle würfeln'),
-                  onPressed: () {
-                    _viewModel.rollInitiativeForAll();
-                  },
+                  onPressed: _viewModel.rollInitiativeForAll,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: DnDTheme.ancientGold,
-                    foregroundColor: DnDTheme.dungeonBlack,
+                    backgroundColor: C.amber,
+                    foregroundColor: C.bg,
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Zurücksetzen Button
                 IconButton(
                   icon: const Icon(Icons.refresh, color: Colors.grey),
-                  onPressed: () {
-                    _viewModel.clearAllInitiatives();
-                  },
+                  onPressed: _viewModel.clearAllInitiatives,
                   tooltip: 'Initiative zurücksetzen',
                 ),
               ],
@@ -1109,14 +1105,12 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
     bool initiativeSet, {
     required bool isCharacter,
   }) {
+    final C = context.appColors;
     final controller = TextEditingController(
       text: initiativeSet ? initiative.toString() : '',
     );
-    
-    // Dynamische Farbe basierend auf initiativeSet
-    final textColor = initiativeSet ? DnDTheme.ancientGold : Colors.grey;
-    // Nicht-const Farbe für fillColor (verwendet nicht-const Fallback)
-    final fillColor = Colors.grey[850] ?? Color(0xFF424242);
+    final textColor = initiativeSet ? C.amber : Colors.grey;
+    final fillColor = Colors.grey[850] ?? const Color(0xFF424242);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -1163,13 +1157,13 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: DnDTheme.ancientGold.withValues(alpha: 0.2),
+              color: C.amber.withValues(alpha: 0.2),
               shape: BoxShape.circle,
-              border: Border.all(color: DnDTheme.ancientGold.withValues(alpha: 0.5)),
+              border: Border.all(color: C.amber.withValues(alpha: 0.5)),
             ),
             child: Icon(
               Icons.casino,
-              color: DnDTheme.ancientGold,
+              color: C.amber,
               size: 16,
             ),
           ),

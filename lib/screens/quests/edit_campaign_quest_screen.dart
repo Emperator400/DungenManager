@@ -4,7 +4,7 @@ import '../../database/core/database_connection.dart';
 import '../../database/repositories/quest_model_repository.dart';
 import '../../models/quest.dart';
 import '../../models/campaign_quest.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 
 class EditCampaignQuestScreen extends StatefulWidget {
   final CampaignQuest campaignQuest;
@@ -30,21 +30,24 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
     _notesController = TextEditingController(text: widget.campaignQuest.notes ?? '');
   }
 
+  @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
+
   Future<void> _saveChanges() async {
     setState(() => _isLoading = true);
-    
+
     try {
-      // Aktualisiere den Quest mit dem neuen Status und den Notizen
-      // Die Notizen werden als Quest-Beschreibung aktualisiert
       final updatedQuest = widget.campaignQuest.quest.copyWith(
         status: _selectedStatus,
-        // Wir fügen die Notizen zur Beschreibung hinzu oder speichern sie separat
       );
-      
+
       await _questRepository.update(updatedQuest);
-      
+
       debugPrint('✅ [EditCampaignQuestScreen] Quest erfolgreich aktualisiert');
-      
+
       setState(() => _isLoading = false);
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
@@ -54,7 +57,7 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Fehler beim Speichern: $e'),
-            backgroundColor: DnDTheme.errorRed,
+            backgroundColor: context.appColors.red,
           ),
         );
       }
@@ -62,10 +65,11 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
   }
 
   Future<void> _deleteQuest() async {
+    final C = context.appColors;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.dungeonBlack,
+        backgroundColor: C.bg,
         title: const Text(
           'Quest löschen?',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -76,7 +80,7 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: DnDTheme.errorRed.withValues(alpha: 0.5), width: 2),
+          side: BorderSide(color: C.red.withValues(alpha: 0.5), width: 2),
         ),
         actions: [
           TextButton(
@@ -92,7 +96,7 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.errorRed,
+              backgroundColor: C.red,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -100,9 +104,7 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
             ),
             child: const Text(
               'LÖSCHEN',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -111,12 +113,12 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
 
     if (confirm == true) {
       setState(() => _isLoading = true);
-      
+
       try {
         await _questRepository.delete(widget.campaignQuest.quest.id.toString());
-        
+
         debugPrint('✅ [EditCampaignQuestScreen] Quest erfolgreich gelöscht');
-        
+
         setState(() => _isLoading = false);
         if (mounted) Navigator.of(context).pop(true);
       } catch (e) {
@@ -126,7 +128,7 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Fehler beim Löschen: $e'),
-              backgroundColor: DnDTheme.errorRed,
+              backgroundColor: context.appColors.red,
             ),
           );
         }
@@ -136,10 +138,11 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     final quest = widget.campaignQuest.quest;
-    
+
     return Scaffold(
-      backgroundColor: DnDTheme.dungeonBlack,
+      backgroundColor: C.bg,
       body: SafeArea(
         child: Column(
           children: [
@@ -168,17 +171,11 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
   }
 
   Widget _buildHeader(BuildContext context, Quest quest) {
+    final C = context.appColors;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            DnDTheme.mysticalPurple,
-            DnDTheme.arcaneBlue,
-          ],
-        ),
+        color: C.accent,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.4),
@@ -236,25 +233,19 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
   }
 
   Widget _buildQuestInfoSection(Quest quest) {
+    final C = context.appColors;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            DnDTheme.dungeonBlack.withValues(alpha: 0.85),
-            DnDTheme.dungeonBlack.withValues(alpha: 0.75),
-          ],
-        ),
+        color: C.bgPanel,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: DnDTheme.arcaneBlue.withValues(alpha: 0.5),
+          color: C.accent.withValues(alpha: 0.5),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: DnDTheme.arcaneBlue.withValues(alpha: 0.2),
+            color: C.accent.withValues(alpha: 0.2),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -287,15 +278,14 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
   }
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
+    final C = context.appColors;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [DnDTheme.arcaneBlue, DnDTheme.mysticalPurple],
-            ),
+            color: C.accent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, color: Colors.white, size: 20),
@@ -329,14 +319,13 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
   }
 
   Widget _buildSectionHeader(IconData icon, String title) {
+    final C = context.appColors;
     return Row(
       children: [
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [DnDTheme.arcaneBlue, DnDTheme.mysticalPurple],
-            ),
+            color: C.accent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, color: Colors.white, size: 20),
@@ -355,25 +344,19 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
   }
 
   Widget _buildStatusSection() {
+    final C = context.appColors;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            DnDTheme.dungeonBlack.withValues(alpha: 0.85),
-            DnDTheme.dungeonBlack.withValues(alpha: 0.75),
-          ],
-        ),
+        color: C.bgPanel,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: DnDTheme.ancientGold.withValues(alpha: 0.5),
+          color: C.amber.withValues(alpha: 0.5),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: DnDTheme.ancientGold.withValues(alpha: 0.2),
+            color: C.amber.withValues(alpha: 0.2),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -391,29 +374,24 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
   }
 
   Widget _buildStatusOptions() {
+    final C = context.appColors;
     return Column(
       children: QuestStatus.values.map((status) {
         final isSelected = _selectedStatus == status;
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: InkWell(
-            onTap: () {
-              setState(() {
-                _selectedStatus = status;
-              });
-            },
+            onTap: () => setState(() => _selectedStatus = status),
             borderRadius: BorderRadius.circular(12),
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: isSelected
-                      ? [DnDTheme.arcaneBlue.withValues(alpha: 0.3), DnDTheme.mysticalPurple.withValues(alpha: 0.3)]
-                      : [Colors.white.withValues(alpha: 0.05), Colors.white.withValues(alpha: 0.02)],
-                ),
+                color: isSelected
+                    ? C.accent.withValues(alpha: 0.2)
+                    : Colors.white.withValues(alpha: 0.04),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: isSelected ? DnDTheme.arcaneBlue : Colors.grey[600]!.withValues(alpha: 0.3),
+                  color: isSelected ? C.accent : Colors.grey[600]!.withValues(alpha: 0.3),
                   width: isSelected ? 2 : 1,
                 ),
               ),
@@ -421,7 +399,7 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
                 children: [
                   Icon(
                     _getStatusIcon(status),
-                    color: isSelected ? DnDTheme.arcaneBlue : Colors.grey[400],
+                    color: isSelected ? C.accent : Colors.grey[400],
                     size: 24,
                   ),
                   const SizedBox(width: 16),
@@ -431,16 +409,12 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: isSelected ? DnDTheme.arcaneBlue : Colors.white,
+                        color: isSelected ? C.accent : Colors.white,
                       ),
                     ),
                   ),
                   if (isSelected)
-                    Icon(
-                      Icons.check_circle,
-                      color: DnDTheme.arcaneBlue,
-                      size: 24,
-                    ),
+                    Icon(Icons.check_circle, color: C.accent, size: 24),
                 ],
               ),
             ),
@@ -451,55 +425,39 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
   }
 
   IconData _getStatusIcon(QuestStatus status) {
-    switch (status) {
-      case QuestStatus.active:
-        return Icons.play_circle_outline;
-      case QuestStatus.completed:
-        return Icons.check_circle_outline;
-      case QuestStatus.failed:
-        return Icons.cancel;
-      case QuestStatus.abandoned:
-        return Icons.exit_to_app;
-      case QuestStatus.onHold:
-        return Icons.pause_circle_outline;
-    }
+    return switch (status) {
+      QuestStatus.active => Icons.play_circle_outline,
+      QuestStatus.completed => Icons.check_circle_outline,
+      QuestStatus.failed => Icons.cancel,
+      QuestStatus.abandoned => Icons.exit_to_app,
+      QuestStatus.onHold => Icons.pause_circle_outline,
+    };
   }
 
   String _getQuestStatusDisplayName(QuestStatus status) {
-    switch (status) {
-      case QuestStatus.active:
-        return 'Aktiv';
-      case QuestStatus.completed:
-        return 'Abgeschlossen';
-      case QuestStatus.failed:
-        return 'Fehlgeschlagen';
-      case QuestStatus.abandoned:
-        return 'Aufgegeben';
-      case QuestStatus.onHold:
-        return 'Pausiert';
-    }
+    return switch (status) {
+      QuestStatus.active => 'Aktiv',
+      QuestStatus.completed => 'Abgeschlossen',
+      QuestStatus.failed => 'Fehlgeschlagen',
+      QuestStatus.abandoned => 'Aufgegeben',
+      QuestStatus.onHold => 'Pausiert',
+    };
   }
 
   Widget _buildNotesSection() {
+    final C = context.appColors;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            DnDTheme.dungeonBlack.withValues(alpha: 0.85),
-            DnDTheme.dungeonBlack.withValues(alpha: 0.75),
-          ],
-        ),
+        color: C.bgPanel,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
+          color: const Color(0xFF7C3AED).withValues(alpha: 0.5),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: DnDTheme.mysticalPurple.withValues(alpha: 0.2),
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.2),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -512,10 +470,7 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
           const SizedBox(height: 8),
           Text(
             'Verwalte den Fortschritt und Notizen zum Quest hier',
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey[400],
-            ),
+            style: TextStyle(fontSize: 13, color: Colors.grey[400]),
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -531,7 +486,7 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: DnDTheme.arcaneBlue, width: 2),
+                borderSide: BorderSide(color: C.accent, width: 2),
               ),
               filled: true,
               fillColor: Colors.white.withValues(alpha: 0.05),
@@ -544,6 +499,7 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
   }
 
   Widget _buildActionButtons() {
+    final C = context.appColors;
     return Column(
       children: [
         Row(
@@ -552,14 +508,14 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _saveChanges,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: DnDTheme.successGreen,
+                  backgroundColor: C.green,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   elevation: 4,
-                  shadowColor: DnDTheme.successGreen.withValues(alpha: 0.4),
+                  shadowColor: C.green.withValues(alpha: 0.4),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -578,10 +534,7 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
                       const SizedBox(width: 8),
                       const Text(
                         'SPEICHERN',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ],
@@ -594,7 +547,7 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
                 onPressed: () => Navigator.of(context).pop(),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white,
-                  side: BorderSide(color: Colors.white70, width: 2),
+                  side: const BorderSide(color: Colors.white70, width: 2),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -607,10 +560,7 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
                     SizedBox(width: 8),
                     Text(
                       'ABBRECHEN',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -624,8 +574,8 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
           child: OutlinedButton(
             onPressed: _isLoading ? null : _deleteQuest,
             style: OutlinedButton.styleFrom(
-              foregroundColor: DnDTheme.errorRed,
-              side: BorderSide(color: DnDTheme.errorRed, width: 2),
+              foregroundColor: C.red,
+              side: BorderSide(color: C.red, width: 2),
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -638,10 +588,7 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
                 SizedBox(width: 8),
                 Text(
                   'QUEST LÖSCHEN',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -649,11 +596,5 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
         ),
       ],
     );
-  }
-
-  @override
-  void dispose() {
-    _notesController.dispose();
-    super.dispose();
   }
 }

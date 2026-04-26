@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 
 // Import aller Screens
 import '../campaign/campaign_selection_screen.dart';
@@ -29,68 +29,75 @@ class AllScreensScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Scaffold(
-      backgroundColor: DnDTheme.dungeonBlack,
+      backgroundColor: C.bg,
       appBar: AppBar(
         title: Text(
           'Alle Screens - UI Testing',
-          style: DnDTheme.headline2.copyWith(color: DnDTheme.ancientGold),
+          style: TextStyle(fontSize: 22, color: C.amber, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: DnDTheme.stoneGrey,
-        foregroundColor: DnDTheme.ancientGold,
+        backgroundColor: C.bgPanel,
+        foregroundColor: C.amber,
         elevation: 4,
-        iconTheme: const IconThemeData(color: DnDTheme.ancientGold),
+        iconTheme: IconThemeData(color: C.amber),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(DnDTheme.md),
+        padding: const EdgeInsets.all(16),
         children: [
-          _buildSectionHeader('🎯 KAMPAGNEN-MANAGEMENT'),
+          _buildSectionHeader(context, '🎯 KAMPAGNEN-MANAGEMENT'),
           _buildCampaignScreens(context),
-          
-          _buildSectionHeader('📜 QUEST-MANAGEMENT'),
+
+          _buildSectionHeader(context, '📜 QUEST-MANAGEMENT'),
           _buildQuestScreens(context),
-          
-          _buildSectionHeader('📚 WIKI/LORE MANAGEMENT'),
+
+          _buildSectionHeader(context, '📚 WIKI/LORE MANAGEMENT'),
           _buildWikiScreens(context),
-          
-          _buildSectionHeader('🧑‍🤝‍🧑 CHARACTER MANAGEMENT'),
+
+          _buildSectionHeader(context, '🧑‍🤝‍🧑 CHARACTER MANAGEMENT'),
           _buildCharacterScreens(context),
-          
-          _buildSectionHeader('⚔️ BESTIARY & MONSTER MANAGEMENT'),
+
+          _buildSectionHeader(context, '⚔️ BESTIARY & MONSTER MANAGEMENT'),
           _buildBestiaryScreens(context),
-          
-          _buildSectionHeader('🎒 ITEM MANAGEMENT'),
+
+          _buildSectionHeader(context, '🎒 ITEM MANAGEMENT'),
           _buildItemScreens(context),
-          
-          _buildSectionHeader('🎵 AUDIO MANAGEMENT'),
+
+          _buildSectionHeader(context, '🎵 AUDIO MANAGEMENT'),
           _buildAudioScreens(context),
-          
-          _buildSectionHeader('🎮 SESSION MANAGEMENT'),
+
+          _buildSectionHeader(context, '🎮 SESSION MANAGEMENT'),
           _buildSessionScreens(context),
-          
-          _buildSectionHeader('🧑‍🤝‍🧑 CHARACTER MANAGEMENT TESTING'),
+
+          _buildSectionHeader(context, '🧑‍🤝‍🧑 CHARACTER MANAGEMENT TESTING'),
           _buildCharacterTestingScreens(context),
-          
-          _buildSectionHeader('🔧 MAIN NAVIGATION'),
+
+          _buildSectionHeader(context, '🔧 MAIN NAVIGATION'),
           _buildMainNavigationScreens(context),
-          
-          _buildSectionHeader('🔍 DEBUG TOOLS'),
+
+          _buildSectionHeader(context, '🔍 DEBUG TOOLS'),
           _buildDebugScreens(context),
         ],
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(BuildContext context, String title) {
+    final C = context.appColors;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: DnDTheme.md),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       child: Container(
-        padding: const EdgeInsets.all(DnDTheme.md),
-        decoration: DnDTheme.getMysticalBorder(borderColor: DnDTheme.mysticalPurple),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: C.bgPanel,
+          border: Border.all(color: const Color(0xFF7C3AED)),
+          borderRadius: BorderRadius.circular(8),
+        ),
         child: Text(
           title,
-          style: DnDTheme.headline3.copyWith(
-            color: DnDTheme.mysticalPurple,
+          style: const TextStyle(
+            fontSize: 16,
+            color: Color(0xFF7C3AED),
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -106,31 +113,37 @@ class AllScreensScreen extends StatelessWidget {
     bool needsParams = false,
     String? paramWarning,
   }) {
+    final C = context.appColors;
+    const orange = Color(0xFFEA580C);
+    const green = Color(0xFF22C55E);
+    final borderColor = needsParams ? orange : green;
+    final textColor = needsParams ? orange : green;
     return Container(
-      margin: const EdgeInsets.only(bottom: DnDTheme.sm),
-      decoration: DnDTheme.getFantasyCardDecoration(
-        borderColor: needsParams ? DnDTheme.warningOrange : DnDTheme.emeraldGreen,
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: C.bgPanel,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor, width: 2),
       ),
       child: ListTile(
         title: Text(
           title,
-          style: DnDTheme.headline3.copyWith(
-            color: needsParams ? DnDTheme.warningOrange : DnDTheme.emeraldGreen,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               description,
-              style: DnDTheme.bodyText2,
+              style: const TextStyle(fontSize: 14, color: Colors.white70),
             ),
             if (needsParams && paramWarning != null) ...[
-              const SizedBox(height: DnDTheme.xs),
+              const SizedBox(height: 4),
               Text(
                 paramWarning,
-                style: DnDTheme.bodyText2.copyWith(
-                  color: DnDTheme.warningOrange,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: orange,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -139,7 +152,7 @@ class AllScreensScreen extends StatelessWidget {
         ),
         trailing: Icon(
           needsParams ? Icons.warning : Icons.play_arrow,
-          color: needsParams ? DnDTheme.warningOrange : DnDTheme.emeraldGreen,
+          color: textColor,
           size: 28,
         ),
         onTap: onTap,
@@ -421,14 +434,12 @@ class AllScreensScreen extends StatelessWidget {
           title: '⚔️ Combat Testing Arena',
           description: 'Test-Bereich für Kampf-Mechaniken und Initiative-Systeme',
           onTap: () => _navigateToScreen(context, () => _combatTestingArena()),
-          needsParams: false,
         ),
         _buildScreenCard(
           context: context,
           title: '🎒 Inventory Management Test',
           description: 'Testing-Screen für Item-Management',
           onTap: () => _navigateToScreen(context, () => _inventoryManagementTest()),
-          needsParams: false,
         ),
       ],
     );
@@ -455,7 +466,6 @@ class AllScreensScreen extends StatelessWidget {
           title: 'Screen Graph Visualization',
           description: 'Visualisierung aller Screens und deren Beziehungen',
           onTap: () => _navigateToScreen(context, () => const ScreenGraphVisualizationScreen()),
-          needsParams: false,
         ),
       ],
     );
@@ -463,7 +473,7 @@ class AllScreensScreen extends StatelessWidget {
 
   void _navigateToScreen(BuildContext context, Widget Function() screenBuilder) {
     Navigator.of(context).push(
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
         builder: (context) => screenBuilder(),
       ),
     );
@@ -471,43 +481,44 @@ class AllScreensScreen extends StatelessWidget {
 
   Widget _combatTestingArena() {
     String? lastResult;
-    
+
     return StatefulBuilder(
       builder: (context, setState) {
+        final C = context.appColors;
         return Scaffold(
-          backgroundColor: DnDTheme.dungeonBlack,
+          backgroundColor: C.bg,
           appBar: AppBar(
             title: const Text('⚔️ Combat Testing Arena'),
-            backgroundColor: DnDTheme.emeraldGreen,
-            foregroundColor: DnDTheme.dungeonBlack,
+            backgroundColor: const Color(0xFF22C55E),
+            foregroundColor: Colors.black,
           ),
           body: Column(
             children: [
               if (lastResult != null)
                 Container(
-                  margin: const EdgeInsets.all(DnDTheme.md),
-                  padding: const EdgeInsets.all(DnDTheme.md),
-                  decoration: DnDTheme.getFantasyCardDecoration(
-                    borderColor: DnDTheme.ancientGold,
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: C.bgPanel,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: C.amber, width: 2),
                   ),
                   child: Text(
                     'Letztes Ergebnis: $lastResult',
-                    style: DnDTheme.bodyText1.copyWith(
-                      color: DnDTheme.ancientGold,
-                    ),
+                    style: TextStyle(fontSize: 14, color: C.amber),
                   ),
                 ),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.all(DnDTheme.md),
+                  padding: const EdgeInsets.all(16),
                   children: [
-                    _buildCombatTestCard('Initiative Test', 'Teste Initiative-System', () {
+                    _buildCombatTestCard(context, 'Initiative Test', 'Teste Initiative-System', () {
                       final roll = (1 + (DateTime.now().millisecond % 20)).toString();
                       final result = 'Initiative-Wurf: $roll + DEX Bonus (3) = ${int.parse(roll) + 3}';
                       setState(() => lastResult = result);
                       _showTestDialog(context, 'Initiative Test', result);
                     }),
-                    _buildCombatTestCard('Attack Roll Test', 'Teste Angriffswürfe', () {
+                    _buildCombatTestCard(context, 'Attack Roll Test', 'Teste Angriffswürfe', () {
                       final roll = (1 + (DateTime.now().millisecond % 20)).toString();
                       final result = 'Attack-Wurf: $roll + STR Bonus (4) = ${int.parse(roll) + 4}';
                       setState(() => lastResult = result);
@@ -526,37 +537,38 @@ class AllScreensScreen extends StatelessWidget {
   Widget _inventoryManagementTest() {
     List<String> inventory = ['Schwert', 'Rüstung', 'Trank', 'Karte'];
     String? lastResult;
-    
+
     return StatefulBuilder(
       builder: (context, setState) {
+        final C = context.appColors;
         return Scaffold(
-          backgroundColor: DnDTheme.dungeonBlack,
+          backgroundColor: C.bg,
           appBar: AppBar(
             title: const Text('🎒 Inventory Management Test'),
-            backgroundColor: DnDTheme.emeraldGreen,
-            foregroundColor: DnDTheme.dungeonBlack,
+            backgroundColor: const Color(0xFF22C55E),
+            foregroundColor: Colors.black,
           ),
           body: Column(
             children: [
               if (lastResult != null)
                 Container(
-                  margin: const EdgeInsets.all(DnDTheme.md),
-                  padding: const EdgeInsets.all(DnDTheme.md),
-                  decoration: DnDTheme.getFantasyCardDecoration(
-                    borderColor: DnDTheme.ancientGold,
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: C.bgPanel,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: C.amber, width: 2),
                   ),
                   child: Text(
                     'Letzte Aktion: $lastResult',
-                    style: DnDTheme.bodyText1.copyWith(
-                      color: DnDTheme.ancientGold,
-                    ),
+                    style: TextStyle(fontSize: 14, color: C.amber),
                   ),
                 ),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.all(DnDTheme.md),
+                  padding: const EdgeInsets.all(16),
                   children: [
-                    _buildInventoryTestCard('Item Pickup', 'Teste Item-Aufnahme', () {
+                    _buildInventoryTestCard(context, 'Item Pickup', 'Teste Item-Aufnahme', () {
                       final newItem = ['Schild', 'Helme', 'Stiefel', 'Handschuhe'][DateTime.now().millisecond % 4];
                       setState(() {
                         inventory.add(newItem);
@@ -574,80 +586,73 @@ class AllScreensScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCombatTestCard(String title, String description, VoidCallback onTap) {
+  Widget _buildCombatTestCard(BuildContext context, String title, String description, VoidCallback onTap) {
+    final C = context.appColors;
     return Container(
-      margin: const EdgeInsets.only(bottom: DnDTheme.sm),
-      decoration: DnDTheme.getFantasyCardDecoration(
-        borderColor: DnDTheme.emeraldGreen,
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: C.bgPanel,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF22C55E), width: 2),
       ),
       child: ListTile(
         title: Text(
           title,
-          style: DnDTheme.headline3.copyWith(
-            color: DnDTheme.emeraldGreen,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF22C55E)),
         ),
         subtitle: Text(
           description,
-          style: DnDTheme.bodyText2,
+          style: const TextStyle(fontSize: 14, color: Colors.white70),
         ),
-        trailing: Icon(
-          Icons.play_arrow,
-          color: DnDTheme.emeraldGreen,
-        ),
+        trailing: const Icon(Icons.play_arrow, color: Color(0xFF22C55E)),
         onTap: onTap,
       ),
     );
   }
 
-  Widget _buildInventoryTestCard(String title, String description, VoidCallback onTap) {
+  Widget _buildInventoryTestCard(BuildContext context, String title, String description, VoidCallback onTap) {
+    final C = context.appColors;
     return Container(
-      margin: const EdgeInsets.only(bottom: DnDTheme.sm),
-      decoration: DnDTheme.getFantasyCardDecoration(
-        borderColor: DnDTheme.emeraldGreen,
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: C.bgPanel,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF22C55E), width: 2),
       ),
       child: ListTile(
         title: Text(
           title,
-          style: DnDTheme.headline3.copyWith(
-            color: DnDTheme.emeraldGreen,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF22C55E)),
         ),
         subtitle: Text(
           description,
-          style: DnDTheme.bodyText2,
+          style: const TextStyle(fontSize: 14, color: Colors.white70),
         ),
-        trailing: Icon(
-          Icons.play_arrow,
-          color: DnDTheme.emeraldGreen,
-        ),
+        trailing: const Icon(Icons.play_arrow, color: Color(0xFF22C55E)),
         onTap: onTap,
       ),
     );
   }
 
   void _showTestDialog(BuildContext context, String title, String description) {
-    showDialog(
+    final C = context.appColors;
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
+        backgroundColor: C.bgPanel,
         title: Text(
           title,
-          style: DnDTheme.headline3.copyWith(
-            color: DnDTheme.ancientGold,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: C.amber),
         ),
         content: Text(
           description,
-          style: DnDTheme.bodyText1.copyWith(
-            color: DnDTheme.emeraldGreen,
-          ),
+          style: const TextStyle(fontSize: 14, color: Color(0xFF22C55E)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             style: TextButton.styleFrom(
-              foregroundColor: DnDTheme.emeraldGreen,
+              foregroundColor: const Color(0xFF22C55E),
             ),
             child: const Text('OK'),
           ),
@@ -659,48 +664,51 @@ class AllScreensScreen extends StatelessWidget {
   Widget _placeholderScreen(String title) {
     return Builder(
       builder: (context) {
+        final C = context.appColors;
         return Scaffold(
-          backgroundColor: DnDTheme.dungeonBlack,
+          backgroundColor: C.bg,
           appBar: AppBar(
             title: Text(title),
-            backgroundColor: DnDTheme.stoneGrey,
-            foregroundColor: DnDTheme.warningOrange,
+            backgroundColor: C.bgPanel,
+            foregroundColor: const Color(0xFFEA580C),
           ),
           body: Center(
             child: Container(
-              padding: const EdgeInsets.all(DnDTheme.xl),
-              decoration: DnDTheme.getFantasyCardDecoration(
-                borderColor: DnDTheme.warningOrange,
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: C.bgPanel,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFEA580C), width: 2),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.construction,
                     size: 64,
-                    color: DnDTheme.warningOrange,
+                    color: Color(0xFFEA580C),
                   ),
-                  const SizedBox(height: DnDTheme.md),
-                  Text(
+                  const SizedBox(height: 16),
+                  const Text(
                     'In Arbeit',
-                    style: DnDTheme.headline2.copyWith(
-                      color: DnDTheme.warningOrange,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFEA580C),
                     ),
                   ),
-                  const SizedBox(height: DnDTheme.sm),
+                  const SizedBox(height: 8),
                   Text(
                     '$title benötigt spezielle Parameter\nfür die vollständige Funktionalität.',
                     textAlign: TextAlign.center,
-                    style: DnDTheme.bodyText1.copyWith(
-                      color: DnDTheme.warningOrange,
-                    ),
+                    style: const TextStyle(fontSize: 14, color: Color(0xFFEA580C)),
                   ),
-                  const SizedBox(height: DnDTheme.lg),
+                  const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: () => Navigator.of(context).pop(),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: DnDTheme.warningOrange,
-                      foregroundColor: DnDTheme.dungeonBlack,
+                      backgroundColor: const Color(0xFFEA580C),
+                      foregroundColor: Colors.black,
                     ),
                     child: const Text('Zurück'),
                   ),
