@@ -42,3 +42,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Icon generation
+node_modules/
+package.json
+package-lock.json
+generate_icons.mjs
