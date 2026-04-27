@@ -38,12 +38,11 @@ class SessionQuadrantBase extends StatelessWidget {
         ],
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
           // Header
           _buildHeader(),
           // Content
-          Flexible(
+          Expanded(
             child: content,
           ),
         ],

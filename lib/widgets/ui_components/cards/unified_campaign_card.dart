@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../models/campaign.dart';
+import '../../../utils/color_utils.dart';
 import '../../../theme/app_theme.dart';
 import '../../../viewmodels/campaign_viewmodel.dart';
 import '../../../widgets/ui_components/shared/app_icon.dart';
@@ -61,7 +62,10 @@ class _CampaignCardContentState extends State<_CampaignCardContent> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Farbstreifen
-              Container(height: 3, color: C.accent),
+              Builder(builder: (context) {
+                final cardColor = ColorUtils.fromHex(c.campaign.accentColor) ?? C.accent;
+                return Container(height: 3, color: cardColor);
+              }),
 
               Padding(
                 padding: const EdgeInsets.all(14),
@@ -73,13 +77,16 @@ class _CampaignCardContentState extends State<_CampaignCardContent> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Avatar
-                        _Avatar(
-                          letter: c.campaign.title.isNotEmpty
-                              ? c.campaign.title[0].toUpperCase()
-                              : '?',
-                          color: C.accent,
-                          bg: C.accentSoft,
-                        ),
+                        Builder(builder: (context) {
+                          final cardColor = ColorUtils.fromHex(c.campaign.accentColor) ?? C.accent;
+                          return _Avatar(
+                            letter: c.campaign.title.isNotEmpty
+                                ? c.campaign.title[0].toUpperCase()
+                                : '?',
+                            color: cardColor,
+                            bg: cardColor.withValues(alpha: 0.15),
+                          );
+                        }),
                         const SizedBox(width: 10),
                         // Titel + Status
                         Expanded(

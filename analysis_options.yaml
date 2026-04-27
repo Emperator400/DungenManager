@@ -10,6 +10,7 @@ analyzer:
     - "**/*.freezed.dart"
     - "build/**"
     - "lib/generated/**"
+    - "Muell/**"
   
   errors:
     # Treat these as errors (not just warnings)

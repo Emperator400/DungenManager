@@ -436,6 +436,7 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
   Future<void> _updateInitialSoundIds() async {
     if (_isDisposed) return;
 
+    final soundRepo = context.read<SoundModelRepository>();
     final newIds = widget.initialSoundIds?.toSet() ?? {};
     final currentIds = _mixerService.channels.map((c) => c.sound.id).toSet();
 
@@ -447,7 +448,6 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
 
     // Neue Sounds hinzufügen
     if (newIds.isNotEmpty) {
-      final soundRepo = context.read<SoundModelRepository>();
       for (final soundId in newIds.difference(currentIds)) {
         if (_isDisposed) return;
         try {
@@ -472,6 +472,8 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
   }
 
   Future<void> _initializeMixer() async {
+    final soundRepo = context.read<SoundModelRepository>();
+
     // Direkt übergebene Sound-Objekte laden
     if (widget.initialSounds != null && widget.initialSounds!.isNotEmpty) {
       for (final sound in widget.initialSounds!) {
@@ -486,10 +488,9 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
         }
       }
     }
-    
+
     // Sound-IDs laden falls vorhanden
     if (widget.initialSoundIds != null && widget.initialSoundIds!.isNotEmpty) {
-      final soundRepo = context.read<SoundModelRepository>();
       
       for (final soundId in widget.initialSoundIds!) {
         if (_isDisposed) return; // Prüfen ob Widget noch existiert

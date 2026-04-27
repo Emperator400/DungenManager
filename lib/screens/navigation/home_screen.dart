@@ -14,6 +14,7 @@ import '../../widgets/ui_components/shared/app_icon.dart';
 import '../../widgets/ui_components/shared/app_logo.dart';
 import '../../widgets/update_dialog.dart';
 
+import '../../utils/color_utils.dart';
 import '../bestiary/bestiary_screen.dart';
 import '../audio/sound_library_screen.dart';
 import '../campaign/campaign_selection_screen.dart';
@@ -222,6 +223,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     final c = _lastCampaign!;
     final sessionCount = c.sessionIds.length;
+    final campaignColor = ColorUtils.fromHex(c.accentColor) ?? C.accent;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
@@ -234,14 +236,14 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             width: 36, height: 36,
             decoration: BoxDecoration(
-              color: const Color(0xFF2F6FEB).withValues(alpha: 0.13),
-              border: Border.all(color: const Color(0xFF2F6FEB).withValues(alpha: 0.35)),
+              color: campaignColor.withValues(alpha: 0.13),
+              border: Border.all(color: campaignColor.withValues(alpha: 0.35)),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Center(
               child: Text(
                 c.title.isNotEmpty ? c.title[0].toUpperCase() : 'D',
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF2F6FEB)),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: campaignColor),
               ),
             ),
           ),
@@ -269,7 +271,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _FilledBtn(
             label: 'Fortsetzen',
             icon: AppIconName.play,
-            color: const Color(0xFF2F6FEB),
+            color: campaignColor,
             onTap: () => _openLastCampaign(context),
           ),
         ],

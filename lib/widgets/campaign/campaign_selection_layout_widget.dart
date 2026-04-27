@@ -7,7 +7,6 @@ import '../../theme/theme_notifier.dart';
 import '../../viewmodels/campaign_viewmodel.dart';
 import '../../viewmodels/update_viewmodel.dart';
 import '../../widgets/update_dialog.dart';
-import '../../widgets/campaign/campaign_create_dialog_widget.dart';
 import '../../widgets/campaign/enhanced_campaign_filter_chips_widget.dart';
 import '../../widgets/ui_components/cards/unified_campaign_card.dart';
 import '../../widgets/ui_components/feedback/snackbar_helper.dart';
@@ -19,8 +18,8 @@ import '../../widgets/ui_components/shared/app_logo.dart';
 
 import '../../database/core/database_connection.dart';
 import '../../database/repositories/campaign_model_repository.dart';
-import '../../screens/campaign/edit_campaign_screen.dart';
 import '../../screens/navigation/main_navigation_screen.dart';
+import '../../widgets/campaign/campaign_edit_modal_widget.dart';
 
 class CampaignSelectionLayout extends StatelessWidget {
   const CampaignSelectionLayout({super.key});
@@ -232,14 +231,7 @@ class CampaignSelectionLayout extends StatelessWidget {
   }
 
   void _editCampaign(BuildContext context, Campaign campaign) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (context) => ChangeNotifierProvider.value(
-          value: context.read<CampaignViewModel>(),
-          child: EditCampaignScreen(campaign: campaign),
-        ),
-      ),
-    );
+    CampaignEditModal.show(context, campaign: campaign);
   }
 
   Future<void> _duplicateCampaign(
@@ -296,12 +288,7 @@ class CampaignSelectionLayout extends StatelessWidget {
   }
 
   void _showCreateCampaignDialog(BuildContext context) {
-    final viewModel = context.read<CampaignViewModel>();
-    CampaignCreateDialogWidget.show(
-      context,
-      viewModel: viewModel,
-      onSuccess: () => viewModel.refresh(),
-    );
+    CampaignEditModal.show(context);
   }
 
   Future<void> _checkForUpdatesManually(BuildContext context) async {

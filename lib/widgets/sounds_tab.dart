@@ -1,13 +1,11 @@
 // lib/widgets/sounds_tab.dart
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
 import 'package:audioplayers/audioplayers.dart';
 import '../database/core/database_connection.dart';
 import '../database/repositories/sound_model_repository.dart';
 import '../models/sound.dart';
+import '../services/sound_service.dart';
 
 class SoundsTab extends StatefulWidget {
   const SoundsTab({super.key});
@@ -42,37 +40,26 @@ class _SoundsTabState extends State<SoundsTab> {
   }
 
   Future<void> _previewSound(Sound sound) async {
+    final absolutePath = await SoundService.resolveFilePath(sound.filePath);
     await _previewPlayer.stop();
-    // Kein 'mounted'-Check nötig, da wir nicht auf den State oder Context zugreifen
-    await _previewPlayer.play(DeviceFileSource(sound.filePath));
+    await _previewPlayer.play(DeviceFileSource(absolutePath));
   }
 
   Future<void> _addNewSound() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.audio);
     if (!mounted || result == null || result.files.single.path == null) return;
 
-    File sourceFile = File(result.files.single.path!);
-    final directory = await getApplicationDocumentsDirectory();
-    if (!mounted) return;
-
-    final String fileName = p.basename(sourceFile.path);
-    final String destinationPath = p.join(directory.path, 'sounds', fileName);
-    final destinationDirectory = Directory(p.join(directory.path, 'sounds'));
-
-    if (!await destinationDirectory.exists()) {
-      await destinationDirectory.create(recursive: true);
-    }
-    
-    final File destinationFile = await sourceFile.copy(destinationPath);
+    final sourcePath = result.files.single.path!;
     if (!mounted) return;
 
     final soundDetails = await _showSoundDetailsDialog();
     if (!mounted || soundDetails == null) return;
 
-    final newSound = Sound(
-      name: soundDetails['name'] as String,
-      filePath: destinationFile.path,
-      soundType: soundDetails['type'] as SoundType,
+    // SoundService kopiert Datei in DungenManager/sounds/ und speichert relativen Pfad
+    final newSound = await SoundService.uploadSound(
+      soundDetails['name'] as String,
+      sourcePath,
+      soundDetails['type'] as SoundType,
       description: soundDetails['description'] as String,
     );
     await _soundRepository.create(newSound);
@@ -146,8 +133,7 @@ class _SoundsTabState extends State<SoundsTab> {
                 trailing: IconButton(
                   icon: const Icon(Icons.delete, color: Colors.redAccent),
                   onPressed: () async {
-                    final file = File(sound.filePath);
-                    if (await file.exists()) await file.delete();
+                    await SoundService.deleteSoundFile(sound.filePath);
                     await _soundRepository.delete(sound.id);
                     // HIER WAR EIN FEHLER: Der Check hat gefehlt!
                     if (!mounted) return;

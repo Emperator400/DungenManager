@@ -27,7 +27,6 @@ void main() {
       viewModel = CampaignViewModel(
         campaignRepo: campaignRepo,
         characterRepo: null,
-        sessionService: null,
       );
     });
     
@@ -147,7 +146,6 @@ void main() {
         final viewModelWithoutRepo = CampaignViewModel(
           campaignRepo: null,
           characterRepo: null,
-          sessionService: null,
         );
         await viewModelWithoutRepo.loadCampaigns();
         

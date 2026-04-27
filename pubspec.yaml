@@ -25,7 +25,7 @@ dependencies:
     # NEUE PAKETE FÜR DAS SOUND-SYSTEM
   file_picker: ^8.0.0+1       # Zum Auswählen von Dateien (unseren MP3s)
   path_provider: ^2.1.4   # Um einen sicheren Speicherort in der App zu finden
-  audioplayers: ^6.1.0      # Zum Abspielen der Audio-Dateien
+  audioplayers: ^6.6.0      # Zum Abspielen der Audio-Dateien
 
 # Hier deine Pakete hinzufügen
   font_awesome_flutter: ^10.7.0 # Oder was auch nicht die neueste Version ist

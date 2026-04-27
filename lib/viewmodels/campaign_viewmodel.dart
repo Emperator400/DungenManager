@@ -180,15 +180,21 @@ class CampaignViewModel extends ChangeNotifier {
   Future<void> createCampaign({
     required String title,
     required String description,
+    String accentColor = '#7c3aed',
+    String system = 'D&D 5e',
+    CampaignStatus status = CampaignStatus.planning,
   }) async {
     debugPrint('🔄 [CampaignViewModel] createCampaign() aufgerufen: $title');
     _setLoading(true);
     _setError(null);
-    
+
     try {
       final campaign = Campaign.create(
         title: title,
         description: description,
+        accentColor: accentColor,
+        system: system,
+        status: status,
       );
       
       if (_campaignRepo != null) {

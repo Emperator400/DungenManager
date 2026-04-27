@@ -4,11 +4,9 @@ import '../models/campaign.dart';
 import '../models/session.dart';
 import '../models/scene.dart';
 import '../models/sound.dart';
-import '../models/wiki_entry.dart';
 import '../database/repositories/session_model_repository.dart';
 import '../database/repositories/scene_model_repository.dart';
 import '../database/repositories/sound_model_repository.dart';
-import '../database/repositories/wiki_entry_model_repository.dart';
 import '../database/core/database_connection.dart';
 import '../services/scene_service.dart';
 import '../services/sound_service.dart';
@@ -23,7 +21,7 @@ class ActiveSessionViewModel extends ChangeNotifier {
   final SceneModelRepository _sceneRepository;
   final SceneService _sceneService;
   final SoundModelRepository _soundRepository;
-  final WikiEntryModelRepository _wikiRepository;
+  final SoundService _soundService;
 
   // ============================================================================
   // STATE VARIABLES
@@ -33,13 +31,6 @@ class ActiveSessionViewModel extends ChangeNotifier {
   Session _currentSession;
   Campaign _campaign;
   List<Scene> _scenes = [];
-  List<Sound> _sessionSounds = [];
-
-  // Sound-Cache: sceneId → geladene Sound-Objekte (für sofortige Übergabe an Mixer)
-  Map<String, List<Sound>> _sceneSoundsCache = {};
-
-  // Wiki Cache für schnellen Zugriff
-  final Map<String, WikiEntry> _wikiCache = {};
 
   // Loading States
   bool _isLoading = false;
@@ -52,14 +43,8 @@ class ActiveSessionViewModel extends ChangeNotifier {
   Session get currentSession => _currentSession;
   Campaign get campaign => _campaign;
   List<Scene> get scenes => _scenes;
-  List<Sound> get sessionSounds => _sessionSounds;
   bool get isLoading => _isLoading;
   String? get error => _error;
-
-  /// Gibt die vorgeladenen Sound-Objekte für eine Szene zurück.
-  /// Leere Liste wenn noch nicht geladen oder keine Sounds verknüpft.
-  List<Sound> sceneSoundsFor(String sceneId) =>
-      _sceneSoundsCache[sceneId] ?? [];
 
   // ============================================================================
   // CONSTRUCTOR
@@ -75,71 +60,35 @@ class ActiveSessionViewModel extends ChangeNotifier {
     SceneModelRepository? sceneRepository,
     SceneService? sceneService,
     SoundModelRepository? soundRepository,
-    WikiEntryModelRepository? wikiRepository,
+    SoundService? soundService,
   }) : _currentSession = session,
        _campaign = campaign,
        _sessionRepository = sessionRepository ?? SessionModelRepository(DatabaseConnection.instance),
        _sceneRepository = sceneRepository ?? SceneModelRepository(DatabaseConnection.instance),
        _sceneService = sceneService ?? SceneService(DatabaseConnection.instance),
        _soundRepository = soundRepository ?? SoundModelRepository(DatabaseConnection.instance),
-       _wikiRepository = wikiRepository ?? WikiEntryModelRepository(DatabaseConnection.instance) {
+       _soundService = soundService ?? SoundService() {
     // Lade Scenes beim Initialisieren
     _loadScenes();
-    _loadSessionSounds();
   }
 
   // ============================================================================
   // SCENE OPERATIONS
   // ============================================================================
 
-  /// Lädt alle Scenes für die aktuelle Session und danach deren Sound-Objekte.
+  /// Lädt alle Scenes für die aktuelle Session
   Future<void> _loadScenes() async {
-    debugPrint('🔄 [ActiveSessionViewModel] _loadScenes() aufgerufen für Session: ${_currentSession.id}');
+    print('🔄 [ActiveSessionViewModel] _loadScenes() aufgerufen für Session: ${_currentSession.id}');
     await _executeWithErrorHandling(() async {
       _setLoading(true);
-      debugPrint('📊 [ActiveSessionViewModel] Rufe findBySession auf...');
+      print('📊 [ActiveSessionViewModel] Rufe findBySession auf...');
       final scenes = await _sceneRepository.findBySession(_currentSession.id);
-      debugPrint('✅ [ActiveSessionViewModel] ${scenes.length} Scenes geladen');
+      print('✅ [ActiveSessionViewModel] ${scenes.length} Scenes geladen');
+      // Sortiere nach orderIndex
       _scenes = scenes..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
       _setLoading(false);
       notifyListeners();
     });
-    // Sounds nach dem Scene-Laden asynchron vorhalten (nicht blockierend)
-    unawaited(_preloadSceneSounds());
-  }
-
-  /// Lädt alle Sound-Objekte für jede Scene in den Cache.
-  /// Wird einmal beim Session-Start und nach jeder Scene-Änderung aufgerufen.
-  Future<void> _preloadSceneSounds() async {
-    try {
-      // Alle benötigten Sound-IDs sammeln (duplikatfrei)
-      final allIds = _scenes
-          .expand((s) => s.linkedSoundIds)
-          .toSet();
-
-      if (allIds.isEmpty) {
-        _sceneSoundsCache = {};
-        notifyListeners();
-        return;
-      }
-
-      // Einmalig alle Sounds laden statt pro Szene einzeln
-      final allSounds = await _soundRepository.findAll();
-      final soundById = {for (final s in allSounds) s.id: s};
-
-      _sceneSoundsCache = {
-        for (final scene in _scenes)
-          if (scene.linkedSoundIds.isNotEmpty)
-            scene.id: scene.linkedSoundIds
-                .map((id) => soundById[id])
-                .whereType<Sound>()
-                .toList(),
-      };
-
-      notifyListeners();
-    } catch (e) {
-      debugPrint('⚠️ [ActiveSessionViewModel] Fehler beim Voraufladen der Sounds: $e');
-    }
   }
 
   /// Lädt Scenes neu
@@ -223,69 +172,6 @@ class ActiveSessionViewModel extends ChangeNotifier {
     });
   }
 
-  /// Fügt einen Sound zu einer Scene hinzu (z.B. vom Sound Mixer)
-  Future<void> addSoundToScene(String sceneId, String soundId) async {
-    await _executeWithErrorHandling(() async {
-      final sceneIndex = _scenes.indexWhere((s) => s.id == sceneId);
-      if (sceneIndex != -1) {
-        final scene = _scenes[sceneIndex];
-        final currentSounds = scene.linkedSoundIds.toList();
-        if (!currentSounds.contains(soundId)) {
-          currentSounds.add(soundId);
-          await _sceneRepository.update(scene.copyWith(linkedSoundIds: currentSounds));
-          await _loadScenes();
-        }
-      }
-    });
-  }
-
-  /// Entfernt einen Sound aus einer Scene (z.B. vom Sound Mixer)
-  Future<void> removeSoundFromScene(String sceneId, String soundId) async {
-    await _executeWithErrorHandling(() async {
-      final sceneIndex = _scenes.indexWhere((s) => s.id == sceneId);
-      if (sceneIndex != -1) {
-        final scene = _scenes[sceneIndex];
-        final currentSounds = scene.linkedSoundIds.toList();
-        if (currentSounds.contains(soundId)) {
-          currentSounds.remove(soundId);
-          await _sceneRepository.update(scene.copyWith(linkedSoundIds: currentSounds));
-          await _loadScenes();
-        }
-      }
-    });
-  }
-
-  /// Aktualisiert die komplette Liste der verknüpften Sounds einer Szene
-  Future<void> updateSceneSounds(String sceneId, List<String> soundIds) async {
-    await _executeWithErrorHandling(() async {
-      final sceneIndex = _scenes.indexWhere((s) => s.id == sceneId);
-      if (sceneIndex != -1) {
-        final scene = _scenes[sceneIndex];
-        await _sceneRepository.update(scene.copyWith(linkedSoundIds: soundIds));
-        await _loadScenes();
-      }
-    });
-  }
-
-  /// Aktualisiert den Sound-Cache für eine einzelne Szene nach Änderungen.
-  Future<void> refreshSceneSounds(String sceneId) async {
-    unawaited(_preloadSceneSounds());
-  }
-
-  /// Aktualisiert die Lautstärken der verknüpften Sounds einer Szene
-  Future<void> updateSceneSoundVolumes(String sceneId, Map<String, double> volumes) async {
-    await _executeWithErrorHandling(() async {
-      final sceneIndex = _scenes.indexWhere((s) => s.id == sceneId);
-      if (sceneIndex != -1) {
-        final scene = _scenes[sceneIndex];
-        
-        await _sceneRepository.update(scene.copyWith(soundVolumes: volumes));
-        
-        await _loadScenes(); // Lade Szenen neu, um die Änderungen zu reflektieren
-      }
-    });
-  }
-
   // ============================================================================
   // SCENE WORKFLOW OPERATIONS (über SceneService)
   // ============================================================================
@@ -363,24 +249,8 @@ class ActiveSessionViewModel extends ChangeNotifier {
     try {
       return await _soundRepository.findAll();
     } catch (e) {
-      debugPrint('Fehler beim Laden der Sounds: $e');
+      print('Fehler beim Laden der Sounds: $e');
       return [];
-    }
-  }
-
-  /// Lädt die verknüpften Sounds der aktuellen Session
-  Future<void> _loadSessionSounds() async {
-    try {
-      if (_currentSession.linkedSoundIds.isEmpty) {
-        _sessionSounds = [];
-        notifyListeners();
-        return;
-      }
-      final allSounds = await loadAllSounds();
-      _sessionSounds = allSounds.where((sound) => _currentSession.linkedSoundIds.contains(sound.id)).toList();
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Fehler beim Laden der Session-Sounds: $e');
     }
   }
 
@@ -394,7 +264,6 @@ class ActiveSessionViewModel extends ChangeNotifier {
           linkedSoundIds: currentSounds,
         );
         await _sessionRepository.update(_currentSession);
-        await _loadSessionSounds();
         notifyListeners();
       }
     });
@@ -409,7 +278,6 @@ class ActiveSessionViewModel extends ChangeNotifier {
         linkedSoundIds: currentSounds,
       );
       await _sessionRepository.update(_currentSession);
-      await _loadSessionSounds();
       notifyListeners();
     });
   }
@@ -420,7 +288,7 @@ class ActiveSessionViewModel extends ChangeNotifier {
       await SoundService.playSound(filePath);
       notifyListeners();
     } catch (e) {
-      debugPrint('Fehler beim Abspielen des Sounds: $e');
+      print('Fehler beim Abspielen des Sounds: $e');
       rethrow;
     }
   }
@@ -431,7 +299,7 @@ class ActiveSessionViewModel extends ChangeNotifier {
       await SoundService.pauseSound();
       notifyListeners();
     } catch (e) {
-      debugPrint('Fehler beim Pausieren: $e');
+      print('Fehler beim Pausieren: $e');
     }
   }
 
@@ -441,7 +309,7 @@ class ActiveSessionViewModel extends ChangeNotifier {
       await SoundService.stopSound();
       notifyListeners();
     } catch (e) {
-      debugPrint('Fehler beim Stoppen: $e');
+      print('Fehler beim Stoppen: $e');
     }
   }
 
@@ -451,7 +319,7 @@ class ActiveSessionViewModel extends ChangeNotifier {
       await SoundService.setVolume(volume);
       notifyListeners();
     } catch (e) {
-      debugPrint('Fehler beim Setzen der Lautstärke: $e');
+      print('Fehler beim Setzen der Lautstärke: $e');
     }
   }
 
@@ -496,18 +364,18 @@ class ActiveSessionViewModel extends ChangeNotifier {
   /// 
   /// HINWEIS: Verwendet jetzt das neue SessionModelRepository
   Future<void> updateLiveNotes(String newNotes) async {
-    debugPrint('📝 [ActiveSessionViewModel] updateLiveNotes aufgerufen');
-    debugPrint('📝 [ActiveSessionViewModel] Session ID: ${_currentSession.id}');
-    debugPrint('📝 [ActiveSessionViewModel] Neue Notizen Länge: ${newNotes.length}');
+    print('📝 [ActiveSessionViewModel] updateLiveNotes aufgerufen');
+    print('📝 [ActiveSessionViewModel] Session ID: ${_currentSession.id}');
+    print('📝 [ActiveSessionViewModel] Neue Notizen Länge: ${newNotes.length}');
     
     await _executeWithErrorHandling(() async {
       _currentSession = _currentSession.copyWith(
         liveNotes: newNotes,
       );
       
-      debugPrint('📝 [ActiveSessionViewModel] Speichere in Datenbank...');
+      print('📝 [ActiveSessionViewModel] Speichere in Datenbank...');
       final updatedSession = await _sessionRepository.update(_currentSession);
-      debugPrint('📝 [ActiveSessionViewModel] Gespeichert! LiveNotes aus DB: "${updatedSession.liveNotes}"');
+      print('📝 [ActiveSessionViewModel] Gespeichert! LiveNotes aus DB: "${updatedSession.liveNotes}"');
       
       _currentSession = updatedSession;
       notifyListeners();
@@ -575,73 +443,21 @@ class ActiveSessionViewModel extends ChangeNotifier {
   /// Lädt alle Daten neu (Scenes und Session)
   Future<void> triggerDataReload() async {
     await _loadScenes();
-    await _loadSessionSounds();
   }
 
   /// Lädt die Session-Daten neu aus der Datenbank
   Future<void> reloadSession() async {
-    debugPrint('🔄 [ActiveSessionViewModel] reloadSession aufgerufen');
+    print('🔄 [ActiveSessionViewModel] reloadSession aufgerufen');
     await _executeWithErrorHandling(() async {
       final freshSession = await _sessionRepository.findById(_currentSession.id);
       if (freshSession != null) {
-        debugPrint('🔄 [ActiveSessionViewModel] Session neu geladen, LiveNotes: "${freshSession.liveNotes}"');
+        print('🔄 [ActiveSessionViewModel] Session neu geladen, LiveNotes: "${freshSession.liveNotes}"');
         _currentSession = freshSession;
-        await _loadSessionSounds();
         notifyListeners();
       } else {
-        debugPrint('⚠️ [ActiveSessionViewModel] Session nicht in DB gefunden!');
+        print('⚠️ [ActiveSessionViewModel] Session nicht in DB gefunden!');
       }
     });
-  }
-
-  // ============================================================================
-  // WIKI ENTRY OPERATIONS
-  // ============================================================================
-
-  /// Lädt einen Wiki-Eintrag per ID (mit Caching)
-  Future<WikiEntry?> getWikiEntryById(String id) async {
-    // Prüfe Cache zuerst
-    if (_wikiCache.containsKey(id)) {
-      return _wikiCache[id];
-    }
-
-    try {
-      final entry = await _wikiRepository.findById(id);
-      if (entry != null) {
-        _wikiCache[id] = entry;
-      }
-      return entry;
-    } catch (e) {
-      debugPrint('Fehler beim Laden des Wiki-Eintrags: $e');
-      return null;
-    }
-  }
-
-  /// Lädt mehrere Wiki-Einträge per IDs (mit Caching)
-  Future<List<WikiEntry>> getWikiEntriesByIds(List<String> ids) async {
-    final entries = <WikiEntry>[];
-    
-    for (final id in ids) {
-      final entry = await getWikiEntryById(id);
-      if (entry != null) {
-        entries.add(entry);
-      }
-    }
-    
-    return entries;
-  }
-
-  /// Lädt alle Wiki-Einträge für eine Szene
-  Future<List<WikiEntry>> getWikiEntriesForScene(Scene scene) async {
-    if (scene.linkedWikiEntryIds.isEmpty) {
-      return [];
-    }
-    return await getWikiEntriesByIds(scene.linkedWikiEntryIds);
-  }
-
-  /// Löscht den Wiki-Cache
-  void clearWikiCache() {
-    _wikiCache.clear();
   }
 
   // ============================================================================
@@ -650,7 +466,6 @@ class ActiveSessionViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
-    _wikiCache.clear();
     super.dispose();
   }
 }

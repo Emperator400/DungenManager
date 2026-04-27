@@ -2,15 +2,19 @@
 // Dieses Modul stellt Factory-Methoden zur Erstellung von Mock-Daten bereit
 
 import 'package:dungen_manager/models/campaign.dart';
+import 'package:dungen_manager/models/inventory_item.dart';
 import 'package:dungen_manager/models/player_character.dart';
 import 'package:dungen_manager/models/quest.dart';
 import 'package:dungen_manager/models/session.dart';
 import 'package:dungen_manager/models/sound.dart';
-import 'package:dungen_manager/models/inventory_item.dart';
+import 'package:dungen_manager/models/sound_scene.dart';
+import 'package:dungen_manager/models/sound_scene_item.dart';
 
 /// Factory für Campaign Mock-Daten
 class MockCampaignFactory {
   /// Erstellt einen Standard-Mock Campaign
+  static int _counter = 0;
+
   static Campaign create({
     String? id,
     String? title,
@@ -21,7 +25,7 @@ class MockCampaignFactory {
     DateTime? updatedAt,
   }) {
     return Campaign(
-      id: id ?? 'test-campaign-${DateTime.now().millisecondsSinceEpoch}',
+      id: id ?? 'test-campaign-${++_counter}',
       title: title ?? 'Test Campaign',
       description: description ?? 'Test Description',
       status: status ?? CampaignStatus.planning,
@@ -192,6 +196,8 @@ class MockSessionFactory {
 
 /// Factory für Sound Mock-Daten
 class MockSoundFactory {
+  static int _counter = 0;
+
   /// Erstellt einen Standard-Mock Sound
   static Sound create({
     String? id,
@@ -199,13 +205,15 @@ class MockSoundFactory {
     String? filePath,
     SoundType? soundType,
     String? description,
+    bool isFavorite = false,
   }) {
     return Sound(
-      id: id ?? 'test-sound-${DateTime.now().millisecondsSinceEpoch}',
+      id: id ?? 'test-sound-${++_counter}',
       name: name ?? 'Test Sound',
       filePath: filePath ?? '/path/to/sound.mp3',
       soundType: soundType ?? SoundType.Ambiente,
       description: description ?? '',
+      isFavorite: isFavorite,
     );
   }
 
@@ -245,6 +253,75 @@ class MockInventoryItemFactory {
     return List.generate(count, (index) => create(
       name: 'Test Item $index',
     ));
+  }
+}
+
+/// Factory für SoundScene Mock-Daten
+class MockSoundSceneFactory {
+  static int _counter = 0;
+
+  static SoundScene create({
+    String? id,
+    String? name,
+    String? description,
+    bool? isFavorite,
+    List<SoundSceneItem>? items,
+  }) {
+    return SoundScene(
+      id: id ?? 'test-scene-${++_counter}',
+      name: name ?? 'Test Szene $_counter',
+      description: description ?? '',
+      isFavorite: isFavorite ?? false,
+      items: items ?? [],
+    );
+  }
+
+  static SoundScene createWithItems({
+    String? id,
+    String? name,
+    int itemCount = 2,
+  }) {
+    final sceneId = id ?? 'test-scene-${++_counter}';
+    final items = List.generate(
+      itemCount,
+      (i) => MockSoundSceneItemFactory.create(
+        soundSceneId: sceneId,
+        soundId: 'sound-$i',
+        sortOrder: i,
+      ),
+    );
+    return SoundScene(
+      id: sceneId,
+      name: name ?? 'Szene mit Sounds',
+      items: items,
+    );
+  }
+}
+
+/// Factory für SoundSceneItem Mock-Daten
+class MockSoundSceneItemFactory {
+  static int _counter = 0;
+
+  static SoundSceneItem create({
+    String? id,
+    String? soundSceneId,
+    String? soundId,
+    double? volume,
+    bool? isLooping,
+    double? fadeInDuration,
+    double? fadeOutDuration,
+    int? sortOrder,
+  }) {
+    return SoundSceneItem(
+      id: id ?? 'test-item-${++_counter}',
+      soundSceneId: soundSceneId ?? 'test-scene-id',
+      soundId: soundId ?? 'test-sound-${_counter}',
+      volume: volume ?? 1.0,
+      isLooping: isLooping ?? true,
+      fadeInDuration: fadeInDuration ?? 0.0,
+      fadeOutDuration: fadeOutDuration ?? 0.0,
+      sortOrder: sortOrder ?? 0,
+    );
   }
 }
 

@@ -9,12 +9,12 @@ import '../../models/player_character.dart';
 import '../../models/session.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/theme_notifier.dart';
-import '../../viewmodels/campaign_viewmodel.dart';
 import '../../viewmodels/session_list_for_campaign_viewmodel.dart';
+import '../../widgets/campaign/campaign_edit_modal_widget.dart';
+import '../../utils/color_utils.dart';
 import '../../widgets/ui_components/shared/app_icon.dart';
 import '../../widgets/ui_components/shared/app_logo.dart';
 
-import '../campaign/edit_campaign_screen.dart';
 import '../characters/edit_pc_screen.dart';
 import '../campaign/session_list_for_campaign_screen.dart';
 import '../session/edit_session_screen.dart';
@@ -144,14 +144,7 @@ class _EnhancedMainNavigationScreenState
   void _goToEditCampaign() {
     final campaign = widget.campaign;
     if (campaign == null) return;
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (ctx) => ChangeNotifierProvider.value(
-          value: ctx.read<CampaignViewModel>(),
-          child: EditCampaignScreen(campaign: campaign),
-        ),
-      ),
-    );
+    CampaignEditModal.show(context, campaign: campaign);
   }
 
   @override
@@ -267,9 +260,9 @@ class _TopBar extends StatelessWidget {
                             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.text),
                             overflow: TextOverflow.ellipsis,
                           ),
-                          if (campaign!.description.isNotEmpty)
+                          if (campaign!.system.isNotEmpty)
                             Text(
-                              campaign!.description,
+                              campaign!.system,
                               style: TextStyle(fontSize: 11, color: C.textSoft),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -288,14 +281,7 @@ class _TopBar extends StatelessWidget {
                   ],
 
                   if (campaign != null) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: C.greenSoft,
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                      child: Text('Aktiv', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: C.green)),
-                    ),
+                    _StatusBadge(campaign: campaign!, C: C),
                     const SizedBox(width: 4),
                     _IconBtn(C: C, icon: AppIconName.edit, onTap: onEdit),
                     const SizedBox(width: 4),
@@ -760,19 +746,60 @@ class _CampaignAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = ColorUtils.fromHex(campaign.accentColor) ?? C.accent;
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: C.accentSoft,
-        border: Border.all(color: C.accent.withValues(alpha: 0.3)),
+        color: color.withValues(alpha: 0.15),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
         borderRadius: BorderRadius.circular(5),
       ),
       child: Center(
         child: Text(
           campaign.title.isNotEmpty ? campaign.title[0].toUpperCase() : '?',
-          style: TextStyle(fontSize: size * 0.5, fontWeight: FontWeight.w700, color: C.accent),
+          style: TextStyle(fontSize: size * 0.5, fontWeight: FontWeight.w700, color: color),
         ),
+      ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.campaign, required this.C});
+
+  final Campaign campaign;
+  final AppColorsExtension C;
+
+  static const _labels = <CampaignStatus, String>{
+    CampaignStatus.planning:   'Planung',
+    CampaignStatus.active:     'Aktiv',
+    CampaignStatus.paused:     'Pausiert',
+    CampaignStatus.completed:  'Abgeschlossen',
+    CampaignStatus.cancelled:  'Abgebrochen',
+  };
+
+  static const _colors = <CampaignStatus, Color>{
+    CampaignStatus.planning:   Color(0xFF7C3AED),
+    CampaignStatus.active:     Color(0xFF1A7F4B),
+    CampaignStatus.paused:     Color(0xFFB45309),
+    CampaignStatus.completed:  Color(0xFF6B6B66),
+    CampaignStatus.cancelled:  Color(0xFFC93A3A),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _colors[campaign.status] ?? C.textSoft;
+    final label = _labels[campaign.status] ?? campaign.status.name;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: color),
       ),
     );
   }

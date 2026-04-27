@@ -53,7 +53,7 @@ lib/
 │   ├── entities/                      # 15 SQLite-Entitäten
 │   ├── legacy/                        # database_helper_legacy_backup.dart (UNBENUTZT)
 │   ├── migrations/                    # database_migration.dart, refactoring_migration_v2.dart
-│   └── repositories/                  # 25 Repository-Klassen
+│   └── repositories/                  # 16 Repository-Klassen
 ├── game_data/                         # D&D-Spielregeln, Demo-Daten, Importer
 ├── models/                            # 36 Domain-Modelle
 ├── screens/
@@ -218,7 +218,7 @@ lib/
 |---------|---------------|
 | Models | 36 |
 | Database (Entities + Repos) | 44 |
-| Services | 40 |
+| Services | 39 |
 | ViewModels | 23 |
 | Screens | 38 |
 | Widgets | 119 |

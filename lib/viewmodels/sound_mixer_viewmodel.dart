@@ -3,6 +3,7 @@ import 'package:audioplayers/audioplayers.dart';
 import '../models/sound.dart';
 import '../database/repositories/sound_model_repository.dart';
 import '../database/core/database_connection.dart';
+import '../services/sound_service.dart';
 
 /// Helfer-Klasse, um einen Player und seinen Zustand zu verwalten
 class ActiveSoundPlayer {
@@ -149,8 +150,9 @@ class SoundMixerViewModel extends ChangeNotifier {
   /// Spielt einen Ambiente-Sound ab
   Future<void> _playAmbience(Sound sound) async {
     try {
+      final absolutePath = await SoundService.resolveFilePath(sound.filePath);
       final player = AudioPlayer();
-      await player.setSource(DeviceFileSource(sound.filePath));
+      await player.setSource(DeviceFileSource(absolutePath));
       await player.setVolume(0.8);
       await player.setReleaseMode(ReleaseMode.loop);
       await player.resume();
@@ -177,8 +179,9 @@ class SoundMixerViewModel extends ChangeNotifier {
     if (_activePlayers.containsKey(soundId)) return;
 
     try {
+      final absolutePath = await SoundService.resolveFilePath(effect.filePath);
       final player = AudioPlayer();
-      await player.setSource(DeviceFileSource(effect.filePath));
+      await player.setSource(DeviceFileSource(absolutePath));
       await player.setVolume(0.8);
       await player.resume();
       

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'dart:io';
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -8,12 +9,14 @@ import '../models/sound.dart';
 /// Service für Sound-Dateioperationen und Playback
 /// Verwaltet das Hochladen, Kopieren und Abspielen von Sound-Dateien
 class SoundService {
-  static const String _soundsDirectory = 'sounds';
+  /// Unterverzeichnis relativ zu getApplicationDocumentsDirectory()
+  static const String _soundsSubDir = 'DungenManager/sounds';
   static AudioPlayer? _audioPlayer;
   
-  /// Lädt einen Sound von einer Datei in den App-Speicher hoch
-  /// 
-  /// Gibt den gespeicherten Sound mit dem Pfad zurück
+  /// Lädt einen Sound von einer Datei in den App-Speicher hoch.
+  ///
+  /// Speichert **nur den Dateinamen** (relativ) in [Sound.filePath].
+  /// Der absolute Pfad wird zur Laufzeit mit [resolveFilePath] berechnet.
   static Future<Sound> uploadSound(
     String name,
     String filePath,
@@ -21,44 +24,41 @@ class SoundService {
     String description = '',
     String? categoryId,
   }) async {
-    // App-Dokumenten-Verzeichnis holen
-    final appDir = await getApplicationDocumentsDirectory();
-    final soundsDir = Directory('${appDir.path}/$_soundsDirectory');
-    
+    final soundsDir = Directory(await getSoundsDirectoryPath());
+
     // Verzeichnis erstellen, falls es nicht existiert
     if (!await soundsDir.exists()) {
       await soundsDir.create(recursive: true);
     }
-    
+
     // Eindeutigen Dateinamen generieren
     final uuid = const Uuid();
     final fileExtension = _getFileExtension(filePath);
     final uniqueFileName = '${uuid.v4()}$fileExtension';
-    final savedPath = '${soundsDir.path}/$uniqueFileName';
-    
+    final savedAbsolutePath = p.join(soundsDir.path, uniqueFileName);
+
     // Datei kopieren
-    await File(filePath).copy(savedPath);
-    
+    await File(filePath).copy(savedAbsolutePath);
+
     // Datei-Informationen sammeln
-    final file = File(savedPath);
-    final fileSize = await file.length();
-    
-    // Sound-Objekt erstellen
+    final fileSize = await File(savedAbsolutePath).length();
+
+    // Sound-Objekt mit relativem Pfad (nur Dateiname) erstellen
     final sound = Sound(
       id: uuid.v4(),
       name: name,
-      filePath: savedPath,
+      filePath: uniqueFileName,           // relativ — nur Dateiname
       soundType: soundType,
       description: description,
       isFavorite: false,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       categoryId: categoryId,
-      duration: null, // TODO: Duration aus Audio-Metadaten lesen
+      duration: null,
       fileSize: fileSize.toDouble(),
       tags: null,
     );
-    
+
     return sound;
   }
   
@@ -84,12 +84,39 @@ class SoundService {
     );
   }
   
+  /// Löst einen relativen oder absoluten Dateipfad zu einem absoluten Pfad auf.
+  ///
+  /// Strategien (in Reihenfolge):
+  /// 1. Absoluter Pfad + Datei existiert → unveränderter Pfad
+  /// 2. Absoluter Pfad + Datei fehlt → suche Datei per Basename im Sounds-Verzeichnis
+  /// 3. Relativer Pfad → `{soundsDir}/{fileName}`
+  ///
+  /// Gibt immer einen String zurück. Ob die Datei tatsächlich existiert, bleibt
+  /// Verantwortung des Aufrufers.
+  static Future<String> resolveFilePath(String fileNameOrPath) async {
+    if (p.isAbsolute(fileNameOrPath)) {
+      if (await File(fileNameOrPath).exists()) return fileNameOrPath;
+      // Stale absolute path — try to find the file by its basename
+      final soundsDir = await getSoundsDirectoryPath();
+      final candidate = p.join(soundsDir, p.basename(fileNameOrPath));
+      if (await File(candidate).exists()) {
+        debugPrint('🔧 Sound-Pfad repariert: $fileNameOrPath → $candidate');
+        return candidate;
+      }
+      return fileNameOrPath; // Weiterhin ungültig — Aufrufer bekommt klaren Fehler
+    }
+    // Relative path
+    final soundsDir = await getSoundsDirectoryPath();
+    return p.join(soundsDir, fileNameOrPath);
+  }
+
   /// Löscht eine Sound-Datei aus dem Speicher
-  /// 
+  ///
   /// Gibt true zurück, wenn erfolgreich, sonst false
-  static Future<bool> deleteSoundFile(String filePath) async {
+  static Future<bool> deleteSoundFile(String fileNameOrPath) async {
     try {
-      final file = File(filePath);
+      final absolutePath = await resolveFilePath(fileNameOrPath);
+      final file = File(absolutePath);
       if (await file.exists()) {
         await file.delete();
         return true;
@@ -100,41 +127,33 @@ class SoundService {
       return false;
     }
   }
-  
+
   /// Prüft ob eine Sound-Datei existiert
-  static Future<bool> soundFileExists(String filePath) async {
-    final file = File(filePath);
-    return await file.exists();
+  static Future<bool> soundFileExists(String fileNameOrPath) async {
+    final absolutePath = await resolveFilePath(fileNameOrPath);
+    return File(absolutePath).exists();
   }
-  
-  /// Liest den Pfad zum Sounds-Verzeichnis
+
+  /// Gibt den absoluten Pfad zum Sounds-Verzeichnis zurück
   static Future<String> getSoundsDirectoryPath() async {
     final appDir = await getApplicationDocumentsDirectory();
-    return '${appDir.path}/$_soundsDirectory';
+    return p.join(appDir.path, 'DungenManager', 'sounds');
   }
   
-  /// Extrahiert die Dateierweiterung aus einem Dateipfad
+  /// Extrahiert die Dateierweiterung aus einem Dateipfad (inkl. Punkt)
   static String _getFileExtension(String filePath) {
-    final dotIndex = filePath.lastIndexOf('.');
-    if (dotIndex != -1 && dotIndex < filePath.length - 1) {
-      return filePath.substring(dotIndex);
-    }
-    return '.mp3'; // Standard-Extension
+    final ext = p.extension(filePath);
+    return ext.isNotEmpty ? ext : '.mp3';
   }
-  
+
   /// Extrahiert den Dateinamen (ohne Extension) aus einem Pfad
   static String _extractFileName(String filePath) {
-    final fileName = filePath.split('/').last;
-    final dotIndex = fileName.lastIndexOf('.');
-    if (dotIndex != -1) {
-      return fileName.substring(0, dotIndex);
-    }
-    return fileName;
+    return p.basenameWithoutExtension(filePath);
   }
-  
+
   /// Validiert ob eine Datei ein unterstütztes Audio-Format ist
   static bool isValidAudioFile(String filePath) {
-    final supportedFormats = ['.mp3', '.wav', '.ogg', '.m4a', '.aac'];
+    const supportedFormats = {'.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac'};
     final extension = _getFileExtension(filePath).toLowerCase();
     return supportedFormats.contains(extension);
   }
@@ -204,24 +223,22 @@ class SoundService {
     return _audioPlayer!;
   }
   
-  /// Spielt einen Sound ab
-  /// 
+  /// Spielt einen Sound ab (akzeptiert relativen oder absoluten Pfad)
+  ///
   /// Gibt true zurück, wenn erfolgreich gestartet, sonst false
-  static Future<bool> playSound(String filePath) async {
+  static Future<bool> playSound(String fileNameOrPath) async {
     try {
       final player = _getAudioPlayer();
-      
-      // Prüfen ob Datei existiert
-      final file = File(filePath);
-      if (!await file.exists()) {
-        debugPrint('Sound-Datei existiert nicht: $filePath');
+
+      final absolutePath = await resolveFilePath(fileNameOrPath);
+      if (!await File(absolutePath).exists()) {
+        debugPrint('Sound-Datei existiert nicht: $absolutePath');
         return false;
       }
-      
-      // Sound abspielen
+
       await player.setReleaseMode(ReleaseMode.stop);
-      await player.play(DeviceFileSource(filePath));
-      debugPrint('✅ Sound wird abgespielt: $filePath');
+      await player.play(DeviceFileSource(absolutePath));
+      debugPrint('✅ Sound wird abgespielt: $absolutePath');
       return true;
     } catch (e) {
       debugPrint('❌ Fehler beim Abspielen des Sounds: $e');

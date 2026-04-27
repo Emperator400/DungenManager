@@ -1,37 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-import '../../database/repositories/creature_model_repository.dart';
-import '../../database/repositories/encounter_model_repository.dart';
-import '../../database/repositories/player_character_model_repository.dart';
-import '../../database/repositories/quest_model_repository.dart';
-import '../../database/repositories/scene_model_repository.dart';
-import '../../database/repositories/sound_model_repository.dart';
-import '../../database/repositories/wiki_entry_model_repository.dart';
 import '../../models/campaign.dart';
-import '../../models/quest.dart';
-import '../../models/scene.dart';
 import '../../models/session.dart';
+import '../../models/scene.dart';
 import '../../models/sound.dart';
+import '../../models/quest.dart';
 import '../../models/wiki_entry.dart';
-import '../../theme/app_theme.dart';
 import '../../viewmodels/active_session_viewmodel.dart';
 import '../../viewmodels/edit_scene_viewmodel.dart';
+import '../../database/repositories/scene_model_repository.dart';
+import '../../database/repositories/creature_model_repository.dart';
+import '../../database/repositories/player_character_model_repository.dart';
+import '../../database/repositories/quest_model_repository.dart';
+import '../../database/repositories/sound_model_repository.dart';
+import '../../database/repositories/encounter_model_repository.dart';
+import '../../database/repositories/wiki_entry_model_repository.dart';
+import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
+import '../../widgets/audio/sound_player_widget.dart';
 import '../../widgets/active_session/live_notes_quadrant.dart';
+import '../../widgets/active_session/atmosphere_quadrant.dart';
 import '../../widgets/active_session/quest_list_section.dart';
-import '../../widgets/audio/sound_mixer_widget.dart';
-import '../../widgets/lore_keeper/wiki_entry_popup_dialog.dart';
+import 'encounter_setup_screen.dart';
 import '../scenes/edit_scene_screen.dart';
-import 'encounter_setup_screen.dart' as encounter_setup;
 
 class ActiveSessionScreen extends StatefulWidget {
-  final Campaign campaign;
   final Session session;
+  final Campaign campaign;
 
   const ActiveSessionScreen({
+    super.key,
     required this.session,
     required this.campaign,
-    super.key,
   });
 
   @override
@@ -41,7 +41,6 @@ class ActiveSessionScreen extends StatefulWidget {
 class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   late ActiveSessionViewModel _viewModel;
   int _questUpdateCounter = 0;
-  final Set<String> _expandedSceneIds = {};
 
   @override
   void initState() {
@@ -55,77 +54,87 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
 
   @override
   void dispose() {
-    _viewModel.stopSessionSound();
     _viewModel.dispose();
     super.dispose();
   }
 
-  @override
+  // ─── BUILD ────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
-    final C = context.appColors;
     return ChangeNotifierProvider<ActiveSessionViewModel>.value(
       value: _viewModel,
-      child: Scaffold(
-        backgroundColor: C.bg,
-        body: _buildBody(),
+      child: Consumer<ActiveSessionViewModel>(
+        builder: (context, viewModel, child) {
+          final C = context.appColors;
+
+          if (viewModel.error != null) {
+            return Scaffold(
+              backgroundColor: C.bg,
+              body: _buildErrorWidget(viewModel.error!),
+            );
+          }
+
+          return Scaffold(
+            backgroundColor: C.bg,
+            body: Column(
+              children: [
+                _buildTopBar(context, viewModel, C),
+                Expanded(
+                  child: _buildMainContent(context, viewModel, C),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildBody() => Consumer<ActiveSessionViewModel>(
-        builder: (context, viewModel, child) {
-          if (viewModel.error != null) {
-            return _buildErrorWidget(viewModel.error!);
-          }
-          return Column(
-            children: [
-              _buildTopBar(viewModel),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(flex: 62, child: _buildSceneFlowPanel(viewModel)),
-                    Container(width: 1, color: context.appColors.border),
-                    Expanded(flex: 38, child: _buildRightPane(viewModel)),
-                  ],
-                ),
-              ),
-            ],
-          );
-        },
-      );
+  // ─── TOP BAR ─────────────────────────────────────────────────────────────
 
-  Widget _buildTopBar(ActiveSessionViewModel viewModel) {
-    final C = context.appColors;
+  Widget _buildTopBar(
+    BuildContext context,
+    ActiveSessionViewModel viewModel,
+    AppColorsExtension C,
+  ) {
     return Container(
       height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: C.bgPanel,
         border: Border(bottom: BorderSide(color: C.border)),
       ),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
+          // Back button
           GestureDetector(
-            onTap: () => Navigator.pop(context),
+            onTap: () => Navigator.of(context).pop(),
             child: Container(
               width: 30,
               height: 30,
               decoration: BoxDecoration(
+                color: Colors.transparent,
                 borderRadius: BorderRadius.circular(7),
               ),
-              child: Icon(Icons.arrow_back_ios, size: 16, color: C.textMid),
+              child: Icon(Icons.chevron_left, size: 20, color: C.textMid),
             ),
           ),
-          Container(width: 1, height: 18, color: C.border, margin: const EdgeInsets.symmetric(horizontal: 10)),
+          const SizedBox(width: 8),
+          Container(width: 1, height: 18, color: C.border),
+          const SizedBox(width: 10),
+          // Title + time
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 viewModel.currentSession.title,
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.text),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: C.text,
+                ),
               ),
               Row(
                 children: [
@@ -140,6 +149,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
             ],
           ),
           const Spacer(),
+          // Live badge
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
@@ -153,14 +163,25 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                 Container(
                   width: 6,
                   height: 6,
-                  decoration: BoxDecoration(color: C.green, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: C.green,
+                    shape: BoxShape.circle,
+                  ),
                 ),
                 const SizedBox(width: 5),
-                Text('Aktiv', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: C.green)),
+                Text(
+                  'Aktiv',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: C.green,
+                  ),
+                ),
               ],
             ),
           ),
           const SizedBox(width: 8),
+          // Campaign pill
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
@@ -168,31 +189,39 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
               borderRadius: BorderRadius.circular(6),
               border: Border.all(color: C.border),
             ),
-            child: Text(viewModel.campaign.title, style: TextStyle(fontSize: 11, color: C.textMid)),
-          ),
-          const SizedBox(width: 4),
-          PopupMenuButton<String>(
-            icon: Icon(Icons.more_vert, color: C.textMid, size: 18),
-            color: C.bgPanel,
-            onSelected: _handleMenuAction,
-            itemBuilder: (context) => [
-              PopupMenuItem(value: 'edit_title', child: Row(children: [Icon(Icons.edit, color: C.amber, size: 16), const SizedBox(width: 8), Text('Titel bearbeiten', style: TextStyle(color: C.text, fontSize: 13))])),
-              PopupMenuItem(value: 'add_time_15', child: Row(children: [Icon(Icons.add, color: C.green, size: 16), const SizedBox(width: 8), Text('+15 Min', style: TextStyle(color: C.text, fontSize: 13))])),
-              PopupMenuItem(value: 'add_time_30', child: Row(children: [Icon(Icons.add, color: C.green, size: 16), const SizedBox(width: 8), Text('+30 Min', style: TextStyle(color: C.text, fontSize: 13))])),
-              PopupMenuItem(value: 'add_time_60', child: Row(children: [Icon(Icons.add, color: C.green, size: 16), const SizedBox(width: 8), Text('+1 Std', style: TextStyle(color: C.text, fontSize: 13))])),
-            ],
+            child: Text(
+              viewModel.campaign.title,
+              style: TextStyle(fontSize: 11, color: C.textMid),
+            ),
           ),
           const SizedBox(width: 8),
-          ElevatedButton.icon(
-            onPressed: _startEncounter,
-            icon: const Icon(Icons.gavel, size: 13),
-            label: const Text('Kampf', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: C.red,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
-              elevation: 0,
+          // Menu
+          _buildMenuButton(C),
+          const SizedBox(width: 8),
+          // Kampf button
+          GestureDetector(
+            onTap: _startEncounter,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              decoration: BoxDecoration(
+                color: C.red,
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.gavel, size: 13, color: Colors.white),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Kampf',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -200,423 +229,1026 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     );
   }
 
-  Widget _buildSceneFlowPanel(ActiveSessionViewModel viewModel) {
-    final C = context.appColors;
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: C.bgPanel,
-            border: Border(bottom: BorderSide(color: C.border)),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.list_alt, color: C.accent, size: 14),
-              const SizedBox(width: 7),
-              Text('Szenen-Ablauf', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.text)),
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-                decoration: BoxDecoration(color: C.bgHover, borderRadius: BorderRadius.circular(4)),
-                child: Text('${viewModel.scenes.length} Szenen', style: TextStyle(fontSize: 10, color: C.textSoft)),
-              ),
-              const Spacer(),
-              ElevatedButton.icon(
-                onPressed: _showCreateSceneDialog,
-                icon: const Icon(Icons.add, size: 12),
-                label: const Text('Neue Szene', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: C.accent,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                  elevation: 0,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(child: _buildSceneFlowWidget(viewModel)),
+  Widget _buildMenuButton(AppColorsExtension C) {
+    return PopupMenuButton<String>(
+      onSelected: _handleMenuAction,
+      icon: Icon(Icons.more_vert, size: 18, color: C.textMid),
+      color: C.bgPanel,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: C.border),
+      ),
+      itemBuilder: (context) => [
+        _buildPopupItem('edit_title', Icons.edit, 'Titel bearbeiten', C),
+        _buildPopupItem('add_time_15', Icons.add, '+15 Min', C),
+        _buildPopupItem('add_time_30', Icons.add, '+30 Min', C),
+        _buildPopupItem('add_time_60', Icons.add, '+1 Std', C),
       ],
     );
   }
 
-  Widget _buildRightPane(ActiveSessionViewModel viewModel) {
-    final C = context.appColors;
-    return Container(
-      color: C.bgPanel,
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildLiveNotesSection(viewModel),
-            _buildAtmosphereSection(viewModel),
-            _buildQuestSection(viewModel),
-          ],
-        ),
+  PopupMenuItem<String> _buildPopupItem(
+    String value,
+    IconData icon,
+    String label,
+    AppColorsExtension C,
+  ) {
+    return PopupMenuItem<String>(
+      value: value,
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: C.textMid),
+          const SizedBox(width: 8),
+          Text(label, style: TextStyle(fontSize: 13, color: C.text)),
+        ],
       ),
     );
   }
 
-  Widget _buildLiveNotesSection(ActiveSessionViewModel viewModel) {
-    final C = context.appColors;
+  // ─── MAIN CONTENT ─────────────────────────────────────────────────────────
+
+  Widget _buildMainContent(
+    BuildContext context,
+    ActiveSessionViewModel viewModel,
+    AppColorsExtension C,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Left panel – scenes
+        Expanded(
+          child: _buildScenePanel(context, viewModel, C),
+        ),
+        // Right panel – notes + atmosphere + quests
+        Container(
+          width: 360,
+          decoration: BoxDecoration(
+            color: C.bgPanel,
+            border: Border(left: BorderSide(color: C.border)),
+          ),
+          child: _buildRightPanel(viewModel),
+        ),
+      ],
+    );
+  }
+
+  // ─── SCENE PANEL (left) ──────────────────────────────────────────────────
+
+  Widget _buildScenePanel(
+    BuildContext context,
+    ActiveSessionViewModel viewModel,
+    AppColorsExtension C,
+  ) {
     return Container(
-      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: C.border))),
+      color: C.bg,
       child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
+          // Header
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+            decoration: BoxDecoration(
+              color: C.bgPanel,
+              border: Border(bottom: BorderSide(color: C.border)),
+            ),
             child: Row(
               children: [
-                Icon(Icons.sticky_note_2_outlined, color: C.amber, size: 13),
-                const SizedBox(width: 6),
-                Text('Live-Notizen', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: C.text)),
+                Icon(Icons.article_outlined, size: 14, color: C.accent),
+                const SizedBox(width: 7),
+                Text(
+                  'Szenen-Ablauf',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: C.text,
+                  ),
+                ),
+                const SizedBox(width: 7),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: C.bgHover,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '${viewModel.scenes.length} Szenen',
+                    style: TextStyle(fontSize: 10, color: C.textSoft),
+                  ),
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: _showCreateSceneDialog,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: C.accent,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add, size: 12, color: Colors.white),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Neue Szene',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
-          SizedBox(height: 180, child: _buildLiveNotesWidget(viewModel)),
+          // Scene list
+          Expanded(
+            child: viewModel.scenes.isEmpty
+                ? _buildEmptyScenesState(C)
+                : _buildSceneList(context, viewModel, C),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildAtmosphereSection(ActiveSessionViewModel viewModel) {
-    final C = context.appColors;
-    final activeSceneId = viewModel.currentSession.activeSceneId;
-    Map<String, double> soundVolumes = {};
-    if (activeSceneId != null) {
-      final sceneIndex = viewModel.scenes.indexWhere((s) => s.id == activeSceneId);
-      if (sceneIndex != -1) soundVolumes = viewModel.scenes[sceneIndex].soundVolumes;
-    }
-    final preloadedSounds = activeSceneId != null ? viewModel.sceneSoundsFor(activeSceneId) : <Sound>[];
-
-    return Container(
-      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: C.border))),
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+  Widget _buildEmptyScenesState(AppColorsExtension C) {
+    return Center(
       child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Row(
-            children: [
-              Icon(Icons.music_note, color: C.accent, size: 13),
-              const SizedBox(width: 6),
-              Text('Atmosphäre', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: C.text)),
-            ],
-          ),
-          const SizedBox(height: 10),
-          SoundMixerWidget(
-            key: ValueKey('atmosphere_${activeSceneId ?? "none"}'),
-            initialSounds: preloadedSounds.isNotEmpty ? preloadedSounds : null,
-            initialVolumes: soundVolumes,
-            config: const SoundMixerConfig(
-              compactMode: true,
-              showAddButtons: true,
-              showMasterVolume: true,
-              showStopAllButton: true,
-              showChannelCounter: false,
-              readOnly: false,
-              showDivider: false,
-              showHeader: false,
+          Icon(Icons.article_outlined, size: 32, color: C.textSoft),
+          const SizedBox(height: 8),
+          Text(
+            'Keine Szenen',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: C.textMid,
             ),
-            onSoundsChanged: activeSceneId != null
-                ? (soundIds) => viewModel.updateSceneSounds(activeSceneId, soundIds)
-                : null,
-            onVolumesChanged: activeSceneId != null
-                ? (volumes) => viewModel.updateSceneSoundVolumes(activeSceneId, volumes)
-                : null,
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuestSection(ActiveSessionViewModel viewModel) {
-    final C = context.appColors;
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
-          child: Row(
-            children: [
-              Icon(Icons.flag_outlined, color: const Color(0xFF7c3aed), size: 13),
-              const SizedBox(width: 6),
-              Text('Quests', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: C.text)),
-            ],
+          const SizedBox(height: 4),
+          Text(
+            'Erstelle deine erste Szene',
+            style: TextStyle(fontSize: 12, color: C.textSoft),
           ),
-        ),
-        SizedBox(
-          height: 380,
-          child: QuestListSection(
-            key: ValueKey('quest_list_$_questUpdateCounter'),
-            campaignId: viewModel.campaign.id,
-            onQuestUpdated: () => setState(() => _questUpdateCounter++),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSceneFlowWidget(ActiveSessionViewModel viewModel) =>
-      _buildSceneListContent(viewModel, viewModel.scenes);
-
-  Widget _buildSceneListContent(ActiveSessionViewModel viewModel, List<Scene> scenes) {
-    final C = context.appColors;
-    if (scenes.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.list_alt, size: 32, color: C.textSoft),
-            const SizedBox(height: 8),
-            Text(
-              'Keine Szenen',
-              style: TextStyle(color: C.text, fontWeight: FontWeight.bold, fontSize: 13),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Erstelle deine erste Szene',
-              style: TextStyle(color: C.textMid, fontSize: 12),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton.icon(
-              onPressed: _showCreateSceneDialog,
-              icon: const Icon(Icons.add, size: 14),
-              label: const Text('Szene erstellen'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: C.accent,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                textStyle: const TextStyle(fontSize: 9),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: _showCreateSceneDialog,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: C.accent,
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add, size: 14, color: Colors.white),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Szene erstellen',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      );
-    }
+          ),
+        ],
+      ),
+    );
+  }
 
+  Widget _buildSceneList(
+    BuildContext context,
+    ActiveSessionViewModel viewModel,
+    AppColorsExtension C,
+  ) {
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      itemCount: scenes.length,
+      padding: const EdgeInsets.all(10),
+      itemCount: viewModel.scenes.length,
       itemBuilder: (context, index) {
-        final scene = scenes[index];
-        final isActive = viewModel.currentSession.activeSceneId == scene.id;
-        return _buildSceneCard(
-          scene: scene,
-          isActive: isActive,
-          onTap: () => _showSceneOptions(scene),
-        );
+        final scene = viewModel.scenes[index];
+        final isActive =
+            viewModel.currentSession.activeSceneId == scene.id;
+        return _buildNewSceneCard(context, scene, isActive, C);
       },
     );
   }
 
-  Widget _buildSceneCard({
-    required Scene scene,
-    required bool isActive,
-    required VoidCallback onTap,
-  }) {
-    final C = context.appColors;
-    final typeColor = _sceneTypeColor(scene.sceneType);
-    final isExpanded = _expandedSceneIds.contains(scene.id);
+  Widget _buildNewSceneCard(
+    BuildContext context,
+    Scene scene,
+    bool isActive,
+    AppColorsExtension C,
+  ) {
+    final typeColor = _getSceneTypeColor(scene.sceneType);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: C.bgPanel,
-        border: Border.all(color: C.border),
         borderRadius: BorderRadius.circular(8),
+        border: Border(
+          top: BorderSide(color: C.border),
+          right: BorderSide(color: C.border),
+          bottom: BorderSide(color: C.border),
+          left: BorderSide(color: typeColor, width: 3),
+        ),
       ),
       clipBehavior: Clip.antiAlias,
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ── Left type-color strip ──
-            Container(width: 3, color: typeColor),
-            // ── Content ──
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── Header row (always visible) ──
-                  GestureDetector(
-                    onTap: () => setState(() {
-                      if (isExpanded) {
-                        _expandedSceneIds.remove(scene.id);
-                      } else {
-                        _expandedSceneIds.add(scene.id);
-                      }
-                    }),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      child: Row(
-                children: [
-                  Container(
-                    width: 26,
-                    height: 26,
-                    decoration: BoxDecoration(
-                      color: scene.isCompleted ? C.green : typeColor,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      '${scene.orderIndex + 1}',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(scene.name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: C.text)),
-                        Row(
-                          children: [
-                            Text(scene.sceneTypeDisplayName, style: TextStyle(fontSize: 11, color: C.textMid)),
-                            if (scene.linkedEncounterId != null) ...[
-                              const SizedBox(width: 6),
-                              Icon(Icons.gavel, color: C.red, size: 12),
-                            ],
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (scene.isCompleted) Icon(Icons.check_circle, color: C.green, size: 16),
-                  if (isActive) ...[
-                    const SizedBox(width: 4),
-                    Icon(Icons.play_circle_filled, color: C.amber, size: 16),
-                  ],
-                  const SizedBox(width: 4),
-                  GestureDetector(
-                    onTap: onTap,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                      child: Icon(Icons.more_horiz, color: C.textSoft, size: 16),
-                    ),
-                  ),
-                  Icon(
-                    isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                    color: C.textSoft,
-                    size: 16,
-                  ),
-                ],
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent,
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+        ),
+        child: ExpansionTile(
+          tilePadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+          leading: Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: typeColor,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '${scene.orderIndex + 1}',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
               ),
             ),
           ),
-          // ── Expanded content ──
-          if (isExpanded) ...[
-            Divider(height: 1, thickness: 1, color: C.border),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (scene.description.isNotEmpty) ...[
-                    _sceneSectionLabel('Beschreibung', C),
-                    Text(scene.description, style: TextStyle(fontSize: 12, color: C.textMid, height: 1.6)),
-                    const SizedBox(height: 10),
-                  ],
-                  if (scene.linkedQuestIds.isNotEmpty) ...[
-                    _sceneSectionLabel('Verknüpfte Quests', C),
-                    _buildLinkedQuestsRow(scene),
-                    const SizedBox(height: 10),
-                  ],
-                  if (scene.linkedSoundIds.isNotEmpty) ...[
-                    _sceneSectionLabel('Verknüpfte Sounds', C),
-                    _buildLinkedSoundsRow(scene),
-                    const SizedBox(height: 10),
-                  ],
-                  if (scene.linkedCharacterIds.isNotEmpty) ...[
-                    _sceneSectionLabel('Verknüpfte Charaktere', C),
-                    _buildLinkedCharactersRow(scene),
-                    const SizedBox(height: 10),
-                  ],
-                  if (scene.linkedWikiEntryIds.isNotEmpty) ...[
-                    _sceneSectionLabel('Verknüpfte Wiki-Einträge', C),
-                    _buildLinkedWikiEntriesRow(scene),
-                    const SizedBox(height: 10),
-                  ],
-                  if (scene.sceneType == SceneType.Combat &&
-                      scene.linkedEncounterId != null &&
-                      scene.linkedEncounterId!.isNotEmpty)
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () => _startEncounterForScene(scene),
-                        icon: const Icon(Icons.gavel, size: 14),
-                        label: const Text('Kampf starten'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: C.red,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                          elevation: 0,
-                        ),
+          title: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      scene.name,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: C.text,
                       ),
                     ),
-                  if (scene.complexity != null || scene.estimatedDuration != null) ...[
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 4,
+                    Row(
                       children: [
-                        if (scene.complexity != null)
-                          _sceneBadge(scene.complexityDisplayName, const Color(0xFF7C3AED), Icons.trending_up),
-                        if (scene.estimatedDuration != null)
-                          _sceneBadge(_formatDuration(scene.estimatedDuration!), C.accent, Icons.schedule),
+                        Text(
+                          scene.sceneTypeDisplayName,
+                          style:
+                              TextStyle(fontSize: 11, color: C.textSoft),
+                        ),
+                        if (isActive) ...[
+                          const SizedBox(width: 6),
+                          Icon(Icons.play_circle_filled,
+                              color: C.green, size: 12),
+                        ],
+                        if (scene.isCompleted && !isActive) ...[
+                          const SizedBox(width: 6),
+                          Icon(Icons.check_circle,
+                              color: C.green, size: 12),
+                        ],
+                        if (scene.linkedEncounterId != null) ...[
+                          const SizedBox(width: 6),
+                          Icon(Icons.gavel, color: C.red, size: 12),
+                        ],
                       ],
                     ),
                   ],
-                ],
+                ),
               ),
-            ),
+              GestureDetector(
+                onTap: () => _showSceneOptions(scene),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(Icons.more_horiz,
+                      size: 16, color: C.textSoft),
+                ),
+              ),
+              const SizedBox(width: 2),
+            ],
+          ),
+          backgroundColor: Colors.transparent,
+          collapsedBackgroundColor: Colors.transparent,
+          iconColor: C.textSoft,
+          collapsedIconColor: C.textSoft,
+          children: [
+            _buildSceneExpandedContent(context, scene, isActive, C),
           ],
-                ],          // closes outer Column.children
-              ),            // closes outer Column
-            ),              // closes Expanded
-          ],                // closes Row.children
-        ),                  // closes Row
-      ),                    // closes IntrinsicHeight
+        ),
+      ),
     );
   }
 
-  Widget _sceneSectionLabel(String label, AppColorsExtension C) => Padding(
-        padding: const EdgeInsets.only(bottom: 5),
+  Widget _buildSceneExpandedContent(
+    BuildContext context,
+    Scene scene,
+    bool isActive,
+    AppColorsExtension C,
+  ) {
+    final hasContent = scene.description.isNotEmpty ||
+        scene.linkedCharacterIds.isNotEmpty ||
+        scene.linkedWikiEntryIds.isNotEmpty ||
+        scene.linkedSoundIds.isNotEmpty ||
+        scene.linkedQuestIds.isNotEmpty;
+
+    if (!hasContent) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
         child: Text(
-          label,
-          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: C.textMid, letterSpacing: 0.4),
+          'Keine weiteren Details',
+          style: TextStyle(fontSize: 12, color: C.textSoft),
         ),
       );
+    }
 
-  Widget _sceneBadge(String text, Color color, IconData icon) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(5),
-          border: Border.all(color: color.withValues(alpha: 0.35)),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: C.border)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (scene.description.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _sectionLabel('Beschreibung', C),
+            const SizedBox(height: 4),
+            Text(
+              scene.description,
+              style: TextStyle(
+                  fontSize: 12, color: C.textMid, height: 1.6),
+            ),
+          ],
+          if (scene.linkedCharacterIds.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _sectionLabel('Verknüpfte Charaktere', C),
+            const SizedBox(height: 4),
+            _buildLinkedCharactersRow(scene),
+          ],
+          if (scene.linkedWikiEntryIds.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _sectionLabel('Verknüpfte Wiki-Einträge', C),
+            const SizedBox(height: 4),
+            _buildLinkedWikiEntriesRow(scene),
+          ],
+          if (scene.linkedSoundIds.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _sectionLabel('Verknüpfte Sounds', C),
+            const SizedBox(height: 4),
+            _buildLinkedSoundsRow(scene),
+          ],
+          if (scene.linkedQuestIds.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _sectionLabel('Verknüpfte Quests', C),
+            const SizedBox(height: 4),
+            _buildLinkedQuestsRow(scene),
+          ],
+          if (scene.estimatedDuration != null ||
+              scene.complexity != null) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                if (scene.complexity != null)
+                  _buildMetaChip(
+                    icon: Icons.trending_up,
+                    label: scene.complexityDisplayName,
+                    color: DnDTheme.mysticalPurple,
+                  ),
+                if (scene.estimatedDuration != null) ...[
+                  const SizedBox(width: 6),
+                  _buildMetaChip(
+                    icon: Icons.schedule,
+                    label: _formatDuration(scene.estimatedDuration!),
+                    color: DnDTheme.arcaneBlue,
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String text, AppColorsExtension C) {
+    return Text(
+      text.toUpperCase(),
+      style: TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w600,
+        color: C.textSoft,
+        letterSpacing: 0.5,
+      ),
+    );
+  }
+
+  Widget _buildMetaChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 9),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: TextStyle(
+                fontSize: 9,
+                color: color,
+                fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getSceneTypeColor(SceneType type) {
+    switch (type) {
+      case SceneType.Introduction:
+        return const Color(0xFF2F6FEB);
+      case SceneType.Exploration:
+        return const Color(0xFF1A7F4B);
+      case SceneType.Combat:
+        return const Color(0xFFC93A3A);
+      case SceneType.Social:
+        return const Color(0xFF7C3AED);
+      case SceneType.Puzzle:
+        return const Color(0xFFB45309);
+      case SceneType.Climax:
+        return const Color(0xFF0891B2);
+      case SceneType.Resolution:
+        return const Color(0xFF6B6B66);
+    }
+  }
+
+  // ─── RIGHT PANEL ──────────────────────────────────────────────────────────
+
+  Widget _buildRightPanel(ActiveSessionViewModel viewModel) {
+    return Column(
+      children: [
+        // Live-Notizen (fixed height)
+        SizedBox(
+          height: 220,
+          child: LiveNotesQuadrant(viewModel: viewModel),
         ),
-        child: Row(
+        // Atmosphäre (fixed height)
+        SizedBox(
+          height: 240,
+          child: _buildAtmosphereSection(viewModel),
+        ),
+        // Quests (expands to fill remaining space)
+        Expanded(
+          child: QuestListSection(
+            key: ValueKey('quest_list_$_questUpdateCounter'),
+            campaignId: viewModel.campaign.id,
+            onQuestUpdated: () {
+              setState(() {
+                _questUpdateCounter++;
+              });
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAtmosphereSection(ActiveSessionViewModel viewModel) {
+    final activeSceneId = viewModel.currentSession.activeSceneId;
+    List<String> linkedSoundIds = [];
+
+    if (activeSceneId != null) {
+      try {
+        final activeScene =
+            viewModel.scenes.firstWhere((s) => s.id == activeSceneId);
+        linkedSoundIds = activeScene.linkedSoundIds;
+      } catch (_) {}
+    }
+
+    return AtmosphereQuadrant(initialSoundIds: linkedSoundIds);
+  }
+
+  // ─── ERROR WIDGET ─────────────────────────────────────────────────────────
+
+  Widget _buildErrorWidget(String error) {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(32),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 9),
-            const SizedBox(width: 3),
-            Text(text, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w500)),
+            Icon(Icons.error_outline, color: DnDTheme.errorRed, size: 48),
+            const SizedBox(height: 16),
+            Text(
+              'Fehler',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: DnDTheme.errorRed,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error,
+              style: const TextStyle(fontSize: 13, color: Colors.black54),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () async {
+                _viewModel.clearError();
+                await _viewModel.triggerDataReload();
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text('Erneut versuchen'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: DnDTheme.arcaneBlue,
+                foregroundColor: Colors.white,
+              ),
+            ),
           ],
         ),
-      );
+      ),
+    );
+  }
 
-  Color _sceneTypeColor(SceneType type) => switch (type) {
-        SceneType.Introduction => const Color(0xFF2f6feb),
-        SceneType.Social => const Color(0xFF7c3aed),
-        SceneType.Exploration => const Color(0xFF1a7f4b),
-        SceneType.Combat => const Color(0xFFc93a3a),
-        SceneType.Puzzle => const Color(0xFFb45309),
-        SceneType.Climax => const Color(0xFF0891b2),
-        SceneType.Resolution => const Color(0xFF6b7280),
-      };
+  // ─── LINKED SOUNDS ────────────────────────────────────────────────────────
+
+  Widget _buildLinkedSoundsRow(Scene scene) {
+    if (scene.linkedSoundIds.isEmpty) return const SizedBox.shrink();
+
+    return FutureBuilder<List<Sound>>(
+      future: _loadLinkedSounds(scene.linkedSoundIds),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(4),
+            child: SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return Column(
+          children: snapshot.data!
+              .map((sound) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: SoundPlayerWidget(
+                      sound: sound,
+                      compactMode: true,
+                      showCloseButton: false,
+                    ),
+                  ))
+              .toList(),
+        );
+      },
+    );
+  }
+
+  Future<List<Sound>> _loadLinkedSounds(List<String> soundIds) async {
+    final List<Sound> result = [];
+    try {
+      final soundRepo = context.read<SoundModelRepository>();
+      for (final soundId in soundIds) {
+        try {
+          final sound = await soundRepo.findById(soundId);
+          if (sound != null && sound.isValid) result.add(sound);
+        } catch (_) {}
+      }
+    } catch (_) {}
+    return result;
+  }
+
+  // ─── LINKED CHARACTERS ───────────────────────────────────────────────────
+
+  Widget _buildLinkedCharactersRow(Scene scene) {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _loadLinkedCharacters(scene.linkedCharacterIds),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        final linkedChars = snapshot.data!;
+        return Wrap(
+          spacing: 6,
+          runSpacing: 4,
+          children: linkedChars.values.map((char) {
+            final type = char['type'] as String;
+            final name = char['name'] as String;
+            final level = char['level'] as String?;
+            final color = _getCharacterTypeColor(type);
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(color: color.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(_getCharacterTypeIcon(type), color: color, size: 11),
+                  const SizedBox(width: 5),
+                  Text(
+                    level != null ? '$name ($level)' : name,
+                    style: TextStyle(fontSize: 11, color: color),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> _loadLinkedCharacters(
+      List<String> characterIds) async {
+    final Map<String, dynamic> result = {};
+    try {
+      final creatureRepo = context.read<CreatureModelRepository>();
+      final pcRepo = context.read<PlayerCharacterModelRepository>();
+      for (final charId in characterIds) {
+        try {
+          final pc = await pcRepo.findById(charId);
+          if (pc != null) {
+            result[charId] = {
+              'name': pc.name,
+              'type': 'pc',
+              'level': 'Lvl ${pc.level}',
+            };
+            continue;
+          }
+        } catch (_) {}
+        try {
+          final creature = await creatureRepo.findById(charId);
+          if (creature != null) {
+            result[charId] = {
+              'name': creature.name,
+              'type':
+                  creature.sourceType == 'official' ? 'monster' : 'npc',
+              'level': creature.challengeRating != null
+                  ? 'CR ${creature.challengeRating}'
+                  : null,
+            };
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
+    return result;
+  }
+
+  // ─── LINKED WIKI ENTRIES ─────────────────────────────────────────────────
+
+  Widget _buildLinkedWikiEntriesRow(Scene scene) {
+    return FutureBuilder<List<WikiEntry>>(
+      future: _loadLinkedWikiEntries(scene.linkedWikiEntryIds),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          );
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return Wrap(
+          spacing: 6,
+          runSpacing: 4,
+          children: snapshot.data!.map((entry) {
+            final color = _getWikiEntryTypeColor(entry.entryType);
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(color: color.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(_getWikiEntryTypeIcon(entry.entryType),
+                      color: color, size: 11),
+                  const SizedBox(width: 5),
+                  Text(
+                    entry.title,
+                    style: TextStyle(fontSize: 11, color: color),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  Future<List<WikiEntry>> _loadLinkedWikiEntries(
+      List<String> wikiEntryIds) async {
+    final List<WikiEntry> result = [];
+    try {
+      final wikiRepo = context.read<WikiEntryModelRepository>();
+      for (final wikiId in wikiEntryIds) {
+        try {
+          final entry = await wikiRepo.findById(wikiId);
+          if (entry != null) result.add(entry);
+        } catch (_) {}
+      }
+    } catch (_) {}
+    return result;
+  }
+
+  Color _getWikiEntryTypeColor(WikiEntryType type) {
+    switch (type) {
+      case WikiEntryType.Person:    return DnDTheme.successGreen;
+      case WikiEntryType.Place:     return DnDTheme.arcaneBlue;
+      case WikiEntryType.Lore:      return DnDTheme.ancientGold;
+      case WikiEntryType.Faction:   return DnDTheme.mysticalPurple;
+      case WikiEntryType.Magic:     return const Color(0xFF7C3AED);
+      case WikiEntryType.History:   return const Color(0xFFB45309);
+      case WikiEntryType.Item:      return DnDTheme.infoBlue;
+      case WikiEntryType.Quest:     return DnDTheme.successGreen;
+      case WikiEntryType.Creature:  return DnDTheme.errorRed;
+    }
+  }
+
+  IconData _getWikiEntryTypeIcon(WikiEntryType type) {
+    switch (type) {
+      case WikiEntryType.Person:    return Icons.person;
+      case WikiEntryType.Place:     return Icons.place;
+      case WikiEntryType.Lore:      return Icons.book;
+      case WikiEntryType.Faction:   return Icons.groups;
+      case WikiEntryType.Magic:     return Icons.auto_awesome;
+      case WikiEntryType.History:   return Icons.history;
+      case WikiEntryType.Item:      return Icons.inventory_2;
+      case WikiEntryType.Quest:     return Icons.flag;
+      case WikiEntryType.Creature:  return Icons.pets;
+    }
+  }
+
+  // ─── LINKED QUESTS ────────────────────────────────────────────────────────
+
+  Widget _buildLinkedQuestsRow(Scene scene) {
+    return FutureBuilder<List<Quest>>(
+      key: ValueKey('quests_${scene.id}_$_questUpdateCounter'),
+      future: _loadLinkedQuests(scene.linkedQuestIds),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          );
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return Column(
+          children: snapshot.data!
+              .map((quest) => _buildInlineQuestCard(quest))
+              .toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildInlineQuestCard(Quest quest) {
+    final statusColor = _getQuestStatusColor(quest.status);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: statusColor.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: statusColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  quest.title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _buildQuestActionButton(
+                icon: Icons.remove_circle_outline,
+                label: 'Aufgegeben',
+                color: const Color(0xFFB45309),
+                isSelected: quest.status == QuestStatus.abandoned,
+                onTap: () => _updateQuestStatus(quest, QuestStatus.abandoned),
+              ),
+              const SizedBox(width: 5),
+              _buildQuestActionButton(
+                icon: Icons.play_circle_outline,
+                label: 'Aktiv',
+                color: const Color(0xFF1A7F4B),
+                isSelected: quest.status == QuestStatus.active,
+                onTap: () => _updateQuestStatus(quest, QuestStatus.active),
+              ),
+              const SizedBox(width: 5),
+              _buildQuestActionButton(
+                icon: Icons.check_circle_outline,
+                label: 'Erledigt',
+                color: const Color(0xFF1A7F4B),
+                isSelected: quest.status == QuestStatus.completed,
+                onTap: () => _updateQuestStatus(quest, QuestStatus.completed),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuestActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? color.withValues(alpha: 0.2)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(5),
+            border: Border.all(
+              color: isSelected
+                  ? color
+                  : color.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? color : color.withValues(alpha: 0.6),
+                size: 11,
+              ),
+              const SizedBox(width: 3),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: isSelected ? color : color.withValues(alpha: 0.7),
+                  fontWeight: isSelected
+                      ? FontWeight.w600
+                      : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _updateQuestStatus(Quest quest, QuestStatus newStatus) async {
+    try {
+      final questRepo = context.read<QuestModelRepository>();
+      final updatedQuest = quest.copyWith(
+        status: newStatus,
+        updatedAt: DateTime.now(),
+      );
+      await questRepo.update(updatedQuest);
+      setState(() {
+        _questUpdateCounter++;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '"${quest.title}" als ${_getQuestStatusText(newStatus)} markiert',
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
+            backgroundColor: _getQuestStatusColor(newStatus),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Fehler beim Aktualisieren: $e'),
+            backgroundColor: DnDTheme.errorRed,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<List<Quest>> _loadLinkedQuests(List<String> questIds) async {
+    final List<Quest> result = [];
+    try {
+      final questRepo = context.read<QuestModelRepository>();
+      for (final questId in questIds) {
+        try {
+          final quest = await questRepo.findById(questId);
+          if (quest != null) result.add(quest);
+        } catch (_) {}
+      }
+    } catch (_) {}
+    return result;
+  }
+
+  Color _getQuestStatusColor(QuestStatus status) {
+    switch (status) {
+      case QuestStatus.active:    return const Color(0xFF1A7F4B);
+      case QuestStatus.onHold:    return const Color(0xFF2F6FEB);
+      case QuestStatus.completed: return const Color(0xFF1A7F4B);
+      case QuestStatus.failed:    return const Color(0xFFC93A3A);
+      case QuestStatus.abandoned: return const Color(0xFFB45309);
+    }
+  }
+
+  String _getQuestStatusText(QuestStatus status) {
+    switch (status) {
+      case QuestStatus.active:    return 'Aktiv';
+      case QuestStatus.onHold:    return 'Pause';
+      case QuestStatus.completed: return 'Erledigt';
+      case QuestStatus.failed:    return 'Fehlgeschlagen';
+      case QuestStatus.abandoned: return 'Aufgegeben';
+    }
+  }
+
+  // ─── CHARACTER TYPE HELPERS ───────────────────────────────────────────────
+
+  Color _getCharacterTypeColor(String type) {
+    switch (type) {
+      case 'pc':      return const Color(0xFF1A7F4B);
+      case 'npc':     return const Color(0xFF2F6FEB);
+      case 'monster': return const Color(0xFFC93A3A);
+      default:        return const Color(0xFF6B6B66);
+    }
+  }
+
+  IconData _getCharacterTypeIcon(String type) {
+    switch (type) {
+      case 'pc':      return Icons.person;
+      case 'npc':     return Icons.person_outline;
+      case 'monster': return Icons.pets;
+      default:        return Icons.person;
+    }
+  }
+
+  // ─── DURATION FORMAT ──────────────────────────────────────────────────────
 
   String _formatDuration(Duration duration) {
     final hours = duration.inHours;
@@ -626,225 +1258,21 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     return '${minutes}min';
   }
 
-  Widget _buildLinkedSoundsRow(Scene scene) {
-    if (scene.linkedSoundIds.isEmpty) return const SizedBox.shrink();
-    final viewModel = context.read<ActiveSessionViewModel>();
-    final preloadedSounds = viewModel.sceneSoundsFor(scene.id);
-    return SoundMixerWidget(
-      size: SoundMixerSize.minimal,
-      key: ValueKey('mixer_${scene.id}'),
-      initialSounds: preloadedSounds.isNotEmpty ? preloadedSounds : null,
-      initialVolumes: scene.soundVolumes,
-      onSoundsChanged: (soundIds) => viewModel.updateSceneSounds(scene.id, soundIds),
-      onVolumesChanged: (volumes) => viewModel.updateSceneSoundVolumes(scene.id, volumes),
-    );
-  }
-
-  Widget _buildLinkedCharactersRow(Scene scene) {
-    return FutureBuilder<Map<String, Map<String, dynamic>>>(
-      future: _loadLinkedCharacters(scene.linkedCharacterIds),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data!.isEmpty) return const SizedBox.shrink();
-        final C = context.appColors;
-        return Wrap(
-          spacing: 5,
-          runSpacing: 5,
-          children: snapshot.data!.values.map((char) {
-            final name = char['name'] as String;
-            final level = char['level'] as String?;
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: C.bgHover,
-                borderRadius: BorderRadius.circular(5),
-                border: Border.all(color: C.border),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.person_outline, color: C.textSoft, size: 10),
-                  const SizedBox(width: 5),
-                  Text(
-                    level != null ? '$name ($level)' : name,
-                    style: TextStyle(fontSize: 11, color: C.textMid),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-        );
-      },
-    );
-  }
-
-  Future<Map<String, Map<String, dynamic>>> _loadLinkedCharacters(List<String> characterIds) async {
-    final result = <String, Map<String, dynamic>>{};
-    try {
-      final creatureRepo = context.read<CreatureModelRepository>();
-      final pcRepo = context.read<PlayerCharacterModelRepository>();
-      for (final charId in characterIds) {
-        try {
-          final pc = await pcRepo.findById(charId);
-          if (pc != null) {
-            result[charId] = {'name': pc.name, 'type': 'pc', 'level': 'Lvl ${pc.level}'};
-            continue;
-          }
-        } catch (_) {}
-        try {
-          final creature = await creatureRepo.findById(charId);
-          if (creature != null) {
-            result[charId] = {
-              'name': creature.name,
-              'type': creature.sourceType == 'official' ? 'monster' : 'npc',
-              'level': creature.challengeRating != null ? 'CR ${creature.challengeRating}' : null,
-            };
-          }
-        } catch (_) {}
-      }
-    } catch (e) {
-      debugPrint('Fehler beim Laden der Charaktere: $e');
-    }
-    return result;
-  }
-
-  Widget _buildLinkedWikiEntriesRow(Scene scene) {
-    return FutureBuilder<List<WikiEntry>>(
-      future: _loadLinkedWikiEntries(scene.linkedWikiEntryIds),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return SizedBox(
-            height: 16,
-            width: 16,
-            child: CircularProgressIndicator(strokeWidth: 2, color: context.appColors.textSoft),
-          );
-        }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) return const SizedBox.shrink();
-        const purple = Color(0xFF7C3AED);
-        return Wrap(
-          spacing: 5,
-          runSpacing: 5,
-          children: snapshot.data!.map((wikiEntry) => GestureDetector(
-            onTap: () => WikiEntryPopupDialog.show(context: context, entry: wikiEntry),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: purple.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(5),
-                border: Border.all(color: purple.withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.book_outlined, color: purple, size: 10),
-                  const SizedBox(width: 5),
-                  Text(wikiEntry.title, style: const TextStyle(fontSize: 11, color: purple)),
-                ],
-              ),
-            ),
-          )).toList(),
-        );
-      },
-    );
-  }
-
-  Future<List<WikiEntry>> _loadLinkedWikiEntries(List<String> wikiEntryIds) async {
-    final result = <WikiEntry>[];
-    try {
-      final wikiEntryRepo = context.read<WikiEntryModelRepository>();
-      for (final wikiId in wikiEntryIds) {
-        try {
-          final wikiEntry = await wikiEntryRepo.findById(wikiId);
-          if (wikiEntry != null) result.add(wikiEntry);
-        } catch (e) {
-          debugPrint('Wiki-Eintrag $wikiId konnte nicht geladen werden: $e');
-        }
-      }
-    } catch (e) {
-      debugPrint('Fehler beim Laden der Wiki-Einträge: $e');
-    }
-    return result;
-  }
-
-  Widget _buildLinkedQuestsRow(Scene scene) {
-    return FutureBuilder<List<Quest>>(
-      key: ValueKey('quests_${scene.id}_$_questUpdateCounter'),
-      future: _loadLinkedQuests(scene.linkedQuestIds),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return SizedBox(
-            height: 16,
-            width: 16,
-            child: CircularProgressIndicator(strokeWidth: 2, color: context.appColors.textSoft),
-          );
-        }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) return const SizedBox.shrink();
-        return Wrap(
-          spacing: 5,
-          runSpacing: 5,
-          children: snapshot.data!.map((quest) {
-            final statusColor = _getQuestStatusColor(quest.status);
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(5),
-                border: Border.all(color: statusColor.withValues(alpha: 0.35)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.flag_outlined, color: statusColor, size: 10),
-                  const SizedBox(width: 5),
-                  Text(quest.title, style: TextStyle(fontSize: 11, color: context.appColors.textMid)),
-                ],
-              ),
-            );
-          }).toList(),
-        );
-      },
-    );
-  }
-
-  Future<List<Quest>> _loadLinkedQuests(List<String> questIds) async {
-    final result = <Quest>[];
-    try {
-      final questRepo = context.read<QuestModelRepository>();
-      for (final questId in questIds) {
-        try {
-          final quest = await questRepo.findById(questId);
-          if (quest != null) result.add(quest);
-        } catch (e) {
-          debugPrint('Quest $questId konnte nicht geladen werden: $e');
-        }
-      }
-    } catch (e) {
-      debugPrint('Fehler beim Laden der Quests: $e');
-    }
-    return result;
-  }
-
-  Color _getQuestStatusColor(QuestStatus status) {
-    final C = context.appColors;
-    return switch (status) {
-      QuestStatus.active => C.green,
-      QuestStatus.onHold => C.textMid,
-      QuestStatus.completed => C.green,
-      QuestStatus.failed => C.red,
-      QuestStatus.abandoned => C.amber,
-    };
-  }
+  // ─── SCENE OPTIONS ────────────────────────────────────────────────────────
 
   void _showSceneOptions(Scene scene) {
-    final C = context.appColors;
-    showModalBottomSheet<void>(
+    showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         decoration: BoxDecoration(
-          color: C.bgHover,
+          gradient: DnDTheme.getMysticalGradient(
+            startColor: DnDTheme.slateGrey,
+            endColor: DnDTheme.stoneGrey,
+          ),
           borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
+            topLeft: Radius.circular(DnDTheme.radiusLarge),
+            topRight: Radius.circular(DnDTheme.radiusLarge),
           ),
         ),
         child: SafeArea(
@@ -852,52 +1280,84 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: Icon(Icons.edit, color: C.accent, size: 20),
-                title: Text('Bearbeiten', style: TextStyle(fontSize: 14, color: C.text)),
+                leading:
+                    Icon(Icons.edit, color: DnDTheme.arcaneBlue, size: 20),
+                title: Text(
+                  'Bearbeiten',
+                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _showEditSceneDialog(scene);
                 },
               ),
               ListTile(
-                leading: Icon(Icons.play_circle_filled, color: C.amber, size: 20),
-                title: Text('Szene aktivieren', style: TextStyle(fontSize: 14, color: C.text)),
-                subtitle: Text('Aktiviert Szene und ihre Quests', style: TextStyle(color: C.textSoft, fontSize: 11)),
+                leading: Icon(Icons.play_circle_filled,
+                    color: DnDTheme.ancientGold, size: 20),
+                title: Text(
+                  'Scene aktivieren',
+                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                ),
+                subtitle: Text(
+                  'Aktiviert Scene und ihre Quests',
+                  style: DnDTheme.bodyText2
+                      .copyWith(color: Colors.white54, fontSize: 11),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _viewModel.activateScene(scene.id);
                 },
               ),
               ListTile(
-                leading: Icon(Icons.check_circle, color: C.green, size: 20),
-                title: Text('Szene abschließen', style: TextStyle(fontSize: 14, color: C.text)),
-                subtitle: Text('Schließt Szene, Quests und Encounters', style: TextStyle(color: C.textSoft, fontSize: 11)),
+                leading: Icon(Icons.check_circle,
+                    color: DnDTheme.successGreen, size: 20),
+                title: Text(
+                  'Scene abschließen',
+                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                ),
+                subtitle: Text(
+                  'Schließt Scene, Quests und Encounters',
+                  style: DnDTheme.bodyText2
+                      .copyWith(color: Colors.white54, fontSize: 11),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _viewModel.completeScene(scene.id);
                 },
               ),
-              Divider(color: C.border),
+              Divider(color: DnDTheme.stoneGrey),
               ListTile(
-                leading: Icon(Icons.arrow_upward, color: C.accent, size: 20),
-                title: Text('Nach oben verschieben', style: TextStyle(fontSize: 14, color: C.text)),
+                leading: Icon(Icons.arrow_upward,
+                    color: DnDTheme.arcaneBlue, size: 20),
+                title: Text(
+                  'Nach oben verschieben',
+                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _viewModel.moveSceneUp(scene.id);
                 },
               ),
               ListTile(
-                leading: Icon(Icons.arrow_downward, color: C.accent, size: 20),
-                title: Text('Nach unten verschieben', style: TextStyle(fontSize: 14, color: C.text)),
+                leading: Icon(Icons.arrow_downward,
+                    color: DnDTheme.arcaneBlue, size: 20),
+                title: Text(
+                  'Nach unten verschieben',
+                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _viewModel.moveSceneDown(scene.id);
                 },
               ),
-              Divider(color: C.border),
+              Divider(color: DnDTheme.stoneGrey),
               ListTile(
-                leading: Icon(Icons.delete, color: C.red, size: 20),
-                title: Text('Löschen', style: TextStyle(fontSize: 14, color: C.red)),
+                leading:
+                    Icon(Icons.delete, color: DnDTheme.errorRed, size: 20),
+                title: Text(
+                  'Löschen',
+                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _showDeleteSceneConfirm(scene);
@@ -917,11 +1377,13 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   void _showEditSceneDialog(Scene? scene, {bool isCreate = false}) async {
     final sceneRepository = context.read<SceneModelRepository>();
     final creatureRepository = context.read<CreatureModelRepository>();
-    final playerCharacterRepository = context.read<PlayerCharacterModelRepository>();
+    final playerCharacterRepository =
+        context.read<PlayerCharacterModelRepository>();
     final questRepository = context.read<QuestModelRepository>();
     final soundRepository = context.read<SoundModelRepository>();
     final wikiEntryRepository = context.read<WikiEntryModelRepository>();
     final encounterRepository = context.read<EncounterModelRepository>();
+
     final sessionId = scene == null ? widget.session.id : null;
 
     final result = await Navigator.push<bool>(
@@ -941,7 +1403,10 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
               ),
             ),
           ],
-          child: EditSceneScreen(scene: scene, sessionId: sessionId),
+          child: EditSceneScreen(
+            scene: scene,
+            sessionId: sessionId,
+          ),
         ),
       ),
     );
@@ -952,30 +1417,35 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   }
 
   void _showDeleteSceneConfirm(Scene scene) {
-    final C = context.appColors;
-    showDialog<void>(
+    showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: C.bgPanel,
+        backgroundColor: DnDTheme.stoneGrey,
         title: Text(
           'Szene löschen?',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: C.red),
+          style: DnDTheme.headline3.copyWith(color: DnDTheme.errorRed),
         ),
         content: Text(
           'Möchtest du "${scene.name}" wirklich löschen?',
-          style: TextStyle(fontSize: 14, color: C.text),
+          style: DnDTheme.bodyText1.copyWith(color: Colors.white),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Abbrechen', style: TextStyle(color: Color(0xFF7C3AED))),
+            child: Text(
+              'Abbrechen',
+              style: DnDTheme.bodyText1.copyWith(color: DnDTheme.mysticalPurple),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
               await _viewModel.deleteScene(scene.id);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: C.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DnDTheme.errorRed,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Löschen'),
           ),
         ],
@@ -983,54 +1453,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     );
   }
 
-  Widget _buildLiveNotesWidget(ActiveSessionViewModel viewModel) =>
-      LiveNotesQuadrant(viewModel: viewModel);
-
-
-
-  Widget _buildErrorWidget(String error) {
-    final C = context.appColors;
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: C.bgPanel,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: C.accent.withValues(alpha: 0.3)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, color: C.red, size: 48),
-            const SizedBox(height: 16),
-            Text(
-              'Fehler',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: C.red),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              error,
-              style: TextStyle(fontSize: 13, color: C.textMid),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () async {
-                _viewModel.clearError();
-                await _viewModel.triggerDataReload();
-              },
-              icon: const Icon(Icons.refresh),
-              label: const Text('Erneut versuchen'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: C.accent,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // ─── MENU ACTIONS ─────────────────────────────────────────────────────────
 
   Future<void> _handleMenuAction(String action) async {
     switch (action) {
@@ -1046,42 +1469,48 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   }
 
   void _showEditTitleDialog() {
-    final C = context.appColors;
-    final controller = TextEditingController(text: _viewModel.currentSession.title);
-    showDialog<void>(
+    final controller =
+        TextEditingController(text: _viewModel.currentSession.title);
+    showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: C.bgPanel,
+        backgroundColor: DnDTheme.stoneGrey,
         title: Text(
           'Session-Titel bearbeiten',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: C.amber),
+          style: DnDTheme.headline3.copyWith(color: DnDTheme.ancientGold),
         ),
         content: TextFormField(
           controller: controller,
-          style: TextStyle(color: C.text, fontSize: 14),
+          style: DnDTheme.bodyText1.copyWith(color: Colors.white),
           decoration: InputDecoration(
             labelText: 'Titel',
-            labelStyle: TextStyle(color: C.amber),
+            labelStyle:
+                DnDTheme.bodyText2.copyWith(color: DnDTheme.ancientGold),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xFF7C3AED)),
+              borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+              borderSide: const BorderSide(color: DnDTheme.mysticalPurple),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: const Color(0xFF7C3AED).withValues(alpha: 0.5)),
+              borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+              borderSide: BorderSide(
+                  color: DnDTheme.mysticalPurple.withValues(alpha: 0.5)),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: C.amber, width: 2),
+              borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+              borderSide:
+                  const BorderSide(color: DnDTheme.ancientGold, width: 2),
             ),
             filled: true,
-            fillColor: C.bgHover.withValues(alpha: 0.3),
+            fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Abbrechen', style: TextStyle(color: Color(0xFF7C3AED))),
+            child: Text(
+              'Abbrechen',
+              style: DnDTheme.bodyText1.copyWith(color: DnDTheme.mysticalPurple),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -1089,8 +1518,8 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
               await _viewModel.updateSessionTitle(controller.text);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: C.amber,
-              foregroundColor: C.bg,
+              backgroundColor: DnDTheme.ancientGold,
+              foregroundColor: DnDTheme.dungeonBlack,
             ),
             child: const Text('Speichern'),
           ),
@@ -1099,7 +1528,9 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     );
   }
 
-  Future<void> _startEncounter() async {
+  // ─── ENCOUNTER ────────────────────────────────────────────────────────────
+
+  void _startEncounter() {
     final activeSceneId = _viewModel.currentSession.activeSceneId;
     if (activeSceneId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1111,56 +1542,17 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
       );
       return;
     }
+
     final activeScene = _viewModel.scenes.firstWhere(
       (scene) => scene.id == activeSceneId,
       orElse: () => throw Exception('Scene nicht gefunden'),
     );
-    String? encounterTitle;
-    if (activeScene.linkedEncounterId != null && activeScene.linkedEncounterId!.isNotEmpty) {
-      try {
-        final encounterRepo = context.read<EncounterModelRepository>();
-        final encounter = await encounterRepo.findById(activeScene.linkedEncounterId!);
-        if (encounter != null) encounterTitle = encounter.title;
-      } catch (e) {
-        debugPrint('Fehler beim Laden des Encounters: $e');
-      }
-    }
-    encounterTitle ??= activeScene.name;
-    if (!mounted) return;
+
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
-        builder: (ctx) => encounter_setup.EncounterSetupScreen(
+        builder: (ctx) => EncounterSetupScreen(
           campaign: _viewModel.campaign,
           scene: activeScene,
-          encounterTitle: encounterTitle,
-          preselectedCharacterIds: activeScene.linkedCharacterIds,
-          preselectedDescription: activeScene.description.isNotEmpty ? activeScene.description : null,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _startEncounterForScene(Scene scene) async {
-    String? encounterTitle;
-    if (scene.linkedEncounterId != null && scene.linkedEncounterId!.isNotEmpty) {
-      try {
-        final encounterRepo = context.read<EncounterModelRepository>();
-        final encounter = await encounterRepo.findById(scene.linkedEncounterId!);
-        if (encounter != null) encounterTitle = encounter.title;
-      } catch (e) {
-        debugPrint('Fehler beim Laden des Encounters: $e');
-      }
-    }
-    encounterTitle ??= scene.name;
-    if (!mounted) return;
-    Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (ctx) => encounter_setup.EncounterSetupScreen(
-          campaign: _viewModel.campaign,
-          scene: scene,
-          encounterTitle: encounterTitle,
-          preselectedCharacterIds: scene.linkedCharacterIds,
-          preselectedDescription: scene.description.isNotEmpty ? scene.description : null,
         ),
       ),
     );

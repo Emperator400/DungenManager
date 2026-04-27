@@ -396,6 +396,8 @@ class Campaign {
   final List<String> sessionIds;
   final CampaignSettings settings;
   final CampaignStats stats;
+  final String accentColor;
+  final String system;
 
   /// Tabellenname für die Datenbank
   static const String tableName = 'campaigns';
@@ -419,6 +421,8 @@ class Campaign {
     this.sessionIds = const [],
     this.settings = const CampaignSettings(),
     this.stats = const CampaignStats(),
+    this.accentColor = '#7c3aed',
+    this.system = 'D&D 5e',
   });
 
   /// Factory für neue Kampagnen mit automatisch generierter ID
@@ -429,6 +433,8 @@ class Campaign {
     CampaignType type = CampaignType.homebrew,
     String? dungeonMasterId,
     CampaignSettings? settings,
+    String accentColor = '#7c3aed',
+    String system = 'D&D 5e',
   }) {
     final now = DateTime.now();
     return Campaign(
@@ -442,6 +448,8 @@ class Campaign {
       dungeonMasterId: dungeonMasterId,
       settings: settings ?? const CampaignSettings(),
       stats: const CampaignStats(),
+      accentColor: accentColor,
+      system: system,
     );
   }
 
@@ -568,6 +576,8 @@ class Campaign {
         sessionIds: _deserializeStringList(map['session_ids'] as String?),
         settings: CampaignSettings.fromDatabaseMap(settingsMap),
         stats: CampaignStats.fromDatabaseMap(statsMap),
+        accentColor: map['accent_color'] as String? ?? '#7c3aed',
+        system: map['system'] as String? ?? 'D&D 5e',
       );
     } catch (e) {
       debugPrint('Fehler beim Parsen der Kampagne: $e');
@@ -678,6 +688,8 @@ class Campaign {
       'session_ids': _serializeStringList(sessionIds),
       'settings': _encodeJson(settings.toDatabaseMap()),
       'stats': _encodeJson(stats.toDatabaseMap()),
+      'accent_color': accentColor,
+      'system': system,
     };
   }
 
@@ -701,6 +713,8 @@ class Campaign {
     List<String>? sessionIds,
     CampaignSettings? settings,
     CampaignStats? stats,
+    String? accentColor,
+    String? system,
   }) {
     return Campaign(
       id: id ?? this.id,
@@ -721,6 +735,8 @@ class Campaign {
       sessionIds: sessionIds ?? this.sessionIds,
       settings: settings ?? this.settings,
       stats: stats ?? this.stats,
+      accentColor: accentColor ?? this.accentColor,
+      system: system ?? this.system,
     );
   }
 

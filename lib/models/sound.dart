@@ -134,7 +134,7 @@ class Sound {
 
   /// Checks if the file is a valid audio format
   bool get isValidAudioFormat {
-    final validFormats = ['mp3', 'wav', 'ogg', 'm4a', 'flac'];
+    const validFormats = {'mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac'};
     return validFormats.contains(fileExtension);
   }
 

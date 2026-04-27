@@ -84,6 +84,9 @@ class DatabaseMigration {
   // Füge last_opened_at Spalte zur campaigns Tabelle hinzu
   await _addLastOpenedAtColumn(db);
 
+  // Füge accent_color und system Spalten zur campaigns Tabelle hinzu
+  await _addCampaignColorAndSystemColumns(db);
+
   debugPrint('Database migration completed successfully');
   }
   
@@ -1272,6 +1275,23 @@ class DatabaseMigration {
       }
     } catch (e) {
       debugPrint('Error adding last_opened_at column: $e');
+    }
+  }
+
+  Future<void> _addCampaignColorAndSystemColumns(Database db) async {
+    try {
+      final tableInfo = await db.rawQuery('PRAGMA table_info(campaigns)');
+      final cols = tableInfo.map((c) => c['name'] as String).toSet();
+      if (!cols.contains('accent_color')) {
+        await db.execute("ALTER TABLE campaigns ADD COLUMN accent_color TEXT DEFAULT '#7c3aed'");
+        debugPrint('Added accent_color column to campaigns');
+      }
+      if (!cols.contains('system')) {
+        await db.execute("ALTER TABLE campaigns ADD COLUMN system TEXT DEFAULT 'D&D 5e'");
+        debugPrint('Added system column to campaigns');
+      }
+    } catch (e) {
+      debugPrint('Error adding accent_color/system columns: $e');
     }
   }
 }

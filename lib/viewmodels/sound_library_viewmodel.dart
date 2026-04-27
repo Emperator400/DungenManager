@@ -1,528 +1,225 @@
-import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart';
 import '../models/sound.dart';
 import '../database/repositories/sound_model_repository.dart';
 import '../database/core/database_connection.dart';
 import '../services/sound_service.dart';
 
-/// ViewModel für die Sound Library mit neuer Repository-Architektur
-/// Zentralisiert State Management und Business-Logik für Sounds und Szenen
-/// 
-/// HINWEIS: Verwendet jetzt das neue SoundModelRepository
+/// ViewModel für die Sound-Bibliothek.
+///
+/// Verwaltet die Liste aller Sounds, Filter und CRUD-Operationen.
+/// Szenen-Verwaltung liegt in [SoundScenesTab] (eigener State mit SoundSceneService).
 class SoundLibraryViewModel extends ChangeNotifier {
-  final SoundModelRepository? _soundRepository;
-
-  // ============================================================================
-  // STATE VARIABLES
-  // ============================================================================
+  final SoundModelRepository _repo;
 
   List<Sound> _sounds = [];
-  List<Sound> _filteredSounds = [];
-  List<Map<String, dynamic>> _scenes = [];
-  bool _isLoadingSounds = false;
-  bool _isLoadingScenes = false;
-  String? _soundError;
-  String? _sceneError;
+  List<Sound> _filtered = [];
+  bool _loading = false;
+  String? _error;
 
-  // Filter-Zustände
-  String _soundSearchQuery = '';
-  String _sceneSearchQuery = '';
-  SoundType? _selectedSoundType;
-  bool _showFavoritesOnly = false;
-  int _currentTabIndex = 0;
+  String _searchQuery = '';
+  SoundType? _typeFilter;
+  bool _favoritesOnly = false;
 
-  // ============================================================================
-  // GETTERS
-  // ============================================================================
+  SoundLibraryViewModel({SoundModelRepository? repository})
+      : _repo = repository ?? SoundModelRepository(DatabaseConnection.instance);
 
-  List<Sound> get sounds => List.unmodifiable(_filteredSounds);
+  // ---------------------------------------------------------------------------
+  // Getters
+  // ---------------------------------------------------------------------------
+
+  List<Sound> get sounds => List.unmodifiable(_filtered);
   List<Sound> get allSounds => List.unmodifiable(_sounds);
-  List<Map<String, dynamic>> get scenes => List.unmodifiable(_scenes);
-  bool get isLoadingSounds => _isLoadingSounds;
-  bool get isLoadingScenes => _isLoadingScenes;
-  bool get isLoading => _isLoadingSounds || _isLoadingScenes;
-  String? get soundError => _soundError;
-  String? get sceneError => _sceneError;
-  bool get hasError => _soundError != null || _sceneError != null;
-  String get soundSearchQuery => _soundSearchQuery;
-  String get sceneSearchQuery => _sceneSearchQuery;
-  SoundType? get selectedSoundType => _selectedSoundType;
-  bool get showFavoritesOnly => _showFavoritesOnly;
-  int get currentTabIndex => _currentTabIndex;
+  bool get isLoading => _loading;
+
+  /// Kompatibilitäts-Getter für Consumer in screen
+  bool get isLoadingSounds => _loading;
+
+  String? get soundError => _error;
+  bool get hasError => _error != null;
+  String get soundSearchQuery => _searchQuery;
+  SoundType? get selectedSoundType => _typeFilter;
+  bool get showFavoritesOnly => _favoritesOnly;
   int get soundCount => _sounds.length;
-  int get favoriteCount => _sounds.where((sound) => sound.isFavorite).length;
+  int get favoriteCount => _sounds.where((s) => s.isFavorite).length;
 
-  /// Prüft ob Filter aktiv sind
-  bool get hasActiveFilters => 
-      _soundSearchQuery.isNotEmpty || 
-      _selectedSoundType != null || 
-      _showFavoritesOnly;
+  // ---------------------------------------------------------------------------
+  // Laden
+  // ---------------------------------------------------------------------------
 
-  // ============================================================================
-  // CONSTRUCTOR
-  // ============================================================================
-
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue SoundModelRepository
-  /// 
-  SoundLibraryViewModel({
-    SoundModelRepository? soundRepository,
-  }) : _soundRepository = soundRepository ?? SoundModelRepository(DatabaseConnection.instance) {
-    initialize();
-  }
-
-  // ============================================================================
-  // INITIALIZATION
-  // ============================================================================
-
-  /// Initialisiert das ViewModel und lädt alle Daten
-  Future<void> initialize() async {
-    await _migrateExistingSoundsToSecureFolder();
-    await Future.wait([
-      loadSounds(),
-      loadScenes(),
-    ]);
-  }
-
-  // ============================================================================
-  // SOUND MANAGEMENT
-  // ============================================================================
-
-  /// Migriert bestehende Sounds in den sicheren Dokumente-Ordner (Update-sicher)
-  Future<void> _migrateExistingSoundsToSecureFolder() async {
-    if (_soundRepository == null) return;
-    
+  Future<void> loadSounds() async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
     try {
-      final Directory documentsDir = await getApplicationDocumentsDirectory();
-      final String securePath = path.join(documentsDir.path, 'DungenManager', 'sounds');
-      final Directory secureDir = Directory(securePath);
-
-      if (!await secureDir.exists()) {
-        await secureDir.create(recursive: true);
-      }
-
-      final allSounds = await _soundRepository!.findAll();
-
-      for (var sound in allSounds) {
-        final File oldFile = File(sound.filePath);
-        
-        // Wenn die Datei existiert und NOCH NICHT im sicheren Ordner liegt
-        if (await oldFile.exists() && !sound.filePath.contains(securePath)) {
-          final String fileName = path.basename(sound.filePath);
-          final String newFilePath = path.join(securePath, fileName);
-          
-          if (!await File(newFilePath).exists()) {
-            await oldFile.copy(newFilePath);
-          }
-          
-          // Pfad in der DB aktualisieren
-          await _soundRepository!.update(sound.copyWith(filePath: newFilePath));
-        }
-      }
+      _sounds = await _repo.findAll();
+      _applyFilter();
     } catch (e) {
-      debugPrint('⚠️ Fehler bei der Sound-Migration: $e');
+      _error = 'Fehler beim Laden: $e';
+      debugPrint('SoundLibraryViewModel.loadSounds: $e');
+    } finally {
+      _loading = false;
+      notifyListeners();
     }
   }
 
-  /// Lädt alle Sounds aus der Datenbank über neues Repository
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue SoundModelRepository
-  Future<void> loadSounds() async {
-    await _executeWithErrorHandling(() async {
-      if (_soundRepository != null) {
-        _sounds = await _soundRepository!.findAll();
-      } else {
-        _sounds = [];
-      }
-      _applyFiltersAndSort();
-    }, isSoundOperation: true);
+  Future<void> initialize() async => loadSounds();
+
+  Future<void> refresh() async => loadSounds();
+
+  // ---------------------------------------------------------------------------
+  // Filter
+  // ---------------------------------------------------------------------------
+
+  void setSoundSearchQuery(String query) {
+    _searchQuery = query;
+    _applyFilter();
+    notifyListeners();
   }
 
-  /// Lädt Sounds nach Typ über neues Repository
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue SoundModelRepository
-  Future<void> loadSoundsByType(SoundType soundType) async {
-    await _executeWithErrorHandling(() async {
-      if (_soundRepository != null) {
-        _sounds = await _soundRepository!.findAll();
-        // Filtern nach Typ im ViewModel
-        _sounds = _sounds.where((s) => s.soundType == soundType).toList();
-      } else {
-        _sounds = [];
-      }
-      _applyFiltersAndSort();
-    }, isSoundOperation: true);
+  void setSoundTypeFilter(SoundType? type) {
+    _typeFilter = type;
+    _applyFilter();
+    notifyListeners();
   }
 
-  /// Lädt Favoriten-Sounds über neues Repository
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue SoundModelRepository
-  Future<void> loadFavoriteSounds() async {
-    await _executeWithErrorHandling(() async {
-      if (_soundRepository != null) {
-        _sounds = await _soundRepository!.findAll();
-        // Filtern nach isFavorite im ViewModel
-        _sounds = _sounds.where((s) => s.isFavorite).toList();
-      } else {
-        _sounds = [];
-      }
-      _applyFiltersAndSort();
-    }, isSoundOperation: true);
+  void toggleFavoritesFilter() {
+    _favoritesOnly = !_favoritesOnly;
+    _applyFilter();
+    notifyListeners();
   }
 
-  /// Sucht Sounds über neues Repository
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue SoundModelRepository
-  Future<void> searchSounds(String query) async {
-    await _executeWithErrorHandling(() async {
-      if (_soundRepository != null) {
-        _sounds = await _soundRepository!.search(query);
-      } else {
-        _sounds = [];
-      }
-      _applyFiltersAndSort();
-    }, isSoundOperation: true);
+  void resetSoundFilters() {
+    _searchQuery = '';
+    _typeFilter = null;
+    _favoritesOnly = false;
+    _applyFilter();
+    notifyListeners();
   }
 
-  /// Erstellt einen neuen Sound über neues Repository
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue SoundModelRepository
-  Future<void> createSound(Sound sound) async {
-    await _executeWithErrorHandling(() async {
-      Sound? savedSound;
-      
-      if (_soundRepository != null) {
-        savedSound = await _soundRepository!.create(sound);
-      }
-      
-      if (savedSound != null) {
-        _sounds.add(savedSound);
-        _applyFiltersAndSort();
-      }
-    }, isSoundOperation: true);
-  }
-
-  /// Aktualisiert einen Sound über neues Repository
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue SoundModelRepository
-  Future<void> updateSound(Sound sound) async {
-    await _executeWithErrorHandling(() async {
-      Sound? updatedSound;
-      
-      if (_soundRepository != null) {
-        updatedSound = await _soundRepository!.update(sound);
-      }
-      
-      if (updatedSound != null) {
-        final index = _sounds.indexWhere((s) => s.id == sound.id);
-        if (index != -1) {
-          _sounds[index] = updatedSound;
+  void _applyFilter() {
+    _filtered = _sounds.where((s) {
+      if (_typeFilter != null && s.soundType != _typeFilter) return false;
+      if (_favoritesOnly && !s.isFavorite) return false;
+      if (_searchQuery.isNotEmpty) {
+        final q = _searchQuery.toLowerCase();
+        if (!s.name.toLowerCase().contains(q) &&
+            !s.description.toLowerCase().contains(q)) {
+          return false;
         }
-        _applyFiltersAndSort();
       }
-    }, isSoundOperation: true);
+      return true;
+    }).toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
   }
 
-  /// Löscht einen Sound über neues Repository
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue SoundModelRepository
-  Future<void> deleteSound(String soundId) async {
-    await _executeWithErrorHandling(() async {
-      // Datei löschen
-      final sound = _sounds.firstWhere((s) => s.id == soundId);
-      await SoundService.deleteSoundFile(sound.filePath);
-      
-      // Aus Datenbank löschen
-      if (_soundRepository != null) {
-        await _soundRepository!.delete(soundId);
-      }
-      
-      // Aus Liste entfernen
-      _sounds.removeWhere((s) => s.id == soundId);
-      _applyFiltersAndSort();
-    }, isSoundOperation: true);
-  }
+  // ---------------------------------------------------------------------------
+  // Favorit togglen
+  // ---------------------------------------------------------------------------
 
-  /// Schaltet den Favoriten-Status eines Sounds um über neues Repository
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue SoundModelRepository
   Future<void> toggleSoundFavorite(String soundId) async {
-    await _executeWithErrorHandling(() async {
-      final soundIndex = _sounds.indexWhere((sound) => sound.id == soundId);
-      if (soundIndex != -1) {
-        final updatedSound = _sounds[soundIndex].copyWith(
-          isFavorite: !_sounds[soundIndex].isFavorite,
-          updatedAt: DateTime.now(),
-        );
-        
-        if (_soundRepository != null) {
-          await _soundRepository!.update(updatedSound);
-        }
-        
-        // Lokalen State aktualisieren
-        _sounds[soundIndex] = updatedSound;
-        _applyFiltersAndSort();
-      }
-    }, isSoundOperation: true);
+    final i = _sounds.indexWhere((s) => s.id == soundId);
+    if (i == -1) return;
+    final updated = _sounds[i].copyWith(isFavorite: !_sounds[i].isFavorite);
+    try {
+      await _repo.update(updated);
+      _sounds[i] = updated;
+      _applyFilter();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('SoundLibraryViewModel.toggleFavorite: $e');
+    }
   }
 
-  /// Batch-Operation: Löscht mehrere Sounds auf einmal
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue SoundModelRepository
-  Future<void> deleteSounds(List<String> soundIds) async {
-    await _executeWithErrorHandling(() async {
-      // Alle Dateien löschen
-      for (final soundId in soundIds) {
-        final sound = _sounds.firstWhere((s) => s.id == soundId);
-        await SoundService.deleteSoundFile(sound.filePath);
-      }
-      
-      // Aus Datenbank löschen
-      if (_soundRepository != null) {
-        await _soundRepository!.deleteAll(soundIds);
-      }
-      
-      // Aus Liste entfernen
-      _sounds.removeWhere((sound) => soundIds.contains(sound.id));
-      _applyFiltersAndSort();
-    }, isSoundOperation: true);
-  }
+  // ---------------------------------------------------------------------------
+  // Sound hochladen
+  // ---------------------------------------------------------------------------
 
-  /// Lädt eine Sound-Datei hoch und speichert sie in der Datenbank
   Future<Sound?> uploadSound(
     String filePath,
     SoundType soundType, {
     String? customName,
     String description = '',
   }) async {
+    if (!SoundService.isValidAudioFile(filePath)) {
+      _error = 'Ungültiges Audioformat. Erlaubt: MP3, WAV, OGG, M4A, AAC, FLAC';
+      notifyListeners();
+      return null;
+    }
     try {
-      // Datei validieren
-      if (!SoundService.isValidAudioFile(filePath)) {
-        _soundError = 'Ungültiges Audio-Format. Unterstützte Formate: MP3, WAV, OGG, M4A, AAC';
-        notifyListeners();
-        return null;
-      }
-
-      // Sound hochladen und Datei kopieren
-      Sound sound = await SoundService.uploadAndCreateSound(
+      final sound = await SoundService.uploadAndCreateSound(
         filePath,
         soundType,
         customName: customName,
         description: description,
       );
-
-      // NEU: Datei in den sicheren Ordner (Dokumente/DungenManager/sounds) verschieben
-      try {
-        final Directory documentsDir = await getApplicationDocumentsDirectory();
-        final String securePath = path.join(documentsDir.path, 'DungenManager', 'sounds');
-        final Directory secureDir = Directory(securePath);
-
-        if (!await secureDir.exists()) {
-          await secureDir.create(recursive: true);
-        }
-
-        final File sourceFile = File(sound.filePath);
-        if (await sourceFile.exists()) {
-          final String fileName = path.basename(sound.filePath);
-          final String newFilePath = path.join(securePath, '${DateTime.now().millisecondsSinceEpoch}_$fileName');
-
-          await sourceFile.copy(newFilePath);
-          try { await sourceFile.delete(); } catch (_) {} // Alte Datei aufräumen falls möglich
-
-          sound = sound.copyWith(filePath: newFilePath);
-        }
-      } catch (e) {
-        debugPrint('⚠️ Fehler beim Sichern der Audio-Datei: $e');
-      }
-
-      // In Datenbank speichern
-      if (_soundRepository != null) {
-        final savedSound = await _soundRepository!.create(sound);
-        _sounds.add(savedSound);
-        _applyFiltersAndSort();
-        _soundError = null;
-        notifyListeners();
-        return savedSound;
-      }
-
-      return null;
+      final saved = await _repo.create(sound);
+      _sounds.add(saved);
+      _applyFilter();
+      _error = null;
+      notifyListeners();
+      return saved;
     } catch (e) {
-      _soundError = 'Fehler beim Hochladen des Sounds: $e';
+      _error = 'Fehler beim Hochladen: $e';
       notifyListeners();
       return null;
     }
   }
 
-  // ============================================================================
-  // SCENE MANAGEMENT (Legacy-Methoden für Übergangszeit)
-  // ============================================================================
+  // ---------------------------------------------------------------------------
+  // Sound löschen
+  // ---------------------------------------------------------------------------
 
-  /// Lädt alle Szenen (legacy Methode - wird später migriert)
-  Future<void> loadScenes() async {
-    _isLoadingScenes = true;
-    _sceneError = null;
-    notifyListeners();
-
+  Future<bool> deleteSound(String soundId) async {
+    final sound = _sounds.firstWhere((s) => s.id == soundId,
+        orElse: () => throw StateError('Sound nicht gefunden'));
     try {
-      // TODO: Migriere zu SceneRepository wenn verfügbar
-      // Für jetzt: Dummy-Implementierung
-      _scenes = [];
-      _isLoadingScenes = false;
+      await SoundService.deleteSoundFile(sound.filePath);
+      await _repo.delete(soundId);
+      _sounds.removeWhere((s) => s.id == soundId);
+      _applyFilter();
       notifyListeners();
-    } catch (e) {
-      _sceneError = 'Fehler beim Laden der Szenen: $e';
-      _scenes = [];
-      _isLoadingScenes = false;
-      notifyListeners();
-    }
-  }
-
-  // ============================================================================
-  // FILTER UND SUCHE
-  // ============================================================================
-
-  /// Setzt den Suchtext für Sounds
-  void setSoundSearchQuery(String query) {
-    _soundSearchQuery = query;
-    _applyFiltersAndSort();
-    notifyListeners();
-  }
-
-  /// Setzt den Suchtext für Szenen
-  void setSceneSearchQuery(String query) {
-    _sceneSearchQuery = query;
-    notifyListeners();
-  }
-
-  /// Setzt den Sound-Typ-Filter
-  void setSoundTypeFilter(SoundType? type) {
-    _selectedSoundType = type;
-    _applyFiltersAndSort();
-    notifyListeners();
-  }
-
-  /// Setzt den Favoriten-Filter
-  void setFavoritesFilter(bool showOnly) {
-    _showFavoritesOnly = showOnly;
-    _applyFiltersAndSort();
-    notifyListeners();
-  }
-
-  /// Schaltet den Favoriten-Filter um
-  void toggleFavoritesFilter() {
-    _showFavoritesOnly = !_showFavoritesOnly;
-    _applyFiltersAndSort();
-    notifyListeners();
-  }
-
-  /// Setzt den aktuellen Tab-Index
-  void setCurrentTabIndex(int index) {
-    _currentTabIndex = index;
-    notifyListeners();
-  }
-
-  /// Setzt alle Sound-Filter zurück
-  void resetSoundFilters() {
-    _soundSearchQuery = '';
-    _selectedSoundType = null;
-    _showFavoritesOnly = false;
-    _applyFiltersAndSort();
-    notifyListeners();
-  }
-
-  /// Wendet Filter und Sortierung an
-  void _applyFiltersAndSort() {
-    _filteredSounds = _sounds.where((sound) {
-      // Suchtext filtern
-      if (_soundSearchQuery.isNotEmpty) {
-        final queryLower = _soundSearchQuery.toLowerCase();
-        final nameMatch = sound.name.toLowerCase().contains(queryLower);
-        final descriptionMatch = sound.description.toLowerCase().contains(queryLower);
-        
-        if (!(nameMatch || descriptionMatch)) {
-          return false;
-        }
-      }
-
-      // Typ filtern
-      if (_selectedSoundType != null && sound.soundType != _selectedSoundType) {
-        return false;
-      }
-
-      // Favoriten filtern
-      if (_showFavoritesOnly && !sound.isFavorite) {
-        return false;
-      }
-
       return true;
-    }).toList();
-
-    // Standard-Sortierung: Name
-    _filteredSounds.sort((a, b) => a.name.compareTo(b.name));
-  }
-
-  // ============================================================================
-  // UTILITY METHODS
-  // ============================================================================
-
-  /// Aktualisiert alle Daten
-  Future<void> refresh() async {
-    await Future.wait([
-      loadSounds(),
-      loadScenes(),
-    ]);
-  }
-
-  /// Löscht den Fehler-Zustand
-  void clearErrors() {
-    _soundError = null;
-    _sceneError = null;
-    notifyListeners();
-  }
-
-  // ============================================================================
-  // ERROR HANDLING
-  // ============================================================================
-
-  /// Führt eine Operation mit Error Handling durch
-  Future<void> _executeWithErrorHandling(
-    Future<void> Function() operation, {
-    bool isSoundOperation = true,
-  }) async {
-    try {
-      if (isSoundOperation) {
-        _isLoadingSounds = true;
-        _soundError = null;
-      } else {
-        _isLoadingScenes = true;
-        _sceneError = null;
-      }
-      notifyListeners();
-      
-      await operation();
     } catch (e) {
-      if (isSoundOperation) {
-        _soundError = e.toString();
-      } else {
-        _sceneError = e.toString();
-      }
+      _error = 'Fehler beim Löschen: $e';
       notifyListeners();
-      rethrow;
-    } finally {
-      if (isSoundOperation) {
-        _isLoadingSounds = false;
-      } else {
-        _isLoadingScenes = false;
-      }
-      notifyListeners();
+      return false;
     }
   }
 
-  @override
-  void dispose() {
-    super.dispose();
+  // ---------------------------------------------------------------------------
+  // Fehler löschen
+  // ---------------------------------------------------------------------------
+
+  void clearError() {
+    _error = null;
+    notifyListeners();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Migration: absolute → relative Pfade
+  // ---------------------------------------------------------------------------
+
+  Future<void> migratePathsIfNeeded() async {
+    try {
+      final soundsDir = await SoundService.getSoundsDirectoryPath();
+      final all = await _repo.findAll();
+      for (final sound in all) {
+        final fp = sound.filePath;
+        if (!fp.contains('/') && !fp.contains('\\')) continue;
+        final resolved = await SoundService.resolveFilePath(fp);
+        final fileName = resolved.split('/').last.split('\\').last;
+        final target = '$soundsDir/$fileName';
+        if (resolved != target) {
+          final src = File(resolved);
+          if (await src.exists() && !await File(target).exists()) {
+            await src.copy(target);
+          }
+        }
+        await _repo.update(sound.copyWith(filePath: fileName));
+      }
+    } catch (e) {
+      debugPrint('SoundLibraryViewModel.migratePaths: $e');
+    }
   }
 }
