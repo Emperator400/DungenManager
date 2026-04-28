@@ -1,14 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 
-/// Basis-Widget für alle Quadranten im Active Session Screen
-/// Bietet einheitliches Design mit Header, Gradient und Rahmen
 class SessionQuadrantBase extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final Color color;
-  final Widget content;
-
   const SessionQuadrantBase({
     super.key,
     required this.title,
@@ -17,78 +10,55 @@ class SessionQuadrantBase extends StatelessWidget {
     required this.content,
   });
 
+  final String title;
+  final IconData icon;
+  final Color color;
+  final Widget content;
+
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Container(
       decoration: BoxDecoration(
-        gradient: DnDTheme.getMysticalGradient(
-          startColor: DnDTheme.slateGrey,
-          endColor: DnDTheme.stoneGrey,
-        ),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-        ),
+        color: C.bgPanel,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
         boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
+          BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
         children: [
-          // Header
           _buildHeader(),
-          // Content
-          Expanded(
-            child: content,
-          ),
+          Flexible(child: content),
         ],
       ),
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      decoration: BoxDecoration(
-        gradient: DnDTheme.getMysticalGradient(
-          startColor: color.withValues(alpha: 0.8),
-          endColor: color.withValues(alpha: 0.4),
-        ),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(DnDTheme.radiusMedium),
-          topRight: Radius.circular(DnDTheme.radiusMedium),
-        ),
+  Widget _buildHeader() => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.85),
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(12),
+        topRight: Radius.circular(12),
       ),
-      child: Row(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.9),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 10,
-            ),
+    ),
+    child: Row(
+      children: [
+        Container(
+          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.9), shape: BoxShape.circle),
+          child: Icon(icon, color: color, size: 10),
+        ),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 9),
           ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              title,
-              style: DnDTheme.bodyText2.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 9,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
 }
