@@ -81,8 +81,13 @@ class _QuestLibraryScreenState extends State<QuestLibraryScreen>
   }
 
   Future<void> _navigateToEditQuest([Quest? quest]) async {
-    final result = await Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => EditQuestScreen(quest: quest)),
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => ChangeNotifierProvider<EditQuestViewModel>(
+          create: (_) => EditQuestViewModel(),
+          child: EditQuestScreen(quest: quest),
+        ),
+      ),
     );
     if (result == true) _viewModel.refresh();
   }
