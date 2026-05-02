@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/player_character.dart';
+import '../../theme/app_theme.dart';
 import 'character_list_helpers.dart';
 
 /// Widget für die Anzeige von Status-Chips (Level, HP, AC, Initiative)
@@ -28,11 +29,11 @@ class HeroStatsChipsWidget extends StatelessWidget {
     final chips = <Widget>[];
     
     if (showLevel) {
-      chips.add(_buildLevelChip());
+      chips.add(_buildLevelChip(context));
     }
-    
+
     if (showHp) {
-      chips.add(_buildHpChip());
+      chips.add(_buildHpChip(context));
     }
     
     if (showAc) {
@@ -50,8 +51,8 @@ class HeroStatsChipsWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildLevelChip() {
-    final levelColor = CharacterListHelpers.getLevelBadgeColor(character.level);
+  Widget _buildLevelChip(BuildContext context) {
+    final levelColor = CharacterListHelpers.getLevelBadgeColor(character.level, context.appColors);
     
     return Container(
       height: chipHeight,
@@ -85,8 +86,8 @@ class HeroStatsChipsWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildHpChip() {
-    final hpColor = CharacterListHelpers.getHpStatusColor(character.maxHp, character.maxHp);
+  Widget _buildHpChip(BuildContext context) {
+    final hpColor = CharacterListHelpers.getHpStatusColor(character.maxHp, character.maxHp, context.appColors);
     final hpText = CharacterListHelpers.getHpStatusText(character.maxHp, character.maxHp);
     
     return Container(
@@ -210,8 +211,9 @@ class CompactHeroStatsChipsWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final levelColor = CharacterListHelpers.getLevelBadgeColor(character.level);
-    final hpColor = CharacterListHelpers.getHpStatusColor(character.maxHp, character.maxHp);
+    final C = context.appColors;
+    final levelColor = CharacterListHelpers.getLevelBadgeColor(character.level, C);
+    final hpColor = CharacterListHelpers.getHpStatusColor(character.maxHp, character.maxHp, C);
     final dexMod = (character.dexterity - 10) ~/ 2;
     final totalInit = dexMod + character.initiativeBonus;
     final initiativeBonus = totalInit >= 0 ? '+$totalInit' : '$totalInit';

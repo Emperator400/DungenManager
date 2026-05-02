@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/player_character.dart';
+import '../../theme/app_theme.dart';
 import 'character_list_helpers.dart';
 
 /// Widget für die Anzeige des Helden-Avatars mit Bild-Fallback und Klassenfarben
@@ -19,8 +20,9 @@ class HeroAvatarWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     final classColor = CharacterListHelpers.getClassColor(character.className);
-    final levelBadgeColor = CharacterListHelpers.getLevelBadgeColor(character.level);
+    final levelBadgeColor = CharacterListHelpers.getLevelBadgeColor(character.level, C);
     final levelBadgeText = CharacterListHelpers.getLevelBadgeText(character.level);
 
     return SizedBox(
