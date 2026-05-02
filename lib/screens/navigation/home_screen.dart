@@ -19,6 +19,7 @@ import '../campaign/campaign_selection_screen.dart';
 import '../items/item_library_screen.dart';
 import '../lore/lore_keeper_screen.dart';
 import '../navigation/main_navigation_screen.dart';
+import '../quests/quest_library_screen.dart';
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
@@ -45,6 +46,7 @@ const _bereiche = [
   _Bereich(id: 'bestiarium',   label: 'Bestiarium',   icon: Icons.pets,           color: Color(0xFF1A7F4B), beschreibung: 'Monster & Kreaturen'),
   _Bereich(id: 'ausruestung',  label: 'Ausrüstung',   icon: Icons.inventory_2,    color: Color(0xFFB45309), beschreibung: 'Items & Gegenstände'),
   _Bereich(id: 'lore',         label: 'Lore Keeper',  icon: Icons.menu_book,      color: Color(0xFF7C3AED), beschreibung: 'Wiki & Weltenwissen'),
+  _Bereich(id: 'quests',       label: 'Quest-Bibl.',  icon: Icons.assignment,     color: Color(0xFFC2410C), beschreibung: 'Quests & Missionen'),
   _Bereich(id: 'sounds',       label: 'Sounds',       icon: Icons.music_note,     color: Color(0xFF0891B2), beschreibung: 'Atmosphäre & Musik'),
   _Bereich(id: 'profil',       label: 'DM-Profil',    icon: Icons.person,         color: Color(0xFF6B6B66), beschreibung: 'Dein Profil & Daten',   disabled: true),
   _Bereich(id: 'einstellungen',label: 'Einstellungen',icon: Icons.settings,       color: Color(0xFF6B6B66), beschreibung: 'App konfigurieren',     disabled: true),
@@ -120,6 +122,10 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'lore':
         Navigator.of(context).push(
           MaterialPageRoute<void>(builder: (_) => const LoreKeeperScreen()),
+        );
+      case 'quests':
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const QuestLibraryScreen()),
         );
       case 'sounds':
         Navigator.of(context).push(
