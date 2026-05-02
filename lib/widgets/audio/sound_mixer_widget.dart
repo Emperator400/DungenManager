@@ -80,6 +80,9 @@ class SoundMixerConfig {
   /// Loop-Toggle Button anzeigen
   final bool showLoopToggle;
 
+  /// Einen einzelnen "Sounds hinzufügen"-Button statt zwei (Ambiente/Effekt) anzeigen
+  final bool showSingleAddButton;
+
   const SoundMixerConfig({
     this.compactMode = false,
     this.showAddButtons = true,
@@ -96,6 +99,7 @@ class SoundMixerConfig {
     this.showLargePlayButton = false,
     this.showTimeDisplay = true,
     this.showLoopToggle = true,
+    this.showSingleAddButton = false,
   });
 
   /// Erstellt eine Config basierend auf einer Size-Stufe
@@ -735,19 +739,37 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
   }
 
   Widget _buildChannelsList(AppColorsExtension C) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: _mixerService.channels.map((channel) => SoundMixerChannel(
-        channel: channel,
-        mixerService: _mixerService,
-        config: _config,
-        onRemove: _config.readOnly ? null : () => _removeChannel(channel.id),
-      )).toList(),
-    );
+    final channelWidgets = _mixerService.channels.map((channel) => SoundMixerChannel(
+      channel: channel,
+      mixerService: _mixerService,
+      config: _config,
+      onRemove: _config.readOnly ? null : () => _removeChannel(channel.id),
+    )).toList();
+
+    // In compact mode with many channels: make the list scrollable so master
+    // volume and add button remain accessible while channels overflow.
+    if (_config.compactMode && _mixerService.channelCount > 3) {
+      return ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 220),
+        child: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: channelWidgets),
+        ),
+      );
+    }
+    return Column(mainAxisSize: MainAxisSize.min, children: channelWidgets);
   }
 
   Widget _buildAddButtons(AppColorsExtension C, bool isCompact) {
     final canAdd = _mixerService.channelCount < MultiStreamSoundService.maxChannels;
+    if (_config.showSingleAddButton) {
+      return _buildAddButton(
+        label: 'Sounds hinzufügen',
+        icon: Icons.add,
+        color: C.accent,
+        onTap: canAdd ? () => _showSoundPicker(null) : null,
+        C: C,
+      );
+    }
     return Row(
       children: [
         Expanded(child: _buildAddButton(
@@ -827,7 +849,7 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
     );
   }
 
-  Future<void> _showSoundPicker(SoundType filterType) async {
+  Future<void> _showSoundPicker(SoundType? filterType) async {
     final savedSoundIds = widget.initialSoundIds ?? [];
     final activeSoundIds = _mixerService.channels.map((c) => c.sound.id).toList();
     final C = context.appColors;
@@ -866,7 +888,7 @@ class _SoundMixerWidgetState extends State<SoundMixerWidget> {
   Future<void> _addSoundsToMixer(
     List<String> selectedSoundIds,
     List<String> currentActiveIds,
-    SoundType preferredType,
+    SoundType? preferredType,
   ) async {
     final soundRepo = context.read<SoundModelRepository>();
     

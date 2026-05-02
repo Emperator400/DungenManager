@@ -149,13 +149,12 @@ class _LoreKeeperScreenState extends State<LoreKeeperScreen> {
   Widget build(BuildContext context) {
     final C = context.appColors;
     final isDark = context.watch<ThemeNotifier>().isDark;
-    final notifier = context.watch<ThemeNotifier>();
 
     return Scaffold(
       backgroundColor: C.bg,
       body: Column(
         children: [
-          _buildTopBar(context, C, notifier),
+          _buildTopBar(context, C),
           _buildSearch(context, C),
           _buildTypeFilter(context, C, isDark),
           Expanded(child: _buildContent(context, C, isDark)),
@@ -180,8 +179,7 @@ class _LoreKeeperScreenState extends State<LoreKeeperScreen> {
 
   // ── TOP BAR ───────────────────────────────────────────────────────────────────
 
-  Widget _buildTopBar(
-      BuildContext context, AppColorsExtension C, ThemeNotifier notifier) {
+  Widget _buildTopBar(BuildContext context, AppColorsExtension C) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -214,12 +212,6 @@ class _LoreKeeperScreenState extends State<LoreKeeperScreen> {
                       '${vm.filteredEntries.length} Einträge',
                       style: TextStyle(fontSize: 12, color: C.textSoft),
                     ),
-                  ),
-                  const Spacer(),
-                  _IconBtn(
-                    C: C,
-                    icon: notifier.isDark ? AppIconName.sun : AppIconName.moon,
-                    onTap: notifier.toggle,
                   ),
                 ],
               ),

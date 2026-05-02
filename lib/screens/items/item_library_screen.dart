@@ -196,7 +196,6 @@ class _ItemLibraryScreenState extends State<ItemLibraryScreen> {
 
   PreferredSizeWidget _buildTopBar(
       BuildContext context, AppColorsExtension C, bool isDark) {
-    final notifier = context.watch<ThemeNotifier>();
     return PreferredSize(
       preferredSize: const Size.fromHeight(48),
       child: Container(
@@ -231,13 +230,6 @@ class _ItemLibraryScreenState extends State<ItemLibraryScreen> {
                         '${vm.filteredItems.length} Items',
                         style: TextStyle(fontSize: 12, color: C.textSoft),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    // Theme toggle
-                    _IconBtn(
-                      C: C,
-                      icon: notifier.isDark ? AppIconName.sun : AppIconName.moon,
-                      onTap: notifier.toggle,
                     ),
                     if (!widget.selectMode) ...[
                       const SizedBox(width: 8),

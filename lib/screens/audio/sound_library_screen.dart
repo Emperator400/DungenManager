@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 
 import '../../models/sound.dart';
 import '../../theme/app_theme.dart';
-import '../../theme/theme_notifier.dart';
 import '../../viewmodels/sound_library_viewmodel.dart';
 import '../../widgets/sound_scenes_tab.dart';
 import '../../widgets/ui_components/feedback/snackbar_helper.dart';
@@ -245,18 +244,6 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen> {
                       ),
                     ),
                     const Spacer(),
-                    // Theme toggle
-                    Builder(builder: (ctx) {
-                      final notifier = ctx.watch<ThemeNotifier>();
-                      return _IconBtn(
-                        C: C,
-                        icon: notifier.isDark
-                            ? AppIconName.sun
-                            : AppIconName.moon,
-                        onTap: notifier.toggle,
-                      );
-                    }),
-                    const SizedBox(width: 8),
                     FilledButton.icon(
                       onPressed: () => _openEditor(),
                       icon: AppIcon(AppIconName.plus,

@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/campaign.dart';
 import '../../models/session.dart';
-//import '../../models/scene.dart';
+import '../../theme/app_theme.dart';
 import '../../viewmodels/session_list_for_campaign_viewmodel.dart';
 import '../../database/repositories/scene_model_repository.dart';
 import '../../database/repositories/creature_model_repository.dart';
 import '../../database/repositories/player_character_model_repository.dart';
+import '../../widgets/ui_components/feedback/confirmation_dialog.dart';
+import '../../widgets/ui_components/feedback/snackbar_helper.dart';
 import 'edit_session_screen.dart';
 import '../../viewmodels/active_session_viewmodel.dart';
 import 'active_session_screen.dart';
@@ -49,74 +51,19 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Sitzungen',
-          style: TextStyle(color: Colors.white),
+      backgroundColor: C.bg,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(52),
+        child: Consumer<SessionListForCampaignViewModel>(
+          builder: (context, vm, _) => _buildTopBar(context, vm, C),
         ),
-        backgroundColor: const Color(0xFF7C3AED),
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          Consumer<SessionListForCampaignViewModel>(
-            builder: (context, viewModel, child) {
-              return PopupMenuButton<SessionSortCriteria>(
-                icon: const Icon(Icons.sort, color: Colors.white),
-                tooltip: 'Sortieren',
-                onSelected: (criteria) {
-                  viewModel.sortSessions(criteria);
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: SessionSortCriteria.titleAsc,
-                    child: Row(
-                      children: [
-                        Icon(Icons.arrow_upward, size: 16),
-                        SizedBox(width: 8),
-                        Text('Titel (A-Z)'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: SessionSortCriteria.titleDesc,
-                    child: Row(
-                      children: [
-                        Icon(Icons.arrow_downward, size: 16),
-                        SizedBox(width: 8),
-                        Text('Titel (Z-A)'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: SessionSortCriteria.durationAsc,
-                    child: Row(
-                      children: [
-                        Icon(Icons.arrow_upward, size: 16),
-                        SizedBox(width: 8),
-                        Text('Dauer (kurz-lang)'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: SessionSortCriteria.durationDesc,
-                    child: Row(
-                      children: [
-                        Icon(Icons.arrow_downward, size: 16),
-                        SizedBox(width: 8),
-                        Text('Dauer (lang-kurz)'),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
       ),
       body: Consumer<SessionListForCampaignViewModel>(
         builder: (context, viewModel, child) {
           if (viewModel.isLoading && viewModel.sessions.isEmpty) {
-            return const Center(child: CircularProgressIndicator(color: Color(0xFF7C3AED)));
+            return const Center(child: CircularProgressIndicator());
           }
 
           final sessions = _isSearchMode && _searchController.text.isNotEmpty
@@ -124,21 +71,23 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
               : viewModel.sessions;
 
           if (sessions.isEmpty) {
-            return _buildEmptyState();
+            return _buildEmptyState(C);
           }
 
           return Column(
             children: [
               Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                 child: TextField(
                   controller: _searchController,
+                  style: TextStyle(color: C.text, fontSize: 13),
                   decoration: InputDecoration(
                     hintText: 'Sessions suchen...',
-                    prefixIcon: const Icon(Icons.search, color: Color(0xFF7C3AED)),
+                    hintStyle: TextStyle(color: C.textSoft, fontSize: 13),
+                    prefixIcon: Icon(Icons.search, color: C.textMid, size: 18),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.clear),
+                            icon: Icon(Icons.clear, color: C.textMid, size: 16),
                             onPressed: () {
                               _searchController.clear();
                               setState(() {});
@@ -146,15 +95,21 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
                           )
                         : null,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                      borderSide: BorderSide(color: const Color(0xFF7C3AED).withValues(alpha: 0.3)),
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: C.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: C.border),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                      borderSide: const BorderSide(color: Color(0xFF7C3AED)),
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: C.accent),
                     ),
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: C.bgPanel,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    isDense: true,
                   ),
                   onChanged: (value) {
                     setState(() {
@@ -165,11 +120,11 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
               ),
               Expanded(
                 child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   itemCount: sessions.length,
                   itemBuilder: (context, index) {
                     final session = sessions[index];
-                    return _buildSessionCard(session, viewModel);
+                    return _buildSessionCard(session, viewModel, C);
                   },
                 ),
               ),
@@ -177,61 +132,106 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
           );
         },
       ),
-      floatingActionButton: Consumer<SessionListForCampaignViewModel>(
-        builder: (context, viewModel, child) {
-          return Hero(
-            tag: 'session_list_fab',
-            child: FloatingActionButton.extended(
-              heroTag: 'session_list_fab',
-              onPressed: viewModel.isLoading ? null : _createNewSession,
-              backgroundColor: const Color(0xFF7C3AED),
-              icon: const Icon(Icons.add, color: Colors.white),
-              label: const Text(
-                'Neue Session',
-                style: TextStyle(color: Colors.white),
+    );
+  }
+
+  Widget _buildTopBar(BuildContext context, SessionListForCampaignViewModel vm, AppColorsExtension C) {
+    return Container(
+      decoration: BoxDecoration(
+        color: C.bgPanel,
+        border: Border(bottom: BorderSide(color: C.border)),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: SizedBox(
+          height: 52,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(children: [
+              _IconBtn(icon: Icons.arrow_back, color: C.textMid, onTap: () => Navigator.of(context).pop()),
+              Container(width: 1, height: 18, color: C.border, margin: const EdgeInsets.symmetric(horizontal: 8)),
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: C.accent.withValues(alpha: 0.15),
+                  border: Border.all(color: C.accent.withValues(alpha: 0.35)),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Center(child: Icon(Icons.event_note, size: 14, color: C.accent)),
               ),
-              tooltip: 'Neue Session erstellen',
-            ),
-          );
-        },
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Sitzungen', style: TextStyle(color: C.text, fontWeight: FontWeight.w600, fontSize: 13, height: 1.1)),
+                  Text(widget.campaign.title, style: TextStyle(color: C.textSoft, fontSize: 10, height: 1.1)),
+                ],
+              ),
+              const Spacer(),
+              PopupMenuButton<SessionSortCriteria>(
+                icon: Icon(Icons.sort, size: 18, color: C.textMid),
+                tooltip: 'Sortieren',
+                color: C.bgPanel,
+                onSelected: (criteria) => vm.sortSessions(criteria),
+                itemBuilder: (context) => [
+                  PopupMenuItem(value: SessionSortCriteria.titleAsc, child: _sortItem(Icons.arrow_upward, 'Titel (A-Z)', C)),
+                  PopupMenuItem(value: SessionSortCriteria.titleDesc, child: _sortItem(Icons.arrow_downward, 'Titel (Z-A)', C)),
+                  PopupMenuItem(value: SessionSortCriteria.durationAsc, child: _sortItem(Icons.arrow_upward, 'Dauer (kurz-lang)', C)),
+                  PopupMenuItem(value: SessionSortCriteria.durationDesc, child: _sortItem(Icons.arrow_downward, 'Dauer (lang-kurz)', C)),
+                ],
+              ),
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: vm.isLoading ? null : _createNewSession,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: vm.isLoading ? C.bgHover : C.accent,
+                    borderRadius: BorderRadius.circular(7),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.add, size: 13, color: vm.isLoading ? C.textSoft : Colors.white),
+                    const SizedBox(width: 5),
+                    Text('Neue Session',
+                        style: TextStyle(color: vm.isLoading ? C.textSoft : Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                  ]),
+                ),
+              ),
+            ]),
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _sortItem(IconData icon, String label, AppColorsExtension C) => Row(children: [
+    Icon(icon, size: 14, color: C.textMid),
+    const SizedBox(width: 8),
+    Text(label, style: TextStyle(color: C.text, fontSize: 13)),
+  ]);
+
+  Widget _buildEmptyState(AppColorsExtension C) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.event_note,
-            size: 64,
-            color: Colors.grey.shade400,
-          ),
+          Icon(Icons.event_note, size: 64, color: C.border),
           const SizedBox(height: 16),
-          Text(
-            'Keine Sessions gefunden',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey.shade600,
-            ),
-          ),
+          Text('Keine Sessions gefunden',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: C.textMid)),
           const SizedBox(height: 8),
-          Text(
-            'Erstellen Sie Ihre erste Session für diese Kampagne',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade500,
-            ),
-          ),
+          Text('Erstelle deine erste Session für diese Kampagne',
+              style: TextStyle(fontSize: 14, color: C.textSoft)),
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: _createNewSession,
             icon: const Icon(Icons.add),
             label: const Text('Erste Session erstellen'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF7C3AED),
+              backgroundColor: C.accent,
+              foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
           ),
@@ -240,74 +240,53 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
     );
   }
 
-  Widget _buildSessionCard(Session session, SessionListForCampaignViewModel viewModel) {
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+  Widget _buildSessionCard(Session session, SessionListForCampaignViewModel viewModel, AppColorsExtension C) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 5),
+      decoration: BoxDecoration(
+        color: C.bgPanel,
+        border: Border.all(color: C.border),
+        borderRadius: BorderRadius.circular(10),
+      ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12.0),
+        borderRadius: BorderRadius.circular(10),
         onTap: () => _openSession(session),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12.0),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8.0),
+                      color: C.accent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(7),
                     ),
-                    child: const Icon(
-                      Icons.event,
-                      color: Color(0xFF7C3AED),
-                      size: 24,
-                    ),
+                    child: Icon(Icons.event, color: C.accent, size: 20),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          session.title,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.schedule,
-                              size: 14,
-                              color: Colors.grey.shade600,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              _formatDuration(session.inGameTimeInMinutes),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                          ],
-                        ),
+                        Text(session.title,
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.text)),
+                        const SizedBox(height: 3),
+                        Row(children: [
+                          Icon(Icons.schedule, size: 12, color: C.textMid),
+                          const SizedBox(width: 4),
+                          Text(_formatDuration(session.inGameTimeInMinutes),
+                              style: TextStyle(fontSize: 11, color: C.textMid)),
+                        ]),
                       ],
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.edit, color: Color(0xFF7C3AED)),
-                    onPressed: () => _editSession(session),
-                    tooltip: 'Bearbeiten',
-                  ),
+                  _IconBtn(icon: Icons.edit, color: C.accent, onTap: () => _editSession(session)),
                   PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert),
+                    icon: Icon(Icons.more_vert, size: 18, color: C.textMid),
+                    color: C.bgPanel,
                     onSelected: (value) {
                       switch (value) {
                         case 'duplicate':
@@ -317,54 +296,46 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
                       }
                     },
                     itemBuilder: (context) => [
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'duplicate',
-                        child: Row(
-                          children: [
-                            Icon(Icons.copy, size: 16),
-                            SizedBox(width: 8),
-                            Text('Duplizieren'),
-                          ],
-                        ),
+                        child: Row(children: [
+                          Icon(Icons.copy, size: 16, color: C.textMid),
+                          const SizedBox(width: 8),
+                          Text('Duplizieren', style: TextStyle(color: C.text, fontSize: 13)),
+                        ]),
                       ),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete, size: 16, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text('Löschen', style: TextStyle(color: Colors.red)),
-                          ],
-                        ),
+                        child: Row(children: [
+                          Icon(Icons.delete, size: 16, color: C.red),
+                          const SizedBox(width: 8),
+                          Text('Löschen', style: TextStyle(color: C.red, fontSize: 13)),
+                        ]),
                       ),
                     ],
                   ),
                 ],
               ),
               if (session.liveNotes.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(8.0),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(6.0),
+                    color: C.bgHover,
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     session.liveNotes,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade700,
-                      fontStyle: FontStyle.italic,
-                    ),
+                    style: TextStyle(fontSize: 11, color: C.textMid, fontStyle: FontStyle.italic),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
               if (session.sceneIds.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                _buildSceneCharacterSummary(session),
+                const SizedBox(height: 10),
+                _buildSceneCharacterSummary(session, C),
               ],
             ],
           ),
@@ -373,14 +344,13 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
     );
   }
 
-  Widget _buildSceneCharacterSummary(Session session) {
+  Widget _buildSceneCharacterSummary(Session session, AppColorsExtension C) {
     return FutureBuilder<Set<String>>(
       future: _loadAllSceneCharacters(session),
       builder: (context, snapshot) {
         if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
           return const SizedBox.shrink();
         }
-
         final characterIds = snapshot.data!;
         return FutureBuilder<Map<String, dynamic>>(
           future: _loadCharacterDetails(characterIds.toList()),
@@ -388,39 +358,23 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
             if (charSnapshot.hasError || !charSnapshot.hasData || charSnapshot.data!.isEmpty) {
               return const SizedBox.shrink();
             }
-
             final characters = charSnapshot.data!;
             return Container(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(6.0),
-                border: Border.all(
-                  color: const Color(0xFF7C3AED).withValues(alpha: 0.3),
-                  width: 1,
-                ),
+                color: C.accent.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: C.accent.withValues(alpha: 0.2)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
-                    children: [
-                      Icon(
-                        Icons.people,
-                        color: Color(0xFF7C3AED),
-                        size: 14,
-                      ),
-                      SizedBox(width: 4),
-                      Text(
-                        'Beteiligte Charaktere',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF7C3AED),
-                        ),
-                      ),
-                    ],
-                  ),
+                  Row(children: [
+                    Icon(Icons.people, color: C.accent, size: 12),
+                    const SizedBox(width: 4),
+                    Text('Beteiligte Charaktere',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: C.accent)),
+                  ]),
                   const SizedBox(height: 4),
                   Wrap(
                     spacing: 6,
@@ -428,36 +382,19 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
                     children: characters.values.map((char) {
                       final type = char['type'] as String;
                       final name = char['name'] as String;
-                      final color = _getCharacterTypeColor(type);
+                      final color = _getCharacterTypeColor(type, C);
                       return Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(4.0),
-                          border: Border.all(
-                            color: color.withValues(alpha: 0.3),
-                            width: 1,
-                          ),
+                          color: color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: color.withValues(alpha: 0.25)),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              _getCharacterTypeIcon(type),
-                              color: color,
-                              size: 10,
-                            ),
-                            const SizedBox(width: 3),
-                            Text(
-                              name,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: Colors.black87,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(_getCharacterTypeIcon(type), color: color, size: 10),
+                          const SizedBox(width: 3),
+                          Text(name, style: TextStyle(fontSize: 10, color: C.text, fontWeight: FontWeight.w500)),
+                        ]),
                       );
                     }).toList(),
                   ),
@@ -477,9 +414,7 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
       for (final sceneId in session.sceneIds) {
         try {
           final scene = await sceneRepo.findById(sceneId);
-          if (scene != null) {
-            characterIds.addAll(scene.linkedCharacterIds);
-          }
+          if (scene != null) characterIds.addAll(scene.linkedCharacterIds);
         } catch (e) {
           debugPrint('Fehler beim Laden von Scene $sceneId: $e');
         }
@@ -519,23 +454,19 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
     return result;
   }
 
-  Color _getCharacterTypeColor(String type) {
-    return switch (type) {
-      'pc' => Colors.green.shade600,
-      'npc' => Colors.blue.shade600,
-      'monster' => Colors.red.shade600,
-      _ => Colors.grey,
-    };
-  }
+  Color _getCharacterTypeColor(String type, AppColorsExtension C) => switch (type) {
+    'pc' => C.green,
+    'npc' => C.accent,
+    'monster' => C.red,
+    _ => C.textMid,
+  };
 
-  IconData _getCharacterTypeIcon(String type) {
-    return switch (type) {
-      'pc' => Icons.person,
-      'npc' => Icons.person_outline,
-      'monster' => Icons.pets,
-      _ => Icons.person,
-    };
-  }
+  IconData _getCharacterTypeIcon(String type) => switch (type) {
+    'pc' => Icons.person,
+    'npc' => Icons.person_outline,
+    'monster' => Icons.pets,
+    _ => Icons.person,
+  };
 
   Future<void> _createNewSession() async {
     final viewModel = context.read<SessionListForCampaignViewModel>();
@@ -543,10 +474,7 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
     if (newSession != null && mounted) {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (context) => EditSessionScreen(
-            session: newSession,
-            isNewSession: true,
-          ),
+          builder: (context) => EditSessionScreen(session: newSession, isNewSession: true),
         ),
       ).then((_) {
         if (mounted) context.read<SessionListForCampaignViewModel>().refreshSessions();
@@ -562,10 +490,7 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
             session: session,
             campaign: widget.campaign,
           ),
-          child: ActiveSessionScreen(
-            session: session,
-            campaign: widget.campaign,
-          ),
+          child: ActiveSessionScreen(session: session, campaign: widget.campaign),
         ),
       ),
     );
@@ -586,52 +511,39 @@ class _EnhancedSessionListForCampaignScreenState extends State<EnhancedSessionLi
     final duplicated = await viewModel.duplicateSession(session);
     if (!mounted) return;
     if (duplicated != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Session dupliziert'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      SnackBarHelper.showSuccess(context, 'Session dupliziert');
     }
   }
 
   Future<void> _deleteSession(Session session) async {
-    final confirmed = await _showDeleteConfirmation(session);
-    if (!confirmed) return;
+    final confirmed = await ConfirmationDialog.showDelete(
+      context: context,
+      title: 'Session löschen',
+      message: 'Möchtest du die Session "${session.title}" wirklich löschen?',
+    );
+    if (confirmed != true) return;
     final viewModel = context.read<SessionListForCampaignViewModel>();
     final success = await viewModel.deleteSession(session.id);
     if (!mounted) return;
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Session gelöscht'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      SnackBarHelper.showSuccess(context, 'Session gelöscht');
     }
   }
+}
 
-  Future<bool> _showDeleteConfirmation(Session session) async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Session löschen'),
-          content: Text('Möchten Sie die Session "${session.title}" wirklich löschen?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Abbrechen'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text('Löschen'),
-            ),
-          ],
-        );
-      },
+// ── LOCAL WIDGETS ────────────────────────────────────────────────────────────
+
+class _IconBtn extends StatelessWidget {
+  const _IconBtn({required this.icon, required this.color, required this.onTap});
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(width: 30, height: 30, child: Icon(icon, size: 18, color: color)),
     );
-    return result ?? false;
   }
 }

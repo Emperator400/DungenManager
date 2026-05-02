@@ -95,6 +95,56 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
     }
   }
 
+  Widget _buildFilePickerRow(AppColorsExtension C) {
+    final hasFile = _filePathCtrl.text.isNotEmpty;
+    final label = hasFile
+        ? _filePathCtrl.text.split(RegExp(r'[/\\]')).last
+        : (_isNew ? 'Datei auswählen...' : 'Keine Datei');
+    final buttonLabel = _isNew ? 'Durchsuchen' : 'Ändern';
+
+    return GestureDetector(
+      onTap: _pickFile,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: C.bgPanel,
+          border: Border.all(color: hasFile ? C.accent : C.border),
+          borderRadius: BorderRadius.circular(7),
+        ),
+        child: Row(
+          children: [
+            AppIcon(AppIconName.file, size: 13,
+                color: hasFile ? C.accent : C.textSoft),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: hasFile ? C.text : C.textSoft,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                maxLines: 1,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: C.accent.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: Text(
+                buttonLabel,
+                style: TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.w500, color: C.accent),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _addTag() {
     final tag = _tagCtrl.text.trim();
     if (tag.isNotEmpty && !_tags.contains(tag)) {
@@ -333,89 +383,16 @@ class _EditSoundScreenState extends State<EditSoundScreen> {
     return _Section(C: C, children: [
       _SectionTitle('Datei', C),
       _FieldLabel('Dateipfad', C),
-      if (_isNew) ...[
-        // File picker button
-        GestureDetector(
-          onTap: _pickFile,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            decoration: BoxDecoration(
-              color: C.bgPanel,
-              border: Border.all(
-                color: _filePathCtrl.text.isNotEmpty ? C.accent : C.border,
-              ),
-              borderRadius: BorderRadius.circular(7),
-            ),
-            child: Row(
-              children: [
-                AppIcon(AppIconName.file, size: 13,
-                    color: _filePathCtrl.text.isNotEmpty ? C.accent : C.textSoft),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _filePathCtrl.text.isNotEmpty
-                        ? _filePathCtrl.text.split(RegExp(r'[/\\]')).last
-                        : 'Datei auswählen...',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: _filePathCtrl.text.isNotEmpty ? C.text : C.textSoft,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    maxLines: 1,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: C.accent.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  child: Text(
-                    'Durchsuchen',
-                    style: TextStyle(
-                        fontSize: 11, fontWeight: FontWeight.w500, color: C.accent),
-                  ),
-                ),
-              ],
-            ),
-          ),
+      _buildFilePickerRow(C),
+      if (_filePathCtrl.text.isNotEmpty) ...[
+        const SizedBox(height: 4),
+        Text(
+          _filePathCtrl.text,
+          style: TextStyle(fontSize: 10, color: C.textSoft),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
-        if (_filePathCtrl.text.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text(
-            _filePathCtrl.text,
-            style: TextStyle(fontSize: 10, color: C.textSoft),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ] else
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: C.bgPanel,
-            border: Border.all(color: C.border),
-            borderRadius: BorderRadius.circular(7),
-          ),
-          child: Row(
-            children: [
-              AppIcon(AppIconName.file, size: 13, color: C.textSoft),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  sound?.filePath.isNotEmpty == true
-                      ? sound!.filePath
-                      : 'Keine Datei',
-                  style: TextStyle(
-                      fontSize: 11,
-                      color: C.textMid,
-                      overflow: TextOverflow.ellipsis),
-                  maxLines: 1,
-                ),
-              ),
-            ],
-          ),
-        ),
+      ],
       if (!_isNew && sound != null) ...[
         const SizedBox(height: 10),
         Row(

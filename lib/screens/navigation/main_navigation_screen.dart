@@ -8,7 +8,6 @@ import '../../models/campaign.dart';
 import '../../models/player_character.dart';
 import '../../models/session.dart';
 import '../../theme/app_theme.dart';
-import '../../theme/theme_notifier.dart';
 import '../../viewmodels/session_list_for_campaign_viewmodel.dart';
 import '../../widgets/campaign/campaign_edit_modal_widget.dart';
 import '../../utils/color_utils.dart';
@@ -225,7 +224,6 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final notifier = context.watch<ThemeNotifier>();
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -287,11 +285,6 @@ class _TopBar extends StatelessWidget {
                     const SizedBox(width: 4),
                   ],
 
-                  _IconBtn(
-                    C: C,
-                    icon: notifier.isDark ? AppIconName.sun : AppIconName.moon,
-                    onTap: notifier.toggle,
-                  ),
                 ],
               ),
             ),

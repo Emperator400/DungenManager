@@ -14,6 +14,8 @@ import '../../database/repositories/player_character_model_repository.dart';
 import '../../database/repositories/quest_model_repository.dart';
 import '../../database/repositories/sound_model_repository.dart';
 import '../../database/repositories/encounter_model_repository.dart';
+import '../../database/repositories/encounter_participant_model_repository.dart';
+import '../../database/core/database_connection.dart';
 import '../../database/repositories/wiki_entry_model_repository.dart';
 import '../../theme/dnd_theme.dart';
 import '../../theme/app_theme.dart';
@@ -123,30 +125,13 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
           const SizedBox(width: 8),
           Container(width: 1, height: 18, color: C.border),
           const SizedBox(width: 10),
-          // Title + time
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                viewModel.currentSession.title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: C.text,
-                ),
-              ),
-              Row(
-                children: [
-                  Icon(Icons.access_time, size: 11, color: C.textSoft),
-                  const SizedBox(width: 4),
-                  Text(
-                    'In-Game Zeit: ${viewModel.getFormattedInGameTime()}',
-                    style: TextStyle(fontSize: 11, color: C.textSoft),
-                  ),
-                ],
-              ),
-            ],
+          Text(
+            viewModel.currentSession.title,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: C.text,
+            ),
           ),
           const Spacer(),
           // Live badge
@@ -195,9 +180,6 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          // Menu
-          _buildMenuButton(C),
-          const SizedBox(width: 8),
           // Kampf button
           GestureDetector(
             onTap: _startEncounter,
@@ -224,42 +206,6 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMenuButton(AppColorsExtension C) {
-    return PopupMenuButton<String>(
-      onSelected: _handleMenuAction,
-      icon: Icon(Icons.more_vert, size: 18, color: C.textMid),
-      color: C.bgPanel,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: C.border),
-      ),
-      itemBuilder: (context) => [
-        _buildPopupItem('edit_title', Icons.edit, 'Titel bearbeiten', C),
-        _buildPopupItem('add_time_15', Icons.add, '+15 Min', C),
-        _buildPopupItem('add_time_30', Icons.add, '+30 Min', C),
-        _buildPopupItem('add_time_60', Icons.add, '+1 Std', C),
-      ],
-    );
-  }
-
-  PopupMenuItem<String> _buildPopupItem(
-    String value,
-    IconData icon,
-    String label,
-    AppColorsExtension C,
-  ) {
-    return PopupMenuItem<String>(
-      value: value,
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: C.textMid),
-          const SizedBox(width: 8),
-          Text(label, style: TextStyle(fontSize: 13, color: C.text)),
         ],
       ),
     );
@@ -335,6 +281,33 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                   ),
                 ),
                 const Spacer(),
+                GestureDetector(
+                  onTap: () => _showResetConfirmDialog(viewModel, C),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: C.amber.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: C.amber.withValues(alpha: 0.4)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.restart_alt, size: 12, color: C.amber),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Zurücksetzen',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: C.amber,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 GestureDetector(
                   onTap: _showCreateSceneDialog,
                   child: Container(
@@ -451,103 +424,164 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   ) {
     final typeColor = _getSceneTypeColor(scene.sceneType);
 
+    // Outer container provides rounded clipping; inner container carries the
+    // left-only colored stripe — avoids Flutter's non-uniform-border + borderRadius artifact.
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: C.bgPanel,
         borderRadius: BorderRadius.circular(8),
-        border: Border(
-          top: BorderSide(color: C.border),
-          right: BorderSide(color: C.border),
-          bottom: BorderSide(color: C.border),
-          left: BorderSide(color: typeColor, width: 3),
+        border: Border.all(
+          color: isActive ? C.green : C.border,
+          width: isActive ? 1.5 : 1,
         ),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Theme(
-        data: Theme.of(context).copyWith(
-          dividerColor: Colors.transparent,
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isActive ? C.green.withValues(alpha: 0.06) : C.bgPanel,
+          border: Border(left: BorderSide(color: typeColor, width: 3)),
         ),
-        child: ExpansionTile(
-          tilePadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-          leading: Container(
-            width: 26,
-            height: 26,
-            decoration: BoxDecoration(
-              color: typeColor,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              '${scene.orderIndex + 1}',
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
+        child: Theme(
+          data: Theme.of(context).copyWith(
+            dividerColor: Colors.transparent,
+            splashColor: Colors.transparent,
+            highlightColor: Colors.transparent,
           ),
-          title: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      scene.name,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: C.text,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        Text(
-                          scene.sceneTypeDisplayName,
-                          style:
-                              TextStyle(fontSize: 11, color: C.textSoft),
+          child: ExpansionTile(
+            tilePadding: const EdgeInsets.only(left: 9, right: 12, top: 2, bottom: 2),
+            leading: Container(
+              width: 26,
+              height: 26,
+              decoration: BoxDecoration(
+                color: typeColor,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                '${scene.orderIndex + 1}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            title: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        scene.name,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: C.text,
                         ),
-                        if (isActive) ...[
-                          const SizedBox(width: 6),
-                          Icon(Icons.play_circle_filled,
-                              color: C.green, size: 12),
+                      ),
+                      Row(
+                        children: [
+                          Text(
+                            scene.sceneTypeDisplayName,
+                            style: TextStyle(fontSize: 11, color: C.textMid),
+                          ),
+                          if (scene.linkedEncounterId != null) ...[
+                            const SizedBox(width: 6),
+                            Icon(Icons.gavel, color: C.red, size: 12),
+                          ],
                         ],
-                        if (scene.isCompleted && !isActive) ...[
-                          const SizedBox(width: 6),
-                          Icon(Icons.check_circle,
-                              color: C.green, size: 12),
-                        ],
-                        if (scene.linkedEncounterId != null) ...[
-                          const SizedBox(width: 6),
-                          Icon(Icons.gavel, color: C.red, size: 12),
-                        ],
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              GestureDetector(
-                onTap: () => _showSceneOptions(scene),
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Icon(Icons.more_horiz,
-                      size: 16, color: C.textSoft),
+                // Inline primary action — visible without opening any menu
+                if (isActive && scene.linkedEncounterId != null) ...[
+                  _buildSceneActionChip(
+                    label: 'Kampf',
+                    icon: Icons.gavel,
+                    color: C.red,
+                    onTap: () => _startEncounterForScene(scene),
+                  ),
+                  const SizedBox(width: 6),
+                  _buildSceneActionChip(
+                    label: 'Abschließen',
+                    icon: Icons.check_circle_outline,
+                    color: C.green,
+                    onTap: () => _viewModel.completeScene(scene.id),
+                  ),
+                ] else if (isActive)
+                  _buildSceneActionChip(
+                    label: 'Abschließen',
+                    icon: Icons.check_circle_outline,
+                    color: C.green,
+                    onTap: () => _viewModel.completeScene(scene.id),
+                  )
+                else if (!scene.isCompleted)
+                  _buildSceneActionChip(
+                    label: 'Aktivieren',
+                    icon: Icons.play_arrow_rounded,
+                    color: C.amber,
+                    onTap: () => _viewModel.activateScene(scene.id),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Icon(Icons.check_circle, color: C.green, size: 16),
+                  ),
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: () => _showSceneOptions(scene),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(Icons.more_horiz, size: 16, color: C.textMid),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 2),
+                const SizedBox(width: 2),
+              ],
+            ),
+            backgroundColor: Colors.transparent,
+            collapsedBackgroundColor: Colors.transparent,
+            iconColor: C.textMid,
+            collapsedIconColor: C.textMid,
+            children: [
+              _buildSceneExpandedContent(context, scene, isActive, C),
             ],
           ),
-          backgroundColor: Colors.transparent,
-          collapsedBackgroundColor: Colors.transparent,
-          iconColor: C.textSoft,
-          collapsedIconColor: C.textSoft,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSceneActionChip({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: color.withValues(alpha: 0.45)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            _buildSceneExpandedContent(context, scene, isActive, C),
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
           ],
         ),
       ),
@@ -712,12 +746,12 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
       children: [
         // Live-Notizen (fixed height)
         SizedBox(
-          height: 220,
+          height: 190,
           child: LiveNotesQuadrant(viewModel: viewModel),
         ),
-        // Atmosphäre (fixed height)
-        SizedBox(
-          height: 240,
+        // Atmosphäre (grows with content, capped so quests always have space)
+        ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 100, maxHeight: 380),
           child: _buildAtmosphereSection(viewModel),
         ),
         // Quests (expands to fill remaining space)
@@ -738,17 +772,26 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
 
   Widget _buildAtmosphereSection(ActiveSessionViewModel viewModel) {
     final activeSceneId = viewModel.currentSession.activeSceneId;
-    List<String> linkedSoundIds = [];
+    List<String> sceneSoundIds = [];
 
     if (activeSceneId != null) {
       try {
         final activeScene =
             viewModel.scenes.firstWhere((s) => s.id == activeSceneId);
-        linkedSoundIds = activeScene.linkedSoundIds;
+        sceneSoundIds = activeScene.linkedSoundIds;
       } catch (_) {}
     }
 
-    return AtmosphereQuadrant(initialSoundIds: linkedSoundIds);
+    final sessionSoundIds = viewModel.currentSession.linkedSoundIds;
+    final mergedSoundIds = [
+      ...sessionSoundIds,
+      ...sceneSoundIds.where((id) => !sessionSoundIds.contains(id)),
+    ];
+
+    return AtmosphereQuadrant(
+      initialSoundIds: mergedSoundIds,
+      onSoundsChanged: (ids) => viewModel.updateSessionSounds(ids),
+    );
   }
 
   // ─── ERROR WIDGET ─────────────────────────────────────────────────────────
@@ -1291,40 +1334,6 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                   _showEditSceneDialog(scene);
                 },
               ),
-              ListTile(
-                leading: Icon(Icons.play_circle_filled,
-                    color: DnDTheme.ancientGold, size: 20),
-                title: Text(
-                  'Scene aktivieren',
-                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                ),
-                subtitle: Text(
-                  'Aktiviert Scene und ihre Quests',
-                  style: DnDTheme.bodyText2
-                      .copyWith(color: Colors.white54, fontSize: 11),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _viewModel.activateScene(scene.id);
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.check_circle,
-                    color: DnDTheme.successGreen, size: 20),
-                title: Text(
-                  'Scene abschließen',
-                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                ),
-                subtitle: Text(
-                  'Schließt Scene, Quests und Encounters',
-                  style: DnDTheme.bodyText2
-                      .copyWith(color: Colors.white54, fontSize: 11),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _viewModel.completeScene(scene.id);
-                },
-              ),
               Divider(color: DnDTheme.stoneGrey),
               ListTile(
                 leading: Icon(Icons.arrow_upward,
@@ -1372,6 +1381,51 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
 
   void _showCreateSceneDialog() {
     _showEditSceneDialog(null, isCreate: true);
+  }
+
+  void _showResetConfirmDialog(
+    ActiveSessionViewModel viewModel,
+    AppColorsExtension C,
+  ) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: C.bgPanel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: C.border),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.restart_alt, color: C.amber, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'Session zurücksetzen?',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: C.text),
+            ),
+          ],
+        ),
+        content: Text(
+          'Alle Szenen werden auf "offen" zurückgesetzt und die aktive Szene wird gelöscht.\n\nDie Notizen und Sounds bleiben erhalten.',
+          style: TextStyle(fontSize: 13, color: C.textMid, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Abbrechen', style: TextStyle(color: C.textSoft)),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: C.amber),
+            icon: const Icon(Icons.restart_alt, size: 14),
+            label: const Text('Zurücksetzen', style: TextStyle(fontSize: 13)),
+            onPressed: () {
+              Navigator.pop(ctx);
+              viewModel.resetSession();
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   void _showEditSceneDialog(Scene? scene, {bool isCreate = false}) async {
@@ -1453,81 +1507,6 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     );
   }
 
-  // ─── MENU ACTIONS ─────────────────────────────────────────────────────────
-
-  Future<void> _handleMenuAction(String action) async {
-    switch (action) {
-      case 'edit_title':
-        _showEditTitleDialog();
-      case 'add_time_15':
-        await _viewModel.addInGameTime(15);
-      case 'add_time_30':
-        await _viewModel.addInGameTime(30);
-      case 'add_time_60':
-        await _viewModel.addInGameTime(60);
-    }
-  }
-
-  void _showEditTitleDialog() {
-    final controller =
-        TextEditingController(text: _viewModel.currentSession.title);
-    showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
-        title: Text(
-          'Session-Titel bearbeiten',
-          style: DnDTheme.headline3.copyWith(color: DnDTheme.ancientGold),
-        ),
-        content: TextFormField(
-          controller: controller,
-          style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-          decoration: InputDecoration(
-            labelText: 'Titel',
-            labelStyle:
-                DnDTheme.bodyText2.copyWith(color: DnDTheme.ancientGold),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-              borderSide: const BorderSide(color: DnDTheme.mysticalPurple),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-              borderSide: BorderSide(
-                  color: DnDTheme.mysticalPurple.withValues(alpha: 0.5)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-              borderSide:
-                  const BorderSide(color: DnDTheme.ancientGold, width: 2),
-            ),
-            filled: true,
-            fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(color: DnDTheme.mysticalPurple),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              await _viewModel.updateSessionTitle(controller.text);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.ancientGold,
-              foregroundColor: DnDTheme.dungeonBlack,
-            ),
-            child: const Text('Speichern'),
-          ),
-        ],
-      ),
-    );
-  }
-
   // ─── ENCOUNTER ────────────────────────────────────────────────────────────
 
   void _startEncounter() {
@@ -1548,11 +1527,48 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
       orElse: () => throw Exception('Scene nicht gefunden'),
     );
 
+    _startEncounterForScene(activeScene);
+  }
+
+  Future<void> _startEncounterForScene(Scene scene) async {
+    String? title;
+    String? description;
+    List<String> characterIds = const [];
+    List<String> monsterIds = const [];
+
+    if (scene.linkedEncounterId != null) {
+      final encounterRepo = context.read<EncounterModelRepository>();
+      final encounter = await encounterRepo.findById(scene.linkedEncounterId!);
+      if (encounter != null) {
+        title = encounter.title;
+        description = encounter.description;
+
+        // Load actual participant records to extract character/creature IDs
+        final participantRepo = EncounterParticipantModelRepository(
+          DatabaseConnection.instance,
+        );
+        final participants = await participantRepo.findByEncounter(encounter.id);
+        characterIds = participants
+            .where((p) => p.characterId != null)
+            .map((p) => p.characterId!)
+            .toList();
+        monsterIds = participants
+            .where((p) => p.creatureId != null)
+            .map((p) => p.creatureId!)
+            .toList();
+      }
+    }
+
+    if (!mounted) return;
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         builder: (ctx) => EncounterSetupScreen(
           campaign: _viewModel.campaign,
-          scene: activeScene,
+          scene: scene,
+          encounterTitle: title,
+          preselectedDescription: description,
+          preselectedCharacterIds: characterIds,
+          preselectedMonsterIds: monsterIds,
         ),
       ),
     );

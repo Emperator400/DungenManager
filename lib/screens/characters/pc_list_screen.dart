@@ -75,17 +75,63 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
       value: _viewModel,
       child: Scaffold(
         backgroundColor: C.bg,
-        appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.of(context).pop(),
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(52),
+          child: Container(
+            decoration: BoxDecoration(color: C.bgPanel, border: Border(bottom: BorderSide(color: C.border))),
+            child: SafeArea(
+              bottom: false,
+              child: SizedBox(
+                height: 52,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(children: [
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: SizedBox(width: 30, height: 30, child: Icon(Icons.arrow_back, size: 18, color: C.textMid)),
+                    ),
+                    Container(width: 1, height: 18, color: C.border, margin: const EdgeInsets.symmetric(horizontal: 8)),
+                    Container(
+                      width: 28, height: 28,
+                      decoration: BoxDecoration(
+                        color: C.green.withValues(alpha: 0.18),
+                        border: Border.all(color: C.green.withValues(alpha: 0.4)),
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: Center(child: Icon(Icons.people, size: 14, color: C.green)),
+                    ),
+                    const SizedBox(width: 8),
+                    Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Text('Helden', style: TextStyle(color: C.text, fontWeight: FontWeight.w600, fontSize: 13, height: 1.1)),
+                      Text(widget.campaign.title, style: TextStyle(color: C.textSoft, fontSize: 10, height: 1.1)),
+                    ]),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () async {
+                        try {
+                          await Navigator.of(context).push(MaterialPageRoute<void>(
+                            builder: (ctx) => EditPCScreen(campaignId: widget.campaign.id),
+                          ));
+                          await _refreshCharacterList();
+                        } catch (e) {
+                          if (mounted) SnackBarHelper.showError(context, 'Fehler beim Öffnen des Charakter-Editors: $e');
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                        decoration: BoxDecoration(color: C.green, borderRadius: BorderRadius.circular(7)),
+                        child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.add, size: 13, color: Colors.white),
+                          SizedBox(width: 5),
+                          Text('Held hinzufügen', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                        ]),
+                      ),
+                    ),
+                  ]),
+                ),
+              ),
+            ),
           ),
-          title: Text(
-            widget.campaign.title,
-            style: TextStyle(fontSize: 22, color: C.amber, fontWeight: FontWeight.bold),
-          ),
-          backgroundColor: C.bgPanel,
-          foregroundColor: Colors.white,
         ),
         body: SafeArea(
           top: false,
@@ -121,7 +167,7 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
                               const SizedBox(height: 8),
                               Text(
                                 viewModel.error!,
-                                style: const TextStyle(fontSize: 14, color: Colors.white70),
+                                style: TextStyle(fontSize: 13, color: C.textMid),
                                 textAlign: TextAlign.center,
                               ),
                               const SizedBox(height: 16),
@@ -167,7 +213,7 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
                                 _searchQuery.isNotEmpty || _showFavoritesOnly
                                     ? 'Keine Helden gefunden, die den Filterkriterien entsprechen.'
                                     : 'Keine Helden für diese Kampagne erstellt.',
-                                style: const TextStyle(fontSize: 16, color: Colors.white70),
+                                style: TextStyle(fontSize: 14, color: C.textMid),
                                 textAlign: TextAlign.center,
                               ),
                               if (_searchQuery.isNotEmpty || _showFavoritesOnly)
@@ -203,32 +249,6 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
             ],
           ),
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          tooltip: 'Neuen Helden hinzufügen',
-          backgroundColor: C.green,
-          foregroundColor: Colors.white,
-          icon: const Icon(Icons.add),
-          label: const Text('Held hinzufügen'),
-          onPressed: () async {
-            try {
-              await Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (ctx) => EditPCScreen(campaignId: widget.campaign.id),
-                ),
-              );
-              await _refreshCharacterList();
-            } catch (e) {
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Fehler beim Öffnen des Charakter-Editors: $e'),
-                    backgroundColor: context.appColors.red,
-                  ),
-                );
-              }
-            }
-          },
-        ),
       ),
     );
   }
@@ -248,7 +268,7 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
             controller: _searchController,
             decoration: InputDecoration(
               hintText: 'Helden suchen...',
-              hintStyle: const TextStyle(fontSize: 14, color: Colors.white54),
+              hintStyle: TextStyle(fontSize: 14, color: C.textSoft),
               prefixIcon: Icon(Icons.search, color: C.amber),
               suffixIcon: _searchQuery.isNotEmpty
                   ? IconButton(
@@ -277,7 +297,7 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
               filled: true,
               fillColor: C.bgHover,
             ),
-            style: const TextStyle(fontSize: 16, color: Colors.white),
+            style: TextStyle(fontSize: 14, color: C.text),
             onChanged: (value) {
               setState(() => _searchQuery = value);
               Future.delayed(const Duration(milliseconds: 300), () {
@@ -429,7 +449,7 @@ class _PlayerCharacterListScreenState extends State<PlayerCharacterListScreen> {
         ),
         content: Text(
           'Möchten Sie ${pc.name} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
-          style: const TextStyle(fontSize: 16, color: Colors.white70),
+          style: TextStyle(fontSize: 14, color: C.textMid),
         ),
         actions: [
           TextButton(

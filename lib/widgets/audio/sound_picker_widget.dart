@@ -1,22 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/sound.dart';
-import '../../viewmodels/sound_library_viewmodel.dart';
-import '../../theme/dnd_theme.dart';
 import '../../services/sound_service.dart';
-import '../ui_components/states/loading_state_widget.dart';
-import '../ui_components/states/empty_state_widget.dart';
-import '../ui_components/filter/unified_filter_chip.dart';
-import '../ui_components/chips/unified_info_chip.dart';
+import '../../theme/app_theme.dart';
+import '../../viewmodels/sound_library_viewmodel.dart';
 
-/// Sound Picker Widget zum Auswählen mehrerer Sounds
-/// 
-/// Zeigt alle Sounds mit Such- und Filter-Funktionen an und ermöglicht
-/// das Anhören von Sounds vor dem Hinzufügen zur Session.
 class SoundPickerWidget extends StatefulWidget {
   final List<String> initiallySelectedSoundIds;
   final Function(List<String>) onSelectionChanged;
-  
+
   const SoundPickerWidget({
     super.key,
     required this.initiallySelectedSoundIds,
@@ -50,201 +42,133 @@ class _SoundPickerWidgetState extends State<SoundPickerWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return ChangeNotifierProvider<SoundLibraryViewModel>.value(
       value: _viewModel,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Header
-          _buildHeader(),
-          
-          // Search und Filter
-          _buildFilterBar(),
-          
-          // Sound Type Filter Chips
-          _buildSoundTypeFilterChips(),
-          
-          // Sound Liste
-          Flexible(
-            child: Consumer<SoundLibraryViewModel>(
-              builder: (context, viewModel, child) {
-                if (viewModel.isLoadingSounds) {
-                  return LoadingStateWidget.standard(color: DnDTheme.ancientGold);
-                }
-
-                if (viewModel.sounds.isEmpty) {
-                  return EmptyStateWidget.minimal(
-                    title: 'Keine Sounds gefunden',
-                    icon: Icons.music_note,
-                    iconColor: DnDTheme.mysticalPurple,
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(DnDTheme.md),
-                  itemCount: viewModel.sounds.length,
-                  itemBuilder: (context, index) {
-                    final sound = viewModel.sounds[index];
-                    return _buildSoundCard(sound);
-                  },
-                );
-              },
-            ),
-          ),
-          
-          // Footer mit Aktionen
-          _buildFooter(),
+          _buildHeader(C),
+          _buildFilterBar(C),
+          _buildTypeChips(C),
+          Flexible(child: _buildSoundList(C)),
+          _buildFooter(C),
         ],
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(AppColorsExtension C) {
     return Container(
-      padding: const EdgeInsets.all(DnDTheme.md),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
       decoration: BoxDecoration(
-        gradient: DnDTheme.getMysticalGradient(
-          startColor: DnDTheme.stoneGrey,
-          endColor: DnDTheme.slateGrey,
-        ),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(DnDTheme.radiusMedium),
-          topRight: Radius.circular(DnDTheme.radiusMedium),
-        ),
-        border: Border(
-          bottom: BorderSide(
-            color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
-            width: 1,
-          ),
-        ),
+        color: C.bgPanel,
+        border: Border(bottom: BorderSide(color: C.border)),
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.music_note,
-            color: DnDTheme.ancientGold,
-            size: 24,
-          ),
-          const SizedBox(width: DnDTheme.sm),
+          Icon(Icons.music_note, color: C.accent, size: 16),
+          const SizedBox(width: 8),
           Text(
             'Sounds auswählen',
-            style: DnDTheme.headline3.copyWith(
-              color: Colors.white,
-            ),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.text),
           ),
           const Spacer(),
-          UnifiedInfoChip.count(
-            label: 'ausgewählt',
-            count: _selectedSoundIds.length,
-            color: DnDTheme.mysticalPurple,
+          if (_selectedSoundIds.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: C.accent.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(color: C.accent.withValues(alpha: 0.35)),
+              ),
+              child: Text(
+                '${_selectedSoundIds.length} ausgewählt',
+                style: TextStyle(fontSize: 11, color: C.accent, fontWeight: FontWeight.w500),
+              ),
+            ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: Icon(Icons.close, size: 18, color: C.textMid),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildFilterBar() {
+  Widget _buildFilterBar(AppColorsExtension C) {
     return Consumer<SoundLibraryViewModel>(
       builder: (context, viewModel, child) {
         return Container(
-          padding: const EdgeInsets.all(DnDTheme.md),
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
           decoration: BoxDecoration(
-            gradient: DnDTheme.getMysticalGradient(
-              startColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
-              endColor: DnDTheme.stoneGrey.withValues(alpha: 0.3),
-            ),
-            border: Border(
-              bottom: BorderSide(
-                color: DnDTheme.mysticalPurple.withValues(alpha: 0.2),
-                width: 1,
-              ),
-            ),
+            color: C.bgPanel,
+            border: Border(bottom: BorderSide(color: C.border)),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: 'Sounds suchen...',
-                    hintStyle: DnDTheme.bodyText2.copyWith(color: Colors.white54),
-                    prefixIcon: Icon(Icons.search, color: DnDTheme.ancientGold),
-                    suffixIcon: viewModel.soundSearchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: Icon(Icons.clear, color: DnDTheme.errorRed),
-                            onPressed: () {
-                              _searchController.clear();
-                              viewModel.setSoundSearchQuery('');
-                            },
-                          )
-                        : null,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                      borderSide: BorderSide(color: DnDTheme.mysticalPurple),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                      borderSide: BorderSide(
-                        color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
-                      borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
-                    ),
-                    filled: true,
-                    fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: DnDTheme.md,
-                      vertical: DnDTheme.sm,
-                    ),
-                  ),
-                  onChanged: (value) => viewModel.setSoundSearchQuery(value),
-                ),
+          child: TextField(
+            controller: _searchController,
+            style: TextStyle(fontSize: 13, color: C.text),
+            decoration: InputDecoration(
+              hintText: 'Sounds suchen...',
+              hintStyle: TextStyle(color: C.textSoft, fontSize: 13),
+              prefixIcon: Icon(Icons.search, color: C.textSoft, size: 18),
+              suffixIcon: viewModel.soundSearchQuery.isNotEmpty
+                  ? GestureDetector(
+                      onTap: () {
+                        _searchController.clear();
+                        viewModel.setSoundSearchQuery('');
+                      },
+                      child: Icon(Icons.close, color: C.textSoft, size: 16),
+                    )
+                  : null,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              filled: true,
+              fillColor: C.bgHover,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(7),
+                borderSide: BorderSide(color: C.border),
               ),
-            ],
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(7),
+                borderSide: BorderSide(color: C.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(7),
+                borderSide: BorderSide(color: C.accent),
+              ),
+            ),
+            onChanged: viewModel.setSoundSearchQuery,
           ),
         );
       },
     );
   }
 
-  Widget _buildSoundTypeFilterChips() {
+  Widget _buildTypeChips(AppColorsExtension C) {
     return Consumer<SoundLibraryViewModel>(
       builder: (context, viewModel, child) {
         return Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: DnDTheme.md,
-            vertical: DnDTheme.sm,
-          ),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
           decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: DnDTheme.mysticalPurple.withValues(alpha: 0.2),
-                width: 1,
-              ),
-            ),
+            color: C.bgPanel,
+            border: Border(bottom: BorderSide(color: C.border)),
           ),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                UnifiedFilterChip<String>(
-                  value: 'all',
-                  label: 'Alle',
-                  isSelected: viewModel.selectedSoundType == null,
-                  selectedColor: DnDTheme.ancientGold,
-                  onSelected: (_) => viewModel.setSoundTypeFilter(null),
-                ),
+                _typeChip('Alle', viewModel.selectedSoundType == null, C.accent, C,
+                    onTap: () => viewModel.setSoundTypeFilter(null)),
+                const SizedBox(width: 4),
                 ...SoundType.values.map((type) => Padding(
-                  padding: const EdgeInsets.only(left: DnDTheme.xs),
-                  child: UnifiedFilterChip<String>(
-                    value: type.name,
-                    label: type.displayName,
-                    isSelected: viewModel.selectedSoundType == type,
-                    selectedColor: DnDTheme.ancientGold,
-                    onSelected: (_) => viewModel.setSoundTypeFilter(type),
+                  padding: const EdgeInsets.only(right: 4),
+                  child: _typeChip(
+                    type.displayName,
+                    viewModel.selectedSoundType == type,
+                    C.green,
+                    C,
+                    onTap: () => viewModel.setSoundTypeFilter(type),
                   ),
                 )),
               ],
@@ -255,75 +179,154 @@ class _SoundPickerWidgetState extends State<SoundPickerWidget> {
     );
   }
 
-  Widget _buildSoundCard(Sound sound) {
-    final isSelected = _selectedSoundIds.contains(sound.id);
-    
-    return Container(
-      margin: const EdgeInsets.only(bottom: DnDTheme.md),
-      decoration: BoxDecoration(
-        gradient: DnDTheme.getMysticalGradient(
-          startColor: isSelected 
-              ? DnDTheme.ancientGold.withValues(alpha: 0.2)
-              : DnDTheme.slateGrey,
-          endColor: DnDTheme.stoneGrey,
+  Widget _typeChip(String label, bool isSelected, Color color, AppColorsExtension C, {required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withValues(alpha: 0.12) : Colors.transparent,
+          borderRadius: BorderRadius.circular(5),
+          border: Border.all(color: isSelected ? color : C.border),
         ),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-        border: Border.all(
-          color: isSelected 
-              ? DnDTheme.ancientGold
-              : DnDTheme.mysticalPurple.withValues(alpha: 0.3),
-          width: isSelected ? 2 : 1,
-        ),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(DnDTheme.md),
-        leading: Checkbox(
-          value: isSelected,
-          onChanged: (_) => _toggleSoundSelection(sound.id),
-          activeColor: DnDTheme.ancientGold,
-          checkColor: Colors.black,
-        ),
-        title: Text(
-          sound.name,
-          style: DnDTheme.bodyText1.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: isSelected ? color : C.textSoft,
+            fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
           ),
         ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              sound.soundTypeDisplayName,
-              style: DnDTheme.bodyText2.copyWith(
-                color: Colors.white70,
+      ),
+    );
+  }
+
+  Widget _buildSoundList(AppColorsExtension C) {
+    return Consumer<SoundLibraryViewModel>(
+      builder: (context, viewModel, child) {
+        if (viewModel.isLoadingSounds) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: CircularProgressIndicator(color: C.accent, strokeWidth: 2),
+            ),
+          );
+        }
+        if (viewModel.sounds.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.music_off, size: 32, color: C.textSoft),
+                  const SizedBox(height: 8),
+                  Text('Keine Sounds gefunden', style: TextStyle(fontSize: 13, color: C.textSoft)),
+                ],
               ),
             ),
-            if (sound.description.isNotEmpty) ...[
-              const SizedBox(height: DnDTheme.xs),
-              Text(
-                sound.description,
-                style: DnDTheme.bodyText2.copyWith(
-                  color: Colors.white54,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ],
+          );
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          itemCount: viewModel.sounds.length,
+          itemBuilder: (context, index) => _buildSoundCard(viewModel.sounds[index], C),
+        );
+      },
+    );
+  }
+
+  Widget _buildSoundCard(Sound sound, AppColorsExtension C) {
+    final isSelected = _selectedSoundIds.contains(sound.id);
+    final isPlaying = _currentlyPlayingSound?.id == sound.id;
+
+    return GestureDetector(
+      onTap: () => _toggleSoundSelection(sound.id),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: isSelected ? C.accent.withValues(alpha: 0.07) : C.bgHover,
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(
+            color: isSelected ? C.accent.withValues(alpha: 0.4) : C.border,
+          ),
         ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+        child: Row(
           children: [
-            IconButton(
-              icon: Icon(
-                _currentlyPlayingSound?.id == sound.id 
-                    ? Icons.stop 
-                    : Icons.play_arrow,
-                color: DnDTheme.arcaneBlue,
+            // Checkbox
+            Container(
+              width: 18,
+              height: 18,
+              decoration: BoxDecoration(
+                color: isSelected ? C.accent : Colors.transparent,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: isSelected ? C.accent : C.border),
               ),
-              onPressed: () => _toggleSoundPlayback(sound),
-              tooltip: 'Anhören',
+              child: isSelected
+                  ? Icon(Icons.check, size: 12, color: Colors.white)
+                  : null,
+            ),
+            const SizedBox(width: 10),
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    sound.name,
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: C.text),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: C.green.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: Text(
+                          sound.soundType.displayName,
+                          style: TextStyle(fontSize: 9, color: C.green, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      if (sound.description.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            sound.description,
+                            style: TextStyle(fontSize: 11, color: C.textSoft),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Preview button
+            GestureDetector(
+              onTap: () => _toggleSoundPlayback(sound),
+              child: Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: isPlaying ? C.accent.withValues(alpha: 0.15) : C.bgActive,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: isPlaying ? C.accent.withValues(alpha: 0.4) : C.border),
+                ),
+                child: Icon(
+                  isPlaying ? Icons.stop : Icons.play_arrow,
+                  color: isPlaying ? C.accent : C.textMid,
+                  size: 14,
+                ),
+              ),
             ),
           ],
         ),
@@ -331,44 +334,47 @@ class _SoundPickerWidgetState extends State<SoundPickerWidget> {
     );
   }
 
-  Widget _buildFooter() {
+  Widget _buildFooter(AppColorsExtension C) {
     return Container(
-      padding: const EdgeInsets.all(DnDTheme.md),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
       decoration: BoxDecoration(
-        gradient: DnDTheme.getMysticalGradient(
-          startColor: DnDTheme.stoneGrey,
-          endColor: DnDTheme.slateGrey,
-        ),
-        border: Border(
-          top: BorderSide(
-            color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
-            width: 1,
-          ),
-        ),
+        color: C.bgPanel,
+        border: Border(top: BorderSide(color: C.border)),
       ),
       child: Row(
         children: [
           Expanded(
-            child: OutlinedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: DnDTheme.md),
-                side: BorderSide(color: Colors.grey.shade400),
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 9),
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(7),
+                  border: Border.all(color: C.border),
+                ),
+                alignment: Alignment.center,
+                child: Text('Abbrechen', style: TextStyle(fontSize: 13, color: C.textMid)),
               ),
-              child: Text('Abbrechen'),
             ),
           ),
-          const SizedBox(width: DnDTheme.md),
+          const SizedBox(width: 10),
           Expanded(
-            child: ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(_selectedSoundIds.toList()),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: DnDTheme.successGreen,
-                padding: const EdgeInsets.symmetric(vertical: DnDTheme.md),
-              ),
-              child: Text(
-                _selectedSoundIds.isEmpty ? 'Alle entfernen' : '${_selectedSoundIds.length} Sounds anwenden',
-                style: TextStyle(color: Colors.white),
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).pop(_selectedSoundIds.toList()),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 9),
+                decoration: BoxDecoration(
+                  color: C.accent,
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  _selectedSoundIds.isEmpty
+                      ? 'Alle entfernen'
+                      : '${_selectedSoundIds.length} anwenden',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white),
+                ),
               ),
             ),
           ),
@@ -388,43 +394,24 @@ class _SoundPickerWidgetState extends State<SoundPickerWidget> {
     });
   }
 
-  void _toggleSoundPlayback(Sound sound) async {
+  Future<void> _toggleSoundPlayback(Sound sound) async {
     if (_currentlyPlayingSound?.id == sound.id) {
-      // Stop current sound
       await SoundService.stopSound();
-      setState(() {
-        _currentlyPlayingSound = null;
-      });
+      setState(() => _currentlyPlayingSound = null);
     } else {
-      // Play new sound
-      setState(() {
-        _currentlyPlayingSound = sound;
-      });
+      setState(() => _currentlyPlayingSound = sound);
       final success = await SoundService.playSound(sound.filePath);
-      if (!success) {
-        setState(() {
-          _currentlyPlayingSound = null;
-        });
-      }
+      if (!success) setState(() => _currentlyPlayingSound = null);
     }
   }
 }
 
-// Extension für SoundType Display Name
-extension SoundTypeExtension on SoundType {
+extension _SoundTypeDisplayName on SoundType {
   String get displayName {
     switch (this) {
-      case SoundType.Ambiente:
-        return 'Ambiente';
-      case SoundType.Effekt:
-        return 'Effekt';
+      case SoundType.Ambiente: return 'Ambiente';
+      case SoundType.Effekt:   return 'Effekt';
     }
   }
 }
 
-// Extension für Sound Display Name
-extension SoundExtension on Sound {
-  String get soundTypeDisplayName {
-    return soundType.displayName;
-  }
-}

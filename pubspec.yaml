@@ -34,6 +34,12 @@ dependencies:
   cupertino_icons: ^1.0.2
   ultimate_flutter_icons: ^1.4.0
   
+  # Custom window frame (Windows/macOS/Linux)
+  window_manager: ^0.4.0
+
+  # App-Version aus pubspec.yaml lesen
+  package_info_plus: ^8.0.0
+
   # MCP Server dependencies
   json_rpc_2: ^3.0.2
 

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../services/wiki_entry_service.dart';
-import '../../models/wiki_entry.dart';
 import '../../models/map_location.dart';
+import '../../models/wiki_entry.dart';
+import '../../services/wiki_entry_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/ui_components/feedback/confirmation_dialog.dart';
+import '../../widgets/ui_components/feedback/snackbar_helper.dart';
 
 class EditWikiEntryScreen extends StatefulWidget {
   final WikiEntry? entry;
@@ -90,27 +92,11 @@ class _EditWikiEntryScreenState extends State<EditWikiEntryScreen> {
 
       final savedEntry = result.data!;
       if (mounted) {
-        final C = context.appColors;
+        SnackBarHelper.showSuccess(context, widget.entry != null ? 'Eintrag aktualisiert' : 'Eintrag erstellt');
         Navigator.of(context).pop(savedEntry);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              widget.entry != null ? 'Eintrag aktualisiert' : 'Eintrag erstellt',
-            ),
-            backgroundColor: C.green,
-            duration: const Duration(seconds: 2),
-          ),
-        );
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fehler: $e'),
-            backgroundColor: context.appColors.red,
-          ),
-        );
-      }
+      if (mounted) SnackBarHelper.showError(context, 'Fehler: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -136,38 +122,14 @@ class _EditWikiEntryScreenState extends State<EditWikiEntryScreen> {
     );
   }
 
-  Future<bool> _showDiscardChangesDialog() {
-    final C = context.appColors;
-    return showDialog<bool>(
+  Future<bool> _showDiscardChangesDialog() async {
+    final result = await ConfirmationDialog.showWarning(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: C.bgPanel,
-        title: const Text(
-          'Änderungen verwerfen?',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFEA580C)),
-        ),
-        content: const Text(
-          'Möchtest du die nicht gespeicherten Änderungen wirklich verwerfen?',
-          style: TextStyle(fontSize: 16, color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text(
-              'Abbrechen',
-              style: TextStyle(fontSize: 16, color: Color(0xFF7C3AED)),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text(
-              'Verwerfen',
-              style: TextStyle(fontSize: 16, color: Color(0xFFEA580C)),
-            ),
-          ),
-        ],
-      ),
-    ).then((value) => value ?? false);
+      title: 'Änderungen verwerfen?',
+      message: 'Möchtest du die nicht gespeicherten Änderungen wirklich verwerfen?',
+      confirmText: 'Verwerfen',
+    );
+    return result ?? false;
   }
 
   bool _hasUnsavedChanges() {
@@ -209,37 +171,67 @@ class _EditWikiEntryScreenState extends State<EditWikiEntryScreen> {
       },
       child: Scaffold(
         backgroundColor: C.bg,
-        appBar: AppBar(
-          title: Text(
-            widget.entry != null ? 'Wiki-Eintrag bearbeiten' : 'Neuer Wiki-Eintrag',
-            style: TextStyle(fontSize: 22, color: C.amber, fontWeight: FontWeight.bold),
-          ),
-          backgroundColor: C.bgPanel,
-          foregroundColor: Colors.white,
-          actions: [
-            if (_isLoading)
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                ),
-              )
-            else
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ElevatedButton.icon(
-                  onPressed: _saveEntry,
-                  icon: const Icon(Icons.save),
-                  label: const Text('Speichern'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: C.green,
-                    foregroundColor: Colors.white,
-                  ),
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(52),
+          child: Container(
+            decoration: BoxDecoration(
+              color: C.bgPanel,
+              border: Border(bottom: BorderSide(color: C.border)),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: SizedBox(
+                height: 52,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(children: [
+                    GestureDetector(
+                      onTap: () async {
+                        if (_hasUnsavedChanges()) {
+                          final discard = await _showDiscardChangesDialog();
+                          if (discard && mounted) Navigator.of(context).pop();
+                        } else {
+                          Navigator.of(context).pop();
+                        }
+                      },
+                      child: SizedBox(width: 30, height: 30, child: Icon(Icons.arrow_back, size: 18, color: C.textMid)),
+                    ),
+                    Container(width: 1, height: 18, color: C.border, margin: const EdgeInsets.symmetric(horizontal: 8)),
+                    Container(
+                      width: 28, height: 28,
+                      decoration: BoxDecoration(
+                        color: C.amber.withValues(alpha: 0.18),
+                        border: Border.all(color: C.amber.withValues(alpha: 0.4)),
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: Center(child: Icon(Icons.menu_book, size: 14, color: C.amber)),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      widget.entry != null ? 'Wiki-Eintrag bearbeiten' : 'Neuer Wiki-Eintrag',
+                      style: TextStyle(color: C.text, fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    const Spacer(),
+                    if (_isLoading)
+                      SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: C.accent))
+                    else
+                      GestureDetector(
+                        onTap: _saveEntry,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                          decoration: BoxDecoration(color: C.green, borderRadius: BorderRadius.circular(7)),
+                          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(Icons.save, size: 13, color: Colors.white),
+                            SizedBox(width: 5),
+                            Text('Speichern', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                          ]),
+                        ),
+                      ),
+                  ]),
                 ),
               ),
-          ],
+            ),
+          ),
         ),
         body: Form(
           key: _formKey,
@@ -298,7 +290,7 @@ class _EditWikiEntryScreenState extends State<EditWikiEntryScreen> {
       labelText: label,
       hintText: hint,
       labelStyle: TextStyle(fontSize: 14, color: labelColor ?? C.amber),
-      hintStyle: const TextStyle(fontSize: 14, color: Colors.white54),
+      hintStyle: TextStyle(fontSize: 14, color: C.textSoft),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: C.border),
@@ -332,7 +324,7 @@ class _EditWikiEntryScreenState extends State<EditWikiEntryScreen> {
           const SizedBox(height: 16),
           TextFormField(
             controller: _titleController,
-            style: const TextStyle(fontSize: 16, color: Colors.white),
+            style: TextStyle(fontSize: 14, color: C.text),
             decoration: _fieldDecoration(
               label: 'Titel *',
               hint: 'z.B. "Drache von Neverwinter"',
@@ -368,7 +360,7 @@ class _EditWikiEntryScreenState extends State<EditWikiEntryScreen> {
                       value: type,
                       label: Text(
                         _getTypeDisplayName(type),
-                        style: const TextStyle(fontSize: 14, color: Colors.white),
+                        style: TextStyle(fontSize: 14, color: C.text),
                       ),
                       icon: Icon(_getTypeIcon(type), color: _getTypeColor(type)),
                     ))
@@ -383,7 +375,7 @@ class _EditWikiEntryScreenState extends State<EditWikiEntryScreen> {
               }),
               foregroundColor: WidgetStateProperty.resolveWith<Color>((states) {
                 if (states.contains(WidgetState.selected)) return _getTypeColor(_selectedType);
-                return Colors.white70;
+                return C.textMid;
               }),
             ),
             onSelectionChanged: (selection) => setState(() => _selectedType = selection.first),
@@ -409,7 +401,7 @@ class _EditWikiEntryScreenState extends State<EditWikiEntryScreen> {
           const SizedBox(height: 16),
           TextFormField(
             controller: _contentController,
-            style: const TextStyle(fontSize: 16, color: Colors.white),
+            style: TextStyle(fontSize: 14, color: C.text),
             decoration: _fieldDecoration(
               label: 'Beschreibung *',
               hint: 'Gib hier alle wichtigen Informationen ein...',
@@ -450,7 +442,7 @@ class _EditWikiEntryScreenState extends State<EditWikiEntryScreen> {
               Expanded(
                 child: TextFormField(
                   controller: _tagController,
-                  style: const TextStyle(fontSize: 16, color: Colors.white),
+                  style: TextStyle(fontSize: 14, color: C.text),
                   decoration: _fieldDecoration(
                     label: 'Neuer Tag',
                     hint: 'z.B. "wichtig", "NPC", "Ort"',
@@ -464,7 +456,7 @@ class _EditWikiEntryScreenState extends State<EditWikiEntryScreen> {
                 icon: const Icon(Icons.add),
                 tooltip: 'Tag hinzufügen',
                 style: IconButton.styleFrom(
-                  backgroundColor: const Color(0xFF7C3AED),
+                  backgroundColor: C.accent,
                   foregroundColor: Colors.white,
                 ),
               ),
@@ -519,17 +511,17 @@ class _EditWikiEntryScreenState extends State<EditWikiEntryScreen> {
             child: ListTile(
               leading: Icon(
                 Icons.location_on,
-                color: _location != null ? C.accent : Colors.white70,
+                color: _location != null ? C.accent : C.textMid,
               ),
               title: Text(
                 _location != null ? 'Standort festlegt' : 'Kein Standort',
-                style: const TextStyle(fontSize: 16, color: Colors.white),
+                style: TextStyle(fontSize: 14, color: C.text),
               ),
               subtitle: Text(
                 _location != null
                     ? 'Lat: ${_location!.latitude.toStringAsFixed(4)}, Lng: ${_location!.longitude.toStringAsFixed(4)}'
                     : 'Füge einen Standort für zukünftige Karten hinzu',
-                style: const TextStyle(fontSize: 14, color: Colors.white70),
+                style: TextStyle(fontSize: 13, color: C.textMid),
               ),
               trailing: Icon(Icons.edit, color: C.accent),
               onTap: _showLocationDialog,
@@ -550,17 +542,12 @@ class _EditWikiEntryScreenState extends State<EditWikiEntryScreen> {
         border: Border.all(color: C.border),
       ),
       child: SwitchListTile(
-        title: const Text(
-          'Globaler Eintrag',
-          style: TextStyle(fontSize: 16, color: Colors.white),
-        ),
-        subtitle: const Text(
-          'Soll dieser Eintrag für alle Kampagnen sichtbar sein?',
-          style: TextStyle(fontSize: 14, color: Colors.white70),
-        ),
+        title: Text('Globaler Eintrag', style: TextStyle(fontSize: 14, color: C.text)),
+        subtitle: Text('Soll dieser Eintrag für alle Kampagnen sichtbar sein?',
+            style: TextStyle(fontSize: 13, color: C.textMid)),
         value: _isGlobal,
         onChanged: (value) => setState(() => _isGlobal = value),
-        secondary: Icon(Icons.public, color: _isGlobal ? C.accent : Colors.white70),
+        secondary: Icon(Icons.public, color: _isGlobal ? C.accent : C.textMid),
       ),
     );
   }
@@ -598,12 +585,12 @@ class _EditWikiEntryScreenState extends State<EditWikiEntryScreen> {
     return switch (type) {
       WikiEntryType.Person => C.accent,
       WikiEntryType.Place => C.green,
-      WikiEntryType.Lore => const Color(0xFF7C3AED),
+      WikiEntryType.Lore => C.accent,
       WikiEntryType.Faction => const Color(0xFFEA580C),
       WikiEntryType.Magic => C.accent,
       WikiEntryType.History => C.amber,
       WikiEntryType.Item => C.accent,
-      WikiEntryType.Quest => const Color(0xFF7C3AED),
+      WikiEntryType.Quest => C.accent,
       WikiEntryType.Creature => C.red,
     };
   }
@@ -675,7 +662,7 @@ class _LocationDialogState extends State<LocationDialog> {
                 Expanded(
                   child: TextFormField(
                     controller: _latController,
-                    style: const TextStyle(fontSize: 16, color: Colors.white),
+                    style: TextStyle(fontSize: 14, color: C.text),
                     decoration: fieldDeco.copyWith(labelText: 'Breitengrad'),
                     keyboardType: TextInputType.number,
                   ),
@@ -684,7 +671,7 @@ class _LocationDialogState extends State<LocationDialog> {
                 Expanded(
                   child: TextFormField(
                     controller: _lngController,
-                    style: const TextStyle(fontSize: 16, color: Colors.white),
+                    style: TextStyle(fontSize: 14, color: C.text),
                     decoration: fieldDeco.copyWith(labelText: 'Längengrad'),
                     keyboardType: TextInputType.number,
                   ),
@@ -694,23 +681,23 @@ class _LocationDialogState extends State<LocationDialog> {
             const SizedBox(height: 8),
             TextFormField(
               controller: _mapIdController,
-              style: const TextStyle(fontSize: 16, color: Colors.white),
+              style: TextStyle(fontSize: 14, color: C.text),
               decoration: fieldDeco.copyWith(labelText: 'Karten-ID'),
             ),
             const SizedBox(height: 8),
             TextFormField(
               controller: _markerTypeController,
-              style: const TextStyle(fontSize: 16, color: Colors.white),
+              style: TextStyle(fontSize: 14, color: C.text),
               decoration: fieldDeco.copyWith(
                 labelText: 'Marker-Typ',
                 hintText: 'city, dungeon, npc, etc.',
-                hintStyle: const TextStyle(fontSize: 14, color: Colors.white54),
+                hintStyle: TextStyle(fontSize: 14, color: C.textSoft),
               ),
             ),
             const SizedBox(height: 8),
             TextFormField(
               controller: _zoomController,
-              style: const TextStyle(fontSize: 16, color: Colors.white),
+              style: TextStyle(fontSize: 14, color: C.text),
               decoration: fieldDeco.copyWith(labelText: 'Zoom-Level'),
               keyboardType: TextInputType.number,
             ),
@@ -720,10 +707,7 @@ class _LocationDialogState extends State<LocationDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text(
-            'Abbrechen',
-            style: TextStyle(fontSize: 16, color: Color(0xFF7C3AED)),
-          ),
+          child: Text('Abbrechen', style: TextStyle(color: C.textMid)),
         ),
         ElevatedButton(
           onPressed: () {

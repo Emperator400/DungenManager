@@ -53,22 +53,61 @@ class _EditCampaignScreenState extends State<EditCampaignScreen> {
     final C = context.appColors;
     return Scaffold(
       backgroundColor: C.bg,
-      appBar: AppBar(
-        title: Text(
-          widget.campaign == null ? 'Neue Kampagne' : 'Kampagne bearbeiten',
-          style: TextStyle(color: C.amber, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: C.bgPanel,
-        elevation: 0,
-        actions: [
-          Consumer<CampaignViewModel>(
-            builder: (context, viewModel, child) => IconButton(
-              icon: Icon(Icons.save, color: C.text),
-              onPressed: _canSave && !viewModel.isLoading ? _saveCampaign : null,
-              tooltip: 'Speichern',
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(52),
+        child: Consumer<CampaignViewModel>(
+          builder: (context, vm, _) => Container(
+            decoration: BoxDecoration(
+              color: C.bgPanel,
+              border: Border(bottom: BorderSide(color: C.border)),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: SizedBox(
+                height: 52,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(children: [
+                    _IconBtn(icon: Icons.arrow_back, color: C.textMid, onTap: () => Navigator.of(context).pop()),
+                    Container(width: 1, height: 18, color: C.border, margin: const EdgeInsets.symmetric(horizontal: 8)),
+                    Container(
+                      width: 28, height: 28,
+                      decoration: BoxDecoration(
+                        color: C.amber.withValues(alpha: 0.18),
+                        border: Border.all(color: C.amber.withValues(alpha: 0.4)),
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: Center(child: Icon(Icons.campaign, size: 14, color: C.amber)),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      widget.campaign == null ? 'Neue Kampagne' : 'Kampagne bearbeiten',
+                      style: TextStyle(color: C.text, fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: _canSave && !vm.isLoading ? _saveCampaign : null,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: _canSave && !vm.isLoading ? C.green : C.bgHover,
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                        child: vm.isLoading
+                            ? SizedBox(width: 14, height: 14, child: CircularProgressIndicator(color: C.text, strokeWidth: 2))
+                            : Row(mainAxisSize: MainAxisSize.min, children: [
+                                Icon(Icons.save, size: 13, color: _canSave ? Colors.white : C.textSoft),
+                                const SizedBox(width: 5),
+                                Text('Speichern', style: TextStyle(color: _canSave ? Colors.white : C.textSoft, fontSize: 12, fontWeight: FontWeight.w600)),
+                              ]),
+                      ),
+                    ),
+                  ]),
+                ),
+              ),
             ),
           ),
-        ],
+        ),
       ),
       body: Consumer<CampaignViewModel>(
         builder: (context, viewModel, child) => Form(
@@ -416,56 +455,17 @@ class _EditCampaignScreenState extends State<EditCampaignScreen> {
   }
 
   Widget _buildActionButtons(CampaignViewModel viewModel) {
+    if (widget.campaign == null) return const SizedBox.shrink();
     final C = context.appColors;
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.close),
-            label: const Text('Abbrechen'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              side: BorderSide(color: C.border),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          flex: 2,
-          child: ElevatedButton.icon(
-            onPressed: _canSave && !viewModel.isLoading ? _saveCampaign : null,
-            icon: viewModel.isLoading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                  )
-                : const Icon(Icons.save),
-            label: const Text('Speichern'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: C.amber,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-          ),
-        ),
-        if (widget.campaign != null) ...[
-          const SizedBox(width: 12),
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: _duplicateCampaign,
-              icon: const Icon(Icons.copy),
-              label: const Text('Duplizieren'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: C.red,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-            ),
-          ),
-        ],
-      ],
+    return OutlinedButton.icon(
+      onPressed: _duplicateCampaign,
+      icon: Icon(Icons.copy, size: 16, color: C.textMid),
+      label: Text('Kampagne duplizieren', style: TextStyle(color: C.textMid)),
+      style: OutlinedButton.styleFrom(
+        side: BorderSide(color: C.border),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
     );
   }
 
@@ -559,5 +559,20 @@ class _EditCampaignScreenState extends State<EditCampaignScreen> {
     if (viewModel.error == null && context.mounted) {
       SnackBarHelper.showSuccess(context, 'Kampagne dupliziert');
     }
+  }
+}
+
+class _IconBtn extends StatelessWidget {
+  const _IconBtn({required this.icon, required this.color, required this.onTap});
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(width: 30, height: 30, child: Icon(icon, size: 18, color: color)),
+    );
   }
 }

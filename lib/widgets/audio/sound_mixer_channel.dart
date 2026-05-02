@@ -38,22 +38,139 @@ class _SoundMixerChannelState extends State<SoundMixerChannel> {
   Widget _buildModernChannel(BuildContext context, SoundChannel channel) {
     final C = context.appColors;
     final isCompact = widget.config.compactMode;
-    final padding = isCompact ? 8.0 : 16.0;
-    final marginBottom = isCompact ? 6.0 : 12.0;
-    final borderRadius = isCompact ? 8.0 : 12.0;
+
+    if (isCompact) return _buildCompactChannel(C, channel);
 
     return Container(
-      margin: EdgeInsets.only(bottom: marginBottom),
-      padding: EdgeInsets.all(padding),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: C.bgHover,
-        borderRadius: BorderRadius.circular(borderRadius),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: channel.isPlaying ? C.green.withValues(alpha: 0.4) : C.border,
-          width: 1,
         ),
       ),
       child: _buildChannelContent(C, channel),
+    );
+  }
+
+  Widget _buildCompactChannel(AppColorsExtension C, SoundChannel channel) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: C.bgHover,
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(
+          color: channel.isPlaying ? C.green.withValues(alpha: 0.4) : C.border,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () => widget.mixerService.togglePlayPause(channel.id),
+                child: Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: channel.isPlaying ? C.green.withValues(alpha: 0.15) : C.bgActive,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: channel.isPlaying ? C.green.withValues(alpha: 0.4) : C.border,
+                    ),
+                  ),
+                  child: Icon(
+                    channel.isPlaying ? Icons.pause : Icons.play_arrow,
+                    color: channel.isPlaying ? C.green : C.textMid,
+                    size: 14,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      channel.sound.name,
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: C.text),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      channel.sound.soundTypeDisplayName,
+                      style: TextStyle(fontSize: 9, color: C.textSoft),
+                    ),
+                  ],
+                ),
+              ),
+              if (widget.config.showLoopToggle)
+                GestureDetector(
+                  onTap: () => widget.mixerService.setChannelLooping(channel.id, !channel.isLooping),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                    child: Icon(
+                      Icons.loop,
+                      size: 13,
+                      color: channel.isLooping ? C.green : C.textSoft,
+                    ),
+                  ),
+                ),
+              if (widget.onRemove != null)
+                GestureDetector(
+                  onTap: widget.onRemove,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                    child: Icon(Icons.close, size: 12, color: C.textSoft),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(
+                channel.volume == 0 ? Icons.volume_off : Icons.volume_up,
+                color: channel.volume > 0 ? C.green : C.textSoft,
+                size: 12,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: SliderTheme(
+                  data: SliderThemeData(
+                    trackHeight: 2,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 4),
+                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 8),
+                    activeTrackColor: C.green,
+                    inactiveTrackColor: C.border,
+                    thumbColor: C.text,
+                    overlayColor: C.green.withValues(alpha: 0.15),
+                  ),
+                  child: Slider(
+                    value: channel.volume,
+                    min: 0.0,
+                    max: 1.0,
+                    onChanged: (value) => widget.mixerService.setChannelVolume(channel.id, value),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              SizedBox(
+                width: 28,
+                child: Text(
+                  '${(channel.volume * 100).toInt()}%',
+                  style: TextStyle(fontSize: 9, color: C.textSoft),
+                  textAlign: TextAlign.right,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

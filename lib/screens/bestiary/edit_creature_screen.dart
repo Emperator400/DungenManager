@@ -13,6 +13,19 @@ import '../../widgets/ui_components/states/loading_state_widget.dart';
 import '../../widgets/ui_components/stats/attributes_section_widget.dart';
 import '../bestiary/official_monsters_screen.dart';
 
+// ── Tab definitions ───────────────────────────────────────────────────────────
+
+const _kTabs = [
+  (Icons.pets,           'Grunddaten'),
+  (Icons.fitness_center, 'Attribute'),
+  (Icons.category,       'Fähigkeiten'),
+  (Icons.inventory,      'Inventar'),
+];
+
+const _kAmber = Color(0xFFD97706);
+
+// ── Screen ────────────────────────────────────────────────────────────────────
+
 class EditCreatureScreen extends StatefulWidget {
   const EditCreatureScreen({super.key, this.creature});
 
@@ -24,8 +37,6 @@ class EditCreatureScreen extends StatefulWidget {
 
 class _EditCreatureScreenState extends State<EditCreatureScreen>
     with SingleTickerProviderStateMixin {
-  static const int _tabCount = 4;
-
   late EditCreatureViewModel _viewModel;
   late TabController _tabController;
   final _formKey = GlobalKey<FormState>();
@@ -36,7 +47,7 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
   void initState() {
     super.initState();
     _viewModel = EditCreatureViewModel();
-    _tabController = TabController(length: _tabCount, vsync: this);
+    _tabController = TabController(length: _kTabs.length, vsync: this);
     _initializeViewModel();
   }
 
@@ -51,13 +62,9 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
   Future<void> _initializeViewModel() async {
     try {
       await _viewModel.initialize(widget.creature);
-      if (mounted) {
-        setState(() => _isInitialized = true);
-      }
+      if (mounted) setState(() => _isInitialized = true);
     } catch (e) {
-      if (mounted) {
-        SnackBarHelper.showError(context, 'Fehler beim Initialisieren: $e');
-      }
+      if (mounted) SnackBarHelper.showError(context, 'Fehler beim Initialisieren: $e');
     }
   }
 
@@ -65,9 +72,7 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
     final monster = await Navigator.of(context).push<OfficialMonster>(
       MaterialPageRoute(builder: (ctx) => const OfficialMonstersScreen()),
     );
-    if (monster == null || !mounted) {
-      return;
-    }
+    if (monster == null || !mounted) return;
 
     _viewModel
       ..updateName(monster.name)
@@ -94,9 +99,12 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
         monster.specialAbilities.map((a) => '${a.name}: ${a.description}').join('\n\n'),
       );
     }
-    if (monster.legendaryActions != null && monster.legendaryActions!.isNotEmpty) {
+    if (monster.legendaryActions != null &&
+        monster.legendaryActions!.isNotEmpty) {
       _viewModel.updateLegendaryActions(
-        monster.legendaryActions!.map((a) => '${a.name}: ${a.description}').join('\n\n'),
+        monster.legendaryActions!
+            .map((a) => '${a.name}: ${a.description}')
+            .join('\n\n'),
       );
     }
     if (monster.actions.isNotEmpty) {
@@ -107,6 +115,8 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
 
     SnackBarHelper.showSuccess(context, '${monster.name} wurde importiert');
   }
+
+  // ── BUILD ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -122,133 +132,131 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
         },
         child: Scaffold(
           backgroundColor: C.bg,
-          body: Column(
-            children: [
-              _buildHeader(C),
-              _buildTabBar(C),
-              Expanded(child: _buildBody()),
-            ],
+          appBar: PreferredSize(
+            preferredSize: const Size.fromHeight(52),
+            child: Consumer<EditCreatureViewModel>(
+              builder: (context, vm, _) => AnimatedBuilder(
+                animation: _tabController,
+                builder: (_, __) => _buildTopBar(C, vm),
+              ),
+            ),
           ),
+          body: _buildBody(),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(AppColorsExtension C) {
-    const amber = Color(0xFFD97706);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SafeArea(
-          bottom: false,
-          child: SizedBox(
-            height: 48,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  _iconBtn(C, Icons.arrow_back, C.textMid, _onBackPressed),
-                  const SizedBox(width: 8),
-                  Container(width: 1, height: 18, color: C.border),
-                  const SizedBox(width: 10),
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: amber.withValues(alpha: 0.12),
-                      border: Border.all(color: amber.withValues(alpha: 0.3)),
-                      borderRadius: BorderRadius.circular(7),
-                    ),
-                    child: const Center(child: Icon(Icons.pets, size: 14, color: amber)),
+  // ── Top Bar ───────────────────────────────────────────────────────────────
+
+  Widget _buildTopBar(AppColorsExtension C, EditCreatureViewModel vm) {
+    return Container(
+      decoration: BoxDecoration(
+        color: C.bgPanel,
+        border: Border(bottom: BorderSide(color: C.border)),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: SizedBox(
+          height: 52,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              children: [
+                // Back
+                _IconBtn(icon: Icons.arrow_back, color: C.textMid, onTap: _onBackPressed),
+                Container(
+                  width: 1, height: 18, color: C.border,
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+                // Avatar
+                Container(
+                  width: 28, height: 28,
+                  decoration: BoxDecoration(
+                    color: _kAmber.withValues(alpha: 0.18),
+                    border: Border.all(color: _kAmber.withValues(alpha: 0.4)),
+                    borderRadius: BorderRadius.circular(7),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Consumer<EditCreatureViewModel>(
-                      builder: (context, vm, _) => Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
+                  child: const Center(
+                    child: Icon(Icons.pets, size: 14, color: _kAmber),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Name + subtitle
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      vm.name.isEmpty
+                          ? (vm.isEditing ? 'Kreatur bearbeiten' : 'Neue Kreatur')
+                          : vm.name,
+                      style: TextStyle(
+                          color: C.text,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          height: 1.1),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      vm.isEditing ? 'Kreatur bearbeiten' : 'Neue Kreatur',
+                      style: TextStyle(
+                          color: C.textSoft, fontSize: 10, height: 1.1),
+                    ),
+                  ],
+                ),
+                Container(
+                  width: 1, height: 18, color: C.border,
+                  margin: const EdgeInsets.symmetric(horizontal: 10),
+                ),
+                // Tab buttons (center)
+                Expanded(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            vm.isEditing ? 'Kreatur bearbeiten' : 'Neue Kreatur',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.text),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (vm.name.isNotEmpty)
-                            Text(
-                              vm.name,
-                              style: TextStyle(fontSize: 11, color: C.textSoft),
-                              overflow: TextOverflow.ellipsis,
+                          for (int i = 0; i < _kTabs.length; i++)
+                            _TabBtn(
+                              icon: _kTabs[i].$1,
+                              label: _kTabs[i].$2,
+                              isActive: _tabController.index == i,
+                              onTap: () => _tabController.animateTo(i),
+                              C: C,
                             ),
                         ],
                       ),
                     ),
                   ),
-                  Consumer<EditCreatureViewModel>(
-                    builder: (context, vm, _) => Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _iconBtn(C, Icons.download_outlined, C.accent, _importFromOfficialMonster),
-                        const SizedBox(width: 6),
-                        if (vm.isSaving)
-                          SizedBox(
-                            width: 30,
-                            height: 30,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                border: Border.all(color: C.border),
-                                borderRadius: BorderRadius.circular(7),
-                                color: C.bgHover,
-                              ),
-                              child: Center(
-                                child: SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(strokeWidth: 1.5, color: C.green),
-                                ),
-                              ),
-                            ),
-                          )
-                        else
-                          _iconBtn(
-                            C,
-                            Icons.save_outlined,
-                            vm.canSave ? C.green : C.textSoft,
-                            vm.canSave ? _saveCreature : null,
-                          ),
-                      ],
+                ),
+                // Import + Save
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _IconBtn(
+                      icon: Icons.download_outlined,
+                      color: C.accent,
+                      onTap: _importFromOfficialMonster,
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: 8),
+                    _SaveBtn(
+                      isSaving: vm.isSaving,
+                      canSave: vm.canSave,
+                      onSave: _saveCreature,
+                      C: C,
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
-        Divider(height: 1, thickness: 1, color: C.border),
-      ],
-    );
-  }
-
-  Widget _buildTabBar(AppColorsExtension C) {
-    const amber = Color(0xFFD97706);
-    return Container(
-      color: C.bgPanel,
-      child: TabBar(
-        controller: _tabController,
-        indicatorColor: amber,
-        labelColor: amber,
-        unselectedLabelColor: C.textSoft,
-        labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-        unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.normal),
-        indicatorWeight: 3,
-        tabs: const [
-          Tab(icon: Icon(Icons.pets, size: 18), text: 'Grunddaten'),
-          Tab(icon: Icon(Icons.fitness_center, size: 18), text: 'Attribute'),
-          Tab(icon: Icon(Icons.category, size: 18), text: 'Fähigkeiten'),
-          Tab(icon: Icon(Icons.inventory, size: 18), text: 'Inventar'),
-        ],
       ),
     );
   }
+
+  // ── Body ──────────────────────────────────────────────────────────────────
 
   Widget _buildBody() => Consumer<EditCreatureViewModel>(
         builder: (context, viewModel, child) {
@@ -275,16 +283,19 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
         },
       );
 
+  // ── Tab: Grunddaten ───────────────────────────────────────────────────────
+
   Widget _buildBasicInfoTab() => Consumer<EditCreatureViewModel>(
         builder: (context, viewModel, child) => Form(
           key: _formKey,
           child: SingleChildScrollView(
             controller: _scrollController,
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SectionTitleWidget(title: 'Grundinformationen', icon: Icons.pets),
+                const SectionTitleWidget(
+                    title: 'Grundinformationen', icon: Icons.pets),
                 const SizedBox(height: 16),
                 BasicInfoSection(
                   name: viewModel.name,
@@ -294,8 +305,9 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
                   onDescriptionChanged: viewModel.updateDescription,
                   onSpeedChanged: viewModel.updateSpeed,
                 ),
-                const SizedBox(height: 32),
-                const SectionTitleWidget(title: 'Kreatureigenschaften', icon: Icons.category),
+                const SizedBox(height: 24),
+                const SectionTitleWidget(
+                    title: 'Kreatureigenschaften', icon: Icons.category),
                 const SizedBox(height: 16),
                 CreatureTypeSection(
                   type: viewModel.type,
@@ -307,8 +319,9 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
                   onSizeChanged: viewModel.updateSize,
                   onAlignmentChanged: viewModel.updateAlignment,
                 ),
-                const SizedBox(height: 32),
-                const SectionTitleWidget(title: 'Kampfwerte', icon: Icons.security),
+                const SizedBox(height: 24),
+                const SectionTitleWidget(
+                    title: 'Kampfwerte', icon: Icons.security),
                 const SizedBox(height: 16),
                 CombatStatsSection(
                   maxHp: viewModel.maxHp,
@@ -324,10 +337,12 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
         ),
       );
 
+  // ── Tab: Attribute ────────────────────────────────────────────────────────
+
   Widget _buildAttributesTab() => Consumer<EditCreatureViewModel>(
         builder: (context, viewModel, child) => SingleChildScrollView(
           controller: _scrollController,
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(16),
           child: AttributesSectionWidget(
             strength: viewModel.strength,
             dexterity: viewModel.dexterity,
@@ -348,14 +363,17 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
         ),
       );
 
+  // ── Tab: Fähigkeiten ──────────────────────────────────────────────────────
+
   Widget _buildAbilitiesTab() => Consumer<EditCreatureViewModel>(
         builder: (context, viewModel, child) => SingleChildScrollView(
           controller: _scrollController,
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SectionTitleWidget(title: 'Angriffe & Fähigkeiten', icon: Icons.auto_awesome),
+              const SectionTitleWidget(
+                  title: 'Angriffe & Fähigkeiten', icon: Icons.auto_awesome),
               const SizedBox(height: 16),
               AbilitiesSection(
                 attacks: viewModel.attacks,
@@ -365,8 +383,9 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
                 onSpecialAbilitiesChanged: viewModel.updateSpecialAbilities,
                 onLegendaryActionsChanged: viewModel.updateLegendaryActions,
               ),
-              const SizedBox(height: 32),
-              const SectionTitleWidget(title: 'Währung', icon: Icons.monetization_on),
+              const SizedBox(height: 24),
+              const SectionTitleWidget(
+                  title: 'Währung', icon: Icons.monetization_on),
               const SizedBox(height: 16),
               CurrencySection(
                 gold: viewModel.gold,
@@ -381,10 +400,13 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
         ),
       );
 
+  // ── Tab: Inventar ─────────────────────────────────────────────────────────
+
   Widget _buildInventoryTab() => Consumer<EditCreatureViewModel>(
         builder: (context, viewModel, child) => CreatureInventoryWidget(
           mapItems: viewModel.inventory,
-          onAddItem: () => CreatureItemDialogs.showAddItemDialog(context, viewModel),
+          onAddItem: () =>
+              CreatureItemDialogs.showAddItemDialog(context, viewModel),
           onRemoveItem: (index) => viewModel.removeInventoryItem(index),
           onEditItem: (index, item) =>
               CreatureItemDialogs.showEditItemDialog(context, viewModel, index),
@@ -392,30 +414,11 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
         ),
       );
 
-  Widget _iconBtn(
-    AppColorsExtension C,
-    IconData icon,
-    Color iconColor,
-    VoidCallback? onTap,
-  ) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            border: Border.all(color: C.border),
-            borderRadius: BorderRadius.circular(7),
-            color: C.bgHover,
-          ),
-          child: Center(child: Icon(icon, size: 16, color: iconColor)),
-        ),
-      );
+  // ── Actions ───────────────────────────────────────────────────────────────
 
   Future<void> _onBackPressed() async {
     final shouldPop = await _onWillPop();
-    if (shouldPop && mounted) {
-      Navigator.of(context).pop();
-    }
+    if (shouldPop && mounted) Navigator.of(context).pop();
   }
 
   Future<void> _saveCreature() async {
@@ -429,7 +432,7 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
       if (mounted) {
         SnackBarHelper.showError(
           context,
-          'Bitte folgende Pflichtfelder ausfüllen:\n\n${errors.map((e) => '• $e').join('\n')}',
+          'Pflichtfelder:\n${errors.map((e) => '• $e').join('\n')}',
         );
       }
       return;
@@ -440,7 +443,9 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
       if (success && mounted) {
         SnackBarHelper.showSuccess(
           context,
-          _viewModel.isEditing ? 'Kreatur erfolgreich aktualisiert' : 'Neue Kreatur erstellt',
+          _viewModel.isEditing
+              ? 'Kreatur erfolgreich aktualisiert'
+              : 'Neue Kreatur erstellt',
         );
         Navigator.pop(context, true);
       }
@@ -458,5 +463,137 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
       confirmText: 'Verlassen',
     );
     return shouldPop ?? false;
+  }
+}
+
+// ── _TabBtn ───────────────────────────────────────────────────────────────────
+
+class _TabBtn extends StatelessWidget {
+  const _TabBtn({
+    required this.icon,
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+    required this.C,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        margin: const EdgeInsets.symmetric(horizontal: 1),
+        decoration: BoxDecoration(
+          color: isActive ? C.bgHover : Colors.transparent,
+          borderRadius: BorderRadius.circular(7),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon,
+                size: 13,
+                color: isActive ? C.accent : C.textSoft),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                color: isActive ? C.text : C.textMid,
+                fontSize: 12,
+                fontWeight:
+                    isActive ? FontWeight.w500 : FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── _SaveBtn ──────────────────────────────────────────────────────────────────
+
+class _SaveBtn extends StatelessWidget {
+  const _SaveBtn({
+    required this.isSaving,
+    required this.canSave,
+    required this.onSave,
+    required this.C,
+  });
+
+  final bool isSaving;
+  final bool canSave;
+  final VoidCallback onSave;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: (isSaving || !canSave) ? null : onSave,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: canSave ? C.green : C.bgHover,
+          borderRadius: BorderRadius.circular(7),
+        ),
+        child: isSaving
+            ? const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                    color: Colors.white, strokeWidth: 2),
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.save,
+                      size: 13,
+                      color: canSave ? Colors.white : C.textSoft),
+                  const SizedBox(width: 5),
+                  Text(
+                    'Speichern',
+                    style: TextStyle(
+                      color: canSave ? Colors.white : C.textSoft,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+// ── _IconBtn ──────────────────────────────────────────────────────────────────
+
+class _IconBtn extends StatelessWidget {
+  const _IconBtn({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 30,
+        height: 30,
+        child: Icon(icon, size: 18, color: color),
+      ),
+    );
   }
 }

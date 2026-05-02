@@ -7,11 +7,9 @@ import '../../database/core/database_connection.dart';
 import '../../database/repositories/campaign_model_repository.dart';
 import '../../models/campaign.dart';
 import '../../theme/app_theme.dart';
-import '../../theme/theme_notifier.dart';
 import '../../viewmodels/campaign_viewmodel.dart';
 import '../../viewmodels/update_viewmodel.dart';
 import '../../widgets/ui_components/shared/app_icon.dart';
-import '../../widgets/ui_components/shared/app_logo.dart';
 import '../../widgets/update_dialog.dart';
 
 import '../../utils/color_utils.dart';
@@ -93,23 +91,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _checkForUpdatesManually() async {
-    final vm = context.read<UpdateViewModel>();
-    await vm.checkForUpdate();
-    if (!mounted) return;
-    if (vm.availableUpdate != null) {
-      await showUpdateDialogIfNeeded(context, forceShow: true);
-    } else if (vm.errorMessage != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Fehler: ${vm.errorMessage}')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Du verwendest die neueste Version!')),
-      );
-    }
-  }
-
   Future<void> _loadLastCampaign() async {
     try {
       final c = await _campaignRepo.findLastOpened();
@@ -168,13 +149,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: C.bg,
-      body: Column(
-        children: [
-          _TopBar(C: C, onCheckUpdate: _checkForUpdatesManually),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 28, 20, 60),
-              child: Column(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 28, 20, 60),
+        child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Begrüßung
@@ -206,13 +183,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   _buildAktivitaetHeader(C),
                   const SizedBox(height: 10),
                   _buildAktivitaetListe(C),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
-    );
+    ),
+  );
   }
 
   // ── SCHNELLSTART ────────────────────────────────────────────────────────────
@@ -375,99 +349,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// ── TOPBAR ────────────────────────────────────────────────────────────────────
-
-class _TopBar extends StatelessWidget {
-  const _TopBar({required this.C, required this.onCheckUpdate});
-
-  final AppColorsExtension C;
-  final VoidCallback onCheckUpdate;
-
-  @override
-  Widget build(BuildContext context) {
-    final notifier = context.watch<ThemeNotifier>();
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SafeArea(
-          bottom: false,
-          child: SizedBox(
-            height: 48,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  const AppLogo(size: 28),
-                  const SizedBox(width: 8),
-                  Text('DungenManager', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.text)),
-                  const Spacer(),
-                  // Update badge button
-                  Consumer<UpdateViewModel>(
-                    builder: (_, vm, __) => GestureDetector(
-                      onTap: onCheckUpdate,
-                      child: _UpdateBadgeBtn(C: C, hasUpdate: vm.hasUpdateAvailable),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  _IconBtn(
-                    C: C,
-                    icon: notifier.isDark ? AppIconName.sun : AppIconName.moon,
-                    onTap: notifier.toggle,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        Divider(height: 1, thickness: 1, color: C.border),
-      ],
-    );
-  }
-}
-
-class _UpdateBadgeBtn extends StatefulWidget {
-  const _UpdateBadgeBtn({required this.C, required this.hasUpdate});
-
-  final AppColorsExtension C;
-  final bool hasUpdate;
-
-  @override
-  State<_UpdateBadgeBtn> createState() => _UpdateBadgeBtnState();
-}
-
-class _UpdateBadgeBtnState extends State<_UpdateBadgeBtn> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) => MouseRegion(
-    onEnter: (_) => setState(() => _hovered = true),
-    onExit: (_) => setState(() => _hovered = false),
-    child: AnimatedContainer(
-      duration: const Duration(milliseconds: 120),
-      width: 30, height: 30,
-      decoration: BoxDecoration(
-        color: _hovered ? widget.C.bgHover : Colors.transparent,
-        border: Border.all(color: _hovered ? widget.C.border : Colors.transparent),
-        borderRadius: BorderRadius.circular(7),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          AppIcon(AppIconName.download, size: 14, color: widget.C.textMid),
-          if (widget.hasUpdate)
-            Positioned(
-              top: 4, right: 4,
-              child: Container(
-                width: 7, height: 7,
-                decoration: BoxDecoration(color: widget.C.green, shape: BoxShape.circle),
-              ),
-            ),
-        ],
-      ),
-    ),
-  );
-}
-
 // ── GRID TILE ─────────────────────────────────────────────────────────────────
 
 class _GridTile extends StatefulWidget {
@@ -622,38 +503,4 @@ class _FilledBtn extends StatelessWidget {
       ),
     );
   }
-}
-
-class _IconBtn extends StatefulWidget {
-  const _IconBtn({required this.C, required this.icon, required this.onTap});
-
-  final AppColorsExtension C;
-  final AppIconName icon;
-  final VoidCallback onTap;
-
-  @override
-  State<_IconBtn> createState() => _IconBtnState();
-}
-
-class _IconBtnState extends State<_IconBtn> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) => MouseRegion(
-    onEnter: (_) => setState(() => _hovered = true),
-    onExit: (_) => setState(() => _hovered = false),
-    child: GestureDetector(
-      onTap: widget.onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        width: 30, height: 30,
-        decoration: BoxDecoration(
-          color: _hovered ? widget.C.bgHover : Colors.transparent,
-          border: Border.all(color: _hovered ? widget.C.border : Colors.transparent),
-          borderRadius: BorderRadius.circular(7),
-        ),
-        child: Center(child: AppIcon(widget.icon, size: 14, color: widget.C.textMid)),
-      ),
-    ),
-  );
 }

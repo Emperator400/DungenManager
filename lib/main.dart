@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
 
 // 3. Eigene Projekte (absolute Pfade von lib/)
 import 'screens/campaign/campaign_selection_screen.dart';
@@ -37,6 +38,7 @@ import 'database/repositories/wiki_entry_model_repository.dart';
 import 'database/repositories/encounter_model_repository.dart';
 import 'viewmodels/update_viewmodel.dart';
 import 'widgets/ui_components/shared/app_logo.dart';
+import 'widgets/ui_components/shared/app_title_bar.dart';
 import 'widgets/update_dialog.dart';
 import 'services/multi_stream_sound_service.dart';
 import 'services/image_storage_service.dart';
@@ -57,13 +59,29 @@ const bool kIsProductionMode = true;
 /// Hauptfunktion der App
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  // Custom Window Frame für Desktop initialisieren
+  if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+    await windowManager.ensureInitialized();
+    const windowOptions = WindowOptions(
+      size: Size(1280, 720),
+      minimumSize: Size(900, 600),
+      center: true,
+      title: 'DungeonManager',
+      titleBarStyle: TitleBarStyle.hidden,
+    );
+    await windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
+  }
+
   // Datenbank initialisieren
   await _initializeDatabase();
-  
+
   // Audio konfigurieren
   await _configureAudio();
-  
+
   // App starten
   runApp(const DmApp());
 }
@@ -121,6 +139,8 @@ Future<void> _configureAudio() async {
     debugPrint('Fehler bei der Audio-Konfiguration: $e');
   }
 }
+
+final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
 /// Haupt-App Klasse
 class DmApp extends StatelessWidget {
@@ -184,6 +204,7 @@ class DmApp extends StatelessWidget {
       child: Consumer<ThemeNotifier>(
         builder: (context, themeNotifier, _) => MaterialApp(
           title: 'Dungeon Manager',
+          navigatorKey: _navigatorKey,
           theme: AppTheme.light,
           darkTheme: AppTheme.dark,
           themeMode: themeNotifier.themeMode,
@@ -191,6 +212,17 @@ class DmApp extends StatelessWidget {
               ? const HomeScreen()
               : const AppSelectionScreen(),
           debugShowCheckedModeBanner: false,
+          builder: (context, child) {
+            if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+              return Column(
+                children: [
+                  AppTitleBar(navigatorKey: _navigatorKey),
+                  Expanded(child: child!),
+                ],
+              );
+            }
+            return child!;
+          },
         ),
       ),
     );

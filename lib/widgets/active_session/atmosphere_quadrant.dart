@@ -1,37 +1,59 @@
 import 'package:flutter/material.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 import '../audio/sound_mixer_widget.dart';
-import 'session_quadrant_base.dart';
 
-/// Atmosphäre-Quadrant - Sound Mixer für die Active Session
-/// 
-/// Bietet Multi-Stream Audio-Wiedergabe mit:
-/// - Mehrere gleichzeitige Sounds
-/// - Individuelle Lautstärke pro Kanal
-/// - Master-Lautstärke-Steuerung
-/// - Loop-Steuerung
 class AtmosphereQuadrant extends StatelessWidget {
-  /// Optional: Liste von Sound-IDs die automatisch geladen werden sollen
   final List<String>? initialSoundIds;
-  
+  final Function(List<String>)? onSoundsChanged;
+
   const AtmosphereQuadrant({
     super.key,
     this.initialSoundIds,
+    this.onSoundsChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    return SessionQuadrantBase(
-      title: "Atmosphäre",
-      icon: Icons.music_note,
-      color: DnDTheme.successGreen,
-      content: _buildMixerContent(),
-    );
-  }
-
-  Widget _buildMixerContent() {
-    return SoundMixerWidget(
-      initialSoundIds: initialSoundIds,
+    final C = context.appColors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+          child: Row(
+            children: [
+              Icon(Icons.music_note, size: 13, color: C.accent),
+              const SizedBox(width: 6),
+              Text(
+                'Atmosphäre',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: C.text),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          child: SoundMixerWidget(
+            initialSoundIds: initialSoundIds,
+            onSoundsChanged: onSoundsChanged,
+            config: const SoundMixerConfig(
+              compactMode: true,
+              showAddButtons: true,
+              showSingleAddButton: true,
+              showMasterVolume: true,
+              showStopAllButton: true,
+              showChannelCounter: false,
+              readOnly: false,
+              showDivider: false,
+              showHeader: false,
+              showTimeDisplay: false,
+              showLoopToggle: false,
+            ),
+          ),
+        ),
+        Divider(height: 1, thickness: 1, color: C.border),
+      ],
     );
   }
 }

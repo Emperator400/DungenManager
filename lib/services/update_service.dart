@@ -10,6 +10,7 @@ import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:http/http.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -64,8 +65,8 @@ class UpdateService {
   factory UpdateService() => _instance;
   UpdateService._internal();
 
-  /// Aktuelle App-Version aus pubspec.yaml
-  static const String currentVersionString = '1.0.8';
+  String _currentVersionString = '0.0.0';
+  bool _versionLoaded = false;
 
   /// Status-Controller für UI-Updates
   final _statusController = StreamController<UpdateStatus>.broadcast();
@@ -81,14 +82,21 @@ class UpdateService {
   String? _extractedPath;
   String? _lastError;
 
-  /// Gibt die aktuelle App-Version zurück
+  /// Gibt die aktuelle App-Version zurück (nach erstem checkForUpdate() verfügbar)
   AppVersion get currentVersion => AppVersion(
-    version: currentVersionString,
-    tagName: 'v$currentVersionString',
+    version: _currentVersionString,
+    tagName: 'v$_currentVersionString',
     releaseNotes: '',
     downloadUrl: '',
     publishedAt: DateTime.now(),
   );
+
+  Future<void> _ensureVersionLoaded() async {
+    if (_versionLoaded) return;
+    final info = await PackageInfo.fromPlatform();
+    _currentVersionString = info.version;
+    _versionLoaded = true;
+  }
 
   /// Setzt den Status und benachrichtigt Listener
   void _setStatus(UpdateStatus status) {
@@ -103,6 +111,7 @@ class UpdateService {
 
   /// Prüft auf GitHub ob eine neue Version verfügbar ist
   Future<UpdateCheckResult> checkForUpdate() async {
+    await _ensureVersionLoaded();
     _setStatus(UpdateStatus.checking);
     _lastError = null;
 

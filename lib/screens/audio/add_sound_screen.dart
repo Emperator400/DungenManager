@@ -88,9 +88,31 @@ class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
                 }
                 final sceneLinks = linksSnapshot.data ?? [];
                 return Scaffold(
-                  appBar: AppBar(
-                    title: const Text('Sound zur Szene hinzufügen'),
-                    backgroundColor: C.bgPanel,
+                  appBar: PreferredSize(
+                    preferredSize: const Size.fromHeight(52),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: C.bgPanel,
+                        border: Border(bottom: BorderSide(color: C.border)),
+                      ),
+                      child: SafeArea(
+                        bottom: false,
+                        child: SizedBox(
+                          height: 52,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Row(children: [
+                              GestureDetector(
+                                onTap: () => Navigator.of(context).pop(),
+                                child: SizedBox(width: 30, height: 30, child: Icon(Icons.arrow_back, size: 18, color: C.textMid)),
+                              ),
+                              Container(width: 1, height: 18, color: C.border, margin: const EdgeInsets.symmetric(horizontal: 8)),
+                              Text('Sound zur Szene hinzufügen', style: TextStyle(color: C.text, fontWeight: FontWeight.w600, fontSize: 13)),
+                            ]),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                   body: Column(
                     children: [
@@ -175,9 +197,15 @@ class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
             itemCount: sounds.length,
             itemBuilder: (context, index) {
               final sound = sounds[index];
-              return Card(
+              return Container(
                 margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: C.bgPanel,
+                  border: Border.all(color: C.border),
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
                   onTap: () async {
                     final newLink = SceneSoundLink(
                       sceneId: widget.sceneId,
@@ -194,36 +222,25 @@ class _AddSoundToSceneScreenState extends State<AddSoundToSceneScreen> {
                     padding: const EdgeInsets.all(12),
                     child: Row(
                       children: [
-                        Icon(Icons.music_note, color: C.accent, size: 20),
+                        Icon(Icons.music_note, color: C.accent, size: 18),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                sound.name,
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                              Text(sound.name,
+                                  style: TextStyle(color: C.text, fontWeight: FontWeight.w600, fontSize: 13),
+                                  maxLines: 1, overflow: TextOverflow.ellipsis),
                               const SizedBox(height: 2),
-                              Text(
-                                sound.soundType.toString().split('.').last,
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: C.textSoft,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                              Text(sound.soundType.toString().split('.').last,
+                                  style: TextStyle(color: C.textSoft, fontSize: 11),
+                                  maxLines: 1, overflow: TextOverflow.ellipsis),
                             ],
                           ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.volume_up),
-                          tooltip: 'Vorschau',
-                          onPressed: () => _previewSound(sound),
+                        GestureDetector(
+                          onTap: () => _previewSound(sound),
+                          child: SizedBox(width: 30, height: 30, child: Icon(Icons.volume_up, size: 18, color: C.textMid)),
                         ),
                       ],
                     ),

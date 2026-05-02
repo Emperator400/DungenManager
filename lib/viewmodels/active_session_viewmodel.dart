@@ -180,6 +180,8 @@ class ActiveSessionViewModel extends ChangeNotifier {
   Future<void> activateScene(String sceneId) async {
     await _executeWithErrorHandling(() async {
       await _sceneService.activateScene(sceneId);
+      _currentSession = _currentSession.copyWith(activeSceneId: sceneId);
+      await _sessionRepository.update(_currentSession);
       await _loadScenes();
     });
   }
@@ -252,6 +254,15 @@ class ActiveSessionViewModel extends ChangeNotifier {
       print('Fehler beim Laden der Sounds: $e');
       return [];
     }
+  }
+
+  /// Ersetzt die gesamte Sound-Liste der Session (wird vom Mixer-Callback aufgerufen)
+  Future<void> updateSessionSounds(List<String> soundIds) async {
+    await _executeWithErrorHandling(() async {
+      _currentSession = _currentSession.copyWith(linkedSoundIds: soundIds);
+      await _sessionRepository.update(_currentSession);
+      notifyListeners();
+    });
   }
 
   /// Fügt einen Sound zur Session hinzu
@@ -332,34 +343,6 @@ class ActiveSessionViewModel extends ChangeNotifier {
   // SESSION OPERATIONS
   // ============================================================================
 
-  /// Fügt In-Game-Zeit zur Session hinzu über neues Repository
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue SessionModelRepository
-  Future<void> addInGameTime(int minutesToAdd) async {
-    await _executeWithErrorHandling(() async {
-      _currentSession = _currentSession.copyWith(
-        inGameTimeInMinutes: _currentSession.inGameTimeInMinutes + minutesToAdd,
-      );
-      
-      await _sessionRepository.update(_currentSession);
-      notifyListeners();
-    });
-  }
-
-  /// Aktualisiert den Session-Titel über neues Repository
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue SessionModelRepository
-  Future<void> updateSessionTitle(String newTitle) async {
-    await _executeWithErrorHandling(() async {
-      _currentSession = _currentSession.copyWith(
-        title: newTitle,
-      );
-      
-      await _sessionRepository.update(_currentSession);
-      notifyListeners();
-    });
-  }
-
   /// Aktualisiert die Live-Notizen über neues Repository
   /// 
   /// HINWEIS: Verwendet jetzt das neue SessionModelRepository
@@ -382,26 +365,29 @@ class ActiveSessionViewModel extends ChangeNotifier {
     });
   }
 
-  // ============================================================================
-  // TIME MANAGEMENT
-  // ============================================================================
-
-  /// Formatiert die In-Game-Zeit für die Anzeige
-  String getFormattedInGameTime() {
-    final totalMinutes = _currentSession.inGameTimeInMinutes;
-    final hours = totalMinutes ~/ 60;
-    final minutes = totalMinutes % 60;
-    
-    if (hours > 0) {
-      return '${hours}h ${minutes}min';
-    } else {
-      return '${minutes}min';
-    }
-  }
-
-  /// Gibt die In-Game-Zeit in Stunden zurück
-  double get inGameTimeInHours {
-    return _currentSession.inGameTimeInMinutes / 60.0;
+  /// Setzt die Session komplett zurück: alle Szenen auf offen, aktive Szene gelöscht
+  Future<void> resetSession() async {
+    await _executeWithErrorHandling(() async {
+      await _sceneRepository.resetSessionScenes(_currentSession.id);
+      _currentSession = Session(
+        id: _currentSession.id,
+        campaignId: _currentSession.campaignId,
+        title: _currentSession.title,
+        inGameTimeInMinutes: _currentSession.inGameTimeInMinutes,
+        liveNotes: _currentSession.liveNotes,
+        sceneIds: _currentSession.sceneIds,
+        activeSceneId: null,
+        encounterIds: _currentSession.encounterIds,
+        questProgressIds: const [],
+        characterTrackingIds: _currentSession.characterTrackingIds,
+        linkedSoundIds: _currentSession.linkedSoundIds,
+        createdAt: _currentSession.createdAt,
+        startedAt: _currentSession.startedAt,
+        completedAt: _currentSession.completedAt,
+      );
+      await _sessionRepository.update(_currentSession);
+      await _loadScenes();
+    });
   }
 
   // ============================================================================

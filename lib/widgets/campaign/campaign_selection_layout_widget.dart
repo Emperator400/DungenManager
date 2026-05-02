@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../../models/campaign.dart';
 import '../../theme/app_theme.dart';
-import '../../theme/theme_notifier.dart';
 import '../../viewmodels/campaign_viewmodel.dart';
 import '../../viewmodels/update_viewmodel.dart';
 import '../../widgets/update_dialog.dart';
@@ -101,9 +100,6 @@ class CampaignSelectionLayout extends StatelessWidget {
                       AppIconName.search,
                       () => _showSearchDialog(context),
                     ),
-                    const SizedBox(width: 4),
-                    // Theme Toggle
-                    _themeToggle(context, C),
                   ],
                 ),
               ),
@@ -121,15 +117,6 @@ class CampaignSelectionLayout extends StatelessWidget {
     AppIconName icon,
     VoidCallback onTap,
   ) => _HoverIconButton(C: C, icon: icon, onTap: onTap);
-
-  Widget _themeToggle(BuildContext context, AppColorsExtension C) {
-    final notifier = context.watch<ThemeNotifier>();
-    return _HoverIconButton(
-      C: C,
-      icon: notifier.isDark ? AppIconName.sun : AppIconName.moon,
-      onTap: notifier.toggle,
-    );
-  }
 
   Widget _buildFilterSection(
     BuildContext context,

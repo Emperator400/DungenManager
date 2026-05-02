@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../../models/creature.dart';
 import '../../theme/app_theme.dart';
-import '../../theme/theme_notifier.dart';
 import '../../viewmodels/bestiary_viewmodel.dart';
 import '../../widgets/ui_components/feedback/confirmation_dialog.dart';
 import '../../widgets/ui_components/feedback/snackbar_helper.dart';
@@ -29,9 +28,21 @@ const Map<String, Color> _typColors = {
   'Aberration':  Color(0xFF4A235A),
 };
 
-Color _typColor(String? type) =>
-    _typColors[type] ?? const Color(0xFF6b6b66);
+const List<(String, Color)> _attrDefs = [
+  ('STÄ', Color(0xFFC93A3A)),
+  ('GES', Color(0xFF1A7F4B)),
+  ('KON', Color(0xFFD4890A)),
+  ('INT', Color(0xFF2F6FEB)),
+  ('WEI', Color(0xFF7C3AED)),
+  ('CHA', Color(0xFFBE185D)),
+];
 
+const List<String> _attrLabels = [
+  'Stärke', 'Geschicklichkeit', 'Konstitution',
+  'Intelligenz', 'Weisheit', 'Charisma',
+];
+
+Color _typColor(String? type) => _typColors[type] ?? const Color(0xFF6b6b66);
 String _crDisplay(int? cr) => cr == null ? '—' : cr.toString();
 
 // ── Filter enum ───────────────────────────────────────────────────────────────
@@ -89,9 +100,9 @@ class _BestiaryScreenState extends State<BestiaryScreen> {
           c.name.toLowerCase().contains(q) ||
           (c.type?.toLowerCase().contains(q) ?? false);
       final matchFilter = switch (_filter) {
-        _Filter.all      => true,
-        _Filter.custom   => c.sourceType == 'custom',
-        _Filter.official => c.sourceType == 'official',
+        _Filter.all       => true,
+        _Filter.custom    => c.sourceType == 'custom',
+        _Filter.official  => c.sourceType == 'official',
         _Filter.favorites => c.isFavorite,
       };
       return matchSearch && matchFilter;
@@ -118,13 +129,9 @@ class _BestiaryScreenState extends State<BestiaryScreen> {
     if (confirmed != true || !mounted) return;
     try {
       await _vm.deleteCreature(creature.id);
-      if (mounted) {
-        SnackBarHelper.showSuccess(context, '${creature.name} gelöscht');
-      }
+      if (mounted) SnackBarHelper.showSuccess(context, '${creature.name} gelöscht');
     } catch (e) {
-      if (mounted) {
-        SnackBarHelper.showError(context, 'Fehler: $e');
-      }
+      if (mounted) SnackBarHelper.showError(context, 'Fehler: $e');
     }
   }
 
@@ -132,9 +139,7 @@ class _BestiaryScreenState extends State<BestiaryScreen> {
     try {
       await _vm.toggleFavorite(creature);
     } catch (e) {
-      if (mounted) {
-        SnackBarHelper.showError(context, 'Fehler: $e');
-      }
+      if (mounted) SnackBarHelper.showError(context, 'Fehler: $e');
     }
   }
 
@@ -200,22 +205,6 @@ class _BestiaryScreenState extends State<BestiaryScreen> {
                     Text('$count',
                         style: TextStyle(fontSize: 12, color: C.textSoft)),
                     const Spacer(),
-                    _IconBtn(
-                      C: C,
-                      icon: AppIconName.moon,
-                      onTap: () {},
-                      builder: (_) {
-                        final notifier = context.watch<ThemeNotifier>();
-                        return _IconBtn(
-                          C: C,
-                          icon: notifier.isDark
-                              ? AppIconName.sun
-                              : AppIconName.moon,
-                          onTap: notifier.toggle,
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 8),
                     FilledButton.icon(
                       onPressed: () => _openEditor(),
                       icon: AppIcon(AppIconName.plus, size: 12,
@@ -257,7 +246,6 @@ class _BestiaryScreenState extends State<BestiaryScreen> {
       color: C.bgPanel,
       child: Column(
         children: [
-          // Search + filter
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
             child: Column(
@@ -269,7 +257,6 @@ class _BestiaryScreenState extends State<BestiaryScreen> {
             ),
           ),
           Divider(height: 1, thickness: 1, color: C.border),
-          // List
           Expanded(
             child: _vm.isLoading
                 ? Center(
@@ -285,8 +272,7 @@ class _BestiaryScreenState extends State<BestiaryScreen> {
                             creature: c,
                             isSelected: c.id == _selectedId,
                             C: C,
-                            onTap: () =>
-                                setState(() => _selectedId = c.id),
+                            onTap: () => setState(() => _selectedId = c.id),
                             onFavorite: () => _toggleFavorite(c),
                           );
                         },
@@ -299,10 +285,10 @@ class _BestiaryScreenState extends State<BestiaryScreen> {
 
   Widget _buildFilterTabs(AppColorsExtension C) {
     const tabs = [
-      (_Filter.all,      'Alle'),
-      (_Filter.custom,   'Eigene'),
-      (_Filter.official, 'Offiziell'),
-      (_Filter.favorites,'Favoriten'),
+      (_Filter.all,       'Alle'),
+      (_Filter.custom,    'Eigene'),
+      (_Filter.official,  'Offiziell'),
+      (_Filter.favorites, 'Favoriten'),
     ];
     return Row(
       children: tabs.map((t) {
@@ -315,8 +301,7 @@ class _BestiaryScreenState extends State<BestiaryScreen> {
               padding: const EdgeInsets.symmetric(vertical: 5),
               decoration: BoxDecoration(
                 color: active ? C.accent : Colors.transparent,
-                border: Border.all(
-                    color: active ? C.accent : C.border),
+                border: Border.all(color: active ? C.accent : C.border),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
@@ -416,14 +401,12 @@ class _CreatureRowState extends State<_CreatureRow> {
           padding: const EdgeInsets.fromLTRB(11, 10, 14, 10),
           child: Row(
             children: [
-              // Avatar
               Container(
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
                   color: farbe.withValues(alpha: 0.12),
-                  border: Border.all(
-                      color: farbe.withValues(alpha: 0.3)),
+                  border: Border.all(color: farbe.withValues(alpha: 0.3)),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
@@ -437,7 +420,6 @@ class _CreatureRowState extends State<_CreatureRow> {
                 ),
               ),
               const SizedBox(width: 10),
-              // Name + badge
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -448,27 +430,23 @@ class _CreatureRowState extends State<_CreatureRow> {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                           fontSize: 13,
-                          fontWeight: sel
-                              ? FontWeight.w500
-                              : FontWeight.w400,
+                          fontWeight:
+                              sel ? FontWeight.w500 : FontWeight.w400,
                           color: C.text),
                     ),
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        _TypBadge(
-                            type: c.type,
-                            isDark: isDark),
+                        _TypBadge(type: c.type, isDark: isDark),
                         const SizedBox(width: 6),
                         Text('CR ${_crDisplay(c.challengeRating)}',
-                            style: TextStyle(
-                                fontSize: 10, color: C.textSoft)),
+                            style:
+                                TextStyle(fontSize: 10, color: C.textSoft)),
                       ],
                     ),
                   ],
                 ),
               ),
-              // HP / AC / Favorite
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -506,7 +484,7 @@ class _CreatureRowState extends State<_CreatureRow> {
 
 // ── _CreatureDetail ───────────────────────────────────────────────────────────
 
-class _CreatureDetail extends StatelessWidget {
+class _CreatureDetail extends StatefulWidget {
   const _CreatureDetail({
     super.key,
     required this.creature,
@@ -521,205 +499,337 @@ class _CreatureDetail extends StatelessWidget {
   final VoidCallback onDelete;
 
   @override
-  Widget build(BuildContext context) {
-    final c = creature;
-    final farbe = _typColor(c.type);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  State<_CreatureDetail> createState() => _CreatureDetailState();
+}
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Header ────────────────────────────────────────────────
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: farbe.withValues(alpha: isDark ? 0.1 : 0.07),
-              border: Border.all(
-                  color: farbe.withValues(alpha: 0.25)),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+class _CreatureDetailState extends State<_CreatureDetail>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  static const _tabs = [
+    (Icons.grid_view_rounded, 'Überblick'),
+    (Icons.gavel,             'Aktionen'),
+    (Icons.info_outline,      'Details'),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: _tabs.length, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.creature;
+    final C = widget.C;
+    final farbe = _typColor(c.type);
+
+    return Column(
+      children: [
+        _buildSubHeader(c, C, farbe),
+        Divider(height: 1, thickness: 1, color: C.border),
+        Expanded(
+          child: AnimatedBuilder(
+            animation: _tabController,
+            builder: (_, __) => TabBarView(
+              controller: _tabController,
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: farbe.withValues(alpha: 0.18),
-                    border: Border.all(
-                        color: farbe.withValues(alpha: 0.35)),
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                  child: Center(
-                    child: Text(
-                      c.name.isNotEmpty
-                          ? c.name[0].toUpperCase()
-                          : '?',
-                      style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: farbe),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(c.name,
-                          style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: C.text)),
-                      const SizedBox(height: 4),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          _TypBadge(type: c.type, isDark: isDark),
-                          if (c.size != null)
-                            Text(c.size!,
-                                style: TextStyle(
-                                    fontSize: 10, color: C.textSoft)),
-                          if (c.alignment != null) ...[
-                            Text('·',
-                                style: TextStyle(
-                                    fontSize: 10, color: C.textSoft)),
-                            Text(c.alignment!,
-                                style: TextStyle(
-                                    fontSize: 10, color: C.textSoft)),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                // Edit button
-                GestureDetector(
-                  onTap: onEdit,
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: C.bgPanel,
-                        border: Border.all(color: C.border),
-                        borderRadius: BorderRadius.circular(7),
-                      ),
-                      child: Row(
-                        children: [
-                          AppIcon(AppIconName.edit, size: 11,
-                              color: C.textMid),
-                          const SizedBox(width: 5),
-                          Text('Bearbeiten',
-                              style: TextStyle(
-                                  fontSize: 11, color: C.textMid)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+                _buildOverviewTab(c, C),
+                _buildActionsTab(c, C),
+                _buildDetailsTab(c, C),
               ],
             ),
           ),
-          const SizedBox(height: 14),
+        ),
+      ],
+    );
+  }
 
-          // ── Combat stats ─────────────────────────────────────────
+  // ── Sub-Header ───────────────────────────────────────────────────────────────
+
+  Widget _buildSubHeader(
+      Creature c, AppColorsExtension C, Color farbe) {
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      color: C.bgPanel,
+      child: Row(
+        children: [
+          // Avatar
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: farbe.withValues(alpha: 0.18),
+              border: Border.all(color: farbe.withValues(alpha: 0.4)),
+              borderRadius: BorderRadius.circular(7),
+            ),
+            child: Center(
+              child: Text(
+                c.name.isNotEmpty ? c.name[0].toUpperCase() : '?',
+                style: TextStyle(
+                    color: farbe,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Name + meta
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(c.name,
+                  style: TextStyle(
+                      color: C.text,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      height: 1.1)),
+              Text(
+                '${c.type ?? '—'} · CR ${_crDisplay(c.challengeRating)}',
+                style: TextStyle(
+                    color: C.textSoft, fontSize: 10, height: 1.1),
+              ),
+            ],
+          ),
+          Container(
+              width: 1, height: 18, color: C.border,
+              margin: const EdgeInsets.symmetric(horizontal: 12)),
+          // Tabs
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (int i = 0; i < _tabs.length; i++)
+                    _TabBtn(
+                      icon: _tabs[i].$1,
+                      label: _tabs[i].$2,
+                      isActive: _tabController.index == i,
+                      onTap: () => _tabController.animateTo(i),
+                      C: C,
+                    ),
+                ],
+              ),
+            ),
+          ),
+          // Edit button
+          GestureDetector(
+            onTap: widget.onEdit,
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                border: Border.all(color: C.border),
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AppIcon(AppIconName.edit, size: 11, color: C.textMid),
+                  const SizedBox(width: 5),
+                  Text('Bearbeiten',
+                      style: TextStyle(fontSize: 11, color: C.textMid)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Tab: Überblick ────────────────────────────────────────────────────────────
+
+  Widget _buildOverviewTab(Creature c, AppColorsExtension C) {
+    final attrValues = [
+      c.strength, c.dexterity, c.constitution,
+      c.intelligence, c.wisdom, c.charisma,
+    ];
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Stat row
           Row(
             children: [
               Expanded(
-                  child: _StatCard(
+                  child: _StatDisplay(
                       label: 'HP',
                       value: c.maxHp.toString(),
-                      color: C.red,
-                      icon: AppIconName.heart,
+                      sub: 'Trefferpunkte',
+                      valueColor: C.red,
                       C: C)),
               const SizedBox(width: 8),
               Expanded(
-                  child: _StatCard(
-                      label: 'RK (AC)',
+                  child: _StatDisplay(
+                      label: 'RK',
                       value: c.armorClass.toString(),
-                      color: C.accent,
-                      icon: AppIconName.shield,
+                      sub: 'Rüstungsklasse',
+                      valueColor: C.accent,
                       C: C)),
               const SizedBox(width: 8),
               Expanded(
-                  child: _StatCard(
+                  child: _StatDisplay(
                       label: 'CR',
                       value: _crDisplay(c.challengeRating),
-                      color: C.amber,
-                      icon: AppIconName.star,
+                      sub: 'Herausforderung',
+                      valueColor: C.amber,
                       C: C)),
             ],
           ),
           const SizedBox(height: 14),
-
-          // ── Attributes ───────────────────────────────────────────
-          _SectionLabel('Attribute', C),
-          const SizedBox(height: 8),
-          Row(
+          // Attributes
+          _EditorCard(
+            title: 'Attribute',
+            C: C,
             children: [
-              _AttrCell(key: const ValueKey('STR'), abbr: 'STÄ', label: 'Stärke',       value: c.strength,     C: C),
-              _AttrCell(key: const ValueKey('DEX'), abbr: 'GES', label: 'Geschick',      value: c.dexterity,    C: C),
-              _AttrCell(key: const ValueKey('CON'), abbr: 'KON', label: 'Konstitution',  value: c.constitution,  C: C),
-              _AttrCell(key: const ValueKey('INT'), abbr: 'INT', label: 'Intelligenz',   value: c.intelligence, C: C),
-              _AttrCell(key: const ValueKey('WIS'), abbr: 'WEI', label: 'Weisheit',      value: c.wisdom,       C: C),
-              _AttrCell(key: const ValueKey('CHA'), abbr: 'CHA', label: 'Charisma',      value: c.charisma,     C: C),
+              for (int i = 0; i < 6; i++) ...[
+                _AttrRow(
+                  abbr: _attrDefs[i].$1,
+                  label: _attrLabels[i],
+                  value: attrValues[i],
+                  color: _attrDefs[i].$2,
+                  C: C,
+                ),
+                if (i < 5) const SizedBox(height: 4),
+              ],
             ],
           ),
-          const SizedBox(height: 14),
+        ],
+      ),
+    );
+  }
 
-          // ── Text sections ─────────────────────────────────────────
-          if (c.specialAbilities != null &&
-              c.specialAbilities!.isNotEmpty) ...[
-            _SectionLabel('Fähigkeiten & Sinne', C),
-            const SizedBox(height: 6),
-            _TextCard(text: c.specialAbilities!, C: C),
-            const SizedBox(height: 12),
-          ],
-          if (c.attacks.isNotEmpty) ...[
-            _SectionLabel('Angriffe', C),
-            const SizedBox(height: 6),
-            _TextCard(text: c.attacks, C: C),
-            const SizedBox(height: 12),
-          ],
-          if (c.legendaryActions != null &&
-              c.legendaryActions!.isNotEmpty) ...[
-            _SectionLabel('Besondere Eigenschaften', C),
-            const SizedBox(height: 6),
-            _TextCard(text: c.legendaryActions!, C: C),
-            const SizedBox(height: 12),
-          ],
-          if (c.description != null && c.description!.isNotEmpty) ...[
-            _SectionLabel('Beschreibung', C),
-            const SizedBox(height: 6),
-            _TextCard(text: c.description!, C: C),
-            const SizedBox(height: 12),
-          ],
+  // ── Tab: Aktionen ─────────────────────────────────────────────────────────────
 
-          // ── Delete ───────────────────────────────────────────────
-          const SizedBox(height: 4),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              onPressed: onDelete,
-              icon: AppIcon(AppIconName.trash, size: 12, color: C.red),
-              label: const Text('Löschen'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: C.red,
-                side: BorderSide(color: C.red.withValues(alpha: 0.4)),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(7)),
-                textStyle: const TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w500),
+  Widget _buildActionsTab(Creature c, AppColorsExtension C) {
+    final hasAbilities = c.specialAbilities?.isNotEmpty == true;
+    final hasAttacks = c.attacks.isNotEmpty;
+    final hasLegendary = c.legendaryActions?.isNotEmpty == true;
+
+    if (!hasAbilities && !hasAttacks && !hasLegendary) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppIcon(AppIconName.sword, size: 28, color: C.border),
+            const SizedBox(height: 10),
+            Text('Keine Aktionen definiert',
+                style: TextStyle(fontSize: 13, color: C.textSoft)),
+          ],
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          if (hasAbilities) ...[
+            _EditorCard(
+              title: 'Fähigkeiten & Sinne',
+              C: C,
+              children: [
+                Text(c.specialAbilities!,
+                    style: TextStyle(
+                        fontSize: 12, color: C.textMid, height: 1.6)),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (hasAttacks) ...[
+            _EditorCard(
+              title: 'Angriffe',
+              C: C,
+              children: [
+                Text(c.attacks,
+                    style: TextStyle(
+                        fontSize: 12, color: C.textMid, height: 1.6)),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (hasLegendary)
+            _EditorCard(
+              title: 'Besondere Eigenschaften',
+              C: C,
+              children: [
+                Text(c.legendaryActions!,
+                    style: TextStyle(
+                        fontSize: 12, color: C.textMid, height: 1.6)),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ── Tab: Details ──────────────────────────────────────────────────────────────
+
+  Widget _buildDetailsTab(Creature c, AppColorsExtension C) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _EditorCard(
+            title: 'Metadaten',
+            C: C,
+            children: [
+              _MetaRow('Typ', c.type ?? '—', C),
+              if (c.size != null) ...[
+                const SizedBox(height: 8),
+                _MetaRow('Größe', c.size!, C),
+              ],
+              if (c.alignment != null) ...[
+                const SizedBox(height: 8),
+                _MetaRow('Gesinnung', c.alignment!, C),
+              ],
+              const SizedBox(height: 8),
+              _MetaRow(
+                'Quelle',
+                c.sourceType == 'custom' ? 'Eigene Kreatur' : 'Offiziell (SRD)',
+                C,
               ),
+            ],
+          ),
+          if (c.description?.isNotEmpty == true) ...[
+            const SizedBox(height: 12),
+            _EditorCard(
+              title: 'Beschreibung',
+              C: C,
+              children: [
+                Text(c.description!,
+                    style: TextStyle(
+                        fontSize: 12, color: C.textMid, height: 1.6)),
+              ],
+            ),
+          ],
+          const SizedBox(height: 20),
+          OutlinedButton.icon(
+            onPressed: widget.onDelete,
+            icon: AppIcon(AppIconName.trash, size: 12, color: C.red),
+            label: const Text('Löschen'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: C.red,
+              side: BorderSide(color: C.red.withValues(alpha: 0.4)),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(7)),
+              textStyle: const TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -750,11 +860,10 @@ class _TypBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 5,
-            height: 5,
-            decoration: BoxDecoration(
-                color: farbe, shape: BoxShape.circle),
-          ),
+              width: 5,
+              height: 5,
+              decoration:
+                  BoxDecoration(color: farbe, shape: BoxShape.circle)),
           const SizedBox(width: 4),
           Text(label,
               style: TextStyle(
@@ -783,102 +892,213 @@ class _StatMini extends StatelessWidget {
             style: TextStyle(
                 fontSize: 11, fontWeight: FontWeight.w600, color: color)),
         Text(label,
-            style: const TextStyle(fontSize: 9, color: Color(0xFF9f9f98))),
+            style:
+                const TextStyle(fontSize: 9, color: Color(0xFF9f9f98))),
       ],
     );
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({
+// ── _StatDisplay ──────────────────────────────────────────────────────────────
+
+class _StatDisplay extends StatelessWidget {
+  const _StatDisplay({
     required this.label,
     required this.value,
-    required this.color,
-    required this.icon,
+    required this.sub,
+    required this.valueColor,
     required this.C,
   });
 
   final String label;
   final String value;
-  final Color color;
-  final AppIconName icon;
+  final String sub;
+  final Color valueColor;
   final AppColorsExtension C;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: C.bgPanel,
         border: Border.all(color: C.border),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              AppIcon(icon, size: 11, color: color),
-              const SizedBox(width: 4),
-              Text(label,
-                  style: TextStyle(fontSize: 10, color: C.textSoft)),
-            ],
-          ),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 10,
+                  color: C.textSoft,
+                  letterSpacing: 0.4)),
           const SizedBox(height: 2),
           Text(value,
               style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: color)),
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: valueColor)),
+          Text(sub,
+              style: TextStyle(fontSize: 10, color: C.textSoft)),
         ],
       ),
     );
   }
 }
 
-class _AttrCell extends StatelessWidget {
-  const _AttrCell({
-    super.key,
+// ── _AttrRow ──────────────────────────────────────────────────────────────────
+
+class _AttrRow extends StatelessWidget {
+  const _AttrRow({
     required this.abbr,
     required this.label,
     required this.value,
+    required this.color,
     required this.C,
   });
 
   final String abbr;
   final String label;
   final int value;
+  final Color color;
   final AppColorsExtension C;
 
   @override
   Widget build(BuildContext context) {
     final mod = (value - 10) ~/ 2;
     final modStr = mod >= 0 ? '+$mod' : '$mod';
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 3),
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: C.bgPanel,
-          border: Border.all(color: C.border),
-          borderRadius: BorderRadius.circular(7),
-        ),
-        child: Column(
-          children: [
-            Text(abbr,
-                style:
-                    TextStyle(fontSize: 9, color: C.textSoft)),
-            const SizedBox(height: 2),
-            Text('$value',
-                style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: C.text)),
-            Text(modStr,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: Row(
+        children: [
+          Container(
+              width: 6,
+              height: 6,
+              decoration:
+                  BoxDecoration(color: color, shape: BoxShape.circle)),
+          const SizedBox(width: 10),
+          Text(abbr,
+              style: TextStyle(
+                  color: C.textSoft,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500)),
+          const SizedBox(width: 6),
+          Expanded(
+              child: Text(label,
+                  style: TextStyle(color: C.textMid, fontSize: 12))),
+          Text('$value',
+              style: TextStyle(
+                  color: C.text,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13)),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 36,
+            child: Text(
+              modStr,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                  color: mod >= 0 ? C.green : C.red,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── _EditorCard ───────────────────────────────────────────────────────────────
+
+class _EditorCard extends StatelessWidget {
+  const _EditorCard(
+      {required this.title, required this.C, required this.children});
+
+  final String title;
+  final AppColorsExtension C;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: C.bgPanel,
+        border: Border.all(color: C.border),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (title.isNotEmpty) ...[
+            Text(title.toUpperCase(),
                 style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: mod >= 0 ? C.green : C.red)),
+                    color: C.textMid,
+                    letterSpacing: 0.4)),
+            const SizedBox(height: 12),
+          ],
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+// ── _TabBtn ───────────────────────────────────────────────────────────────────
+
+class _TabBtn extends StatelessWidget {
+  const _TabBtn({
+    required this.icon,
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+    required this.C,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        margin: const EdgeInsets.symmetric(horizontal: 1),
+        decoration: BoxDecoration(
+          color: isActive ? C.bgHover : Colors.transparent,
+          borderRadius: BorderRadius.circular(7),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon,
+                size: 13,
+                color: isActive ? C.accent : C.textSoft),
+            const SizedBox(width: 5),
+            Text(label,
+                style: TextStyle(
+                  color: isActive ? C.text : C.textMid,
+                  fontSize: 12,
+                  fontWeight: isActive
+                      ? FontWeight.w500
+                      : FontWeight.w400,
+                )),
           ],
         ),
       ),
@@ -886,49 +1106,32 @@ class _AttrCell extends StatelessWidget {
   }
 }
 
-class _TextCard extends StatelessWidget {
-  const _TextCard({required this.text, required this.C});
+// ── _MetaRow ──────────────────────────────────────────────────────────────────
 
-  final String text;
-  final AppColorsExtension C;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: C.bgPanel,
-        border: Border.all(color: C.border),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-            fontSize: 12, color: C.textMid, height: 1.6),
-      ),
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.label, this.C);
+class _MetaRow extends StatelessWidget {
+  const _MetaRow(this.label, this.value, this.C);
 
   final String label;
+  final String value;
   final AppColorsExtension C;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      label.toUpperCase(),
-      style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w500,
-          color: C.textSoft,
-          letterSpacing: 0.4),
+    return Row(
+      children: [
+        Text(label, style: TextStyle(color: C.textSoft, fontSize: 12)),
+        const Spacer(),
+        Text(value,
+            style: TextStyle(
+                color: C.textMid,
+                fontSize: 12,
+                fontWeight: FontWeight.w500)),
+      ],
     );
   }
 }
+
+// ── _SearchField ──────────────────────────────────────────────────────────────
 
 class _SearchField extends StatelessWidget {
   const _SearchField({required this.ctrl, required this.C});
@@ -956,7 +1159,8 @@ class _SearchField extends StatelessWidget {
               style: TextStyle(fontSize: 12, color: C.text),
               decoration: InputDecoration(
                 hintText: 'Kreaturen suchen...',
-                hintStyle: TextStyle(fontSize: 12, color: C.textSoft),
+                hintStyle:
+                    TextStyle(fontSize: 12, color: C.textSoft),
                 border: InputBorder.none,
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
@@ -966,7 +1170,8 @@ class _SearchField extends StatelessWidget {
           if (ctrl.text.isNotEmpty) ...[
             GestureDetector(
               onTap: ctrl.clear,
-              child: AppIcon(AppIconName.close, size: 12, color: C.textSoft),
+              child: AppIcon(AppIconName.close,
+                  size: 12, color: C.textSoft),
             ),
             const SizedBox(width: 8),
           ],
@@ -975,6 +1180,8 @@ class _SearchField extends StatelessWidget {
     );
   }
 }
+
+// ── _EmptyList ────────────────────────────────────────────────────────────────
 
 class _EmptyList extends StatelessWidget {
   const _EmptyList({required this.C});
@@ -1004,13 +1211,11 @@ class _IconBtn extends StatefulWidget {
     required this.C,
     required this.icon,
     required this.onTap,
-    this.builder,
   });
 
   final AppColorsExtension C;
   final AppIconName icon;
   final VoidCallback onTap;
-  final Widget Function(BuildContext)? builder;
 
   @override
   State<_IconBtn> createState() => _IconBtnState();
@@ -1021,7 +1226,6 @@ class _IconBtnState extends State<_IconBtn> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.builder != null) return widget.builder!(context);
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
@@ -1034,12 +1238,14 @@ class _IconBtnState extends State<_IconBtn> {
           decoration: BoxDecoration(
             color: _hovered ? widget.C.bgHover : Colors.transparent,
             border: Border.all(
-                color: _hovered ? widget.C.border : Colors.transparent),
+                color: _hovered
+                    ? widget.C.border
+                    : Colors.transparent),
             borderRadius: BorderRadius.circular(7),
           ),
           child: Center(
-            child:
-                AppIcon(widget.icon, size: 14, color: widget.C.textMid),
+            child: AppIcon(widget.icon,
+                size: 14, color: widget.C.textMid),
           ),
         ),
       ),
