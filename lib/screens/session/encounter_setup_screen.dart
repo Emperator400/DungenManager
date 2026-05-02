@@ -11,6 +11,7 @@ import '../../models/attack.dart';
 import '../../viewmodels/encounter_planning_viewmodel.dart';
 import '../../database/repositories/sound_model_repository.dart';
 import '../../database/core/database_connection.dart';
+import '../../database/repositories/scene_model_repository.dart';
 import '../../services/sound_service.dart';
 import '../../theme/app_theme.dart';
 import 'encounter_tracker_screen.dart' as encounter_tracker;
@@ -113,6 +114,15 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
     final encounter = await _viewModel.createEncounter();
 
     if (encounter != null && mounted) {
+      // Scene.linkedEncounterId aktualisieren, damit Teilnehmer beim nächsten Start vorausgefüllt sind
+      final sceneRepo = SceneModelRepository(DatabaseConnection.instance);
+      final currentScene = await sceneRepo.findById(widget.scene.id);
+      if (currentScene != null) {
+        await sceneRepo.update(
+          currentScene.copyWith(linkedEncounterId: encounter.id),
+        );
+      }
+
       await _stopSound();
 
       // Hole Initiative-Werte vom ViewModel

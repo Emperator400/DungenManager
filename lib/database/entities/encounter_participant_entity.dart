@@ -16,6 +16,7 @@ class EncounterParticipantEntity {
   final String? conditions; // CSV
   final String? notes;
   final String? characterId;
+  final String? creatureId;
 
   EncounterParticipantEntity({
     required this.id,
@@ -27,6 +28,7 @@ class EncounterParticipantEntity {
     this.conditions,
     this.notes,
     this.characterId,
+    this.creatureId,
   });
 
   /// Konvertiert von EncounterParticipant-Model zu Entity
@@ -41,6 +43,7 @@ class EncounterParticipantEntity {
       conditions: participant.conditions.isEmpty ? null : participant.conditions.join(','),
       notes: participant.notes,
       characterId: participant.characterId,
+      creatureId: participant.creatureId,
     );
   }
 
@@ -56,6 +59,7 @@ class EncounterParticipantEntity {
       conditions: map['conditions'] as String?,
       notes: map['notes'] as String?,
       characterId: map['character_id'] as String?,
+      creatureId: map['creature_id'] as String?,
     );
   }
 
@@ -71,6 +75,7 @@ class EncounterParticipantEntity {
       'conditions': conditions,
       'notes': notes,
       'character_id': characterId,
+      'creature_id': creatureId,
     };
   }
 
@@ -91,6 +96,7 @@ class EncounterParticipantEntity {
           : [],
       notes: notes,
       characterId: characterId,
+      creatureId: creatureId,
     );
   }
 }

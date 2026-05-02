@@ -1529,7 +1529,8 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   Future<void> _startEncounterForScene(Scene scene) async {
     String? title;
     String? description;
-    List<String> characterIds = const [];
+    // Scene-Charaktere immer als Basis verwenden
+    final characterIds = List<String>.from(scene.linkedCharacterIds);
     List<String> monsterIds = const [];
 
     if (scene.linkedEncounterId != null) {
@@ -1539,15 +1540,17 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
         title = encounter.title;
         description = encounter.description;
 
-        // Load actual participant records to extract character/creature IDs
         final participantRepo = EncounterParticipantModelRepository(
           DatabaseConnection.instance,
         );
         final participants = await participantRepo.findByEncounter(encounter.id);
-        characterIds = participants
-            .where((p) => p.characterId != null)
-            .map((p) => p.characterId!)
-            .toList();
+
+        // Encounter-Chars mergen (ohne Duplikate zu scene.linkedCharacterIds)
+        for (final p in participants.where((p) => p.characterId != null)) {
+          if (!characterIds.contains(p.characterId!)) {
+            characterIds.add(p.characterId!);
+          }
+        }
         monsterIds = participants
             .where((p) => p.creatureId != null)
             .map((p) => p.creatureId!)
