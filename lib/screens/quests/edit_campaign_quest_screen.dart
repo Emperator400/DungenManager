@@ -300,7 +300,7 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey[400],
+                  color: C.textSoft,
                 ),
               ),
               const SizedBox(height: 4),
@@ -391,7 +391,7 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
                     : Colors.white.withValues(alpha: 0.04),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: isSelected ? C.accent : Colors.grey[600]!.withValues(alpha: 0.3),
+                  color: isSelected ? C.accent : C.textMid.withValues(alpha: 0.3),
                   width: isSelected ? 2 : 1,
                 ),
               ),
@@ -399,7 +399,7 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
                 children: [
                   Icon(
                     _getStatusIcon(status),
-                    color: isSelected ? C.accent : Colors.grey[400],
+                    color: isSelected ? C.accent : C.textSoft,
                     size: 24,
                   ),
                   const SizedBox(width: 16),
@@ -470,7 +470,7 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
           const SizedBox(height: 8),
           Text(
             'Verwalte den Fortschritt und Notizen zum Quest hier',
-            style: TextStyle(fontSize: 13, color: Colors.grey[400]),
+            style: TextStyle(fontSize: 13, color: C.textSoft),
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -479,10 +479,10 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
               hintText: 'Schreibe deine Notizen zum Quest-Fortschritt hier...',
-              hintStyle: TextStyle(color: Colors.grey[500]),
+              hintStyle: TextStyle(color: C.textSoft),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey[600]!.withValues(alpha: 0.5)),
+                borderSide: BorderSide(color: C.textMid.withValues(alpha: 0.5)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),

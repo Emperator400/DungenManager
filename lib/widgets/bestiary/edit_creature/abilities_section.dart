@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../theme/dnd_theme.dart';
 import '../../../widgets/ui_components/forms/form_field_widget.dart';
 import '../../../widgets/ui_components/cards/section_card_widget.dart';
 
@@ -36,7 +35,7 @@ class AbilitiesSection extends StatelessWidget {
             icon: Icons.gavel,
             maxLines: 3,
           ),
-          const SizedBox(height: DnDTheme.md),
+          const SizedBox(height: 16),
           FormFieldWidget(
             label: 'Spezielle Fähigkeiten',
             value: specialAbilities ?? '',
@@ -44,7 +43,7 @@ class AbilitiesSection extends StatelessWidget {
             icon: Icons.psychology,
             maxLines: 3,
           ),
-          const SizedBox(height: DnDTheme.md),
+          const SizedBox(height: 16),
           FormFieldWidget(
             label: 'Legendäre Aktionen',
             value: legendaryActions ?? '',

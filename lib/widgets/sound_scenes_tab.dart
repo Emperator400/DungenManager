@@ -8,6 +8,7 @@ import '../services/multi_stream_sound_service.dart';
 import '../services/sound_scene_service.dart';
 import '../viewmodels/sound_library_viewmodel.dart';
 import '../theme/dnd_theme.dart';
+import '../theme/app_theme.dart';
 
 /// Sound Scenes Tab - Verwaltung von Klang-Szenen mit vollständiger Funktionalität
 class SoundScenesTab extends StatefulWidget {
@@ -52,11 +53,11 @@ class SoundScenesTabState extends State<SoundScenesTab> {
     try {
       // Lade Szenen mit Items
       final scenes = await _sceneService.getAllSoundScenesWithItems();
-      
+
       // Lade verfügbare Sounds über das ViewModel
       final viewModel = SoundLibraryViewModel();
       await viewModel.loadSounds();
-      
+
       if (mounted) {
         setState(() {
           _scenes = scenes;
@@ -75,47 +76,48 @@ class SoundScenesTabState extends State<SoundScenesTab> {
   }
 
   Future<void> _createNewScene() async {
+    final C = context.appColors;
     final nameController = TextEditingController();
     final descriptionController = TextEditingController();
 
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
+        backgroundColor: C.bg,
         title: Text(
           'Neue Klang-Szene erstellen',
-          style: DnDTheme.headline3.copyWith(color: DnDTheme.ancientGold),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: C.amber),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
-              style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+              style: TextStyle(fontSize: 14, color: Colors.white),
               decoration: InputDecoration(
                 labelText: 'Name der Szene *',
-                labelStyle: DnDTheme.bodyText2.copyWith(color: Colors.white70),
+                labelStyle: TextStyle(fontSize: 12, color: C.textMid),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                  borderRadius: BorderRadius.circular(8.0),
                 ),
                 filled: true,
-                fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
+                fillColor: C.bgPanel.withValues(alpha: 0.3),
               ),
               autofocus: true,
             ),
             const SizedBox(height: DnDTheme.md),
             TextField(
               controller: descriptionController,
-              style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+              style: TextStyle(fontSize: 14, color: Colors.white),
               maxLines: 3,
               decoration: InputDecoration(
                 labelText: 'Beschreibung (optional)',
-                labelStyle: DnDTheme.bodyText2.copyWith(color: Colors.white70),
+                labelStyle: TextStyle(fontSize: 12, color: C.textMid),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                  borderRadius: BorderRadius.circular(8.0),
                 ),
                 filled: true,
-                fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
+                fillColor: C.bgPanel.withValues(alpha: 0.3),
               ),
             ),
           ],
@@ -125,7 +127,7 @@ class SoundScenesTabState extends State<SoundScenesTab> {
             onPressed: () => Navigator.of(ctx).pop(),
             child: Text(
               'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(color: DnDTheme.mysticalPurple),
+              style: TextStyle(fontSize: 14, color: C.accent),
             ),
           ),
           ElevatedButton(
@@ -138,7 +140,7 @@ class SoundScenesTabState extends State<SoundScenesTab> {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.successGreen,
+              backgroundColor: C.green,
               foregroundColor: Colors.white,
             ),
             child: const Text('Erstellen'),
@@ -152,18 +154,18 @@ class SoundScenesTabState extends State<SoundScenesTab> {
         name: result['name'] as String,
         description: result['description'] as String? ?? '',
       );
-      
+
       final created = await _sceneService.createSoundScene(scene);
-      
+
       if (mounted) {
         if (created != null) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
                 'Szene "${created.name}" erstellt',
-                style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                style: TextStyle(fontSize: 14, color: Colors.white),
               ),
-              backgroundColor: DnDTheme.successGreen,
+              backgroundColor: C.green,
             ),
           );
         } else {
@@ -171,9 +173,9 @@ class SoundScenesTabState extends State<SoundScenesTab> {
             SnackBar(
               content: Text(
                 'Fehler beim Erstellen der Szene',
-                style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                style: TextStyle(fontSize: 14, color: Colors.white),
               ),
-              backgroundColor: DnDTheme.errorRed,
+              backgroundColor: C.red,
             ),
           );
         }
@@ -183,30 +185,31 @@ class SoundScenesTabState extends State<SoundScenesTab> {
   }
 
   Future<void> _deleteScene(SoundScene scene) async {
+    final C = context.appColors;
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
+        backgroundColor: C.bg,
         title: Text(
           'Szene löschen?',
-          style: DnDTheme.headline3.copyWith(color: DnDTheme.errorRed),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: C.red),
         ),
         content: Text(
           'Möchtest du die Klang-Szene "${scene.name}" wirklich endgültig löschen?',
-          style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+          style: TextStyle(fontSize: 14, color: Colors.white),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
             child: Text(
               'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(color: Colors.white70),
+              style: TextStyle(fontSize: 14, color: C.textMid),
             ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.errorRed,
+              backgroundColor: C.red,
               foregroundColor: Colors.white,
             ),
             child: const Text('Löschen'),
@@ -217,16 +220,16 @@ class SoundScenesTabState extends State<SoundScenesTab> {
 
     if (confirm == true) {
       final success = await _sceneService.deleteSoundScene(scene.id);
-      
+
       if (mounted) {
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
                 'Szene "${scene.name}" gelöscht',
-                style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                style: TextStyle(fontSize: 14, color: Colors.white),
               ),
-              backgroundColor: DnDTheme.successGreen,
+              backgroundColor: C.green,
             ),
           );
         } else {
@@ -234,9 +237,9 @@ class SoundScenesTabState extends State<SoundScenesTab> {
             SnackBar(
               content: Text(
                 'Fehler beim Löschen der Szene',
-                style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                style: TextStyle(fontSize: 14, color: Colors.white),
               ),
-              backgroundColor: DnDTheme.errorRed,
+              backgroundColor: C.red,
             ),
           );
         }
@@ -246,47 +249,48 @@ class SoundScenesTabState extends State<SoundScenesTab> {
   }
 
   Future<void> _editScene(SoundScene scene) async {
+    final C = context.appColors;
     final nameController = TextEditingController(text: scene.name);
     final descriptionController = TextEditingController(text: scene.description);
 
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
+        backgroundColor: C.bg,
         title: Text(
           'Szene bearbeiten',
-          style: DnDTheme.headline3.copyWith(color: DnDTheme.ancientGold),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: C.amber),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
-              style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+              style: TextStyle(fontSize: 14, color: Colors.white),
               decoration: InputDecoration(
                 labelText: 'Name der Szene *',
-                labelStyle: DnDTheme.bodyText2.copyWith(color: Colors.white70),
+                labelStyle: TextStyle(fontSize: 12, color: C.textMid),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                  borderRadius: BorderRadius.circular(8.0),
                 ),
                 filled: true,
-                fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
+                fillColor: C.bgPanel.withValues(alpha: 0.3),
               ),
               autofocus: true,
             ),
             const SizedBox(height: DnDTheme.md),
             TextField(
               controller: descriptionController,
-              style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+              style: TextStyle(fontSize: 14, color: Colors.white),
               maxLines: 3,
               decoration: InputDecoration(
                 labelText: 'Beschreibung (optional)',
-                labelStyle: DnDTheme.bodyText2.copyWith(color: Colors.white70),
+                labelStyle: TextStyle(fontSize: 12, color: C.textMid),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                  borderRadius: BorderRadius.circular(8.0),
                 ),
                 filled: true,
-                fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
+                fillColor: C.bgPanel.withValues(alpha: 0.3),
               ),
             ),
           ],
@@ -296,7 +300,7 @@ class SoundScenesTabState extends State<SoundScenesTab> {
             onPressed: () => Navigator.of(ctx).pop(),
             child: Text(
               'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(color: DnDTheme.mysticalPurple),
+              style: TextStyle(fontSize: 14, color: C.accent),
             ),
           ),
           ElevatedButton(
@@ -309,7 +313,7 @@ class SoundScenesTabState extends State<SoundScenesTab> {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.arcaneBlue,
+              backgroundColor: C.accent,
               foregroundColor: Colors.white,
             ),
             child: const Text('Speichern'),
@@ -323,18 +327,18 @@ class SoundScenesTabState extends State<SoundScenesTab> {
         name: result['name'] as String,
         description: result['description'] as String? ?? '',
       );
-      
+
       final success = await _sceneService.updateSoundScene(updatedScene);
-      
+
       if (mounted) {
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
                 'Szene "${updatedScene.name}" aktualisiert',
-                style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                style: TextStyle(fontSize: 14, color: Colors.white),
               ),
-              backgroundColor: DnDTheme.successGreen,
+              backgroundColor: C.green,
             ),
           );
         }
@@ -344,14 +348,15 @@ class SoundScenesTabState extends State<SoundScenesTab> {
   }
 
   Future<void> _addSoundToScene(SoundScene scene) async {
+    final C = context.appColors;
     if (_availableSounds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             'Keine Sounds verfügbar. Bitte zuerst Sounds hinzufügen.',
-            style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+            style: TextStyle(fontSize: 14, color: Colors.white),
           ),
-          backgroundColor: DnDTheme.warningOrange,
+          backgroundColor: C.amber,
         ),
       );
       return;
@@ -368,9 +373,9 @@ class SoundScenesTabState extends State<SoundScenesTab> {
         SnackBar(
           content: Text(
             'Alle verfügbaren Sounds sind bereits in dieser Szene.',
-            style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+            style: TextStyle(fontSize: 14, color: Colors.white),
           ),
-          backgroundColor: DnDTheme.warningOrange,
+          backgroundColor: C.amber,
         ),
       );
       return;
@@ -379,10 +384,10 @@ class SoundScenesTabState extends State<SoundScenesTab> {
     final selectedSound = await showDialog<Sound>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
+        backgroundColor: C.bg,
         title: Text(
           'Sound hinzufügen',
-          style: DnDTheme.headline3.copyWith(color: DnDTheme.ancientGold),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: C.amber),
         ),
         content: SizedBox(
           width: double.maxFinite,
@@ -393,18 +398,18 @@ class SoundScenesTabState extends State<SoundScenesTab> {
               final sound = availableToAdd[index];
               return ListTile(
                 leading: Icon(
-                  sound.soundType == SoundType.Ambiente 
-                      ? Icons.waves 
+                  sound.soundType == SoundType.Ambiente
+                      ? Icons.waves
                       : Icons.volume_up,
-                  color: DnDTheme.arcaneBlue,
+                  color: C.accent,
                 ),
                 title: Text(
                   sound.name,
-                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                  style: TextStyle(fontSize: 14, color: Colors.white),
                 ),
                 subtitle: Text(
                   sound.soundTypeDisplayName,
-                  style: DnDTheme.bodyText2.copyWith(color: Colors.white70),
+                  style: TextStyle(fontSize: 12, color: C.textMid),
                 ),
                 onTap: () => Navigator.of(ctx).pop(sound),
               );
@@ -416,7 +421,7 @@ class SoundScenesTabState extends State<SoundScenesTab> {
             onPressed: () => Navigator.of(ctx).pop(),
             child: Text(
               'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(color: DnDTheme.mysticalPurple),
+              style: TextStyle(fontSize: 14, color: C.accent),
             ),
           ),
         ],
@@ -430,15 +435,15 @@ class SoundScenesTabState extends State<SoundScenesTab> {
         volume: 1.0,
         isLooping: true,
       );
-      
+
       if (mounted && item != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               'Sound "${selectedSound.name}" zur Szene hinzugefügt',
-              style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+              style: TextStyle(fontSize: 14, color: Colors.white),
             ),
-            backgroundColor: DnDTheme.successGreen,
+            backgroundColor: C.green,
           ),
         );
       }
@@ -447,16 +452,17 @@ class SoundScenesTabState extends State<SoundScenesTab> {
   }
 
   Future<void> _removeSoundFromScene(SoundScene scene, SoundSceneItem item) async {
+    final C = context.appColors;
     final success = await _sceneService.removeSoundFromScene(scene.id, item.soundId);
-    
+
     if (mounted && success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             'Sound aus Szene entfernt',
-            style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+            style: TextStyle(fontSize: 14, color: Colors.white),
           ),
-          backgroundColor: DnDTheme.successGreen,
+          backgroundColor: C.green,
         ),
       );
     }
@@ -464,15 +470,16 @@ class SoundScenesTabState extends State<SoundScenesTab> {
   }
 
   Future<void> _playScene(SoundScene scene) async {
+    final C = context.appColors;
     if (!scene.hasSounds) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               'Diese Szene enthält keine Sounds.',
-              style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+              style: TextStyle(fontSize: 14, color: Colors.white),
             ),
-            backgroundColor: DnDTheme.warningOrange,
+            backgroundColor: C.amber,
           ),
         );
       }
@@ -520,10 +527,10 @@ class SoundScenesTabState extends State<SoundScenesTab> {
         SnackBar(
           content: Text(
             message,
-            style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+            style: TextStyle(fontSize: 14, color: Colors.white),
           ),
           backgroundColor:
-              startedCount > 0 ? DnDTheme.successGreen : DnDTheme.errorRed,
+              startedCount > 0 ? C.green : C.red,
           duration: const Duration(seconds: 2),
         ),
       );
@@ -542,16 +549,17 @@ class SoundScenesTabState extends State<SoundScenesTab> {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     if (_isLoading) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(color: DnDTheme.ancientGold),
+            CircularProgressIndicator(color: C.amber),
             const SizedBox(height: DnDTheme.md),
             Text(
               'Lade Szenen...',
-              style: DnDTheme.bodyText1.copyWith(color: Colors.white70),
+              style: TextStyle(fontSize: 14, color: C.textMid),
             ),
           ],
         ),
@@ -563,16 +571,16 @@ class SoundScenesTabState extends State<SoundScenesTab> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, color: DnDTheme.errorRed, size: 48),
+            Icon(Icons.error_outline, color: C.red, size: 48),
             const SizedBox(height: DnDTheme.md),
             Text(
               'Fehler beim Laden',
-              style: DnDTheme.headline3.copyWith(color: DnDTheme.errorRed),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: C.red),
             ),
             const SizedBox(height: DnDTheme.sm),
             Text(
               _error!,
-              style: DnDTheme.bodyText2.copyWith(color: Colors.white70),
+              style: TextStyle(fontSize: 12, color: C.textMid),
             ),
             const SizedBox(height: DnDTheme.md),
             ElevatedButton.icon(
@@ -580,7 +588,7 @@ class SoundScenesTabState extends State<SoundScenesTab> {
               icon: const Icon(Icons.refresh),
               label: const Text('Erneut versuchen'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: DnDTheme.arcaneBlue,
+                backgroundColor: C.accent,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -594,16 +602,16 @@ class SoundScenesTabState extends State<SoundScenesTab> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.movie_filter, color: DnDTheme.mysticalPurple, size: 48),
+            Icon(Icons.movie_filter, color: C.accent, size: 48),
             const SizedBox(height: DnDTheme.md),
             Text(
               'Keine Klang-Szenen erstellt',
-              style: DnDTheme.headline3.copyWith(color: DnDTheme.mysticalPurple),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: C.accent),
             ),
             const SizedBox(height: DnDTheme.sm),
             Text(
               'Erstelle deine erste Szene um Sounds zu bündeln',
-              style: DnDTheme.bodyText2.copyWith(color: Colors.white70),
+              style: TextStyle(fontSize: 12, color: C.textMid),
             ),
             const SizedBox(height: DnDTheme.lg),
             ElevatedButton.icon(
@@ -611,7 +619,7 @@ class SoundScenesTabState extends State<SoundScenesTab> {
               icon: const Icon(Icons.add),
               label: const Text('Szene erstellen'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: DnDTheme.successGreen,
+                backgroundColor: C.green,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -635,26 +643,24 @@ class SoundScenesTabState extends State<SoundScenesTab> {
       listenable: _soundService,
       builder: (context, _) {
         final isPlaying = _isScenePlaying(scene);
-        return _buildSceneCardContent(scene, isPlaying);
+        return _buildSceneCardContent(context, scene, isPlaying);
       },
     );
   }
 
-  Widget _buildSceneCardContent(SoundScene scene, bool isPlaying) {
+  Widget _buildSceneCardContent(BuildContext context, SoundScene scene, bool isPlaying) {
+    final C = context.appColors;
     return Container(
       margin: const EdgeInsets.only(bottom: DnDTheme.md),
       decoration: BoxDecoration(
-        gradient: DnDTheme.getMysticalGradient(
-          startColor: DnDTheme.slateGrey,
-          endColor: DnDTheme.stoneGrey,
-        ),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        color: C.bgPanel,
+        borderRadius: BorderRadius.circular(12.0),
         border: Border.all(
           color: isPlaying
-              ? DnDTheme.successGreen.withValues(alpha: 0.8)
+              ? C.green.withValues(alpha: 0.8)
               : scene.isFavorite
-                  ? DnDTheme.ancientGold.withValues(alpha: 0.5)
-                  : DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+                  ? C.amber.withValues(alpha: 0.5)
+                  : C.accent.withValues(alpha: 0.3),
           width: isPlaying ? 2.0 : 1.0,
         ),
       ),
@@ -665,10 +671,7 @@ class SoundScenesTabState extends State<SoundScenesTab> {
         ),
         leading: Container(
           decoration: BoxDecoration(
-            gradient: DnDTheme.getMysticalGradient(
-              startColor: DnDTheme.arcaneBlue,
-              endColor: DnDTheme.mysticalPurple,
-            ),
+            color: C.bgPanel,
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -682,7 +685,8 @@ class SoundScenesTabState extends State<SoundScenesTab> {
             Flexible(
               child: Text(
                 scene.name,
-                style: DnDTheme.bodyText1.copyWith(
+                style: TextStyle(
+                  fontSize: 14,
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
                 ),
@@ -693,17 +697,17 @@ class SoundScenesTabState extends State<SoundScenesTab> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: DnDTheme.successGreen.withValues(alpha: 0.2),
+                  color: C.green.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(
-                    color: DnDTheme.successGreen.withValues(alpha: 0.6),
+                    color: C.green.withValues(alpha: 0.6),
                   ),
                 ),
                 child: Text(
                   'LÄUFT',
-                  style: DnDTheme.bodyText2.copyWith(
-                    color: DnDTheme.successGreen,
-                    fontSize: 10,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: C.green,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -713,7 +717,7 @@ class SoundScenesTabState extends State<SoundScenesTab> {
         ),
         subtitle: Text(
           '${scene.soundCount} Sound${scene.soundCount != 1 ? 's' : ''}',
-          style: DnDTheme.bodyText2.copyWith(color: Colors.white70),
+          style: TextStyle(fontSize: 12, color: C.textMid),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -722,7 +726,7 @@ class SoundScenesTabState extends State<SoundScenesTab> {
             IconButton(
               icon: Icon(
                 isPlaying ? Icons.stop_circle : Icons.play_circle,
-                color: isPlaying ? DnDTheme.errorRed : DnDTheme.successGreen,
+                color: isPlaying ? C.red : C.green,
               ),
               onPressed: () =>
                   isPlaying ? _stopScene(scene) : _playScene(scene),
@@ -730,14 +734,14 @@ class SoundScenesTabState extends State<SoundScenesTab> {
             ),
             // Add Sound Button
             IconButton(
-              icon: Icon(Icons.add, color: DnDTheme.arcaneBlue),
+              icon: Icon(Icons.add, color: C.accent),
               onPressed: () => _addSoundToScene(scene),
               tooltip: 'Sound hinzufügen',
             ),
             // Menu
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert, color: Colors.white54),
-              color: DnDTheme.stoneGrey,
+              color: C.bg,
               onSelected: (value) {
                 switch (value) {
                   case 'edit':
@@ -757,11 +761,11 @@ class SoundScenesTabState extends State<SoundScenesTab> {
                   value: 'edit',
                   child: Row(
                     children: [
-                      Icon(Icons.edit, color: DnDTheme.arcaneBlue, size: 20),
+                      Icon(Icons.edit, color: C.accent, size: 20),
                       const SizedBox(width: DnDTheme.sm),
                       Text(
                         'Bearbeiten',
-                        style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                        style: TextStyle(fontSize: 14, color: Colors.white),
                       ),
                     ],
                   ),
@@ -772,7 +776,7 @@ class SoundScenesTabState extends State<SoundScenesTab> {
                     children: [
                       Icon(
                         scene.isFavorite ? Icons.star : Icons.star_border,
-                        color: DnDTheme.ancientGold,
+                        color: C.amber,
                         size: 20,
                       ),
                       const SizedBox(width: DnDTheme.sm),
@@ -780,7 +784,7 @@ class SoundScenesTabState extends State<SoundScenesTab> {
                         scene.isFavorite
                             ? 'Aus Favoriten entfernen'
                             : 'Zu Favoriten',
-                        style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                        style: TextStyle(fontSize: 14, color: Colors.white),
                       ),
                     ],
                   ),
@@ -789,11 +793,11 @@ class SoundScenesTabState extends State<SoundScenesTab> {
                   value: 'delete',
                   child: Row(
                     children: [
-                      Icon(Icons.delete, color: DnDTheme.errorRed, size: 20),
+                      Icon(Icons.delete, color: C.red, size: 20),
                       const SizedBox(width: DnDTheme.sm),
                       Text(
                         'Löschen',
-                        style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                        style: TextStyle(fontSize: 14, color: Colors.white),
                       ),
                     ],
                   ),
@@ -808,16 +812,16 @@ class SoundScenesTabState extends State<SoundScenesTab> {
               padding: const EdgeInsets.only(bottom: DnDTheme.sm),
               child: Text(
                 scene.description,
-                style: DnDTheme.bodyText2.copyWith(color: Colors.white70),
+                style: TextStyle(fontSize: 12, color: C.textMid),
               ),
             ),
-          const Divider(color: DnDTheme.mysticalPurple),
+          Divider(color: C.accent),
           if (scene.items.isEmpty)
             Padding(
               padding: const EdgeInsets.all(DnDTheme.md),
               child: Text(
                 'Keine Sounds in dieser Szene',
-                style: DnDTheme.bodyText2.copyWith(color: Colors.white54),
+                style: TextStyle(fontSize: 12, color: C.textSoft),
               ),
             )
           else
@@ -833,30 +837,30 @@ class SoundScenesTabState extends State<SoundScenesTab> {
                   updatedAt: DateTime.now(),
                 ),
               );
-              
+
               return ListTile(
                 dense: true,
                 leading: Icon(
-                  sound.soundType == SoundType.Ambiente 
-                      ? Icons.waves 
+                  sound.soundType == SoundType.Ambiente
+                      ? Icons.waves
                       : Icons.volume_up,
-                  color: DnDTheme.arcaneBlue,
+                  color: C.accent,
                   size: 20,
                 ),
                 title: Text(
                   sound.name,
-                  style: DnDTheme.bodyText2.copyWith(color: Colors.white),
+                  style: TextStyle(fontSize: 12, color: Colors.white),
                 ),
                 subtitle: Text(
                   'Lautstärke: ${item.formattedVolume}',
-                  style: DnDTheme.bodyText2.copyWith(
-                    color: Colors.white54,
+                  style: TextStyle(
                     fontSize: 12,
+                    color: C.textSoft,
                   ),
                 ),
                 trailing: IconButton(
-                  icon: Icon(Icons.remove_circle_outline, 
-                      color: DnDTheme.errorRed, size: 20),
+                  icon: Icon(Icons.remove_circle_outline,
+                      color: C.red, size: 20),
                   onPressed: () => _removeSoundFromScene(scene, item),
                   tooltip: 'Aus Szene entfernen',
                 ),

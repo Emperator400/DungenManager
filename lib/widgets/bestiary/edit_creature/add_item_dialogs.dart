@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../models/item.dart';
 import '../../../services/inventory_service.dart';
-import '../../../theme/dnd_theme.dart';
+import '../../../theme/app_theme.dart';
 import '../../../viewmodels/edit_creature_viewmodel.dart';
 import '../../../widgets/ui_components/forms/form_field_widget.dart';
 import 'library_item_card.dart';
@@ -14,41 +14,40 @@ class CreatureItemDialogs {
     BuildContext context,
     EditCreatureViewModel viewModel,
   ) async {
+    final C = context.appColors;
     final choice = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
+        backgroundColor: C.bg,
         title: Text(
           'Gegenstand hinzufügen',
-          style: DnDTheme.headline2.copyWith(
-            color: DnDTheme.ancientGold,
-          ),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: C.amber),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: Icon(Icons.edit, color: DnDTheme.arcaneBlue),
+              leading: Icon(Icons.edit, color: C.accent),
               title: Text(
                 'Manuell eingeben',
-                style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                style: TextStyle(fontSize: 14, color: C.text),
               ),
               subtitle: Text(
                 'Gegenstand mit allen Details manuell erstellen',
-                style: DnDTheme.bodyText2.copyWith(color: Colors.white60),
+                style: TextStyle(fontSize: 12, color: C.textMid),
               ),
               onTap: () => Navigator.of(dialogContext).pop('manual'),
             ),
             const Divider(color: Colors.white12),
             ListTile(
-              leading: Icon(Icons.inventory_2, color: DnDTheme.ancientGold),
+              leading: Icon(Icons.inventory_2, color: C.amber),
               title: Text(
                 'Aus Waffenkammer wählen',
-                style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                style: TextStyle(fontSize: 14, color: C.text),
               ),
               subtitle: Text(
                 'Gegenstand aus der Item-Bibliothek auswählen',
-                style: DnDTheme.bodyText2.copyWith(color: Colors.white60),
+                style: TextStyle(fontSize: 12, color: C.textMid),
               ),
               onTap: () => Navigator.of(dialogContext).pop('library'),
             ),
@@ -59,9 +58,7 @@ class CreatureItemDialogs {
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: Text(
               'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(
-                color: DnDTheme.mysticalPurple,
-              ),
+              style: TextStyle(fontSize: 14, color: C.accent),
             ),
           ),
         ],
@@ -80,6 +77,7 @@ class CreatureItemDialogs {
     BuildContext context,
     EditCreatureViewModel viewModel,
   ) {
+    final C = context.appColors;
     final nameController = TextEditingController();
     final descriptionController = TextEditingController();
     final typeController = TextEditingController(text: 'item');
@@ -89,12 +87,10 @@ class CreatureItemDialogs {
     return showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
+        backgroundColor: C.bg,
         title: Text(
           'Gegenstand hinzufügen',
-          style: DnDTheme.headline2.copyWith(
-            color: DnDTheme.ancientGold,
-          ),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: C.amber),
         ),
         content: SingleChildScrollView(
           child: Column(
@@ -134,7 +130,7 @@ class CreatureItemDialogs {
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     ),
                   ),
-                  const SizedBox(width: DnDTheme.md),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: FormFieldWidget(
                       label: 'Wert (Gold)',
@@ -154,9 +150,7 @@ class CreatureItemDialogs {
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: Text(
               'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(
-                color: DnDTheme.mysticalPurple,
-              ),
+              style: TextStyle(fontSize: 14, color: C.accent),
             ),
           ),
           ElevatedButton(
@@ -174,8 +168,8 @@ class CreatureItemDialogs {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.ancientGold,
-              foregroundColor: DnDTheme.dungeonBlack,
+              backgroundColor: C.amber,
+              foregroundColor: C.bg,
             ),
             child: const Text('Hinzufügen'),
           ),
@@ -189,6 +183,7 @@ class CreatureItemDialogs {
     BuildContext context,
     EditCreatureViewModel viewModel,
   ) async {
+    final C = context.appColors;
     final quantityController = TextEditingController(text: '1');
     final inventoryService = InventoryService();
 
@@ -199,12 +194,10 @@ class CreatureItemDialogs {
           String searchQuery = '';
 
           return AlertDialog(
-            backgroundColor: DnDTheme.stoneGrey,
+            backgroundColor: C.bg,
             title: Text(
               'Gegenstand aus Waffenkammer',
-              style: DnDTheme.headline2.copyWith(
-                color: DnDTheme.ancientGold,
-              ),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: C.amber),
             ),
             content: SizedBox(
               width: MediaQuery.of(context).size.width * 0.9,
@@ -220,22 +213,20 @@ class CreatureItemDialogs {
                     },
                     decoration: InputDecoration(
                       hintText: 'Gegenstände durchsuchen...',
-                      hintStyle: DnDTheme.bodyText2.copyWith(
-                        color: Colors.white60,
-                      ),
-                      prefixIcon: Icon(Icons.search, color: DnDTheme.ancientGold),
+                      hintStyle: TextStyle(fontSize: 12, color: C.textMid),
+                      prefixIcon: Icon(Icons.search, color: C.amber),
                       filled: true,
-                      fillColor: DnDTheme.slateGrey,
+                      fillColor: C.bgPanel,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                        borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
                       ),
-                      contentPadding: const EdgeInsets.all(DnDTheme.md),
+                      contentPadding: const EdgeInsets.all(16),
                     ),
-                    style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                    style: TextStyle(fontSize: 14, color: C.text),
                   ),
-                  const SizedBox(height: DnDTheme.md),
-                  
+                  const SizedBox(height: 16),
+
                   // Item-Liste
                   Expanded(
                     child: FutureBuilder<List<Item>>(
@@ -244,7 +235,7 @@ class CreatureItemDialogs {
                         if (snapshot.connectionState == ConnectionState.waiting) {
                           return Center(
                             child: CircularProgressIndicator(
-                              color: DnDTheme.ancientGold,
+                              color: C.amber,
                             ),
                           );
                         }
@@ -253,9 +244,7 @@ class CreatureItemDialogs {
                           return Center(
                             child: Text(
                               'Fehler beim Laden: ${snapshot.error}',
-                              style: DnDTheme.bodyText1.copyWith(
-                                color: DnDTheme.errorRed,
-                              ),
+                              style: TextStyle(fontSize: 14, color: C.red),
                             ),
                           );
                         }
@@ -270,9 +259,7 @@ class CreatureItemDialogs {
                           return Center(
                             child: Text(
                               'Keine Gegenstände gefunden',
-                              style: DnDTheme.bodyText1.copyWith(
-                                color: Colors.white60,
-                              ),
+                              style: TextStyle(fontSize: 14, color: C.textMid),
                             ),
                           );
                         }
@@ -299,9 +286,7 @@ class CreatureItemDialogs {
                 onPressed: () => Navigator.of(dialogContext).pop(),
                 child: Text(
                   'Abbrechen',
-                  style: DnDTheme.bodyText1.copyWith(
-                    color: DnDTheme.mysticalPurple,
-                  ),
+                  style: TextStyle(fontSize: 14, color: C.accent),
                 ),
               ),
             ],
@@ -317,6 +302,7 @@ class CreatureItemDialogs {
     EditCreatureViewModel viewModel,
     int index,
   ) {
+    final C = context.appColors;
     final inventory = viewModel.inventory;
     if (index < 0 || index >= inventory.length) return Future.value();
 
@@ -330,12 +316,10 @@ class CreatureItemDialogs {
     return showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
+        backgroundColor: C.bg,
         title: Text(
           'Gegenstand bearbeiten',
-          style: DnDTheme.headline2.copyWith(
-            color: DnDTheme.ancientGold,
-          ),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: C.amber),
         ),
         content: SingleChildScrollView(
           child: Column(
@@ -375,7 +359,7 @@ class CreatureItemDialogs {
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     ),
                   ),
-                  const SizedBox(width: DnDTheme.md),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: FormFieldWidget(
                       label: 'Wert (Gold)',
@@ -395,9 +379,7 @@ class CreatureItemDialogs {
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: Text(
               'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(
-                color: DnDTheme.mysticalPurple,
-              ),
+              style: TextStyle(fontSize: 14, color: C.accent),
             ),
           ),
           ElevatedButton(
@@ -415,8 +397,8 @@ class CreatureItemDialogs {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.ancientGold,
-              foregroundColor: DnDTheme.dungeonBlack,
+              backgroundColor: C.amber,
+              foregroundColor: C.bg,
             ),
             child: const Text('Speichern'),
           ),

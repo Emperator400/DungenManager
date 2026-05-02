@@ -500,7 +500,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.grey[400],
+                      color: C.textSoft,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -508,7 +508,7 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
                     'Füge Belohnungen hinzu, um Spieler zu motivieren',
                     style: TextStyle(
                       fontSize: 13,
-                      color: Colors.grey[500],
+                      color: C.textSoft,
                     ),
                   ),
                 ],
@@ -805,8 +805,8 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
               child: OutlinedButton(
                 onPressed: viewModel.isLoading ? null : () => _handleCancel(viewModel),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.grey[300],
-                  side: BorderSide(color: Colors.grey[600]!, width: 2),
+                  foregroundColor: C.textSoft,
+                  side: BorderSide(color: C.textMid, width: 2),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),

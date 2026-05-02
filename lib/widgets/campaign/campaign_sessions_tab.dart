@@ -8,6 +8,7 @@ import '../../models/session.dart';
 import '../../screens/session/edit_session_screen.dart';
 import '../../screens/session/active_session_screen.dart';
 import '../../viewmodels/active_session_viewmodel.dart';
+import '../../theme/app_theme.dart';
 
 class CampaignSessionsTab extends StatefulWidget {
   final Campaign campaign;
@@ -47,6 +48,7 @@ class CampaignSessionsTabState extends State<CampaignSessionsTab> {
 
   // NEUE METHODE: Zeigt einen Bestätigungs-Dialog und löscht die Sitzung
   Future<void> _deleteSession(Session session) async {
+    final C = context.appColors;
     final bool? confirm = await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -56,7 +58,7 @@ class CampaignSessionsTabState extends State<CampaignSessionsTab> {
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text("Abbrechen")),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text("Löschen", style: TextStyle(color: Colors.red)),
+            child: Text("Löschen", style: TextStyle(color: C.red)),
           ),
         ],
       ),
@@ -83,6 +85,7 @@ class CampaignSessionsTabState extends State<CampaignSessionsTab> {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return FutureBuilder<List<Session>>(
       future: _sessionsFuture,
       builder: (context, snapshot) {
@@ -129,9 +132,9 @@ class CampaignSessionsTabState extends State<CampaignSessionsTab> {
                       value: 'edit',
                       child: ListTile(leading: Icon(Icons.edit_note), title: Text('Planen')),
                     ),
-                    const PopupMenuItem<String>(
+                    PopupMenuItem<String>(
                       value: 'delete',
-                      child: ListTile(leading: Icon(Icons.delete_forever, color: Colors.red), title: Text('Löschen', style: TextStyle(color: Colors.red))),
+                      child: ListTile(leading: Icon(Icons.delete_forever, color: C.red), title: Text('Löschen', style: TextStyle(color: C.red))),
                     ),
                   ],
                 ),

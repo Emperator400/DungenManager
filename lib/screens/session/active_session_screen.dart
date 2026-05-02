@@ -17,7 +17,6 @@ import '../../database/repositories/encounter_model_repository.dart';
 import '../../database/repositories/encounter_participant_model_repository.dart';
 import '../../database/core/database_connection.dart';
 import '../../database/repositories/wiki_entry_model_repository.dart';
-import '../../theme/dnd_theme.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/audio/sound_player_widget.dart';
 import '../../widgets/active_session/live_notes_quadrant.dart';
@@ -661,14 +660,14 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                   _buildMetaChip(
                     icon: Icons.trending_up,
                     label: scene.complexityDisplayName,
-                    color: DnDTheme.mysticalPurple,
+                    color: C.accent,
                   ),
                 if (scene.estimatedDuration != null) ...[
                   const SizedBox(width: 6),
                   _buildMetaChip(
                     icon: Icons.schedule,
                     label: _formatDuration(scene.estimatedDuration!),
-                    color: DnDTheme.arcaneBlue,
+                    color: C.accent,
                   ),
                 ],
               ],
@@ -797,26 +796,27 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   // ─── ERROR WIDGET ─────────────────────────────────────────────────────────
 
   Widget _buildErrorWidget(String error) {
+    final C = context.appColors;
     return Center(
       child: Container(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline, color: DnDTheme.errorRed, size: 48),
+            Icon(Icons.error_outline, color: C.red, size: 48),
             const SizedBox(height: 16),
             Text(
               'Fehler',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: DnDTheme.errorRed,
+                color: C.red,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               error,
-              style: const TextStyle(fontSize: 13, color: Colors.black54),
+              style: TextStyle(fontSize: 13, color: C.textMid),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -828,7 +828,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
               icon: const Icon(Icons.refresh),
               label: const Text('Erneut versuchen'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: DnDTheme.arcaneBlue,
+                backgroundColor: C.accent,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -1031,16 +1031,17 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   }
 
   Color _getWikiEntryTypeColor(WikiEntryType type) {
+    final C = context.appColors;
     switch (type) {
-      case WikiEntryType.Person:    return DnDTheme.successGreen;
-      case WikiEntryType.Place:     return DnDTheme.arcaneBlue;
-      case WikiEntryType.Lore:      return DnDTheme.ancientGold;
-      case WikiEntryType.Faction:   return DnDTheme.mysticalPurple;
+      case WikiEntryType.Person:    return C.green;
+      case WikiEntryType.Place:     return C.accent;
+      case WikiEntryType.Lore:      return C.amber;
+      case WikiEntryType.Faction:   return C.accent;
       case WikiEntryType.Magic:     return const Color(0xFF7C3AED);
       case WikiEntryType.History:   return const Color(0xFFB45309);
-      case WikiEntryType.Item:      return DnDTheme.infoBlue;
-      case WikiEntryType.Quest:     return DnDTheme.successGreen;
-      case WikiEntryType.Creature:  return DnDTheme.errorRed;
+      case WikiEntryType.Item:      return C.accent;
+      case WikiEntryType.Quest:     return C.green;
+      case WikiEntryType.Creature:  return C.red;
     }
   }
 
@@ -1229,7 +1230,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Fehler beim Aktualisieren: $e'),
-            backgroundColor: DnDTheme.errorRed,
+            backgroundColor: context.appColors.red,
             duration: const Duration(seconds: 2),
           ),
         );
@@ -1304,18 +1305,16 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   // ─── SCENE OPTIONS ────────────────────────────────────────────────────────
 
   void _showSceneOptions(Scene scene) {
+    final C = context.appColors;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         decoration: BoxDecoration(
-          gradient: DnDTheme.getMysticalGradient(
-            startColor: DnDTheme.slateGrey,
-            endColor: DnDTheme.stoneGrey,
-          ),
+          color: C.bgPanel,
           borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(DnDTheme.radiusLarge),
-            topRight: Radius.circular(DnDTheme.radiusLarge),
+            topLeft: Radius.circular(16),
+            topRight: Radius.circular(16),
           ),
         ),
         child: SafeArea(
@@ -1323,24 +1322,22 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading:
-                    Icon(Icons.edit, color: DnDTheme.arcaneBlue, size: 20),
+                leading: Icon(Icons.edit, color: C.accent, size: 20),
                 title: Text(
                   'Bearbeiten',
-                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                  style: TextStyle(fontSize: 14, color: C.text),
                 ),
                 onTap: () {
                   Navigator.pop(context);
                   _showEditSceneDialog(scene);
                 },
               ),
-              Divider(color: DnDTheme.stoneGrey),
+              Divider(color: C.border),
               ListTile(
-                leading: Icon(Icons.arrow_upward,
-                    color: DnDTheme.arcaneBlue, size: 20),
+                leading: Icon(Icons.arrow_upward, color: C.accent, size: 20),
                 title: Text(
                   'Nach oben verschieben',
-                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                  style: TextStyle(fontSize: 14, color: C.text),
                 ),
                 onTap: () {
                   Navigator.pop(context);
@@ -1348,24 +1345,22 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                 },
               ),
               ListTile(
-                leading: Icon(Icons.arrow_downward,
-                    color: DnDTheme.arcaneBlue, size: 20),
+                leading: Icon(Icons.arrow_downward, color: C.accent, size: 20),
                 title: Text(
                   'Nach unten verschieben',
-                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                  style: TextStyle(fontSize: 14, color: C.text),
                 ),
                 onTap: () {
                   Navigator.pop(context);
                   _viewModel.moveSceneDown(scene.id);
                 },
               ),
-              Divider(color: DnDTheme.stoneGrey),
+              Divider(color: C.border),
               ListTile(
-                leading:
-                    Icon(Icons.delete, color: DnDTheme.errorRed, size: 20),
+                leading: Icon(Icons.delete, color: C.red, size: 20),
                 title: Text(
                   'Löschen',
-                  style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                  style: TextStyle(fontSize: 14, color: C.text),
                 ),
                 onTap: () {
                   Navigator.pop(context);
@@ -1471,24 +1466,25 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
   }
 
   void _showDeleteSceneConfirm(Scene scene) {
+    final C = context.appColors;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
+        backgroundColor: C.bg,
         title: Text(
           'Szene löschen?',
-          style: DnDTheme.headline3.copyWith(color: DnDTheme.errorRed),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: C.red),
         ),
         content: Text(
           'Möchtest du "${scene.name}" wirklich löschen?',
-          style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+          style: TextStyle(fontSize: 14, color: C.text),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(color: DnDTheme.mysticalPurple),
+              style: TextStyle(fontSize: 14, color: C.accent),
             ),
           ),
           ElevatedButton(
@@ -1497,7 +1493,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
               await _viewModel.deleteScene(scene.id);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.errorRed,
+              backgroundColor: C.red,
               foregroundColor: Colors.white,
             ),
             child: const Text('Löschen'),
@@ -1513,10 +1509,10 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     final activeSceneId = _viewModel.currentSession.activeSceneId;
     if (activeSceneId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bitte aktiviere zuerst eine Szene!'),
-          duration: Duration(seconds: 2),
-          backgroundColor: Colors.orange,
+        SnackBar(
+          content: const Text('Bitte aktiviere zuerst eine Szene!'),
+          duration: const Duration(seconds: 2),
+          backgroundColor: context.appColors.amber,
         ),
       );
       return;

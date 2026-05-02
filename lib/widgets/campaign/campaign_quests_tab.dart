@@ -9,7 +9,7 @@ import '../../screens/quests/edit_campaign_quest_screen.dart';
 import '../../screens/quests/quest_library_screen.dart';
 import '../../screens/quests/edit_quest_screen.dart';
 import '../../viewmodels/edit_quest_viewmodel.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 
 class CampaignQuestsTab extends StatefulWidget {
   final Campaign campaign;
@@ -39,15 +39,15 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
   Future<List<CampaignQuest>> _loadQuestsData() async {
     try {
       debugPrint('📋 [CampaignQuestsTab] Lade Quests für Kampagne: ${widget.campaign.id}');
-      
+
       // Lade alle Quests aus der Datenbank
       final allQuests = await _questRepository.findAll();
       debugPrint('📋 [CampaignQuestsTab] ${allQuests.length} Quests insgesamt gefunden');
-      
+
       // Filtere Quests, die zur Kampagne gehören
       final campaignQuests = allQuests.where((q) => q.campaignId == widget.campaign.id).toList();
       debugPrint('📋 [CampaignQuestsTab] ${campaignQuests.length} Quests für diese Kampagne gefunden');
-      
+
       // Konvertiere zu CampaignQuest Objekten
       return campaignQuests.map((q) => CampaignQuest(
         quest: q,
@@ -62,15 +62,16 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Scaffold(
-      backgroundColor: DnDTheme.dungeonBlack,
+      backgroundColor: C.bg,
       body: FutureBuilder<List<CampaignQuest>>(
         future: _campaignQuestsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
+            return Center(
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(DnDTheme.ancientGold),
+                valueColor: AlwaysStoppedAnimation<Color>(C.amber),
               ),
             );
           }
@@ -82,7 +83,7 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
                   Icon(
                     Icons.assignment_outlined,
                     size: 64,
-                    color: DnDTheme.arcaneBlue.withValues(alpha: 0.5),
+                    color: C.accent.withValues(alpha: 0.5),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -96,7 +97,7 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
               ),
             );
           }
-          
+
           final allQuests = snapshot.data!;
 
           // Logik zum Gruppieren der Quests nach Status
@@ -121,7 +122,7 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
             itemBuilder: (context, index) {
               final status = sortedStatuses[index];
               final questsInGroup = groupedQuests[status]!;
-              return _buildQuestGroup(status, questsInGroup);
+              return _buildQuestGroup(C, status, questsInGroup);
             },
           );
         },
@@ -135,7 +136,7 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
               heroTag: 'create_quest',
               icon: const Icon(Icons.add),
               label: const Text("Neue Quest erstellen"),
-              backgroundColor: DnDTheme.ancientGold,
+              backgroundColor: C.amber,
               foregroundColor: Colors.black87,
               onPressed: () => _createNewQuest(),
             ),
@@ -144,7 +145,7 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
               heroTag: 'add_from_library',
               icon: const Icon(Icons.library_add),
               label: const Text("Aus Bibliothek"),
-              backgroundColor: DnDTheme.arcaneBlue,
+              backgroundColor: C.accent,
               foregroundColor: Colors.white,
               onPressed: () {
                 Navigator.of(context).push(MaterialPageRoute(
@@ -175,13 +176,13 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
         ),
       ),
     );
-    
+
     // Quests neu laden nach der Erstellung
     _loadQuests();
   }
 
   // Helfer-Widget, um eine Gruppe von Quests anzuzeigen
-  Widget _buildQuestGroup(QuestStatus status, List<CampaignQuest> quests) {
+  Widget _buildQuestGroup(AppColorsExtension C, QuestStatus status, List<CampaignQuest> quests) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -190,17 +191,17 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            DnDTheme.stoneGrey.withValues(alpha: 0.9),
-            DnDTheme.dungeonBlack.withValues(alpha: 0.95),
+            C.bg.withValues(alpha: 0.9),
+            C.bg.withValues(alpha: 0.95),
           ],
         ),
         border: Border.all(
-          color: _getStatusColor(status).withValues(alpha: 0.6),
+          color: _getStatusColor(C, status).withValues(alpha: 0.6),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: _getStatusColor(status).withValues(alpha: 0.2),
+            color: _getStatusColor(C, status).withValues(alpha: 0.2),
             blurRadius: 8,
             spreadRadius: 2,
           ),
@@ -208,12 +209,12 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
       ),
       child: Theme(
         data: Theme.of(context).copyWith(
-          dividerColor: _getStatusColor(status).withValues(alpha: 0.2),
-          splashColor: _getStatusColor(status).withValues(alpha: 0.1),
+          dividerColor: _getStatusColor(C, status).withValues(alpha: 0.2),
+          splashColor: _getStatusColor(C, status).withValues(alpha: 0.1),
         ),
         child: ExpansionTile(
-          iconColor: _getStatusColor(status),
-          collapsedIconColor: _getStatusColor(status),
+          iconColor: _getStatusColor(C, status),
+          collapsedIconColor: _getStatusColor(C, status),
           title: Text(
             "${_getGermanStatusName(status)} (${quests.length})",
             style: TextStyle(
@@ -222,7 +223,7 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
               color: Colors.white,
               shadows: [
                 Shadow(
-                  color: _getStatusColor(status).withValues(alpha: 0.5),
+                  color: _getStatusColor(C, status).withValues(alpha: 0.5),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -244,7 +245,7 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
               decoration: BoxDecoration(
                 border: Border(
                   top: BorderSide(
-                    color: _getStatusColor(status).withValues(alpha: 0.2),
+                    color: _getStatusColor(C, status).withValues(alpha: 0.2),
                     width: 1,
                   ),
                 ),
@@ -257,13 +258,13 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        _getStatusColor(status).withValues(alpha: 0.3),
-                        _getStatusColor(status).withValues(alpha: 0.1),
+                        _getStatusColor(C, status).withValues(alpha: 0.3),
+                        _getStatusColor(C, status).withValues(alpha: 0.1),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: _getStatusColor(status).withValues(alpha: 0.5),
+                      color: _getStatusColor(C, status).withValues(alpha: 0.5),
                       width: 1,
                     ),
                   ),
@@ -271,7 +272,7 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
                     child: Text(
                       '${index + 1}',
                       style: TextStyle(
-                        color: _getStatusColor(status),
+                        color: _getStatusColor(C, status),
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
@@ -298,7 +299,7 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
                 trailing: Icon(
                   Icons.arrow_forward_ios,
                   size: 16,
-                  color: _getStatusColor(status),
+                  color: _getStatusColor(C, status),
                 ),
                 onTap: () {
                   Navigator.of(context).push(MaterialPageRoute(
@@ -313,18 +314,18 @@ class CampaignQuestsTabState extends State<CampaignQuestsTab> {
     );
   }
 
-  Color _getStatusColor(QuestStatus status) {
+  Color _getStatusColor(AppColorsExtension C, QuestStatus status) {
     switch (status) {
       case QuestStatus.active:
-        return DnDTheme.arcaneBlue;
+        return C.accent;
       case QuestStatus.onHold:
-        return DnDTheme.ancientGold;
+        return C.amber;
       case QuestStatus.completed:
-        return DnDTheme.successGreen;
+        return C.green;
       case QuestStatus.failed:
-        return DnDTheme.errorRed;
+        return C.red;
       case QuestStatus.abandoned:
-        return DnDTheme.stoneGrey;
+        return C.bg;
     }
   }
 

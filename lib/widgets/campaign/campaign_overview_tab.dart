@@ -6,6 +6,7 @@ import '../../screens/lore/lore_keeper_screen.dart';
 import '../../screens/quests/quest_library_screen.dart';
 import '../../screens/items/item_library_screen.dart';
 import '../../screens/audio/sound_library_screen.dart';
+import '../../theme/app_theme.dart';
 
 
 class CampaignOverviewTab extends StatelessWidget {
@@ -14,6 +15,7 @@ class CampaignOverviewTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return ListView(
       padding: const EdgeInsets.all(16.0),
       children: [
@@ -32,14 +34,14 @@ class CampaignOverviewTab extends StatelessWidget {
           ),
         ),
         const Padding(padding: EdgeInsets.symmetric(vertical: 16.0), child: Divider()),
-        Text("Globale Bibliotheken", style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey)),
+        Text("Globale Bibliotheken", style: Theme.of(context).textTheme.titleMedium?.copyWith(color: C.textMid)),
         const SizedBox(height: 8),
         _buildDashboardTile(context, Icons.book, "Bestiarium", "Alle Monster & NSCs", () => Navigator.of(context).push(MaterialPageRoute(builder: (ctx) => const BestiaryScreen()))),
         _buildDashboardTile(context, Icons.landscape, "Lore Keeper", "Orte, Gegenstände & Weltenwissen", () => Navigator.of(context).push(MaterialPageRoute(builder: (ctx) => const LoreKeeperScreen()))),
         _buildDashboardTile(context, Icons.flag, "Quest-Bibliothek", "Vorlagen für Quests", () => Navigator.of(context).push(MaterialPageRoute(builder: (ctx) => const QuestLibraryScreen()))),
         _buildDashboardTile(context, Icons.shield, "Ausrüstungskammer", "Alle Gegenstände verwalten", () => Navigator.of(context).push(MaterialPageRoute(builder: (ctx) => const ItemLibraryScreen()))),
         _buildDashboardTile(context, Icons.graphic_eq, "Sound-Bibliothek", "Musik & Effekte verwalten", () => Navigator.of(context).push(MaterialPageRoute(builder: (ctx) => const SoundLibraryScreen()))),
- 
+
       ],
     );
   }

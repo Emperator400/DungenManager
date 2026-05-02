@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../theme/dnd_theme.dart';
 import '../../../widgets/ui_components/forms/form_field_widget.dart';
 import '../../../widgets/ui_components/cards/section_card_widget.dart';
 
@@ -45,7 +44,7 @@ class CombatStatsSection extends StatelessWidget {
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 ),
               ),
-              const SizedBox(width: DnDTheme.md),
+              const SizedBox(width: 16),
               Expanded(
                 child: FormFieldWidget(
                   label: 'RK',
@@ -61,7 +60,7 @@ class CombatStatsSection extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: DnDTheme.md),
+          const SizedBox(height: 16),
           FormFieldWidget(
             label: 'Challenge Rating',
             value: challengeRating.toString(),

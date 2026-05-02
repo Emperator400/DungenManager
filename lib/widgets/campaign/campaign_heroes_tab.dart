@@ -7,7 +7,7 @@ import '../../models/player_character.dart';
 import '../../screens/characters/edit_pc_screen.dart';
 import '../character_list/enhanced_hero_card_widget.dart';
 import '../character_list/character_list_helpers.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 
 
 class CampaignHeroesTab extends StatefulWidget {
@@ -40,21 +40,21 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
 
   Future<List<PlayerCharacter>> _loadFilteredCharacters() async {
     final allPcs = await _pcRepository.findByCampaign(widget.campaign.id);
-    
+
     var filteredPcs = allPcs.where((pc) {
       final matchesSearch = _searchQuery.isEmpty ||
           pc.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           pc.className.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           pc.playerName.toLowerCase().contains(_searchQuery.toLowerCase());
-      
+
       final matchesFavorite = !_showFavoritesOnly || pc.isFavorite;
-      
+
       return matchesSearch && matchesFavorite;
     }).toList();
 
     // Sortierung anwenden
     filteredPcs.sort((a, b) => CharacterListHelpers.compareCharacters(a, b, _sortOption));
-    
+
     return filteredPcs;
   }
 
@@ -64,11 +64,12 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Column(
       children: [
         // Suchleiste und Filter
-        _buildSearchAndFilterBar(),
-        
+        _buildSearchAndFilterBar(C),
+
         // Heldenliste
         Expanded(
           child: FutureBuilder<List<PlayerCharacter>>(
@@ -77,11 +78,11 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Center(
                   child: CircularProgressIndicator(
-                    color: DnDTheme.ancientGold,
+                    color: C.amber,
                   ),
                 );
               }
-              
+
               if (!snapshot.hasData || snapshot.data!.isEmpty) {
                 return Center(
                   child: Column(
@@ -90,14 +91,14 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
                       Icon(
                         Icons.people_outline,
                         size: 64,
-                        color: DnDTheme.mysticalPurple.withValues(alpha: 0.6),
+                        color: C.accent.withValues(alpha: 0.6),
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        _searchQuery.isNotEmpty || _showFavoritesOnly 
+                        _searchQuery.isNotEmpty || _showFavoritesOnly
                             ? "Keine Helden gefunden, die den Filterkriterien entsprechen."
                             : "Keine Helden für diese Kampagne erstellt.",
-                        style: DnDTheme.bodyText1.copyWith(
+                        style: TextStyle(fontSize: 14, color: C.text).copyWith(
                           color: Colors.white70,
                         ),
                         textAlign: TextAlign.center,
@@ -109,7 +110,7 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
                         icon: const Icon(Icons.person_add),
                         label: const Text('Ersten Held erstellen'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: DnDTheme.successGreen,
+                          backgroundColor: C.green,
                           foregroundColor: Colors.white,
                         ),
                       ),
@@ -127,7 +128,7 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
                             icon: const Icon(Icons.clear),
                             label: const Text('Filter zurücksetzen'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: DnDTheme.arcaneBlue,
+                              backgroundColor: C.accent,
                               foregroundColor: Colors.white,
                             ),
                           ),
@@ -146,7 +147,7 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
     );
   }
 
-  Widget _buildSearchAndFilterBar() {
+  Widget _buildSearchAndFilterBar(AppColorsExtension C) {
     return Container(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -164,22 +165,22 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
                 style: TextStyle(fontSize: 16),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: DnDTheme.successGreen,
+                backgroundColor: C.green,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
           ),
-          
+
           // Suchleiste
           TextField(
             decoration: InputDecoration(
               hintText: 'Helden suchen...',
-              hintStyle: DnDTheme.bodyText2.copyWith(color: Colors.white54),
-              prefixIcon: Icon(Icons.search, color: DnDTheme.ancientGold),
+              hintStyle: TextStyle(fontSize: 12, color: C.textMid).copyWith(color: Colors.white54),
+              prefixIcon: Icon(Icons.search, color: C.amber),
               suffixIcon: _searchQuery.isNotEmpty
                   ? IconButton(
-                      icon: Icon(Icons.clear, color: DnDTheme.errorRed),
+                      icon: Icon(Icons.clear, color: C.red),
                       onPressed: () {
                         setState(() {
                           _searchQuery = '';
@@ -189,21 +190,21 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
                     )
                   : null,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                borderSide: BorderSide(color: DnDTheme.mysticalPurple),
+                borderRadius: BorderRadius.circular(12.0),
+                borderSide: BorderSide(color: C.accent),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                borderSide: BorderSide(color: DnDTheme.mysticalPurple.withValues(alpha: 0.5)),
+                borderRadius: BorderRadius.circular(12.0),
+                borderSide: BorderSide(color: C.accent.withValues(alpha: 0.5)),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
+                borderRadius: BorderRadius.circular(12.0),
+                borderSide: BorderSide(color: C.amber, width: 2),
               ),
               filled: true,
-              fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
+              fillColor: C.bgPanel.withValues(alpha: 0.3),
             ),
-            style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+            style: TextStyle(fontSize: 14, color: C.text).copyWith(color: Colors.white),
             onChanged: (value) {
               setState(() {
                 _searchQuery = value;
@@ -214,9 +215,9 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
               });
             },
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           // Filter-Row
           Row(
             children: [
@@ -225,7 +226,7 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
                 label: Text(
                   'Nur Favoriten',
                   style: TextStyle(
-                    color: _showFavoritesOnly ? Colors.white : DnDTheme.mysticalPurple,
+                    color: _showFavoritesOnly ? Colors.white : C.accent,
                   ),
                 ),
                 selected: _showFavoritesOnly,
@@ -235,37 +236,37 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
                   });
                   _refreshPcList();
                 },
-                backgroundColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
-                selectedColor: DnDTheme.ancientGold,
+                backgroundColor: C.bgPanel.withValues(alpha: 0.3),
+                selectedColor: C.amber,
                 checkmarkColor: Colors.white,
-                avatar: _showFavoritesOnly 
+                avatar: _showFavoritesOnly
                     ? Icon(Icons.star, size: 16, color: Colors.white)
-                    : Icon(Icons.star_border, size: 16, color: DnDTheme.mysticalPurple),
+                    : Icon(Icons.star_border, size: 16, color: C.accent),
               ),
-              
+
               const SizedBox(width: 12),
-              
+
               // Sortierung
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                    borderRadius: BorderRadius.circular(8.0),
                     border: Border.all(
-                      color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
+                      color: C.accent.withValues(alpha: 0.5),
                     ),
                   ),
                   child: DropdownButtonFormField<SortOption>(
                     value: _sortOption,
                     decoration: InputDecoration(
                       labelText: 'Sortieren nach',
-                      labelStyle: DnDTheme.bodyText2.copyWith(
-                        color: DnDTheme.ancientGold,
+                      labelStyle: TextStyle(fontSize: 12, color: C.textMid).copyWith(
+                        color: C.amber,
                       ),
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),
-                    dropdownColor: DnDTheme.stoneGrey,
-                    style: DnDTheme.bodyText2.copyWith(color: Colors.white),
+                    dropdownColor: C.bg,
+                    style: TextStyle(fontSize: 12, color: C.textMid).copyWith(color: Colors.white),
                     items: SortOption.values.map((option) {
                       return DropdownMenuItem(
                         value: option,
@@ -387,18 +388,18 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
 
       await _pcRepository.create(duplicatedPc);
       _refreshPcList();
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('${pc.name} wurde dupliziert'),
-          backgroundColor: DnDTheme.successGreen,
+          backgroundColor: context.appColors.green,
         ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Fehler beim Duplizieren: $e'),
-          backgroundColor: DnDTheme.errorRed,
+          backgroundColor: context.appColors.red,
         ),
       );
     }
@@ -413,18 +414,19 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Fehler beim Aktualisieren des Favoriten: $e'),
-          backgroundColor: DnDTheme.errorRed,
+          backgroundColor: context.appColors.red,
         ),
       );
     }
   }
 
   void _showQuickActions(BuildContext context, PlayerCharacter pc) {
+    final C = context.appColors;
     showModalBottomSheet(
       context: context,
-      backgroundColor: DnDTheme.stoneGrey,
+      backgroundColor: C.bg,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(DnDTheme.radiusMedium)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12.0)),
       ),
       builder: (context) => Container(
         padding: const EdgeInsets.all(16.0),
@@ -434,16 +436,16 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
           children: [
             Text(
               'Aktionen für ${pc.name}',
-              style: DnDTheme.headline3.copyWith(
-                color: DnDTheme.ancientGold,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: C.text).copyWith(
+                color: C.amber,
               ),
             ),
             const SizedBox(height: 16),
             ListTile(
-              leading: Icon(Icons.edit, color: DnDTheme.arcaneBlue),
+              leading: Icon(Icons.edit, color: C.accent),
               title: Text(
                 'Bearbeiten',
-                style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                style: TextStyle(fontSize: 14, color: C.text).copyWith(color: Colors.white),
               ),
               onTap: () {
                 Navigator.pop(context);
@@ -453,11 +455,11 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
             ListTile(
               leading: Icon(
                 pc.isFavorite ? Icons.star : Icons.star_border,
-                color: pc.isFavorite ? DnDTheme.ancientGold : DnDTheme.mysticalPurple,
+                color: pc.isFavorite ? C.amber : C.accent,
               ),
               title: Text(
                 pc.isFavorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen',
-                style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                style: TextStyle(fontSize: 14, color: C.text).copyWith(color: Colors.white),
               ),
               onTap: () {
                 Navigator.pop(context);
@@ -465,10 +467,10 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
               },
             ),
             ListTile(
-              leading: Icon(Icons.copy, color: DnDTheme.infoBlue),
+              leading: Icon(Icons.copy, color: C.accent),
               title: Text(
                 'Duplizieren',
-                style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                style: TextStyle(fontSize: 14, color: C.text).copyWith(color: Colors.white),
               ),
               onTap: () {
                 Navigator.pop(context);
@@ -476,10 +478,10 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
               },
             ),
             ListTile(
-              leading: Icon(Icons.delete, color: DnDTheme.errorRed),
+              leading: Icon(Icons.delete, color: C.red),
               title: Text(
                 'Löschen',
-                style: DnDTheme.bodyText1.copyWith(color: DnDTheme.errorRed),
+                style: TextStyle(fontSize: 14, color: C.text).copyWith(color: C.red),
               ),
               onTap: () {
                 Navigator.pop(context);
@@ -493,24 +495,25 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
   }
 
   void _showDeleteConfirmation(BuildContext context, PlayerCharacter pc) {
+    final C = context.appColors;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
+        backgroundColor: C.bg,
         title: Text(
           'Löschen bestätigen',
-          style: DnDTheme.headline3.copyWith(color: DnDTheme.errorRed),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: C.text).copyWith(color: C.red),
         ),
         content: Text(
           'Möchtest du ${pc.name} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
-          style: DnDTheme.bodyText1.copyWith(color: Colors.white70),
+          style: TextStyle(fontSize: 14, color: C.text).copyWith(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(color: DnDTheme.mysticalPurple),
+              style: TextStyle(fontSize: 14, color: C.text).copyWith(color: C.accent),
             ),
           ),
           ElevatedButton(
@@ -522,20 +525,20 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('${pc.name} wurde gelöscht'),
-                    backgroundColor: DnDTheme.successGreen,
+                    backgroundColor: context.appColors.green,
                   ),
                 );
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Fehler beim Löschen: $e'),
-                    backgroundColor: DnDTheme.errorRed,
+                    backgroundColor: context.appColors.red,
                   ),
                 );
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.errorRed,
+              backgroundColor: C.red,
               foregroundColor: Colors.white,
             ),
             child: const Text('Löschen'),

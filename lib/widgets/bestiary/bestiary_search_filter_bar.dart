@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 import '../../viewmodels/bestiary_viewmodel.dart';
 
 /// Such- und Filterleiste für das Bestiarum
@@ -14,18 +14,16 @@ class BestiarySearchFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Consumer<BestiaryViewModel>(
       builder: (context, viewModel, child) {
         return Container(
-          padding: const EdgeInsets.all(DnDTheme.md),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            gradient: DnDTheme.getMysticalGradient(
-              startColor: DnDTheme.stoneGrey,
-              endColor: DnDTheme.slateGrey,
-            ),
+            color: C.bgPanel,
             border: Border(
               bottom: BorderSide(
-                color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+                color: C.accent.withValues(alpha: 0.3),
                 width: 1,
               ),
             ),
@@ -38,13 +36,11 @@ class BestiarySearchFilterBar extends StatelessWidget {
                 controller: searchController,
                 decoration: InputDecoration(
                   hintText: 'Kreaturen suchen...',
-                  hintStyle: DnDTheme.bodyText2.copyWith(
-                    color: Colors.white54,
-                  ),
-                  prefixIcon: Icon(Icons.search, color: DnDTheme.ancientGold),
+                  hintStyle: TextStyle(fontSize: 12, color: C.textSoft),
+                  prefixIcon: Icon(Icons.search, color: C.amber),
                   suffixIcon: viewModel.searchQuery.isNotEmpty
                       ? IconButton(
-                          icon: Icon(Icons.clear, color: DnDTheme.errorRed),
+                          icon: Icon(Icons.clear, color: C.red),
                           onPressed: () {
                             viewModel.updateSearchQuery('');
                             searchController.clear();
@@ -52,30 +48,30 @@ class BestiarySearchFilterBar extends StatelessWidget {
                         )
                       : null,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                    borderSide: BorderSide(color: DnDTheme.mysticalPurple),
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: C.accent),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+                    borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: DnDTheme.mysticalPurple.withValues(alpha: 0.5),
+                      color: C.accent.withValues(alpha: 0.5),
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-                    borderSide: BorderSide(color: DnDTheme.ancientGold, width: 2),
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: C.amber, width: 2),
                   ),
                   filled: true,
-                  fillColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
+                  fillColor: C.bgActive.withValues(alpha: 0.3),
                 ),
-                style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+                style: TextStyle(fontSize: 14, color: C.text),
                 onChanged: (value) {
                   viewModel.updateSearchQuery(value);
                 },
               ),
-              
-              const SizedBox(height: DnDTheme.sm),
-              
+
+              const SizedBox(height: 8),
+
               // Filter-Chips
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -85,25 +81,25 @@ class BestiarySearchFilterBar extends StatelessWidget {
                       label: 'Alle',
                       isSelected: viewModel.selectedSourceType == 'all',
                       onSelected: (selected) => viewModel.updateSourceTypeFilter('all'),
-                      color: DnDTheme.mysticalPurple,
+                      color: C.accent,
                     ),
                     BestiaryFilterChip(
                       label: 'Eigene',
                       isSelected: viewModel.selectedSourceType == 'custom',
                       onSelected: (selected) => viewModel.updateSourceTypeFilter('custom'),
-                      color: DnDTheme.successGreen,
+                      color: C.green,
                     ),
                     BestiaryFilterChip(
                       label: 'Offiziell',
                       isSelected: viewModel.selectedSourceType == 'official',
                       onSelected: (selected) => viewModel.updateSourceTypeFilter('official'),
-                      color: DnDTheme.arcaneBlue,
+                      color: C.accent,
                     ),
                     BestiaryFilterChip(
                       label: 'Favoriten',
                       isSelected: viewModel.showFavoritesOnly,
                       onSelected: (selected) => viewModel.updateFavoritesFilter(selected),
-                      color: DnDTheme.ancientGold,
+                      color: C.amber,
                     ),
                   ],
                 ),
@@ -133,19 +129,21 @@ class BestiaryFilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Padding(
-      padding: const EdgeInsets.only(right: DnDTheme.xs),
+      padding: const EdgeInsets.only(right: 4),
       child: FilterChip(
         label: Text(
           label,
-          style: DnDTheme.bodyText2.copyWith(
+          style: TextStyle(
+            fontSize: 12,
             color: isSelected ? Colors.white : color,
             fontWeight: FontWeight.w600,
           ),
         ),
         selected: isSelected,
         onSelected: onSelected,
-        backgroundColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
+        backgroundColor: C.bgActive.withValues(alpha: 0.3),
         selectedColor: color,
         checkmarkColor: Colors.white,
         side: BorderSide(

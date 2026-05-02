@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../theme/dnd_theme.dart';
+import '../../../theme/app_theme.dart';
 import '../../../widgets/ui_components/forms/form_field_widget.dart';
 import '../../../widgets/ui_components/cards/section_card_widget.dart';
 import 'creature_category_enum.dart';
@@ -29,6 +29,7 @@ class CreatureTypeSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     // Finde den aktuellen Kreaturentyp
     CreatureCategory? selectedCategory;
     if (type != null && type!.isNotEmpty) {
@@ -51,41 +52,42 @@ class CreatureTypeSection extends StatelessWidget {
           // Kreaturentyp-Dropdown
           Text(
             'Kreaturentyp',
-            style: DnDTheme.bodyText2.copyWith(
-              color: Colors.white70,
+            style: TextStyle(
               fontSize: 12,
+              color: C.textMid,
             ),
           ),
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
-              color: DnDTheme.slateGrey,
-              borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+              color: C.bgPanel,
+              borderRadius: BorderRadius.circular(12),
             ),
             child: DropdownButtonFormField<CreatureCategory?>(
               value: selectedCategory,
               decoration: InputDecoration(
                 prefixIcon: Icon(
                   selectedCategory?.icon ?? Icons.category,
-                  color: DnDTheme.ancientGold,
+                  color: C.amber,
                   size: 32,
                 ),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.all(12),
                 hintText: 'Typ auswählen...',
-                hintStyle: DnDTheme.bodyText2.copyWith(color: Colors.white60),
+                hintStyle: TextStyle(fontSize: 12, color: C.textMid),
               ),
-              style: DnDTheme.bodyText1.copyWith(color: Colors.white),
-              dropdownColor: DnDTheme.stoneGrey,
+              style: TextStyle(fontSize: 14, color: C.text),
+              dropdownColor: C.bg,
               selectedItemBuilder: (context) => [
                 Text(
                   'Kein Typ ausgewählt',
-                  style: DnDTheme.bodyText2.copyWith(color: Colors.white60),
+                  style: TextStyle(fontSize: 12, color: C.textMid),
                 ),
                 ...CreatureCategory.values.map((category) => Text(
                   category.displayName,
-                  style: DnDTheme.bodyText1.copyWith(
-                    color: Colors.white,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: C.text,
                     fontWeight: FontWeight.bold,
                   ),
                 )),
@@ -95,7 +97,7 @@ class CreatureTypeSection extends StatelessWidget {
                   value: null,
                   child: Text(
                     'Kein Typ ausgewählt',
-                    style: DnDTheme.bodyText2.copyWith(color: Colors.white60),
+                    style: TextStyle(fontSize: 12, color: C.textMid),
                   ),
                 ),
                 ...CreatureCategory.values.map((category) {
@@ -115,16 +117,17 @@ class CreatureTypeSection extends StatelessWidget {
                             children: [
                               Text(
                                 category.displayName,
-                                style: DnDTheme.bodyText1.copyWith(
-                                  color: const Color.fromARGB(255, 255, 255, 255),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: C.text,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                               Text(
                                 category.description,
-                                style: DnDTheme.bodyText2.copyWith(
-                                  color: Colors.white60,
+                                style: TextStyle(
                                   fontSize: 11,
+                                  color: C.textMid,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -136,7 +139,7 @@ class CreatureTypeSection extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: isNpc ? DnDTheme.arcaneBlue : DnDTheme.errorRed,
+                            color: isNpc ? C.accent : C.red,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -163,33 +166,33 @@ class CreatureTypeSection extends StatelessWidget {
               },
             ),
           ),
-          const SizedBox(height: DnDTheme.md),
-          
+          const SizedBox(height: 16),
+
           // Info-Text
           if (selectedCategory != null)
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: (selectedCategory == CreatureCategory.humanoid 
-                    ? DnDTheme.arcaneBlue 
-                    : DnDTheme.errorRed).withValues(alpha: 0.1),
+                color: (selectedCategory == CreatureCategory.humanoid
+                    ? C.accent
+                    : C.red).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: selectedCategory == CreatureCategory.humanoid 
-                      ? DnDTheme.arcaneBlue 
-                      : DnDTheme.errorRed,
+                  color: selectedCategory == CreatureCategory.humanoid
+                      ? C.accent
+                      : C.red,
                   width: 1,
                 ),
               ),
               child: Row(
                 children: [
                   Icon(
-                    selectedCategory == CreatureCategory.humanoid 
-                        ? Icons.person 
+                    selectedCategory == CreatureCategory.humanoid
+                        ? Icons.person
                         : Icons.pets,
-                    color: selectedCategory == CreatureCategory.humanoid 
-                        ? DnDTheme.arcaneBlue 
-                        : DnDTheme.errorRed,
+                    color: selectedCategory == CreatureCategory.humanoid
+                        ? C.accent
+                        : C.red,
                     size: 16,
                   ),
                   const SizedBox(width: 8),
@@ -198,17 +201,17 @@ class CreatureTypeSection extends StatelessWidget {
                       selectedCategory == CreatureCategory.humanoid
                           ? 'Wird im NPC-Tab der Szenen-Auswahl angezeigt'
                           : 'Wird im Monster-Tab der Szenen-Auswahl angezeigt',
-                      style: DnDTheme.bodyText2.copyWith(
-                        color: Colors.white70,
+                      style: TextStyle(
                         fontSize: 12,
+                        color: C.textMid,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-          const SizedBox(height: DnDTheme.md),
-          
+          const SizedBox(height: 16),
+
           // Restliche Felder
           FormFieldWidget(
             label: 'Subtyp',
@@ -216,14 +219,14 @@ class CreatureTypeSection extends StatelessWidget {
             onChanged: (value) => onSubtypeChanged(value.isEmpty ? null : value),
             icon: Icons.layers,
           ),
-          const SizedBox(height: DnDTheme.md),
+          const SizedBox(height: 16),
           FormFieldWidget(
             label: 'Größe',
             value: size ?? '',
             onChanged: onSizeChanged,
             icon: Icons.straighten,
           ),
-          const SizedBox(height: DnDTheme.md),
+          const SizedBox(height: 16),
           FormFieldWidget(
             label: 'Ausrichtung',
             value: alignment ?? '',

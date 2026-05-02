@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/quest.dart';
 import '../../services/quest_helper_service.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 
 /// Modernisiertes QuestCardWidget mit ViewModel-Integration
 /// 
@@ -31,10 +31,11 @@ class EnhancedQuestCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       elevation: isSelected ? 8 : 2,
-      color: isSelected ? DnDTheme.ancientGold.withValues(alpha: 0.1) : null,
+      color: isSelected ? C.amber.withValues(alpha: 0.1) : null,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -44,26 +45,26 @@ class EnhancedQuestCardWidget extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header mit Titel und Aktionen
-              _buildHeader(),
+              _buildHeader(context),
               const SizedBox(height: 8),
-              
+
               // Beschreibung
-              _buildDescription(),
+              _buildDescription(context),
               const SizedBox(height: 8),
-              
+
               // Meta-Informationen Row
-              _buildMetaInfoRow(),
-              
+              _buildMetaInfoRow(context),
+
               // Tags Row
               if (QuestHelperService.getHasTags(quest)) ...[
                 const SizedBox(height: 8),
-                _buildTagsRow(),
+                _buildTagsRow(context),
               ],
-              
+
               // Belohnungen und NPCs (wenn vorhanden)
               if (QuestHelperService.getHasRewards(quest) || QuestHelperService.getHasNpcs(quest)) ...[
                 const SizedBox(height: 8),
-                _buildRewardsAndNpcsRow(),
+                _buildRewardsAndNpcsRow(context),
               ],
             ],
           ),
@@ -73,13 +74,13 @@ class EnhancedQuestCardWidget extends StatelessWidget {
   }
 
   /// Baut den Header mit Titel und Aktionen
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     return Row(
       children: [
         // Quest-Icon basierend auf Typ
-        _buildQuestTypeIcon(),
+        _buildQuestTypeIcon(context),
         const SizedBox(width: 12),
-        
+
         // Titel und Typ
         Expanded(
           child: Column(
@@ -99,14 +100,14 @@ class EnhancedQuestCardWidget extends StatelessWidget {
                 QuestHelperService.getQuestTypeDisplayName(quest),
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey[600],
+                  color: context.appColors.textMid,
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
         ),
-        
+
         // Custom trailing (für Checkbox etc.)
         if (customTrailing != null)
           customTrailing!
@@ -116,12 +117,12 @@ class EnhancedQuestCardWidget extends StatelessWidget {
             IconButton(
               icon: Icon(
                 quest.isFavorite ? Icons.star : Icons.star_border,
-                color: quest.isFavorite ? Colors.amber : Colors.grey,
+                color: quest.isFavorite ? context.appColors.amber : context.appColors.textMid,
               ),
               onPressed: onToggleFavorite,
               tooltip: quest.isFavorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen',
             ),
-          
+
           // More-Options-Button
           if ((onEdit != null || onDelete != null) && showActions)
             _buildMoreOptionsButton(),
@@ -131,28 +132,28 @@ class EnhancedQuestCardWidget extends StatelessWidget {
   }
 
   /// Baut das Quest-Typ Icon
-  Widget _buildQuestTypeIcon() {
+  Widget _buildQuestTypeIcon(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: _getQuestTypeColor().withValues(alpha: 0.2),
+        color: _getQuestTypeColor(context).withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Icon(
         _getQuestTypeIcon(),
-        color: _getQuestTypeColor(),
+        color: _getQuestTypeColor(context),
         size: 20,
       ),
     );
   }
 
   /// Baut die Beschreibung
-  Widget _buildDescription() {
+  Widget _buildDescription(BuildContext context) {
     return Text(
       quest.description,
       style: TextStyle(
         fontSize: 14,
-        color: Colors.grey[700],
+        color: context.appColors.textMid,
       ),
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
@@ -160,51 +161,53 @@ class EnhancedQuestCardWidget extends StatelessWidget {
   }
 
   /// Baut die Meta-Informationen Row
-  Widget _buildMetaInfoRow() {
+  Widget _buildMetaInfoRow(BuildContext context) {
+    final C = context.appColors;
     return Row(
       children: [
         // Schwierigkeitsgrad
         _buildInfoChip(
           icon: Icons.bolt,
           label: QuestHelperService.getDifficultyDisplayName(quest),
-          color: _getDifficultyColor(),
+          color: _getDifficultyColor(context),
         ),
-        
+
         const SizedBox(width: 8),
-        
+
         // Level-Empfehlung
         if (quest.recommendedLevel != null)
           _buildInfoChip(
             icon: Icons.signal_cellular_alt,
             label: 'Level ${quest.recommendedLevel}',
-            color: Colors.blue,
+            color: C.accent,
           ),
-        
+
         const SizedBox(width: 8),
-        
+
         // Geschätzte Dauer
         if (quest.estimatedDurationHours != null)
           _buildInfoChip(
             icon: Icons.schedule,
             label: '${quest.estimatedDurationHours}h',
-            color: Colors.orange,
+            color: C.amber,
           ),
-        
+
         const Spacer(),
-        
+
         // Location
         if (quest.location != null && quest.location!.isNotEmpty)
           _buildInfoChip(
             icon: Icons.location_on,
             label: quest.location!,
-            color: Colors.green,
+            color: C.green,
           ),
       ],
     );
   }
 
   /// Baut die Tags Row
-  Widget _buildTagsRow() {
+  Widget _buildTagsRow(BuildContext context) {
+    final C = context.appColors;
     return Wrap(
       spacing: 4,
       runSpacing: 4,
@@ -212,17 +215,17 @@ class EnhancedQuestCardWidget extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: DnDTheme.ancientGold.withValues(alpha: 0.1),
+            color: C.amber.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: DnDTheme.ancientGold.withValues(alpha: 0.3),
+              color: C.amber.withValues(alpha: 0.3),
             ),
           ),
           child: Text(
             tag,
             style: TextStyle(
               fontSize: 10,
-              color: DnDTheme.ancientGold,
+              color: C.amber,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -232,33 +235,34 @@ class EnhancedQuestCardWidget extends StatelessWidget {
   }
 
   /// Baut die Belohnungen und NPCs Row
-  Widget _buildRewardsAndNpcsRow() {
+  Widget _buildRewardsAndNpcsRow(BuildContext context) {
+    final C = context.appColors;
     return Row(
       children: [
         if (QuestHelperService.getHasRewards(quest)) ...[
-          Icon(Icons.card_giftcard, size: 14, color: Colors.amber[700]),
+          Icon(Icons.card_giftcard, size: 14, color: C.amber),
           const SizedBox(width: 4),
           Text(
             '${quest.rewards.length} Belohnungen',
             style: TextStyle(
               fontSize: 11,
-              color: Colors.amber[700],
+              color: C.amber,
               fontWeight: FontWeight.w500,
             ),
           ),
         ],
-        
+
         if (QuestHelperService.getHasRewards(quest) && QuestHelperService.getHasNpcs(quest))
           const SizedBox(width: 12),
-        
+
         if (QuestHelperService.getHasNpcs(quest)) ...[
-          Icon(Icons.people, size: 14, color: Colors.purple[700]),
+          Icon(Icons.people, size: 14, color: C.accent),
           const SizedBox(width: 4),
           Text(
             '${quest.involvedNpcs.length} NPCs',
             style: TextStyle(
               fontSize: 11,
-              color: Colors.purple[700],
+              color: C.accent,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -293,14 +297,16 @@ class EnhancedQuestCardWidget extends StatelessWidget {
             ),
           ),
         if (onDelete != null)
-          const PopupMenuItem(
+          PopupMenuItem(
             value: 'delete',
-            child: Row(
-              children: [
-                Icon(Icons.delete, color: Colors.red, size: 18),
-                SizedBox(width: 8),
-                Text('Löschen', style: TextStyle(color: Colors.red)),
-              ],
+            child: Builder(
+              builder: (context) => Row(
+                children: [
+                  Icon(Icons.delete, color: context.appColors.red, size: 18),
+                  const SizedBox(width: 8),
+                  Text('Löschen', style: TextStyle(color: context.appColors.red)),
+                ],
+              ),
             ),
           ),
       ],
@@ -338,16 +344,17 @@ class EnhancedQuestCardWidget extends StatelessWidget {
   }
 
   /// Gibt die Farbe für den Quest-Typ zurück
-  Color _getQuestTypeColor() {
+  Color _getQuestTypeColor(BuildContext context) {
+    final C = context.appColors;
     switch (quest.questType) {
       case QuestType.main:
-        return Colors.red;
+        return C.red;
       case QuestType.side:
-        return Colors.blue;
+        return C.accent;
       case QuestType.personal:
-        return Colors.purple;
+        return C.accent;
       case QuestType.faction:
-        return Colors.green;
+        return C.green;
     }
   }
 
@@ -366,20 +373,21 @@ class EnhancedQuestCardWidget extends StatelessWidget {
   }
 
   /// Gibt die Farbe für die Schwierigkeit zurück
-  Color _getDifficultyColor() {
+  Color _getDifficultyColor(BuildContext context) {
+    final C = context.appColors;
     switch (quest.difficulty) {
       case QuestDifficulty.easy:
-        return Colors.green;
+        return C.green;
       case QuestDifficulty.medium:
-        return Colors.yellow[700]!;
+        return C.amber;
       case QuestDifficulty.hard:
-        return Colors.orange;
+        return C.amber;
       case QuestDifficulty.deadly:
-        return Colors.red;
+        return C.red;
       case QuestDifficulty.epic:
-        return Colors.purple;
+        return C.accent;
       case QuestDifficulty.legendary:
-        return Colors.amber;
+        return C.amber;
     }
   }
 }

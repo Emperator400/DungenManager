@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../theme/dnd_theme.dart';
 import '../../../widgets/ui_components/forms/form_field_widget.dart';
 import '../../../widgets/ui_components/cards/section_card_widget.dart';
 
@@ -41,7 +40,7 @@ class BasicInfoSection extends StatelessWidget {
             },
             icon: Icons.pets,
           ),
-          const SizedBox(height: DnDTheme.md),
+          const SizedBox(height: 16),
           FormFieldWidget(
             label: 'Beschreibung',
             value: description ?? '',
@@ -49,7 +48,7 @@ class BasicInfoSection extends StatelessWidget {
             icon: Icons.description,
             maxLines: 3,
           ),
-          const SizedBox(height: DnDTheme.md),
+          const SizedBox(height: 16),
           FormFieldWidget(
             label: 'Geschwindigkeit',
             value: speed,

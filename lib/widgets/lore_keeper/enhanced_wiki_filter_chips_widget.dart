@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/wiki_entry.dart';
 import '../../viewmodels/wiki_viewmodel.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 
 /// Enhanced Wiki Filter Chips Widget mit Enhanced Design und ViewModel-Integration
 class EnhancedWikiFilterChipsWidget extends StatelessWidget {
@@ -16,44 +16,47 @@ class EnhancedWikiFilterChipsWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildTypeFilters(context),
-        const SizedBox(height: DnDTheme.sm),
-        _buildScopeFilters(context),
-        const SizedBox(height: DnDTheme.sm),
+        _buildTypeFilters(context, C),
+        const SizedBox(height: 8),
+        _buildScopeFilters(context, C),
+        const SizedBox(height: 8),
         if (viewModel.availableTags.isNotEmpty) ...[
-          _buildTagFilters(context),
-          const SizedBox(height: DnDTheme.sm),
+          _buildTagFilters(context, C),
+          const SizedBox(height: 8),
         ],
         if (viewModel.hasActiveFilters) ...[
-          _buildClearFiltersButton(context),
-          const SizedBox(height: DnDTheme.sm),
+          _buildClearFiltersButton(context, C),
+          const SizedBox(height: 8),
         ],
       ],
     );
   }
 
-  Widget _buildTypeFilters(BuildContext context) {
+  Widget _buildTypeFilters(BuildContext context, AppColorsExtension C) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Typ filtern',
-          style: DnDTheme.bodyText2.copyWith(
+          style: TextStyle(
+            fontSize: 12,
+            color: C.amber,
             fontWeight: FontWeight.w600,
-            color: DnDTheme.ancientGold,
           ),
         ),
-        const SizedBox(height: DnDTheme.xs),
+        const SizedBox(height: 4),
         Wrap(
-          spacing: DnDTheme.xs,
-          runSpacing: DnDTheme.xs,
+          spacing: 4,
+          runSpacing: 4,
           children: [
-            _buildTypeChip(context, null, 'Alle'),
+            _buildTypeChip(context, C, null, 'Alle'),
             ...WikiEntryType.values.map((type) => _buildTypeChip(
               context,
+              C,
               type,
               _getTypeDisplayName(type),
               count: viewModel.entryTypeCounts[type] ?? 0,
@@ -66,20 +69,22 @@ class EnhancedWikiFilterChipsWidget extends StatelessWidget {
 
   Widget _buildTypeChip(
     BuildContext context,
+    AppColorsExtension C,
     WikiEntryType? type,
     String label, {
     int? count,
   }) {
     final isSelected = viewModel.selectedType == type;
     final hasEntries = count == null || count > 0;
-    final chipColor = type == null ? Colors.white : _getTypeColor(type);
-    
+    final chipColor = type == null ? C.text : _getTypeColor(type, C);
+
     return FilterChip(
       label: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: DnDTheme.caption.copyWith(
-            color: isSelected ? chipColor : Colors.white70,
+          Text(label, style: TextStyle(
+            fontSize: 11,
+            color: isSelected ? chipColor : C.textMid,
           )),
           if (count != null) ...[
             const SizedBox(width: 4),
@@ -91,10 +96,10 @@ class EnhancedWikiFilterChipsWidget extends StatelessWidget {
               ),
               child: Text(
                 count.toString(),
-                style: DnDTheme.caption.copyWith(
+                style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w500,
-                  color: isSelected ? Colors.white : Colors.white70,
+                  color: isSelected ? Colors.white : C.textMid,
                 ),
               ),
             ),
@@ -105,59 +110,62 @@ class EnhancedWikiFilterChipsWidget extends StatelessWidget {
       onSelected: hasEntries ? (selected) {
         viewModel.setTypeFilter(selected ? type : null);
       } : null,
-      backgroundColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
+      backgroundColor: C.bgPanel.withValues(alpha: 0.3),
       selectedColor: chipColor.withValues(alpha: 0.2),
       checkmarkColor: chipColor,
-      disabledColor: DnDTheme.slateGrey.withValues(alpha: 0.1),
+      disabledColor: C.bgPanel.withValues(alpha: 0.1),
       side: BorderSide(
-        color: isSelected ? chipColor : DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+        color: isSelected ? chipColor : C.accent.withValues(alpha: 0.3),
         width: 1,
       ),
-      labelStyle: DnDTheme.caption.copyWith(
-        color: isSelected ? chipColor : Colors.white70,
+      labelStyle: TextStyle(
+        fontSize: 11,
+        color: isSelected ? chipColor : C.textMid,
         fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
       ),
     );
   }
 
-  Widget _buildScopeFilters(BuildContext context) {
+  Widget _buildScopeFilters(BuildContext context, AppColorsExtension C) {
     return Row(
       children: [
         Expanded(
           child: FilterChip(
-            label: Text('Global', style: DnDTheme.caption),
+            label: Text('Global', style: TextStyle(fontSize: 11, color: C.textMid)),
             selected: viewModel.showGlobalOnly,
             onSelected: (selected) => viewModel.toggleGlobalOnly(),
-            backgroundColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
-            selectedColor: DnDTheme.arcaneBlue.withValues(alpha: 0.2),
-            checkmarkColor: DnDTheme.arcaneBlue,
+            backgroundColor: C.bgPanel.withValues(alpha: 0.3),
+            selectedColor: C.accent.withValues(alpha: 0.2),
+            checkmarkColor: C.accent,
             side: BorderSide(
-              color: viewModel.showGlobalOnly 
-                  ? DnDTheme.arcaneBlue 
-                  : DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+              color: viewModel.showGlobalOnly
+                  ? C.accent
+                  : C.accent.withValues(alpha: 0.3),
             ),
-            labelStyle: DnDTheme.caption.copyWith(
-              color: viewModel.showGlobalOnly ? DnDTheme.arcaneBlue : Colors.white70,
+            labelStyle: TextStyle(
+              fontSize: 11,
+              color: viewModel.showGlobalOnly ? C.accent : C.textMid,
               fontWeight: viewModel.showGlobalOnly ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
         ),
-        const SizedBox(width: DnDTheme.xs),
+        const SizedBox(width: 4),
         Expanded(
           child: FilterChip(
-            label: Text('Campaign', style: DnDTheme.caption),
+            label: Text('Campaign', style: TextStyle(fontSize: 11, color: C.textMid)),
             selected: viewModel.showCampaignOnly,
             onSelected: (selected) => viewModel.toggleCampaignOnly(),
-            backgroundColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
-            selectedColor: DnDTheme.warningOrange.withValues(alpha: 0.2),
-            checkmarkColor: DnDTheme.warningOrange,
+            backgroundColor: C.bgPanel.withValues(alpha: 0.3),
+            selectedColor: C.amber.withValues(alpha: 0.2),
+            checkmarkColor: C.amber,
             side: BorderSide(
-              color: viewModel.showCampaignOnly 
-                  ? DnDTheme.warningOrange 
-                  : DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+              color: viewModel.showCampaignOnly
+                  ? C.amber
+                  : C.accent.withValues(alpha: 0.3),
             ),
-            labelStyle: DnDTheme.caption.copyWith(
-              color: viewModel.showCampaignOnly ? DnDTheme.warningOrange : Colors.white70,
+            labelStyle: TextStyle(
+              fontSize: 11,
+              color: viewModel.showCampaignOnly ? C.amber : C.textMid,
               fontWeight: viewModel.showCampaignOnly ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
@@ -166,7 +174,7 @@ class EnhancedWikiFilterChipsWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildTagFilters(BuildContext context) {
+  Widget _buildTagFilters(BuildContext context, AppColorsExtension C) {
     final availableTags = viewModel.availableTags.toList();
     if (availableTags.isEmpty) return const SizedBox.shrink();
 
@@ -175,55 +183,57 @@ class EnhancedWikiFilterChipsWidget extends StatelessWidget {
       children: [
         Text(
           'Tags filtern',
-          style: DnDTheme.bodyText2.copyWith(
+          style: TextStyle(
+            fontSize: 12,
+            color: C.amber,
             fontWeight: FontWeight.w600,
-            color: DnDTheme.ancientGold,
           ),
         ),
-        const SizedBox(height: DnDTheme.xs),
+        const SizedBox(height: 4),
         Wrap(
-          spacing: DnDTheme.xs,
-          runSpacing: DnDTheme.xs,
-          children: availableTags.map((tag) => _buildTagChip(context, tag)).toList(),
+          spacing: 4,
+          runSpacing: 4,
+          children: availableTags.map((tag) => _buildTagChip(context, C, tag)).toList(),
         ),
       ],
     );
   }
 
-  Widget _buildTagChip(BuildContext context, String tag) {
+  Widget _buildTagChip(BuildContext context, AppColorsExtension C, String tag) {
     final isSelected = viewModel.selectedTags.contains(tag);
-    
+
     return FilterChip(
-      label: Text(tag, style: DnDTheme.caption),
+      label: Text(tag, style: TextStyle(fontSize: 11, color: C.textMid)),
       selected: isSelected,
       onSelected: (selected) => viewModel.toggleTagFilter(tag),
-      backgroundColor: DnDTheme.slateGrey.withValues(alpha: 0.3),
-      selectedColor: DnDTheme.ancientGold.withValues(alpha: 0.2),
-      checkmarkColor: DnDTheme.ancientGold,
+      backgroundColor: C.bgPanel.withValues(alpha: 0.3),
+      selectedColor: C.amber.withValues(alpha: 0.2),
+      checkmarkColor: C.amber,
       side: BorderSide(
-        color: isSelected 
-            ? DnDTheme.ancientGold 
-            : DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+        color: isSelected
+            ? C.amber
+            : C.accent.withValues(alpha: 0.3),
       ),
-      labelStyle: DnDTheme.caption.copyWith(
-        color: isSelected ? DnDTheme.ancientGold : Colors.white70,
+      labelStyle: TextStyle(
+        fontSize: 11,
+        color: isSelected ? C.amber : C.textMid,
         fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
       ),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     );
   }
 
-  Widget _buildClearFiltersButton(BuildContext context) {
+  Widget _buildClearFiltersButton(BuildContext context, AppColorsExtension C) {
     return OutlinedButton.icon(
       onPressed: viewModel.clearAllFilters,
       icon: const Icon(Icons.clear_all, size: 16),
       label: const Text('Alle Filter löschen'),
       style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: DnDTheme.sm, vertical: DnDTheme.xs),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         minimumSize: Size.zero,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        foregroundColor: DnDTheme.errorRed,
-        side: BorderSide(color: DnDTheme.errorRed),
+        foregroundColor: C.red,
+        side: BorderSide(color: C.red),
       ),
     );
   }
@@ -251,26 +261,26 @@ class EnhancedWikiFilterChipsWidget extends StatelessWidget {
     }
   }
 
-  Color _getTypeColor(WikiEntryType type) {
+  Color _getTypeColor(WikiEntryType type, AppColorsExtension C) {
     switch (type) {
       case WikiEntryType.Person:
-        return DnDTheme.arcaneBlue;
+        return C.accent;
       case WikiEntryType.Place:
-        return DnDTheme.successGreen;
+        return C.green;
       case WikiEntryType.Lore:
-        return DnDTheme.mysticalPurple;
+        return C.accent;
       case WikiEntryType.Faction:
-        return DnDTheme.warningOrange;
+        return C.amber;
       case WikiEntryType.Magic:
-        return DnDTheme.infoBlue;
+        return C.accent;
       case WikiEntryType.History:
-        return DnDTheme.ancientGold;
+        return C.amber;
       case WikiEntryType.Item:
-        return DnDTheme.arcaneBlue;
+        return C.accent;
       case WikiEntryType.Quest:
-        return DnDTheme.mysticalPurple;
+        return C.accent;
       case WikiEntryType.Creature:
-        return DnDTheme.errorRed;
+        return C.red;
     }
   }
 }

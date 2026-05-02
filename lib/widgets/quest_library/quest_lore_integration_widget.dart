@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/quest.dart';
 import '../../models/wiki_entry.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 
 /// Widget für die Anzeige und Verwaltung von Quest-Wiki-Integration
 class QuestLoreIntegrationWidget extends StatefulWidget {
@@ -70,7 +70,7 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Fehler beim Laden der Wiki-Einträge: $e'),
-            backgroundColor: DnDTheme.errorRed,
+            backgroundColor: context.appColors.red,
           ),
         );
       }
@@ -99,7 +99,7 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('"${entry.title}" mit Quest verknüpft'),
-            backgroundColor: DnDTheme.successGreen,
+            backgroundColor: context.appColors.green,
           ),
         );
       }
@@ -108,7 +108,7 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Fehler beim Verknüpfen: $e'),
-            backgroundColor: DnDTheme.errorRed,
+            backgroundColor: context.appColors.red,
           ),
         );
       }
@@ -137,7 +137,7 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Verknüpfung zu "${entry.title}" entfernt'),
-            backgroundColor: DnDTheme.ancientGold,
+            backgroundColor: context.appColors.amber,
           ),
         );
       }
@@ -146,7 +146,7 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Fehler beim Entfernen der Verknüpfung: $e'),
-            backgroundColor: DnDTheme.errorRed,
+            backgroundColor: context.appColors.red,
           ),
         );
       }
@@ -164,11 +164,11 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Wiki-Verknüpfungen wurden vorgeschlagen'),
-            backgroundColor: DnDTheme.successGreen,
+            backgroundColor: context.appColors.green,
           ),
         );
       }
-      
+
       // if (updatedQuest != null) {
       //   widget.onQuestUpdated?.call(updatedQuest);
       // }
@@ -177,7 +177,7 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Fehler beim Vorschlagen von Verknüpfungen: $e'),
-            backgroundColor: DnDTheme.errorRed,
+            backgroundColor: context.appColors.red,
           ),
         );
       }
@@ -197,7 +197,7 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('$count Wiki-Einträge aus Quest erstellt'),
-            backgroundColor: DnDTheme.successGreen,
+            backgroundColor: context.appColors.green,
           ),
         );
       }
@@ -206,7 +206,7 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Fehler beim Erstellen der Wiki-Einträge: $e'),
-            backgroundColor: DnDTheme.errorRed,
+            backgroundColor: context.appColors.red,
           ),
         );
       }
@@ -215,10 +215,11 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(DnDTheme.mysticalPurple),
+          valueColor: AlwaysStoppedAnimation<Color>(C.accent),
         ),
       );
     }
@@ -237,16 +238,16 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
                   children: [
                     Icon(
                       Icons.link,
-                      color: DnDTheme.mysticalPurple,
+                      color: C.accent,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Wiki-Integration',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: DnDTheme.mysticalPurple,
+                        color: C.accent,
                       ),
                     ),
                     const Spacer(),
@@ -257,7 +258,7 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
                         icon: const Icon(Icons.auto_awesome, size: 16),
                         label: const Text('Auto-Verknüpfen'),
                         style: TextButton.styleFrom(
-                          foregroundColor: DnDTheme.ancientGold,
+                          foregroundColor: C.amber,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -268,7 +269,7 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
                         icon: const Icon(Icons.add_circle_outline, size: 16),
                         label: const Text('Wiki-Einträge erstellen'),
                         style: TextButton.styleFrom(
-                          foregroundColor: DnDTheme.mysticalPurple,
+                          foregroundColor: C.accent,
                         ),
                       ),
                     ],
@@ -279,7 +280,7 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
                   'Verknüpfe diese Quest mit relevanten Wiki-Einträgen oder erstelle neue Einträge aus Quest-Informationen.',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.grey[600],
+                    color: C.textMid,
                   ),
                 ),
               ],
@@ -316,12 +317,14 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: DnDTheme.mysticalPurple,
+      child: Builder(
+        builder: (context) => Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: context.appColors.accent,
+          ),
         ),
       ),
     );
@@ -345,7 +348,7 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
         ),
         subtitle: Text(
           '${entry.entryType.toString().split('.').last} • ${_formatDate(entry.updatedAt)}',
-          style: TextStyle(color: Colors.grey[600]),
+          style: TextStyle(color: context.appColors.textMid),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -359,7 +362,7 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
               onPressed: () => _unlinkWikiEntry(entry),
               icon: const Icon(Icons.link_off, size: 20),
               tooltip: 'Verknüpfung entfernen',
-              color: Colors.orange,
+              color: context.appColors.amber,
             ),
           ],
         ),
@@ -371,7 +374,6 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
   Widget _buildSuggestedEntryCard(WikiEntry entry) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      color: Colors.grey[50],
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: _getEntryTypeColor(entry.entryType),
@@ -387,7 +389,7 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
         ),
         subtitle: Text(
           '${entry.entryType.toString().split('.').last} • ${_formatDate(entry.updatedAt)}',
-          style: TextStyle(color: Colors.grey[600]),
+          style: TextStyle(color: context.appColors.textMid),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -401,7 +403,7 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
               onPressed: () => _linkWikiEntry(entry),
               icon: const Icon(Icons.link, size: 20),
               tooltip: 'Mit Quest verknüpfen',
-              color: DnDTheme.ancientGold,
+              color: context.appColors.amber,
             ),
           ],
         ),
@@ -411,6 +413,7 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
   }
 
   Widget _buildEmptyState() {
+    final C = context.appColors;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -419,7 +422,7 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
             Icon(
               Icons.link_off,
               size: 64,
-              color: Colors.grey[400],
+              color: C.textSoft,
             ),
             const SizedBox(height: 16),
             Text(
@@ -427,7 +430,7 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: Colors.grey[600],
+                color: C.textMid,
               ),
             ),
             const SizedBox(height: 8),
@@ -435,7 +438,7 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
               'Erstelle Wiki-Einträge aus Quest-Informationen oder verknüpfe manuell vorhandene Einträge.',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[500],
+                color: C.textSoft,
               ),
               textAlign: TextAlign.center,
             ),
@@ -446,7 +449,7 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
                 icon: const Icon(Icons.add_circle_outline),
                 label: const Text('Wiki-Einträge aus Quest erstellen'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: DnDTheme.mysticalPurple,
+                  backgroundColor: C.accent,
                   foregroundColor: Colors.white,
                 ),
               ),
@@ -458,19 +461,20 @@ class _QuestLoreIntegrationWidgetState extends State<QuestLoreIntegrationWidget>
   }
 
   Color _getEntryTypeColor(WikiEntryType type) {
+    final C = context.appColors;
     switch (type) {
       case WikiEntryType.Person:
-        return Colors.blue;
+        return C.accent;
       case WikiEntryType.Place:
-        return Colors.green;
+        return C.green;
       case WikiEntryType.Faction:
-        return Colors.purple;
+        return C.accent;
       case WikiEntryType.Item:
-        return Colors.orange;
+        return C.amber;
       case WikiEntryType.Lore:
-        return DnDTheme.mysticalPurple;
+        return C.accent;
       default:
-        return Colors.grey;
+        return C.textMid;
     }
   }
 

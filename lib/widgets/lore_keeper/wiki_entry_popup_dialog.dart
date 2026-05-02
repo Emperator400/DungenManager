@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../models/wiki_entry.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 
 /// Popup-Dialog zur Anzeige von Wiki-Eintrags-Details
-/// 
+///
 /// Wird verwendet, um Wiki-Einträge in Szenen und anderen Kontexten
 /// schnell anzuzeigen ohne die Hauptseite zu verlassen.
 class WikiEntryPopupDialog extends StatelessWidget {
@@ -21,99 +21,101 @@ class WikiEntryPopupDialog extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Dialog(
-    backgroundColor: Colors.transparent,
-    insetPadding: const EdgeInsets.symmetric(horizontal: DnDTheme.md, vertical: DnDTheme.lg),
-    child: Container(
-      constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
-      decoration: BoxDecoration(
-        gradient: DnDTheme.getMysticalGradient(
-          startColor: DnDTheme.stoneGrey,
-          endColor: DnDTheme.dungeonBlack,
-        ),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-        border: Border.all(
-          color: _getTypeColor().withValues(alpha: 0.5),
-          width: 2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: _getTypeColor().withValues(alpha: 0.3),
-            blurRadius: 20,
-            spreadRadius: 5,
+  Widget build(BuildContext context) {
+    final C = context.appColors;
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
+        decoration: BoxDecoration(
+          color: C.bgPanel,
+          borderRadius: BorderRadius.circular(12.0),
+          border: Border.all(
+            color: _getTypeColor(C).withValues(alpha: 0.5),
+            width: 2,
           ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildHeader(),
-          Flexible(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(DnDTheme.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (entry.tags.isNotEmpty) ...[
-                    _buildTags(),
-                    const SizedBox(height: DnDTheme.sm),
+          boxShadow: [
+            BoxShadow(
+              color: _getTypeColor(C).withValues(alpha: 0.3),
+              blurRadius: 20,
+              spreadRadius: 5,
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildHeader(C),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (entry.tags.isNotEmpty) ...[
+                      _buildTags(C),
+                      const SizedBox(height: 8),
+                    ],
+                    _buildContent(C),
+                    const SizedBox(height: 8),
+                    _buildMetadata(C),
                   ],
-                  _buildContent(),
-                  const SizedBox(height: DnDTheme.sm),
-                  _buildMetadata(),
-                ],
+                ),
               ),
             ),
-          ),
-          _buildActions(context),
-        ],
+            _buildActions(context, C),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 
-  Widget _buildHeader() => Container(
-    padding: const EdgeInsets.all(DnDTheme.md),
+  Widget _buildHeader(AppColorsExtension C) => Container(
+    padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: _getTypeColor().withValues(alpha: 0.15),
+      color: _getTypeColor(C).withValues(alpha: 0.15),
       borderRadius: const BorderRadius.only(
-        topLeft: Radius.circular(DnDTheme.radiusMedium),
-        topRight: Radius.circular(DnDTheme.radiusMedium),
+        topLeft: Radius.circular(12.0),
+        topRight: Radius.circular(12.0),
       ),
     ),
     child: Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(DnDTheme.sm),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: _getTypeColor().withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+            color: _getTypeColor(C).withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(8.0),
             border: Border.all(
-              color: _getTypeColor().withValues(alpha: 0.5),
+              color: _getTypeColor(C).withValues(alpha: 0.5),
             ),
           ),
           child: Icon(
             _getTypeIcon(),
-            color: _getTypeColor(),
+            color: _getTypeColor(C),
             size: 24,
           ),
         ),
-        const SizedBox(width: DnDTheme.sm),
+        const SizedBox(width: 8),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 _getTypeDisplayName(),
-                style: DnDTheme.caption.copyWith(
-                  color: _getTypeColor(),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: _getTypeColor(C),
                   fontWeight: FontWeight.w600,
                 ),
               ),
               Text(
                 entry.title,
-                style: DnDTheme.headline3.copyWith(
-                  color: Colors.white,
+                style: TextStyle(
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
+                  color: C.text,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -123,28 +125,28 @@ class WikiEntryPopupDialog extends StatelessWidget {
         ),
         if (entry.isFavorite)
           Padding(
-            padding: const EdgeInsets.only(right: DnDTheme.xs),
+            padding: const EdgeInsets.only(right: 4),
             child: Icon(
               Icons.favorite,
-              color: DnDTheme.warningOrange,
+              color: C.amber,
               size: 20,
             ),
           ),
         if (entry.isMarkdown)
           Padding(
-            padding: const EdgeInsets.only(right: DnDTheme.xs),
+            padding: const EdgeInsets.only(right: 4),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: DnDTheme.arcaneBlue.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                color: C.accent.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8.0),
               ),
               child: Text(
                 'MD',
-                style: DnDTheme.caption.copyWith(
-                  color: DnDTheme.arcaneBlue,
-                  fontWeight: FontWeight.bold,
+                style: TextStyle(
                   fontSize: 10,
+                  color: C.accent,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
@@ -153,52 +155,54 @@ class WikiEntryPopupDialog extends StatelessWidget {
     ),
   );
 
-  Widget _buildTags() => Wrap(
-    spacing: DnDTheme.xs,
-    runSpacing: DnDTheme.xs,
-    children: entry.tags.map((tag) => _buildTagChip(tag)).toList(),
+  Widget _buildTags(AppColorsExtension C) => Wrap(
+    spacing: 4,
+    runSpacing: 4,
+    children: entry.tags.map((tag) => _buildTagChip(tag, C)).toList(),
   );
 
-  Widget _buildTagChip(String tag) => Container(
+  Widget _buildTagChip(String tag, AppColorsExtension C) => Container(
     padding: const EdgeInsets.symmetric(
-      horizontal: DnDTheme.sm,
-      vertical: DnDTheme.xs,
+      horizontal: 8,
+      vertical: 4,
     ),
     decoration: BoxDecoration(
-      color: DnDTheme.ancientGold.withValues(alpha: 0.15),
-      borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+      color: C.amber.withValues(alpha: 0.15),
+      borderRadius: BorderRadius.circular(12.0),
       border: Border.all(
-        color: DnDTheme.ancientGold.withValues(alpha: 0.4),
+        color: C.amber.withValues(alpha: 0.4),
       ),
     ),
     child: Text(
       tag,
-      style: DnDTheme.caption.copyWith(
-        color: DnDTheme.ancientGold,
+      style: TextStyle(
+        fontSize: 11,
+        color: C.amber,
         fontWeight: FontWeight.w500,
       ),
     ),
   );
 
-  Widget _buildContent() {
-    final content = entry.isMarkdown 
+  Widget _buildContent(AppColorsExtension C) {
+    final content = entry.isMarkdown
         ? _stripMarkdown(entry.content)
         : entry.content;
-    
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(DnDTheme.sm),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+        borderRadius: BorderRadius.circular(8.0),
         border: Border.all(
-          color: DnDTheme.slateGrey.withValues(alpha: 0.3),
+          color: C.bgPanel.withValues(alpha: 0.3),
         ),
       ),
       child: Text(
         content.isNotEmpty ? content : 'Kein Inhalt vorhanden',
-        style: DnDTheme.bodyText2.copyWith(
-          color: content.isNotEmpty ? Colors.white70 : Colors.white38,
+        style: TextStyle(
+          fontSize: 12,
+          color: content.isNotEmpty ? C.textMid : C.textSoft,
           height: 1.5,
           fontStyle: content.isEmpty ? FontStyle.italic : FontStyle.normal,
         ),
@@ -219,58 +223,63 @@ class WikiEntryPopupDialog extends StatelessWidget {
         .trim();
   }
 
-  Widget _buildMetadata() => Wrap(
-    spacing: DnDTheme.md,
-    runSpacing: DnDTheme.xs,
+  Widget _buildMetadata(AppColorsExtension C) => Wrap(
+    spacing: 16,
+    runSpacing: 4,
     children: [
       _buildMetadataItem(
         Icons.schedule,
         'Erstellt: ${_formatDate(entry.createdAt)}',
+        C,
       ),
       if (entry.updatedAt != entry.createdAt)
         _buildMetadataItem(
           Icons.update,
           'Aktualisiert: ${_formatDate(entry.updatedAt)}',
+          C,
         ),
       if (entry.childIds.isNotEmpty)
         _buildMetadataItem(
           Icons.link,
           '${entry.childIds.length} Verknüpfung${entry.childIds.length == 1 ? '' : 'en'}',
+          C,
         ),
       if (entry.campaignId == null)
         _buildMetadataItem(
           Icons.public,
           'Global',
-          color: DnDTheme.arcaneBlue,
+          C,
+          color: C.accent,
         ),
     ],
   );
 
-  Widget _buildMetadataItem(IconData icon, String text, {Color? color}) => Row(
+  Widget _buildMetadataItem(IconData icon, String text, AppColorsExtension C, {Color? color}) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
       Icon(
         icon,
         size: 14,
-        color: color ?? Colors.white54,
+        color: color ?? C.textSoft,
       ),
       const SizedBox(width: 4),
       Text(
         text,
-        style: DnDTheme.caption.copyWith(
-          color: color ?? Colors.white54,
+        style: TextStyle(
+          fontSize: 11,
+          color: color ?? C.textSoft,
         ),
       ),
     ],
   );
 
-  Widget _buildActions(BuildContext context) => Container(
-    padding: const EdgeInsets.all(DnDTheme.sm),
+  Widget _buildActions(BuildContext context, AppColorsExtension C) => Container(
+    padding: const EdgeInsets.all(8),
     decoration: BoxDecoration(
       color: Colors.black.withValues(alpha: 0.2),
       borderRadius: const BorderRadius.only(
-        bottomLeft: Radius.circular(DnDTheme.radiusMedium),
-        bottomRight: Radius.circular(DnDTheme.radiusMedium),
+        bottomLeft: Radius.circular(12.0),
+        bottomRight: Radius.circular(12.0),
       ),
     ),
     child: Row(
@@ -286,10 +295,10 @@ class WikiEntryPopupDialog extends StatelessWidget {
             icon: const Icon(Icons.delete_outline, size: 16),
             label: const Text('Löschen'),
             style: TextButton.styleFrom(
-              foregroundColor: DnDTheme.errorRed,
+              foregroundColor: C.red,
             ),
           ),
-          const SizedBox(width: DnDTheme.xs),
+          const SizedBox(width: 4),
         ],
         // Im Wiki öffnen-Button
         if (onOpenFull != null)
@@ -298,22 +307,22 @@ class WikiEntryPopupDialog extends StatelessWidget {
             icon: const Icon(Icons.open_in_new, size: 16),
             label: const Text('Im Wiki öffnen'),
             style: TextButton.styleFrom(
-              foregroundColor: DnDTheme.arcaneBlue,
+              foregroundColor: C.accent,
             ),
           ),
         // Bearbeiten-Button
         if (onEdit != null) ...[
-          const SizedBox(width: DnDTheme.xs),
+          const SizedBox(width: 4),
           TextButton.icon(
             onPressed: onEdit,
             icon: const Icon(Icons.edit_outlined, size: 16),
             label: const Text('Bearbeiten'),
             style: TextButton.styleFrom(
-              foregroundColor: DnDTheme.ancientGold,
+              foregroundColor: C.amber,
             ),
           ),
         ],
-        const SizedBox(width: DnDTheme.xs),
+        const SizedBox(width: 4),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           style: TextButton.styleFrom(
@@ -348,26 +357,26 @@ class WikiEntryPopupDialog extends StatelessWidget {
     }
   }
 
-  Color _getTypeColor() {
+  Color _getTypeColor(AppColorsExtension C) {
     switch (entry.entryType) {
       case WikiEntryType.Person:
-        return DnDTheme.arcaneBlue;
+        return C.accent;
       case WikiEntryType.Place:
-        return DnDTheme.successGreen;
+        return C.green;
       case WikiEntryType.Lore:
-        return DnDTheme.mysticalPurple;
+        return C.accent;
       case WikiEntryType.Faction:
-        return DnDTheme.warningOrange;
+        return C.amber;
       case WikiEntryType.Magic:
-        return DnDTheme.infoBlue;
+        return C.accent;
       case WikiEntryType.History:
-        return DnDTheme.ancientGold;
+        return C.amber;
       case WikiEntryType.Item:
-        return DnDTheme.arcaneBlue;
+        return C.accent;
       case WikiEntryType.Quest:
-        return DnDTheme.mysticalPurple;
+        return C.accent;
       case WikiEntryType.Creature:
-        return DnDTheme.errorRed;
+        return C.red;
     }
   }
 

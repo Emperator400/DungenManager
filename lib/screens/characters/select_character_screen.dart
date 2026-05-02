@@ -62,7 +62,7 @@ class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneS
       if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Fehler beim Laden: $e'), backgroundColor: Colors.red),
+        SnackBar(content: Text('Fehler beim Laden: $e'), backgroundColor: context.appColors.red),
       );
     }
   }

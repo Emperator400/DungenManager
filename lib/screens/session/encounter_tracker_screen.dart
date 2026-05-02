@@ -469,14 +469,14 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.green.withValues(alpha: 0.2),
+                          color: C.green.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.green.withValues(alpha: 0.5)),
+                          border: Border.all(color: C.green.withValues(alpha: 0.5)),
                         ),
                         child: Text(
                           'HP: ${participant.currentHp}/${participant.maxHp}',
-                          style: const TextStyle(
-                            color: Colors.green,
+                          style: TextStyle(
+                            color: C.green,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
@@ -487,14 +487,14 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.orange.withValues(alpha: 0.2),
+                            color: C.amber.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+                            border: Border.all(color: C.amber.withValues(alpha: 0.5)),
                           ),
                           child: Text(
                             'AC: $armorClass',
-                            style: const TextStyle(
-                              color: Colors.orange,
+                            style: TextStyle(
+                              color: C.amber,
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                             ),
@@ -583,18 +583,19 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
   }
 
   Widget _buildSavingThrowChip(String saveName, int bonus) {
+    final C = context.appColors;
     final modText = bonus >= 0 ? '+$bonus' : '$bonus';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.amber[900]?.withValues(alpha: 0.3) ?? const Color(0x4DFF6F00),
+        color: C.amber.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.amber[600] ?? const Color(0xFFFFB300)),
+        border: Border.all(color: C.amber.withValues(alpha: 0.6)),
       ),
       child: Text(
         '$saveName $modText',
         style: TextStyle(
-          color: Colors.amber[200] ?? const Color(0xFFFFE082),
+          color: C.amber,
           fontSize: 9,
           fontWeight: FontWeight.w500,
         ),
@@ -657,17 +658,18 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
   }
 
   Widget _buildAbilityChip(String label, int score) {
+    final C = context.appColors;
     final modifier = (score - 10) ~/ 2;
     final modText = modifier >= 0 ? '+$modifier' : '$modifier';
     final textColor = modifier >= 3
-        ? Colors.green
+        ? C.green
         : modifier >= 1
-            ? Colors.lightGreen
+            ? C.green
             : modifier == 0
-                ? Colors.white70
+                ? C.textMid
                 : modifier >= -2
-                    ? Colors.orange
-                    : Colors.red;
+                    ? C.amber
+                    : C.red;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
       decoration: BoxDecoration(
@@ -683,18 +685,19 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
   }
 
   Widget _buildSkillChip(String skillName, int bonus) {
+    final C = context.appColors;
     final modText = bonus >= 0 ? '+$bonus' : '$bonus';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.cyan[900]?.withValues(alpha: 0.3) ?? const Color(0x4D004D40),
+        color: C.accent.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.cyan[600] ?? const Color(0xFF00ACC1)),
+        border: Border.all(color: C.accent.withValues(alpha: 0.5)),
       ),
       child: Text(
         '$skillName $modText',
         style: TextStyle(
-          color: Colors.cyan[200] ?? const Color(0xFF80DEEA),
+          color: C.accent,
           fontSize: 9,
           fontWeight: FontWeight.w500,
         ),
@@ -703,17 +706,18 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
   }
 
   Widget _buildAttackChip(String name, String damage) {
+    final C = context.appColors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: Colors.purple[900]?.withValues(alpha: 0.3) ?? const Color(0x4D4A148C),
+        color: C.accent.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.purple[700] ?? const Color(0xFF7B1FA2)),
+        border: Border.all(color: C.accent.withValues(alpha: 0.5)),
       ),
       child: Text(
         damage.isNotEmpty ? '$name ($damage)' : name,
         style: TextStyle(
-          color: Colors.purple[200] ?? const Color(0xFFCE93D8),
+          color: C.accent,
           fontSize: 9,
         ),
       ),
@@ -740,7 +744,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
               valueColor: AlwaysStoppedAnimation<Color>(
                 hpPercent > 0.5
                     ? C.green
-                    : (hpPercent > 0.2 ? Colors.amber : C.red),
+                    : (hpPercent > 0.2 ? C.amber : C.red),
               ),
             ),
           ),

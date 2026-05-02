@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 
 /// Wiederverwendbares Widget für die Kampagnen-Tabs
-/// 
+///
 /// Zeigt die 5 Tabs für verschiedene Kampagnentypen
 class CampaignTabsWidget extends StatelessWidget implements PreferredSizeWidget {
   final TabController tabController;
@@ -14,6 +14,7 @@ class CampaignTabsWidget extends StatelessWidget implements PreferredSizeWidget 
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return TabBar(
       controller: tabController,
       tabs: const [
@@ -23,9 +24,9 @@ class CampaignTabsWidget extends StatelessWidget implements PreferredSizeWidget 
         Tab(icon: Icon(Icons.map), text: 'Paths'),
         Tab(icon: Icon(Icons.flash_on), text: 'One-Shots'),
       ],
-      labelColor: Theme.of(context).tabBarTheme.labelColor ?? DnDTheme.ancientGold,
-      unselectedLabelColor: Theme.of(context).tabBarTheme.unselectedLabelColor ?? Colors.grey[400],
-      indicatorColor: Theme.of(context).tabBarTheme.indicatorColor ?? DnDTheme.ancientGold,
+      labelColor: Theme.of(context).tabBarTheme.labelColor ?? C.amber,
+      unselectedLabelColor: Theme.of(context).tabBarTheme.unselectedLabelColor ?? C.textSoft,
+      indicatorColor: Theme.of(context).tabBarTheme.indicatorColor ?? C.amber,
       indicatorSize: TabBarIndicatorSize.tab,
       indicatorWeight: 3,
       dividerColor: Colors.transparent,

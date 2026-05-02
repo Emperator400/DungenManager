@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../../models/inventory_item.dart';
 import '../../../models/item.dart';
-import '../../../theme/dnd_theme.dart';
+import '../../../theme/app_theme.dart';
 import '../../character_editor/item_color_helper.dart';
 
 /// Wiederverwendbares Widget für Inventar-Listen
-/// 
+///
 /// Beispiele:
 /// ```dart
 /// InventoryListWidget(
@@ -39,8 +39,9 @@ class InventoryListWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     if (items.isEmpty && showEmptyState) {
-      return _buildEmptyState();
+      return _buildEmptyState(C);
     }
 
     return ListView.builder(
@@ -50,34 +51,34 @@ class InventoryListWidget extends StatelessWidget {
       itemCount: items.length,
       itemBuilder: (context, index) {
         final displayItem = items[index];
-        return _buildInventoryItemCard(context, displayItem);
+        return _buildInventoryItemCard(context, displayItem, C);
       },
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(AppColorsExtension C) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(DnDTheme.xl),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               Icons.inventory_2_outlined,
               size: 80,
-              color: DnDTheme.mysticalPurple.withValues(alpha: 0.6),
+              color: C.accent.withValues(alpha: 0.6),
             ),
-            const SizedBox(height: DnDTheme.lg),
+            const SizedBox(height: 16),
             Text(
               emptyTitle ?? 'Inventar ist leer',
-              style: DnDTheme.headline2.copyWith(
-                color: DnDTheme.ancientGold,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: C.text).copyWith(
+                color: C.amber,
               ),
             ),
-            const SizedBox(height: DnDTheme.sm),
+            const SizedBox(height: 8),
             Text(
               emptySubtitle ?? 'Füge Gegenstände hinzu',
-              style: DnDTheme.bodyText1.copyWith(
+              style: TextStyle(fontSize: 14, color: C.text).copyWith(
                 color: Colors.white70,
               ),
               textAlign: TextAlign.center,
@@ -91,22 +92,23 @@ class InventoryListWidget extends StatelessWidget {
   Widget _buildInventoryItemCard(
     BuildContext context,
     DisplayInventoryItem displayItem,
+    AppColorsExtension C,
   ) {
     final item = displayItem.item;
     final invItem = displayItem.inventoryItem;
-    
+
     return Card(
-      color: DnDTheme.slateGrey,
-      margin: const EdgeInsets.only(bottom: DnDTheme.md),
+      color: C.bgPanel,
+      margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.all(DnDTheme.lg),
-        leading: _buildItemIcon(item),
+        contentPadding: const EdgeInsets.all(16),
+        leading: _buildItemIcon(item, C),
         title: Text(
           item.name,
-          style: DnDTheme.bodyText1.copyWith(
+          style: TextStyle(fontSize: 14, color: C.text).copyWith(
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
@@ -115,11 +117,11 @@ class InventoryListWidget extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildItemDescription(item),
-            if (item.hasDurability == true && 
+            _buildItemDescription(item, C),
+            if (item.hasDurability == true &&
                 displayItem.currentDurability != null) ...[
               const SizedBox(height: 4),
-              _buildDurabilityBar(displayItem),
+              _buildDurabilityBar(displayItem, C),
             ],
           ],
         ),
@@ -130,35 +132,35 @@ class InventoryListWidget extends StatelessWidget {
             if (invItem.quantity > 1) ...[
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: DnDTheme.md,
-                  vertical: DnDTheme.xs,
+                  horizontal: 12,
+                  vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: DnDTheme.ancientGold,
-                  borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                  color: C.amber,
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   'x${invItem.quantity}',
-                  style: DnDTheme.bodyText2.copyWith(
-                    color: DnDTheme.dungeonBlack,
+                  style: TextStyle(fontSize: 12, color: C.textMid).copyWith(
+                    color: Colors.black,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
-              const SizedBox(width: DnDTheme.sm),
+              const SizedBox(width: 8),
             ],
             // Action Buttons
             if (isEditable) ...[
               if (onItemEdit != null)
                 IconButton(
-                  icon: const Icon(Icons.edit, color: DnDTheme.arcaneBlue),
+                  icon: Icon(Icons.edit, color: C.accent),
                   onPressed: () => onItemEdit!(displayItem),
                   tooltip: 'Bearbeiten',
                 ),
               if (onItemDelete != null)
                 IconButton(
-                  icon: const Icon(Icons.delete, color: DnDTheme.errorRed),
-                  onPressed: () => _showDeleteDialog(context, displayItem),
+                  icon: Icon(Icons.delete, color: C.red),
+                  onPressed: () => _showDeleteDialog(context, displayItem, C),
                   tooltip: 'Löschen',
                 ),
             ],
@@ -169,12 +171,12 @@ class InventoryListWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildItemIcon(Item item) {
+  Widget _buildItemIcon(Item item, AppColorsExtension C) {
     return Container(
       width: 48,
       height: 48,
       decoration: BoxDecoration(
-        color: DnDTheme.arcaneBlue,
+        color: C.accent,
         shape: BoxShape.circle,
       ),
       child: Icon(
@@ -185,14 +187,14 @@ class InventoryListWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildItemDescription(Item item) {
-    final description = item.description.isNotEmpty 
-        ? item.description 
+  Widget _buildItemDescription(Item item, AppColorsExtension C) {
+    final description = item.description.isNotEmpty
+        ? item.description
         : '${item.itemType.name} • ${item.weight} Pfund';
-    
+
     return Text(
       description,
-      style: DnDTheme.bodyText2.copyWith(
+      style: TextStyle(fontSize: 12, color: C.textMid).copyWith(
         color: Colors.white60,
       ),
       maxLines: 2,
@@ -200,19 +202,19 @@ class InventoryListWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildDurabilityBar(DisplayInventoryItem displayItem) {
+  Widget _buildDurabilityBar(DisplayInventoryItem displayItem, AppColorsExtension C) {
     final item = displayItem.item;
     final current = displayItem.currentDurability ?? item.maxDurability ?? 100;
     final max = item.maxDurability ?? 100;
     final percentage = current / max;
-    
+
     final durabilityColor = ItemColorHelper.getDurabilityColor(percentage);
-    
+
     return Container(
       width: double.infinity,
       height: 4,
       decoration: BoxDecoration(
-        color: DnDTheme.stoneGrey,
+        color: C.bg,
         borderRadius: BorderRadius.circular(2),
       ),
       child: FractionallySizedBox(
@@ -228,28 +230,28 @@ class InventoryListWidget extends StatelessWidget {
     );
   }
 
-  void _showDeleteDialog(BuildContext context, DisplayInventoryItem displayItem) {
+  void _showDeleteDialog(BuildContext context, DisplayInventoryItem displayItem, AppColorsExtension C) {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
+        backgroundColor: C.bg,
         title: Text(
           '${displayItem.item.name} löschen',
-          style: DnDTheme.headline2.copyWith(
-            color: DnDTheme.ancientGold,
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: C.text).copyWith(
+            color: C.amber,
           ),
         ),
         content: Text(
           'Möchtest du "${displayItem.item.name}" wirklich löschen?',
-          style: DnDTheme.bodyText1.copyWith(color: Colors.white70),
+          style: TextStyle(fontSize: 14, color: C.text).copyWith(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: Text(
               'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(
-                color: DnDTheme.mysticalPurple,
+              style: TextStyle(fontSize: 14, color: C.text).copyWith(
+                color: C.accent,
               ),
             ),
           ),
@@ -261,7 +263,7 @@ class InventoryListWidget extends StatelessWidget {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.errorRed,
+              backgroundColor: C.red,
               foregroundColor: Colors.white,
             ),
             child: const Text('Löschen'),

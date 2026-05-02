@@ -504,9 +504,9 @@ class _OfficialMonstersScreenState extends State<OfficialMonstersScreen> {
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Monster erfolgreich importiert'),
-          backgroundColor: Colors.green,
+        SnackBar(
+          content: const Text('Monster erfolgreich importiert'),
+          backgroundColor: context.appColors.green,
         ),
       );
     }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../theme/dnd_theme.dart';
+import '../../../theme/app_theme.dart';
 
 /// Widget für Sektionstitel in der Kreatur-Bearbeitung
 class SectionTitleWidget extends StatelessWidget {
@@ -14,20 +14,21 @@ class SectionTitleWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Row(
       children: [
         Icon(
           icon,
-          color: DnDTheme.ancientGold,
+          color: C.amber,
           size: 22,
         ),
         const SizedBox(width: 6),
         Text(
           title,
-          style: DnDTheme.headline2.copyWith(
-            color: DnDTheme.ancientGold,
-            fontWeight: FontWeight.bold,
+          style: TextStyle(
             fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: C.amber,
           ),
         ),
       ],

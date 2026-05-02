@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/player_character.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 import '../../services/armor_calculation_service.dart';
 import 'character_list_helpers.dart';
 import 'hero_avatar_widget.dart';
@@ -51,7 +51,7 @@ class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
 
   Future<void> _loadArmorClass() async {
     if (!mounted) return;
-    
+
     setState(() {
       _isLoadingAc = true;
     });
@@ -62,7 +62,7 @@ class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
         dexterity: widget.character.dexterity,
         baseArmorClass: 10,
       );
-      
+
       if (mounted) {
         setState(() {
           _armorResult = result;
@@ -81,62 +81,64 @@ class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     final classColor = CharacterListHelpers.getClassColor(widget.character.className);
-    
+
     return Container(
-      decoration: DnDTheme.getFantasyCardDecoration(
-        borderColor: widget.isSelected ? DnDTheme.ancientGold : classColor,
-        isLegendary: widget.character.isFavorite,
-      ).copyWith(
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+      decoration: BoxDecoration(
+        color: C.bgPanel,
+        borderRadius: BorderRadius.circular(12.0),
+        border: Border.all(
+          color: widget.isSelected ? C.amber : classColor,
+        ),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+          borderRadius: BorderRadius.circular(12.0),
           child: Padding(
-            padding: const EdgeInsets.all(DnDTheme.md),
+            padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // === HEADER: Avatar und Basis-Info ===
-                _buildHeader(classColor),
-                
-                const Divider(
-                  color: DnDTheme.slateGrey,
+                _buildHeader(classColor, C),
+
+                Divider(
+                  color: C.border,
                   height: 24,
                   thickness: 1,
                 ),
-                
+
                 // === KAMPF-CHIPS ===
-                _buildCombatChips(),
-                
-                const SizedBox(height: DnDTheme.sm),
-                
+                _buildCombatChips(C),
+
+                const SizedBox(height: 8.0),
+
                 // === ATTRIBUT-CHIPS ===
                 _buildAttributeChips(),
-                
-                const SizedBox(height: DnDTheme.sm),
-                
+
+                const SizedBox(height: 8.0),
+
                 // === WÄHRUNGS-CHIPS ===
                 _buildCurrencyChips(),
-                
+
                 // === GESINNUNG (falls vorhanden) ===
                 if (widget.character.alignment != null && widget.character.alignment!.isNotEmpty) ...[
-                  const SizedBox(height: DnDTheme.sm),
+                  const SizedBox(height: 8.0),
                   _buildAlignmentChip(),
                 ],
-                
+
                 // === BESCHREIBUNG (falls vorhanden) ===
                 if (widget.character.description != null && widget.character.description!.isNotEmpty) ...[
-                  const SizedBox(height: DnDTheme.sm),
-                  _buildDescription(),
+                  const SizedBox(height: 8.0),
+                  _buildDescription(C),
                 ],
-                
+
                 // === AKTIONS-LEISTE ===
-                const SizedBox(height: DnDTheme.sm),
-                _buildActionBar(classColor),
+                const SizedBox(height: 8.0),
+                _buildActionBar(classColor, C),
               ],
             ),
           ),
@@ -146,7 +148,7 @@ class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
   }
 
   /// Header mit Avatar, Name und Basis-Info
-  Widget _buildHeader(Color classColor) {
+  Widget _buildHeader(Color classColor, AppColorsExtension C) {
     return Row(
       children: [
         // Avatar mit Level-Badge
@@ -156,9 +158,9 @@ class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
           showLevelBadge: true,
           showAlignment: false,
         ),
-        
+
         const SizedBox(width: 12),
-        
+
         // Name und Info
         Expanded(
           child: Column(
@@ -170,9 +172,10 @@ class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
                   Expanded(
                     child: Text(
                       widget.character.name,
-                      style: DnDTheme.headline3.copyWith(
+                      style: TextStyle(
                         fontSize: 18,
-                        color: widget.isSelected ? DnDTheme.ancientGold : Colors.white,
+                        fontWeight: FontWeight.w600,
+                        color: widget.isSelected ? C.amber : C.text,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -181,9 +184,9 @@ class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
                     IconButton(
                       icon: Icon(
                         widget.character.isFavorite ? Icons.star : Icons.star_border,
-                        color: widget.character.isFavorite 
-                            ? DnDTheme.ancientGold 
-                            : DnDTheme.stoneGrey,
+                        color: widget.character.isFavorite
+                            ? C.amber
+                            : C.bgActive,
                         size: 22,
                       ),
                       onPressed: widget.onFavoriteToggle,
@@ -195,35 +198,35 @@ class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
                     ),
                 ],
               ),
-              
+
               const SizedBox(height: 2),
-              
+
               // Klasse und Rasse
               Text(
                 '${widget.character.raceName} ${widget.character.className}',
-                style: DnDTheme.bodyText2.copyWith(
+                style: TextStyle(
                   fontSize: 13,
                   color: classColor,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              
+
               const SizedBox(height: 2),
-              
+
               // Spielername
               Row(
                 children: [
                   Icon(
                     Icons.person_outline,
                     size: 14,
-                    color: Colors.white54,
+                    color: C.textSoft,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     widget.character.playerName,
-                    style: DnDTheme.caption.copyWith(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white54,
+                      color: C.textSoft,
                     ),
                   ),
                 ],
@@ -236,15 +239,15 @@ class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
   }
 
   /// Kampf-Stat Chips (AC, HP, INIT, SPEED)
-  Widget _buildCombatChips() {
+  Widget _buildCombatChips(AppColorsExtension C) {
     final dexMod = CharacterListHelpers.getModifier(widget.character.dexterity);
     final initiative = dexMod + widget.character.initiativeBonus;
     final initText = initiative >= 0 ? '+$initiative' : '$initiative';
-    
+
     // AC-Wert: Berechnet oder Fallback
     String acDisplay;
     String? acTooltip;
-    
+
     if (_isLoadingAc) {
       acDisplay = '${widget.character.armorClass}';
       acTooltip = 'Wird berechnet...';
@@ -256,7 +259,7 @@ class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
     } else {
       acDisplay = '${widget.character.armorClass}';
     }
-    
+
     return PcChipSection(
       title: 'Kampfwerte',
       titleIcon: Icons.shield,
@@ -268,7 +271,7 @@ class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
             label: 'AC',
             value: acDisplay,
             icon: Icons.shield_outlined,
-            color: DnDTheme.infoBlue,
+            color: C.accent,
             onTap: widget.onEdit,
           ),
         ),
@@ -276,21 +279,21 @@ class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
           label: 'HP',
           value: '${widget.character.maxHp}',
           icon: Icons.favorite_outlined,
-          color: DnDTheme.successGreen,
+          color: C.green,
           onTap: widget.onEdit,
         ),
         PcInfoChip.combat(
           label: 'INIT',
           value: initText,
           icon: Icons.bolt_outlined,
-          color: DnDTheme.arcaneBlue,
+          color: C.accent,
           onTap: widget.onEdit,
         ),
         PcInfoChip.combat(
           label: 'SPEED',
           value: '${widget.character.speed} ft',
           icon: Icons.directions_run_outlined,
-          color: DnDTheme.mysticalPurple,
+          color: C.accent,
           onTap: widget.onEdit,
         ),
       ],
@@ -346,13 +349,13 @@ class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
   /// Währungs-Chips
   Widget _buildCurrencyChips() {
     final hasCurrency = widget.character.gold > 0 || widget.character.silver > 0 || widget.character.copper > 0;
-    
+
     if (!hasCurrency) {
       return const SizedBox.shrink();
     }
-    
+
     final chips = <Widget>[];
-    
+
     if (widget.character.gold > 0) {
       chips.add(PcInfoChip.currency(
         label: '',
@@ -361,7 +364,7 @@ class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
         color: Colors.amber,
       ));
     }
-    
+
     if (widget.character.silver > 0) {
       chips.add(PcInfoChip.currency(
         label: '',
@@ -370,7 +373,7 @@ class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
         color: Colors.blueGrey,
       ));
     }
-    
+
     if (widget.character.copper > 0) {
       chips.add(PcInfoChip.currency(
         label: '',
@@ -379,7 +382,7 @@ class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
         color: Colors.brown,
       ));
     }
-    
+
     return PcChipSection(
       title: 'Vermögen',
       titleIcon: Icons.account_balance_wallet_outlined,
@@ -397,23 +400,23 @@ class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
   }
 
   /// Beschreibungstext
-  Widget _buildDescription() {
+  Widget _buildDescription(AppColorsExtension C) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(DnDTheme.sm),
+      padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
-        color: DnDTheme.slateGrey.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+        color: C.bgPanel.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(8.0),
         border: Border.all(
-          color: DnDTheme.mysticalPurple.withValues(alpha: 0.2),
+          color: C.accent.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
       child: Text(
         widget.character.description!,
-        style: DnDTheme.bodyText2.copyWith(
+        style: TextStyle(
           fontSize: 12,
-          color: Colors.white70,
+          color: C.textMid,
           fontStyle: FontStyle.italic,
         ),
         maxLines: 3,
@@ -423,7 +426,7 @@ class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
   }
 
   /// Aktionsleiste mit Buttons
-  Widget _buildActionBar(Color classColor) {
+  Widget _buildActionBar(Color classColor, AppColorsExtension C) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
@@ -433,7 +436,7 @@ class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
             icon: const Icon(Icons.more_horiz, size: 18),
             label: const Text('Aktionen'),
             style: TextButton.styleFrom(
-              foregroundColor: DnDTheme.mysticalPurple,
+              foregroundColor: C.accent,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
           ),
@@ -448,7 +451,7 @@ class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                borderRadius: BorderRadius.circular(8.0),
               ),
             ),
           ),

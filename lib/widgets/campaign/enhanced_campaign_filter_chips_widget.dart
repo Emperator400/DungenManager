@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../viewmodels/campaign_viewmodel.dart';
+import '../../theme/app_theme.dart';
 
 /// Enhanced Campaign Filter Chips Widget mit vereinfachten Filtern
 /// Behält nur: Name (Suche), Erstellungsdatum, Zuletzt gespielt
@@ -13,6 +14,7 @@ class EnhancedCampaignFilterChipsWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Card(
       elevation: 1,
       child: Padding(
@@ -28,18 +30,18 @@ class EnhancedCampaignFilterChipsWidget extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            _buildSearchField(context),
+            _buildSearchField(context, C),
             const SizedBox(height: 12),
-            _buildSortOptions(context),
+            _buildSortOptions(context, C),
             const SizedBox(height: 8),
-            _buildActiveFiltersRow(context),
+            _buildActiveFiltersRow(context, C),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSearchField(BuildContext context) {
+  Widget _buildSearchField(BuildContext context, AppColorsExtension C) {
     return TextField(
       decoration: InputDecoration(
         hintText: 'Kampagnen durchsuchen...',
@@ -48,7 +50,7 @@ class EnhancedCampaignFilterChipsWidget extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
         ),
         filled: true,
-        fillColor: Colors.grey.withValues(alpha: 0.08),
+        fillColor: C.textMid.withValues(alpha: 0.08),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         hintStyle: const TextStyle(fontSize: 13),
       ),
@@ -56,7 +58,7 @@ class EnhancedCampaignFilterChipsWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildSortOptions(BuildContext context) {
+  Widget _buildSortOptions(BuildContext context, AppColorsExtension C) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -74,18 +76,21 @@ class EnhancedCampaignFilterChipsWidget extends StatelessWidget {
           children: [
             _buildSortChip(
               context,
+              C,
               'Name',
               viewModel.sortOption == CampaignSortOption.name,
               () => viewModel.setSortOption(CampaignSortOption.name),
             ),
             _buildSortChip(
               context,
+              C,
               'Erstellungsdatum',
               viewModel.sortOption == CampaignSortOption.createdDate,
               () => viewModel.setSortOption(CampaignSortOption.createdDate),
             ),
             _buildSortChip(
               context,
+              C,
               'Zuletzt gespielt',
               viewModel.sortOption == CampaignSortOption.lastActive,
               () => viewModel.setSortOption(CampaignSortOption.lastActive),
@@ -131,6 +136,7 @@ class EnhancedCampaignFilterChipsWidget extends StatelessWidget {
 
   Widget _buildSortChip(
     BuildContext context,
+    AppColorsExtension C,
     String label,
     bool isSelected,
     VoidCallback onTap,
@@ -140,19 +146,19 @@ class EnhancedCampaignFilterChipsWidget extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected 
-              ? Colors.blue.shade600.withValues(alpha: 0.9)
-              : Colors.grey.withValues(alpha: 0.08),
+          color: isSelected
+              ? C.accent.withValues(alpha: 0.9)
+              : C.textMid.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected 
-                ? Colors.blue.shade300.withValues(alpha: 0.3)
-                : Colors.grey.withValues(alpha: 0.15),
+            color: isSelected
+                ? C.accent.withValues(alpha: 0.3)
+                : C.textMid.withValues(alpha: 0.15),
             width: 0.5,
           ),
           boxShadow: isSelected ? [
             BoxShadow(
-              color: Colors.blue.shade300.withValues(alpha: 0.2),
+              color: C.accent.withValues(alpha: 0.2),
               blurRadius: 4,
               offset: const Offset(0, 1),
             )
@@ -161,7 +167,7 @@ class EnhancedCampaignFilterChipsWidget extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.grey.shade700,
+            color: isSelected ? Colors.white : C.textMid,
             fontSize: 12,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
           ),
@@ -170,7 +176,7 @@ class EnhancedCampaignFilterChipsWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildActiveFiltersRow(BuildContext context) {
+  Widget _buildActiveFiltersRow(BuildContext context, AppColorsExtension C) {
     if (viewModel.searchQuery.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -185,6 +191,7 @@ class EnhancedCampaignFilterChipsWidget extends StatelessWidget {
               if (viewModel.searchQuery.isNotEmpty)
                 _buildActiveFilterChip(
                   context,
+                  C,
                   'Suche: ${viewModel.searchQuery}',
                   () => viewModel.searchCampaigns(''),
                 ),
@@ -196,7 +203,7 @@ class EnhancedCampaignFilterChipsWidget extends StatelessWidget {
           icon: const Icon(Icons.clear_all, size: 14),
           label: const Text('Löschen', style: TextStyle(fontSize: 11)),
           style: TextButton.styleFrom(
-            foregroundColor: Colors.red.shade600,
+            foregroundColor: C.red,
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             minimumSize: Size.zero,
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -208,6 +215,7 @@ class EnhancedCampaignFilterChipsWidget extends StatelessWidget {
 
   Widget _buildActiveFilterChip(
     BuildContext context,
+    AppColorsExtension C,
     String label,
     VoidCallback onRemove,
   ) {

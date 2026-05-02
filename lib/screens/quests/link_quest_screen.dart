@@ -172,20 +172,20 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.assignment_outlined, size: 64, color: Colors.grey[400]),
+                Icon(Icons.assignment_outlined, size: 64, color: C.textSoft),
                 const SizedBox(height: 16),
                 Text(
                   'Keine Quests vorhanden',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: Colors.grey[600],
+                    color: C.textMid,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Erstelle zuerst Quests in der Quest-Bibliothek',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: 14, color: C.textSoft),
                 ),
               ],
             ),
@@ -310,7 +310,7 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
                           fontSize: 13,
                           color: isSelected
                               ? C.accent.withValues(alpha: 0.8)
-                              : Colors.grey[400],
+                              : C.textSoft,
                         ),
                       ),
                     const SizedBox(height: 8),
@@ -332,17 +332,18 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
   }
 
   Widget _buildQuestTypeChip(QuestType type) {
+    final C = context.appColors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFF7C3AED).withValues(alpha: 0.15),
+        color: C.accent.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF7C3AED).withValues(alpha: 0.4)),
+        border: Border.all(color: C.accent.withValues(alpha: 0.4)),
       ),
       child: Text(
         _getQuestTypeDisplayName(type),
-        style: const TextStyle(
-          color: Color(0xFF7C3AED),
+        style: TextStyle(
+          color: C.accent,
           fontSize: 11,
           fontWeight: FontWeight.w600,
         ),
@@ -391,13 +392,14 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
   }
 
   Color _getDifficultyColor(QuestDifficulty difficulty) {
+    final C = context.appColors;
     return switch (difficulty) {
-      QuestDifficulty.easy => Colors.green,
-      QuestDifficulty.medium => Colors.blue,
-      QuestDifficulty.hard => Colors.orange,
-      QuestDifficulty.deadly => Colors.red,
-      QuestDifficulty.epic => Colors.purple,
-      QuestDifficulty.legendary => context.appColors.amber,
+      QuestDifficulty.easy => C.green,
+      QuestDifficulty.medium => C.accent,
+      QuestDifficulty.hard => C.amber,
+      QuestDifficulty.deadly => C.red,
+      QuestDifficulty.epic => C.accent,
+      QuestDifficulty.legendary => C.amber,
     };
   }
 }

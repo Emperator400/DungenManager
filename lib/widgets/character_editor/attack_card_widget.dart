@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/attack.dart';
+import '../../theme/app_theme.dart';
 
 class AttackCardWidget extends StatelessWidget {
   final Attack attack;
@@ -21,6 +22,7 @@ class AttackCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Card(
       elevation: 2,
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -38,10 +40,10 @@ class AttackCardWidget extends StatelessWidget {
                   Expanded(
                     child: Text(
                       attack.name.isNotEmpty ? attack.name : 'Unbenannter Angriff',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: C.text,
                       ),
                     ),
                   ),
@@ -50,46 +52,46 @@ class AttackCardWidget extends StatelessWidget {
                       icon: const Icon(Icons.edit, size: 20),
                       onPressed: onEdit,
                       tooltip: 'Bearbeiten',
-                      color: Colors.blue,
+                      color: C.accent,
                     ),
                   if (showDeleteButton)
                     IconButton(
                       icon: const Icon(Icons.delete, size: 20),
                       onPressed: onDelete,
                       tooltip: 'Löschen',
-                      color: Colors.red,
+                      color: C.red,
                     ),
                 ],
               ),
-              
+
               const SizedBox(height: 8),
-              
+
               // Angriffsbonus und Schaden
               Row(
                 children: [
                   _buildStatChip(
                     'Angriff',
                     attack.formattedAttackBonus,
-                    _getAttackBonusColor(attack.attackBonus),
+                    _getAttackBonusColor(attack.attackBonus, C),
                     Icons.gavel,
                   ),
                   const SizedBox(width: 12),
                   _buildStatChip(
                     'Schaden',
                     attack.totalDamage,
-                    _getDamageColor(attack.damageDice),
+                    _getDamageColor(attack.damageDice, C),
                     Icons.flash_on,
                   ),
                   const SizedBox(width: 12),
                   _buildStatChip(
                     'Art',
                     attack.damageType,
-                    Colors.grey[600]!,
+                    C.textMid,
                     Icons.local_fire_department,
                   ),
                 ],
               ),
-              
+
               // Zusätzliche Informationen
               if (attack.range != null || attack.abilityUsed != null) ...[
                 const SizedBox(height: 12),
@@ -99,13 +101,13 @@ class AttackCardWidget extends StatelessWidget {
                       Icon(
                         Icons.my_location,
                         size: 16,
-                        color: Colors.grey[600],
+                        color: C.textMid,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         attack.range!,
                         style: TextStyle(
-                          color: Colors.grey[600],
+                          color: C.textMid,
                           fontSize: 14,
                         ),
                       ),
@@ -116,13 +118,13 @@ class AttackCardWidget extends StatelessWidget {
                       Icon(
                         Icons.fitness_center,
                         size: 16,
-                        color: Colors.grey[600],
+                        color: C.textMid,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         attack.abilityUsed!,
                         style: TextStyle(
-                          color: Colors.grey[600],
+                          color: C.textMid,
                           fontSize: 14,
                         ),
                       ),
@@ -132,14 +134,14 @@ class AttackCardWidget extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.green.withValues(alpha: 0.2),
+                          color: C.green.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.green.withValues(alpha: 0.5)),
+                          border: Border.all(color: C.green.withValues(alpha: 0.5)),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Proficient',
                           style: TextStyle(
-                            color: Colors.green,
+                            color: C.green,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
@@ -149,22 +151,22 @@ class AttackCardWidget extends StatelessWidget {
                   ],
                 ),
               ],
-              
+
               // Beschreibung
               if (attack.description != null && attack.description!.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.grey[50],
+                    color: C.bgHover,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey[200]!),
+                    border: Border.all(color: C.border),
                   ),
                   child: Text(
                     attack.description!,
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.grey[700],
+                      color: C.textMid,
                       height: 1.4,
                     ),
                   ),
@@ -222,29 +224,25 @@ class AttackCardWidget extends StatelessWidget {
     );
   }
 
-  Color _getAttackBonusColor(int bonus) {
-    if (bonus >= 8) return Colors.purple[700]!;
-    if (bonus >= 6) return Colors.purple[600]!;
-    if (bonus >= 4) return Colors.blue[600]!;
-    if (bonus >= 2) return Colors.blue[500]!;
-    if (bonus >= 0) return Colors.blue[400]!;
-    if (bonus >= -2) return Colors.orange[600]!;
-    return Colors.red[600]!;
+  Color _getAttackBonusColor(int bonus, AppColorsExtension C) {
+    if (bonus >= 6) return C.accent;
+    if (bonus >= 2) return C.accent;
+    if (bonus >= 0) return C.accent;
+    if (bonus >= -2) return C.amber;
+    return C.red;
   }
 
-  Color _getDamageColor(String damageDice) {
-    // Extrahiere die Würfelgröße für die Farbzuordnung
+  Color _getDamageColor(String damageDice, AppColorsExtension C) {
     final diceMatch = RegExp(r'W(\d+)').firstMatch(damageDice);
     if (diceMatch != null) {
       final diceSize = int.tryParse(diceMatch.group(1)!) ?? 6;
-      if (diceSize >= 12) return Colors.red[700]!;
-      if (diceSize >= 10) return Colors.red[600]!;
-      if (diceSize >= 8) return Colors.orange[600]!;
-      if (diceSize >= 6) return Colors.green[600]!;
-      if (diceSize >= 4) return Colors.blue[600]!;
-      return Colors.grey[600]!;
+      if (diceSize >= 10) return C.red;
+      if (diceSize >= 8) return C.amber;
+      if (diceSize >= 6) return C.green;
+      if (diceSize >= 4) return C.accent;
+      return C.textMid;
     }
-    return Colors.grey[600]!;
+    return C.textMid;
   }
 }
 
@@ -265,6 +263,7 @@ class CompactAttackCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Card(
       elevation: 1,
       margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
@@ -272,13 +271,13 @@ class CompactAttackCardWidget extends StatelessWidget {
         dense: true,
         leading: CircleAvatar(
           radius: 16,
-          backgroundColor: _getAttackBonusColor(attack.attackBonus).withValues(alpha: 0.2),
+          backgroundColor: _getAttackBonusColor(attack.attackBonus, C).withValues(alpha: 0.2),
           child: Text(
             attack.formattedAttackBonus,
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
-              color: _getAttackBonusColor(attack.attackBonus),
+              color: _getAttackBonusColor(attack.attackBonus, C),
             ),
           ),
         ),
@@ -293,7 +292,7 @@ class CompactAttackCardWidget extends StatelessWidget {
           '${attack.totalDamage} ${attack.damageType}',
           style: TextStyle(
             fontSize: 12,
-            color: Colors.grey[600],
+            color: C.textMid,
           ),
         ),
         trailing: Row(
@@ -303,7 +302,7 @@ class CompactAttackCardWidget extends StatelessWidget {
               Icon(
                 Icons.check_circle,
                 size: 16,
-                color: Colors.green[600],
+                color: C.green,
               ),
             if (onEdit != null || onDelete != null) ...[
               const SizedBox(width: 8),
@@ -332,13 +331,13 @@ class CompactAttackCardWidget extends StatelessWidget {
                       ),
                     ),
                   if (onDelete != null)
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(Icons.delete, size: 16, color: Colors.red),
-                          SizedBox(width: 8),
-                          Text('Löschen', style: TextStyle(color: Colors.red)),
+                          Icon(Icons.delete, size: 16, color: C.red),
+                          const SizedBox(width: 8),
+                          Text('Löschen', style: TextStyle(color: C.red)),
                         ],
                       ),
                     ),
@@ -352,13 +351,11 @@ class CompactAttackCardWidget extends StatelessWidget {
     );
   }
 
-  Color _getAttackBonusColor(int bonus) {
-    if (bonus >= 8) return Colors.purple[700]!;
-    if (bonus >= 6) return Colors.purple[600]!;
-    if (bonus >= 4) return Colors.blue[600]!;
-    if (bonus >= 2) return Colors.blue[500]!;
-    if (bonus >= 0) return Colors.blue[400]!;
-    if (bonus >= -2) return Colors.orange[600]!;
-    return Colors.red[600]!;
+  Color _getAttackBonusColor(int bonus, AppColorsExtension C) {
+    if (bonus >= 6) return C.accent;
+    if (bonus >= 2) return C.accent;
+    if (bonus >= 0) return C.accent;
+    if (bonus >= -2) return C.amber;
+    return C.red;
   }
 }

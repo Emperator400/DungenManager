@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/creature.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 import '../../viewmodels/bestiary_viewmodel.dart';
 import '../../screens/bestiary/edit_creature_screen.dart';
 
@@ -18,46 +18,43 @@ class BestiaryCreatureCard extends StatelessWidget {
   });
 
   /// Gibt die Farbe basierend auf dem Quelltyp zurück
-  Color _getSourceColor(String sourceType) {
+  Color _getSourceColor(String sourceType, AppColorsExtension C) {
     switch (sourceType) {
       case 'official':
-        return DnDTheme.arcaneBlue;
+        return C.accent;
       case 'custom':
-        return DnDTheme.successGreen;
+        return C.green;
       case 'hybrid':
-        return DnDTheme.mysticalPurple;
+        return C.accent;
       default:
-        return DnDTheme.slateGrey;
+        return C.bgActive;
     }
   }
 
   void _showDeleteConfirmation(BuildContext context) {
+    final C = context.appColors;
     // ScaffoldMessenger vor dem Dialog speichern
     final scaffoldMessenger = ScaffoldMessenger.of(context);
-    
+
     showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
+        backgroundColor: C.bg,
         title: Text(
           'Kreatur löschen',
-          style: DnDTheme.headline3.copyWith(
-            color: DnDTheme.errorRed,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: C.red),
         ),
         content: Text(
           "Möchtest du '${creature.name}' wirklich löschen? "
           "Diese Aktion kann nicht rückgängig gemacht werden.",
-          style: DnDTheme.bodyText1.copyWith(color: Colors.white70),
+          style: TextStyle(fontSize: 14, color: C.text),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
             child: Text(
               'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(
-                color: DnDTheme.mysticalPurple,
-              ),
+              style: TextStyle(fontSize: 14, color: C.accent),
             ),
           ),
           ElevatedButton(
@@ -69,7 +66,7 @@ class BestiaryCreatureCard extends StatelessWidget {
                   scaffoldMessenger.showSnackBar(
                     SnackBar(
                       content: Text('${creature.name} wurde gelöscht'),
-                      backgroundColor: DnDTheme.successGreen,
+                      backgroundColor: C.green,
                     ),
                   );
                 }
@@ -78,14 +75,14 @@ class BestiaryCreatureCard extends StatelessWidget {
                   scaffoldMessenger.showSnackBar(
                     SnackBar(
                       content: Text('Fehler beim Löschen: $e'),
-                      backgroundColor: DnDTheme.errorRed,
+                      backgroundColor: C.red,
                     ),
                   );
                 }
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.errorRed,
+              backgroundColor: C.red,
               foregroundColor: Colors.white,
             ),
             child: const Text('Löschen'),
@@ -97,30 +94,29 @@ class BestiaryCreatureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     final isOfficial = creature.sourceType == 'official';
     final isCustom = creature.sourceType == 'custom';
-    
+    final sourceColor = _getSourceColor(creature.sourceType, C);
+
     return Container(
-      margin: const EdgeInsets.only(bottom: DnDTheme.sm),
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        gradient: DnDTheme.getMysticalGradient(
-          startColor: DnDTheme.slateGrey,
-          endColor: DnDTheme.stoneGrey,
-        ),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        color: C.bgPanel,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: _getSourceColor(creature.sourceType).withValues(alpha: 0.5),
+          color: sourceColor.withValues(alpha: 0.5),
           width: 1,
         ),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.all(DnDTheme.md),
+        contentPadding: const EdgeInsets.all(16),
         leading: Container(
           decoration: BoxDecoration(
-            color: _getSourceColor(creature.sourceType),
+            color: sourceColor,
             shape: BoxShape.circle,
             border: Border.all(
-              color: DnDTheme.ancientGold,
+              color: C.amber,
               width: 2,
             ),
           ),
@@ -132,8 +128,9 @@ class BestiaryCreatureCard extends StatelessWidget {
         ),
         title: Text(
           creature.name,
-          style: DnDTheme.bodyText1.copyWith(
-            color: Colors.white,
+          style: TextStyle(
+            fontSize: 14,
+            color: C.text,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -142,23 +139,17 @@ class BestiaryCreatureCard extends StatelessWidget {
           children: [
             Text(
               "HP: ${creature.currentHp}/${creature.maxHp} | RK: ${creature.armorClass}",
-              style: DnDTheme.bodyText2.copyWith(
-                color: DnDTheme.ancientGold,
-              ),
+              style: TextStyle(fontSize: 12, color: C.amber),
             ),
             if (creature.type != null)
               Text(
                 "Typ: ${creature.type}${creature.subtype != null ? ' (${creature.subtype})' : ''}",
-                style: DnDTheme.bodyText2.copyWith(
-                  color: Colors.white70,
-                ),
+                style: TextStyle(fontSize: 12, color: C.textMid),
               ),
             if (creature.challengeRating != null)
               Text(
                 "SG: ${creature.challengeRating} | Größe: ${creature.size ?? 'Medium'}",
-                style: DnDTheme.bodyText2.copyWith(
-                  color: Colors.white70,
-                ),
+                style: TextStyle(fontSize: 12, color: C.textMid),
               ),
           ],
         ),
@@ -167,14 +158,16 @@ class BestiaryCreatureCard extends StatelessWidget {
           children: [
             // Favoriten-Stern
             Container(
-              decoration: DnDTheme.getMysticalBorder(
-                borderColor: creature.isFavorite ? DnDTheme.ancientGold : DnDTheme.slateGrey,
-                width: 2,
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: creature.isFavorite ? C.amber : C.bgActive,
+                ),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: IconButton(
                 icon: Icon(
                   creature.isFavorite ? Icons.star : Icons.star_border,
-                  color: creature.isFavorite ? DnDTheme.ancientGold : DnDTheme.slateGrey,
+                  color: creature.isFavorite ? C.amber : C.bgActive,
                 ),
                 onPressed: () async {
                   try {
@@ -184,7 +177,7 @@ class BestiaryCreatureCard extends StatelessWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('Fehler: $e'),
-                          backgroundColor: DnDTheme.errorRed,
+                          backgroundColor: C.red,
                         ),
                       );
                     }
@@ -193,15 +186,15 @@ class BestiaryCreatureCard extends StatelessWidget {
                 tooltip: 'Favorit',
               ),
             ),
-            const SizedBox(width: DnDTheme.xs),
+            const SizedBox(width: 4),
             // Bearbeiten-Button
             Container(
-              decoration: DnDTheme.getMysticalBorder(
-                borderColor: DnDTheme.arcaneBlue,
-                width: 2,
+              decoration: BoxDecoration(
+                border: Border.all(color: C.accent),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: IconButton(
-                icon: Icon(Icons.edit, color: DnDTheme.arcaneBlue),
+                icon: Icon(Icons.edit, color: C.accent),
                 onPressed: () async {
                   final result = await Navigator.of(context).push<bool>(
                     MaterialPageRoute(
@@ -217,15 +210,15 @@ class BestiaryCreatureCard extends StatelessWidget {
                 tooltip: 'Bearbeiten',
               ),
             ),
-            const SizedBox(width: DnDTheme.xs),
+            const SizedBox(width: 4),
             // Löschen-Button
             Container(
-              decoration: DnDTheme.getMysticalBorder(
-                borderColor: DnDTheme.errorRed,
-                width: 2,
+              decoration: BoxDecoration(
+                border: Border.all(color: C.red),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: IconButton(
-                icon: Icon(Icons.delete, color: DnDTheme.errorRed),
+                icon: Icon(Icons.delete, color: C.red),
                 onPressed: () => _showDeleteConfirmation(context),
                 tooltip: 'Löschen',
               ),

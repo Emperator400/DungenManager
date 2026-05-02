@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/campaign.dart';
+import '../../theme/app_theme.dart';
 
 /// Enhanced Campaign Card Widget mit modernem Design
 class EnhancedCampaignCardWidget extends StatelessWidget {
@@ -32,9 +33,9 @@ class EnhancedCampaignCardWidget extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Banner-Bild oben (wenn verfügbar)
-            if (campaign.settings.imageUrl != null) 
+            if (campaign.settings.imageUrl != null)
               _buildCampaignImage(context),
-            
+
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -89,29 +90,30 @@ class EnhancedCampaignCardWidget extends StatelessWidget {
   }
 
   Widget _buildStatusChip(BuildContext context) {
+    final C = context.appColors;
     Color chipColor;
     String statusText;
-    
+
     // Echte Status-Auswertung basierend auf campaign.status
     switch (campaign.status) {
       case CampaignStatus.planning:
-        chipColor = Colors.grey;
+        chipColor = C.textMid;
         statusText = 'Planung';
         break;
       case CampaignStatus.active:
-        chipColor = Colors.green;
+        chipColor = C.green;
         statusText = 'Aktiv';
         break;
       case CampaignStatus.paused:
-        chipColor = Colors.orange;
+        chipColor = C.amber;
         statusText = 'Pausiert';
         break;
       case CampaignStatus.completed:
-        chipColor = Colors.blue;
+        chipColor = C.accent;
         statusText = 'Abgeschlossen';
         break;
       case CampaignStatus.cancelled:
-        chipColor = Colors.red;
+        chipColor = C.red;
         statusText = 'Abgebrochen';
         break;
     }
@@ -262,7 +264,7 @@ class EnhancedCampaignCardWidget extends StatelessWidget {
               );
             },
           ),
-          
+
           // Overlay für bessere Text-Lesbarkeit
           Container(
             height: 120,
@@ -278,7 +280,7 @@ class EnhancedCampaignCardWidget extends StatelessWidget {
               ),
             ),
           ),
-          
+
           // Status-Overlay oben rechts
           Positioned(
             top: 8,
@@ -293,7 +295,7 @@ class EnhancedCampaignCardWidget extends StatelessWidget {
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final difference = now.difference(date);
-    
+
     if (difference.inDays == 0) {
       if (difference.inHours == 0) {
         return 'vor ${difference.inMinutes} Min.';
@@ -321,6 +323,7 @@ class EnhancedCampaignCardWidget extends StatelessWidget {
   );
 
   Widget _buildStatsRow(BuildContext context) {
+    final C = context.appColors;
     return Row(
       children: [
         _buildStatItem(
@@ -328,7 +331,7 @@ class EnhancedCampaignCardWidget extends StatelessWidget {
           Icons.pets,
           campaign.availableMonsters.length.toString(),
           'Monster',
-          Colors.red,
+          C.red,
         ),
         const SizedBox(width: 16),
         _buildStatItem(
@@ -336,7 +339,7 @@ class EnhancedCampaignCardWidget extends StatelessWidget {
           Icons.people,
           campaign.availableNpcs.length.toString(),
           'NPCs',
-          Colors.blue,
+          C.accent,
         ),
         const SizedBox(width: 16),
         _buildStatItem(
@@ -344,7 +347,7 @@ class EnhancedCampaignCardWidget extends StatelessWidget {
           Icons.inventory_2,
           campaign.availableItems.length.toString(),
           'Items',
-          Colors.green,
+          C.green,
         ),
         const SizedBox(width: 16),
         _buildStatItem(
@@ -352,7 +355,7 @@ class EnhancedCampaignCardWidget extends StatelessWidget {
           Icons.auto_stories,
           campaign.availableSpells.length.toString(),
           'Spells',
-          Colors.purple,
+          C.accent,
         ),
       ],
     );
@@ -385,6 +388,7 @@ class EnhancedCampaignCardWidget extends StatelessWidget {
   }
 
   Widget _buildAvailableResources(BuildContext context) {
+    final C = context.appColors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -403,25 +407,25 @@ class EnhancedCampaignCardWidget extends StatelessWidget {
               context,
               monster,
               Icons.pets,
-              Colors.red,
+              C.red,
             )),
             ...campaign.availableNpcs.take(3).map((npc) => _buildResourceChip(
               context,
               npc,
               Icons.people,
-              Colors.blue,
+              C.accent,
             )),
             ...campaign.availableItems.take(3).map((item) => _buildResourceChip(
               context,
               item,
               Icons.inventory_2,
-              Colors.green,
+              C.green,
             )),
             ...campaign.availableSpells.take(3).map((spell) => _buildResourceChip(
               context,
               spell,
               Icons.auto_stories,
-              Colors.purple,
+              C.accent,
             )),
             if (campaign.availableMonsters.length > 3 ||
                 campaign.availableNpcs.length > 3 ||
@@ -450,15 +454,19 @@ class EnhancedCampaignCardWidget extends StatelessWidget {
     side: BorderSide(color: color.withValues(alpha: 0.3)),
   );
 
-  Widget _buildMoreChip(BuildContext context) => Chip(
-    label: const Text(
-      '...',
-      style: TextStyle(fontWeight: FontWeight.bold),
-    ),
-    backgroundColor: Colors.grey.withValues(alpha: 0.1),
-  );
+  Widget _buildMoreChip(BuildContext context) {
+    final C = context.appColors;
+    return Chip(
+      label: const Text(
+        '...',
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
+      backgroundColor: C.textMid.withValues(alpha: 0.1),
+    );
+  }
 
   Widget _buildActionButtons(BuildContext context) {
+    final C = context.appColors;
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
@@ -472,8 +480,8 @@ class EnhancedCampaignCardWidget extends StatelessWidget {
           const SizedBox(width: 8),
           TextButton.icon(
             onPressed: () => _showDeleteConfirmation(context),
-            icon: const Icon(Icons.delete_outline, color: Colors.red),
-            label: const Text('Löschen', style: TextStyle(color: Colors.red)),
+            icon: Icon(Icons.delete_outline, color: C.red),
+            label: Text('Löschen', style: TextStyle(color: C.red)),
           ),
         ],
       ],
@@ -485,6 +493,7 @@ class EnhancedCampaignCardWidget extends StatelessWidget {
   }
 
   void _showDeleteStepDialog(BuildContext context, int clickCount) {
+    final C = context.appColors;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -500,23 +509,23 @@ class EnhancedCampaignCardWidget extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.1),
+                  color: C.red.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                  border: Border.all(color: C.red.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       Icons.warning,
-                      color: Colors.red,
+                      color: C.red,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Noch ${3 - clickCount} Klicks zum endgültigen Löschen',
-                        style: const TextStyle(
-                          color: Colors.red,
+                        style: TextStyle(
+                          color: C.red,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -535,7 +544,7 @@ class EnhancedCampaignCardWidget extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              
+
               if (clickCount < 2) {
                 // Nächster Schritt
                 _showDeleteStepDialog(context, clickCount + 1);
@@ -545,13 +554,13 @@ class EnhancedCampaignCardWidget extends StatelessWidget {
               }
             },
             style: TextButton.styleFrom(
-              foregroundColor: clickCount > 0 ? Colors.red : Colors.orange,
-              backgroundColor: clickCount > 0 
-                  ? Colors.red.withValues(alpha: 0.1) 
-                  : Colors.orange.withValues(alpha: 0.1),
+              foregroundColor: clickCount > 0 ? C.red : C.amber,
+              backgroundColor: clickCount > 0
+                  ? C.red.withValues(alpha: 0.1)
+                  : C.amber.withValues(alpha: 0.1),
             ),
             child: Text(
-              clickCount >= 2 
+              clickCount >= 2
                   ? 'LETZTER KLICK (${3 - clickCount})'
                   : 'Löschen (${3 - clickCount})',
             ),

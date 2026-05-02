@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../theme/dnd_theme.dart';
+import '../../../theme/app_theme.dart';
 
 /// Widget zur Anzeige von Fehlern in der Kreatur-Bearbeitung
 class CreatureErrorWidget extends StatelessWidget {
@@ -14,43 +14,40 @@ class CreatureErrorWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Center(
       child: Container(
-        padding: const EdgeInsets.all(DnDTheme.xl),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               Icons.error_outline,
-              color: DnDTheme.errorRed,
+              color: C.red,
               size: 64,
             ),
-            const SizedBox(height: DnDTheme.lg),
+            const SizedBox(height: 24),
             Text(
               'Fehler',
-              style: DnDTheme.headline2.copyWith(
-                color: DnDTheme.errorRed,
-              ),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: C.red),
             ),
-            const SizedBox(height: DnDTheme.sm),
+            const SizedBox(height: 8),
             Text(
               error,
-              style: DnDTheme.bodyText1.copyWith(
-                color: Colors.white70,
-              ),
+              style: TextStyle(fontSize: 14, color: C.text),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: DnDTheme.xl),
+            const SizedBox(height: 32),
             ElevatedButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh),
               label: const Text('Erneut versuchen'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: DnDTheme.arcaneBlue,
+                backgroundColor: C.accent,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: DnDTheme.lg,
-                  vertical: DnDTheme.md,
+                  horizontal: 24,
+                  vertical: 16,
                 ),
               ),
             ),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../theme/dnd_theme.dart';
 import '../../../widgets/ui_components/forms/form_field_widget.dart';
 import '../../../widgets/ui_components/cards/section_card_widget.dart';
 
@@ -41,7 +40,7 @@ class CurrencySection extends StatelessWidget {
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
             ),
           ),
-          const SizedBox(width: DnDTheme.md),
+          const SizedBox(width: 16),
           Expanded(
             child: FormFieldWidget(
               label: 'Silber',
@@ -54,7 +53,7 @@ class CurrencySection extends StatelessWidget {
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
             ),
           ),
-          const SizedBox(width: DnDTheme.md),
+          const SizedBox(width: 16),
           Expanded(
             child: FormFieldWidget(
               label: 'Kupfer',

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 import '../../viewmodels/bestiary_viewmodel.dart';
 import '../../screens/bestiary/edit_creature_screen.dart';
 
@@ -17,15 +17,16 @@ class BestiaryFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Consumer<BestiaryViewModel>(
       builder: (context, viewModel, child) {
         // Zeige FAB nur auf den ersten drei Tabs
         if (tabController.index >= 3) return const SizedBox.shrink();
-        
+
         return Container(
-          decoration: DnDTheme.getMysticalBorder(
-            borderColor: DnDTheme.successGreen,
-            width: 3,
+          decoration: BoxDecoration(
+            border: Border.all(color: C.green, width: 3),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: FloatingActionButton.extended(
             onPressed: () async {
@@ -38,7 +39,7 @@ class BestiaryFab extends StatelessWidget {
                 onDataChanged();
               }
             },
-            backgroundColor: DnDTheme.successGreen,
+            backgroundColor: C.green,
             foregroundColor: Colors.white,
             icon: const Icon(Icons.add),
             label: const Text('Neue Kreatur'),

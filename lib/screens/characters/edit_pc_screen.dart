@@ -360,11 +360,11 @@ class _EditPCScreenState extends State<EditPCScreen>
 
   Widget _buildSavingThrowsCard(EditPCViewModel vm, AppColorsExtension C) {
     final throws = [
-      ('Stärke', 'strength', Icons.fitness_center, Colors.red, vm.strength),
-      ('Geschicklichkeit', 'dexterity', Icons.directions_run, Colors.green, vm.dexterity),
-      ('Konstitution', 'constitution', Icons.favorite, Colors.orange, vm.constitution),
-      ('Intelligenz', 'intelligence', Icons.psychology, Colors.blue, vm.intelligence),
-      ('Weisheit', 'wisdom', Icons.visibility, Colors.purple, vm.wisdom),
+      ('Stärke', 'strength', Icons.fitness_center, C.red, vm.strength),
+      ('Geschicklichkeit', 'dexterity', Icons.directions_run, C.green, vm.dexterity),
+      ('Konstitution', 'constitution', Icons.favorite, C.amber, vm.constitution),
+      ('Intelligenz', 'intelligence', Icons.psychology, C.accent, vm.intelligence),
+      ('Weisheit', 'wisdom', Icons.visibility, C.accent, vm.wisdom),
       ('Charisma', 'charisma', Icons.star, C.amber, vm.charisma),
     ];
 

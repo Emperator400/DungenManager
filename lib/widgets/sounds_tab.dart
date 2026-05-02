@@ -6,6 +6,7 @@ import '../database/core/database_connection.dart';
 import '../database/repositories/sound_model_repository.dart';
 import '../models/sound.dart';
 import '../services/sound_service.dart';
+import '../theme/app_theme.dart';
 
 class SoundsTab extends StatefulWidget {
   const SoundsTab({super.key});
@@ -63,9 +64,9 @@ class _SoundsTabState extends State<SoundsTab> {
       description: soundDetails['description'] as String,
     );
     await _soundRepository.create(newSound);
-    
+
     // HIER WAR EIN FEHLER: Der Check hat gefehlt!
-    if (!mounted) return; 
+    if (!mounted) return;
     _loadSounds();
   }
 
@@ -113,6 +114,7 @@ class _SoundsTabState extends State<SoundsTab> {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Scaffold(
       body: FutureBuilder<List<Sound>>(
         future: _soundsFuture,
@@ -121,7 +123,7 @@ class _SoundsTabState extends State<SoundsTab> {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           final sounds = snapshot.data!;
           if (sounds.isEmpty) return const Center(child: Text("Keine Sounds in der Bibliothek."));
-          
+
           return ListView.builder(
             itemCount: sounds.length,
             itemBuilder: (context, index) {
@@ -131,7 +133,7 @@ class _SoundsTabState extends State<SoundsTab> {
                 title: Text(sound.name),
                 subtitle: Text(sound.description, maxLines: 1, overflow: TextOverflow.ellipsis),
                 trailing: IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.redAccent),
+                  icon: Icon(Icons.delete, color: C.red),
                   onPressed: () async {
                     await SoundService.deleteSoundFile(sound.filePath);
                     await _soundRepository.delete(sound.id);

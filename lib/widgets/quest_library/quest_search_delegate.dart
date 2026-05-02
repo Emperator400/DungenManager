@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/quest.dart';
 import 'enhanced_quest_card_widget.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 
 class QuestSearchDelegate extends SearchDelegate<Quest?> {
   final List<Quest> allQuests;
@@ -177,35 +177,40 @@ class QuestSearchDelegate extends SearchDelegate<Quest?> {
   }
 
   Widget _buildEmptyState(String message) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.search_off,
-            size: 64,
-            color: Colors.grey[400],
+    return Builder(
+      builder: (context) {
+        final C = context.appColors;
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.search_off,
+                size: 64,
+                color: C.textSoft,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: C.textMid,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Versuche andere Suchbegriffe oder filtere die Ergebnisse',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: C.textSoft,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[600],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Versuche andere Suchbegriffe oder filtere die Ergebnisse',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -225,14 +230,14 @@ class QuestSearchDelegate extends SearchDelegate<Quest?> {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Colors.grey[700],
+              color: context.appColors.textMid,
             ),
           ),
         ),
         ...suggestions.map((suggestion) => ListTile(
           leading: Icon(
             suggestion['icon'] as IconData,
-            color: DnDTheme.mysticalPurple,
+            color: context.appColors.accent,
           ),
           title: Text(suggestion['title'] as String),
           subtitle: suggestion['subtitle'] != null 
@@ -305,9 +310,10 @@ class QuestSearchDelegate extends SearchDelegate<Quest?> {
 
   @override
   ThemeData appBarTheme(BuildContext context) {
+    final C = context.appColors;
     return ThemeData(
       appBarTheme: AppBarTheme(
-        backgroundColor: DnDTheme.stoneGrey,
+        backgroundColor: C.bg,
         foregroundColor: Colors.white,
         elevation: 2,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -319,9 +325,9 @@ class QuestSearchDelegate extends SearchDelegate<Quest?> {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: DnDTheme.slateGrey,
+        fillColor: C.bgPanel,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+          borderRadius: BorderRadius.circular(12.0),
           borderSide: BorderSide.none,
         ),
         hintStyle: const TextStyle(color: Colors.white54),

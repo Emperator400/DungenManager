@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../../models/inventory_item.dart';
 import '../../../models/item.dart';
-import '../../../theme/dnd_theme.dart';
+import '../../../theme/app_theme.dart';
 
 /// Widget für die Tasche/Rucksack-ansicht
 /// Zeigt Items, die NICHT ausgerüstet sind
-/// 
+///
 /// Beispiele:
 /// ```dart
 /// BackpackWidget(
@@ -17,16 +17,16 @@ import '../../../theme/dnd_theme.dart';
 class BackpackWidget extends StatelessWidget {
   /// Alle Items im Inventar
   final List<DisplayInventoryItem> inventoryItems;
-  
+
   /// IDs der ausgerüsteten Items (werden ausgeblendet)
   final Set<String> equippedItemIds;
-  
+
   /// Callback wenn ein Item ausgerüstet wird
   final Function(DisplayInventoryItem)? onEquipItem;
-  
+
   /// Optional: Callback für Bearbeiten
   final Function(DisplayInventoryItem)? onEditItem;
-  
+
   /// Optional: Callback für Löschen
   final Function(DisplayInventoryItem)? onDeleteItem;
 
@@ -48,6 +48,7 @@ class BackpackWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     final backpackItems = _backpackItems;
 
     return Column(
@@ -58,14 +59,14 @@ class BackpackWidget extends StatelessWidget {
           children: [
             Icon(
               Icons.backpack,
-              color: DnDTheme.ancientGold,
+              color: C.amber,
               size: 20,
             ),
             const SizedBox(width: 8),
             Text(
               'Tasche',
-              style: DnDTheme.headline3.copyWith(
-                color: DnDTheme.ancientGold,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: C.text).copyWith(
+                color: C.amber,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -76,42 +77,42 @@ class BackpackWidget extends StatelessWidget {
                 vertical: 2,
               ),
               decoration: BoxDecoration(
-                color: DnDTheme.arcaneBlue.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                color: C.accent.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: DnDTheme.arcaneBlue,
+                  color: C.accent,
                   width: 1,
                 ),
               ),
               child: Text(
                 '${backpackItems.length}',
-                style: DnDTheme.bodyText2.copyWith(
-                  color: DnDTheme.arcaneBlue,
+                style: TextStyle(fontSize: 12, color: C.textMid).copyWith(
+                  color: C.accent,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: DnDTheme.md),
-        
+        const SizedBox(height: 12),
+
         // Item-Liste oder Empty State
         if (backpackItems.isEmpty)
-          _buildEmptyState()
+          _buildEmptyState(C)
         else
-          _buildItemList(),
+          _buildItemList(context, C),
       ],
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(AppColorsExtension C) {
     return Container(
-      padding: const EdgeInsets.all(DnDTheme.lg),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: DnDTheme.slateGrey.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        color: C.bgPanel.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: DnDTheme.slateGrey,
+          color: C.bgPanel,
           width: 1,
         ),
       ),
@@ -120,21 +121,21 @@ class BackpackWidget extends StatelessWidget {
           Icon(
             Icons.inventory_2_outlined,
             size: 48,
-            color: DnDTheme.mysticalPurple.withValues(alpha: 0.6),
+            color: C.accent.withValues(alpha: 0.6),
           ),
-          const SizedBox(height: DnDTheme.md),
+          const SizedBox(height: 12),
           Text(
             'Tasche ist leer',
-            style: DnDTheme.bodyText1.copyWith(
+            style: TextStyle(fontSize: 14, color: C.text).copyWith(
               color: Colors.white60,
               fontStyle: FontStyle.italic,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: DnDTheme.sm),
+          const SizedBox(height: 8),
           Text(
             'Füge Gegenstände aus dem Inventar hinzu',
-            style: DnDTheme.bodyText2.copyWith(
+            style: TextStyle(fontSize: 12, color: C.textMid).copyWith(
               color: Colors.white38,
               fontSize: 12,
             ),
@@ -145,36 +146,36 @@ class BackpackWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildItemList() {
+  Widget _buildItemList(BuildContext context, AppColorsExtension C) {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 4,
         childAspectRatio: 1,
-        crossAxisSpacing: DnDTheme.sm,
-        mainAxisSpacing: DnDTheme.sm,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
       ),
       itemCount: _backpackItems.length,
       itemBuilder: (context, index) {
         final displayItem = _backpackItems[index];
-        return _buildItemCard(context, displayItem);
+        return _buildItemCard(context, displayItem, C);
       },
     );
   }
 
-  Widget _buildItemCard(BuildContext context, DisplayInventoryItem displayItem) {
+  Widget _buildItemCard(BuildContext context, DisplayInventoryItem displayItem, AppColorsExtension C) {
     final item = displayItem.item;
     final invItem = displayItem.inventoryItem;
 
     return GestureDetector(
-      onTap: () => _showItemDialog(context, displayItem),
+      onTap: () => _showItemDialog(context, displayItem, C),
       child: Container(
         decoration: BoxDecoration(
-          color: DnDTheme.slateGrey,
-          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+          color: C.bgPanel,
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: DnDTheme.ancientGold,
+            color: C.amber,
             width: 1,
           ),
         ),
@@ -182,7 +183,7 @@ class BackpackWidget extends StatelessWidget {
           children: [
             // Hauptinhalt
             Padding(
-              padding: const EdgeInsets.all(DnDTheme.sm),
+              padding: const EdgeInsets.all(8),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -191,7 +192,7 @@ class BackpackWidget extends StatelessWidget {
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: DnDTheme.arcaneBlue,
+                      color: C.accent,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -200,11 +201,11 @@ class BackpackWidget extends StatelessWidget {
                       size: 16,
                     ),
                   ),
-                  const SizedBox(height: DnDTheme.xs),
+                  const SizedBox(height: 4),
                   // Item-Name
                   Text(
                     item.name,
-                    style: DnDTheme.bodyText2.copyWith(
+                    style: TextStyle(fontSize: 12, color: C.textMid).copyWith(
                       color: Colors.white,
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
@@ -221,13 +222,13 @@ class BackpackWidget extends StatelessWidget {
                         vertical: 1,
                       ),
                       decoration: BoxDecoration(
-                        color: DnDTheme.ancientGold,
+                        color: C.amber,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         'x${invItem.quantity}',
-                        style: DnDTheme.bodyText2.copyWith(
-                          color: DnDTheme.dungeonBlack,
+                        style: TextStyle(fontSize: 12, color: C.textMid).copyWith(
+                          color: Colors.black,
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
                         ),
@@ -236,7 +237,7 @@ class BackpackWidget extends StatelessWidget {
                 ],
               ),
             ),
-            
+
             // Ausrüsten-Button (oben rechts)
             if (onEquipItem != null)
               Positioned(
@@ -251,10 +252,10 @@ class BackpackWidget extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: DnDTheme.successGreen,
+                      color: C.green,
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.add,
                       size: 14,
                       color: Colors.white,
@@ -268,18 +269,18 @@ class BackpackWidget extends StatelessWidget {
     );
   }
 
-  void _showItemDialog(BuildContext context, DisplayInventoryItem displayItem) {
+  void _showItemDialog(BuildContext context, DisplayInventoryItem displayItem, AppColorsExtension C) {
     final item = displayItem.item;
     final invItem = displayItem.inventoryItem;
 
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
+        backgroundColor: C.bg,
         title: Text(
           item.name,
-          style: DnDTheme.headline2.copyWith(
-            color: DnDTheme.ancientGold,
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: C.text).copyWith(
+            color: C.amber,
           ),
         ),
         content: Column(
@@ -292,7 +293,7 @@ class BackpackWidget extends StatelessWidget {
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: DnDTheme.arcaneBlue,
+                  color: C.accent,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -302,37 +303,37 @@ class BackpackWidget extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: DnDTheme.md),
-            
+            const SizedBox(height: 12),
+
             // Details
             Text(
               item.itemType.name,
-              style: DnDTheme.bodyText1.copyWith(
-                color: DnDTheme.mysticalPurple,
+              style: TextStyle(fontSize: 14, color: C.text).copyWith(
+                color: C.accent,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: DnDTheme.sm),
+            const SizedBox(height: 8),
             if (item.description.isNotEmpty)
               Text(
                 item.description,
-                style: DnDTheme.bodyText2.copyWith(
+                style: TextStyle(fontSize: 12, color: C.textMid).copyWith(
                   color: Colors.white70,
                 ),
               ),
             if (invItem.quantity > 1) ...[
-              const SizedBox(height: DnDTheme.sm),
+              const SizedBox(height: 8),
               Text(
                 'Menge: ${invItem.quantity}',
-                style: DnDTheme.bodyText2.copyWith(
-                  color: DnDTheme.ancientGold,
+                style: TextStyle(fontSize: 12, color: C.textMid).copyWith(
+                  color: C.amber,
                 ),
               ),
             ],
-            const SizedBox(height: DnDTheme.sm),
+            const SizedBox(height: 8),
             Text(
               'Gewicht: ${item.weight} Pfund',
-              style: DnDTheme.bodyText2.copyWith(
+              style: TextStyle(fontSize: 12, color: C.textMid).copyWith(
                 color: Colors.white60,
               ),
             ),
@@ -349,12 +350,12 @@ class BackpackWidget extends StatelessWidget {
               icon: const Icon(Icons.edit),
               label: Text(
                 'Bearbeiten',
-                style: DnDTheme.bodyText1.copyWith(
-                  color: DnDTheme.arcaneBlue,
+                style: TextStyle(fontSize: 14, color: C.text).copyWith(
+                  color: C.accent,
                 ),
               ),
             ),
-          
+
           // Löschen
           if (onDeleteItem != null)
             TextButton.icon(
@@ -365,12 +366,12 @@ class BackpackWidget extends StatelessWidget {
               icon: const Icon(Icons.delete),
               label: Text(
                 'Löschen',
-                style: DnDTheme.bodyText1.copyWith(
-                  color: DnDTheme.errorRed,
+                style: TextStyle(fontSize: 14, color: C.text).copyWith(
+                  color: C.red,
                 ),
               ),
             ),
-          
+
           // Ausrüsten
           if (onEquipItem != null)
             ElevatedButton.icon(
@@ -381,19 +382,19 @@ class BackpackWidget extends StatelessWidget {
               icon: const Icon(Icons.add),
               label: const Text('Ausrüsten'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: DnDTheme.successGreen,
+                backgroundColor: C.green,
                 foregroundColor: Colors.white,
               ),
             ),
-          
+
           // Abbrechen
-          const SizedBox(width: DnDTheme.sm),
-          
+          const SizedBox(width: 8),
+
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: Text(
               'Schließen',
-              style: DnDTheme.bodyText1.copyWith(
+              style: TextStyle(fontSize: 14, color: C.text).copyWith(
                 color: Colors.white70,
               ),
             ),

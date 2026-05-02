@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../models/campaign.dart';
 import '../../viewmodels/campaign_viewmodel.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 
 /// Wiederverwendbarer Dialog zum Erstellen neuer Kampagnen
-/// 
+///
 /// Kann in verschiedenen Screens (Selection, Dashboard) verwendet werden
 class CampaignCreateDialogWidget extends StatefulWidget {
   final CampaignViewModel viewModel;
@@ -49,11 +49,12 @@ class _CampaignCreateDialogWidgetState extends State<CampaignCreateDialogWidget>
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return AlertDialog(
       title: Text(
         'Neue Kampagne erstellen',
-        style: DnDTheme.headline3.copyWith(
-          color: DnDTheme.ancientGold,
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: C.text).copyWith(
+          color: C.amber,
         ),
       ),
       content: SizedBox(
@@ -68,7 +69,7 @@ class _CampaignCreateDialogWidgetState extends State<CampaignCreateDialogWidget>
                 labelText: 'Titel *',
                 hintText: 'Name der Kampagne',
                 labelStyle: TextStyle(
-                  color: DnDTheme.ancientGold.withValues(alpha: 0.8),
+                  color: C.amber.withValues(alpha: 0.8),
                 ),
                 hintStyle: TextStyle(
                   color: Colors.white.withValues(alpha: 0.5),
@@ -76,19 +77,19 @@ class _CampaignCreateDialogWidgetState extends State<CampaignCreateDialogWidget>
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
-                    color: DnDTheme.ancientGold.withValues(alpha: 0.5),
+                    color: C.amber.withValues(alpha: 0.5),
                   ),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
-                    color: DnDTheme.ancientGold.withValues(alpha: 0.5),
+                    color: C.amber.withValues(alpha: 0.5),
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(
-                    color: DnDTheme.ancientGold,
+                  borderSide: BorderSide(
+                    color: C.amber,
                     width: 2,
                   ),
                 ),
@@ -102,7 +103,7 @@ class _CampaignCreateDialogWidgetState extends State<CampaignCreateDialogWidget>
                 labelText: 'Beschreibung *',
                 hintText: 'Kurze Beschreibung der Kampagne',
                 labelStyle: TextStyle(
-                  color: DnDTheme.ancientGold.withValues(alpha: 0.8),
+                  color: C.amber.withValues(alpha: 0.8),
                 ),
                 hintStyle: TextStyle(
                   color: Colors.white.withValues(alpha: 0.5),
@@ -110,19 +111,19 @@ class _CampaignCreateDialogWidgetState extends State<CampaignCreateDialogWidget>
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
-                    color: DnDTheme.ancientGold.withValues(alpha: 0.5),
+                    color: C.amber.withValues(alpha: 0.5),
                   ),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
-                    color: DnDTheme.ancientGold.withValues(alpha: 0.5),
+                    color: C.amber.withValues(alpha: 0.5),
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(
-                    color: DnDTheme.ancientGold,
+                  borderSide: BorderSide(
+                    color: C.amber,
                     width: 2,
                   ),
                 ),
@@ -136,29 +137,29 @@ class _CampaignCreateDialogWidgetState extends State<CampaignCreateDialogWidget>
               decoration: InputDecoration(
                 labelText: 'Kampagnen-Typ',
                 labelStyle: TextStyle(
-                  color: DnDTheme.ancientGold.withValues(alpha: 0.8),
+                  color: C.amber.withValues(alpha: 0.8),
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
-                    color: DnDTheme.ancientGold.withValues(alpha: 0.5),
+                    color: C.amber.withValues(alpha: 0.5),
                   ),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
-                    color: DnDTheme.ancientGold.withValues(alpha: 0.5),
+                    color: C.amber.withValues(alpha: 0.5),
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(
-                    color: DnDTheme.ancientGold,
+                  borderSide: BorderSide(
+                    color: C.amber,
                     width: 2,
                   ),
                 ),
               ),
-              dropdownColor: DnDTheme.stoneGrey,
+              dropdownColor: C.bg,
               items: CampaignType.values.map((type) {
                 return DropdownMenuItem(
                   value: type,
@@ -173,11 +174,11 @@ class _CampaignCreateDialogWidgetState extends State<CampaignCreateDialogWidget>
           ],
         ),
       ),
-      backgroundColor: DnDTheme.stoneGrey,
+      backgroundColor: C.bg,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: DnDTheme.ancientGold.withValues(alpha: 0.3),
+          color: C.amber.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -192,7 +193,7 @@ class _CampaignCreateDialogWidgetState extends State<CampaignCreateDialogWidget>
         ElevatedButton(
           onPressed: _createCampaign,
           style: ElevatedButton.styleFrom(
-            backgroundColor: DnDTheme.ancientGold,
+            backgroundColor: C.amber,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
@@ -234,7 +235,7 @@ class _CampaignCreateDialogWidgetState extends State<CampaignCreateDialogWidget>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Fehler beim Erstellen: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: context.appColors.red,
           ),
         );
       }

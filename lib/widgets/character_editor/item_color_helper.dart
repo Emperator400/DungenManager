@@ -1,40 +1,40 @@
 import 'package:flutter/material.dart';
 import '../../models/item.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 import '../../theme/dnd_icons.dart';
 
 class ItemColorHelper {
-  // D&D Item-Typen Farben (ersetzen die alten Farben)
+  // Item-Typen Farben (AppColors-basiert)
   static Color getItemTypeColor(ItemType type) {
     switch (type) {
       case ItemType.Weapon:
-        return DnDTheme.deepRed;           // Blutrot für Waffen
+        return AppColors.typQuest;           // Rot für Waffen
       case ItemType.Armor:
-        return DnDTheme.arcaneBlue;         // Arkanes Blau für Rüstung
+        return AppColors.typNpc;             // Blau für Rüstung
       case ItemType.Shield:
-        return DnDTheme.slateGrey;          // Schiefergrau für Schilde
+        return AppColors.typKreatur;         // Grau für Schilde
       case ItemType.AdventuringGear:
-        return DnDTheme.emeraldGreen;       // Smaragdgrün für Ausrüstung
+        return AppColors.typOrt;             // Grün für Ausrüstung
       case ItemType.Treasure:
-        return DnDTheme.ancientGold;         // Altes Gold für Schätze
+        return AppColors.typFraktion;        // Amber für Schätze
       case ItemType.MagicItem:
-        return DnDTheme.mysticalPurple;      // Mystisches Lila für magische Items
+        return AppColors.typLore;            // Lila für magische Items
       case ItemType.SPELL_WEAPON:
-        return DnDTheme.mysticalPurple;      // Mystisches Lila für Zauber
+        return AppColors.typLore;            // Lila für Zauber
       case ItemType.Consumable:
-        return DnDTheme.warningOrange;        // Warnungsorange für Verbrauchbares
+        return AppColors.typWildnis;         // Amber für Verbrauchbares
       case ItemType.Tool:
-        return DnDTheme.stoneGrey;          // Steingrau für Werkzeuge
+        return AppColors.typGebaeude;        // Blau für Werkzeuge
       case ItemType.Material:
-        return DnDTheme.charcoalGrey;        // Holzkohle für Materialien
+        return AppColors.typGegenstand;      // Dunkelgrün für Materialien
       case ItemType.Component:
-        return DnDTheme.infoBlue;           // Info-Blau für Komponenten
+        return AppColors.typGeschichte;      // Blau für Komponenten
       case ItemType.Scroll:
-        return DnDTheme.arcaneBlue;         // Arkanes Blau für Schriftrollen
+        return AppColors.typNpc;             // Blau für Schriftrollen
       case ItemType.Potion:
-        return DnDTheme.emeraldGreen;       // Smaragdgrün für Tränke
+        return AppColors.typOrt;             // Grün für Tränke
       case ItemType.Currency:
-        return DnDTheme.ancientGold;         // Altes Gold für Währung
+        return AppColors.typFraktion;        // Amber für Währung
     }
   }
 
@@ -77,25 +77,41 @@ class ItemColorHelper {
     }
   }
 
-  // D&D Rarity Farben (neues System)
+  // Rarity Farben
   static Color getRarityColor(String rarity) {
-    return DnDTheme.getRarityColor(rarity);
+    return _getRarityColorFromString(rarity);
   }
 
-  // D&D Rarity Rahmenfarben (neues System)
+  static Color _getRarityColorFromString(String rarity) {
+    switch (rarity.toLowerCase()) {
+      case 'legendary':
+        return AppColors.typFraktion;    // Amber/Gold für Legendary
+      case 'very rare':
+        return AppColors.typLore;        // Lila für Very Rare
+      case 'rare':
+        return AppColors.typNpc;         // Blau für Rare
+      case 'uncommon':
+        return AppColors.typOrt;         // Grün für Uncommon
+      case 'common':
+      default:
+        return AppColors.typKreatur;     // Grau für Common
+    }
+  }
+
+  // Rarity Rahmenfarben
   static Color getRarityBorderColor(String rarity) {
     final baseColor = getRarityColor(rarity);
     return baseColor.withValues(alpha: 0.7);
   }
 
-  // D&D Haltbarkeitsfarbe mit Fantasy-Farben
+  // Haltbarkeitsfarbe
   static Color getDurabilityColor(double percentage) {
     if (percentage > 0.6) {
-      return DnDTheme.emeraldGreen;       // Grün für gut
+      return AppColors.typOrt;         // Grün für gut
     } else if (percentage > 0.3) {
-      return DnDTheme.ancientGold;       // Gold für mittel
+      return AppColors.typFraktion;    // Amber für mittel
     } else {
-      return DnDTheme.deepRed;             // Rot für schlecht
+      return AppColors.typQuest;       // Rot für schlecht
     }
   }
 
@@ -103,7 +119,7 @@ class ItemColorHelper {
   static BoxShadow getItemGlow(ItemType type, String rarity) {
     final color = getRarityColor(rarity);
     final intensity = _getGlowIntensity(rarity);
-    
+
     return BoxShadow(
       color: color.withValues(alpha: intensity),
       blurRadius: 8.0,
@@ -128,31 +144,31 @@ class ItemColorHelper {
     }
   }
 
-  // D&D Klassen-spezifische Farben für Character Items
+  // Klassen-spezifische Farben für Character Items
   static Color getClassSpecificColor(String? characterClass, ItemType itemType) {
     if (characterClass == null) return getItemTypeColor(itemType);
-    
+
     switch (characterClass) {
       case 'Magier':
       case 'Hexenmeister':
-        return DnDTheme.mysticalPurple;      // Magische Klassen bekommen lila Töne
+        return AppColors.typLore;         // Lila für magische Klassen
       case 'Kleriker':
       case 'Paladin':
-        return DnDTheme.ancientGold;         // Heiligen Klassen bekommen goldene Töne
+        return AppColors.typFraktion;     // Amber für heilige Klassen
       case 'Druide':
-        return DnDTheme.emeraldGreen;       // Naturklassen bekommen grüne Töne
+        return AppColors.typOrt;          // Grün für Naturklassen
       case 'Schurke':
-        return DnDTheme.stoneGrey;          // Schattenklassen bekommen graue Töne
+        return AppColors.typKreatur;      // Grau für Schattenklassen
       case 'Krieger':
       case 'Barbar':
       case 'Todesritter':
-        return DnDTheme.deepRed;             // Kampfklassen bekommen rote Töne
+        return AppColors.typQuest;        // Rot für Kampfklassen
       default:
-        return getItemTypeColor(itemType);       // Standardfarbe für andere Klassen
+        return getItemTypeColor(itemType);
     }
   }
 
-  // Erweiterte Item-Styling mit D&D Theme
+  // Erweiterte Item-Styling
   static Decoration getItemDecoration({
     required ItemType itemType,
     required String rarity,
@@ -163,36 +179,38 @@ class ItemColorHelper {
     final rarityColor = getRarityColor(rarity);
     final borderColor = getRarityBorderColor(rarity);
     final glow = getItemGlow(itemType, rarity);
-    
+
     return BoxDecoration(
       color: baseColor.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+      borderRadius: BorderRadius.circular(12.0),
       border: Border.all(
         color: isSelected ? rarityColor : borderColor,
         width: isSelected ? 3.0 : 2.0,
       ),
-      boxShadow: isSelected ? [glow] : DnDTheme.subtleShadow,
+      boxShadow: isSelected ? [glow] : null,
     );
   }
 
-  // Text-Styling mit D&D Theme
+  // Text-Styling
   static TextStyle getItemTextStyle({
     required String rarity,
     bool isSelected = false,
   }) {
     final rarityColor = getRarityColor(rarity);
-    
+
     return TextStyle(
-      color: isSelected ? rarityColor : DnDTheme.stoneGrey,
+      color: isSelected ? rarityColor : AppColors.darkTextMid,
       fontSize: isSelected ? 16 : 14,
       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-      shadows: isSelected ? [
-        Shadow(
-          color: rarityColor.withValues(alpha: 0.5),
-          blurRadius: 4,
-          offset: const Offset(0, 2),
-        ),
-      ] : null,
+      shadows: isSelected
+          ? [
+              Shadow(
+                color: rarityColor.withValues(alpha: 0.5),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ]
+          : null,
     );
   }
 }

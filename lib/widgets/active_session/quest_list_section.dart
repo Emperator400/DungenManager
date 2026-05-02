@@ -3,7 +3,6 @@ import '../../database/core/database_connection.dart';
 import '../../database/repositories/quest_model_repository.dart';
 import '../../models/quest.dart';
 import '../../theme/app_theme.dart';
-import '../../theme/dnd_theme.dart';
 
 class QuestListSection extends StatefulWidget {
   final String campaignId;
@@ -117,7 +116,7 @@ class _QuestListSectionState extends State<QuestListSection> {
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
       child: Row(
         children: [
-          Icon(Icons.flag, size: 13, color: DnDTheme.mysticalPurple),
+          Icon(Icons.flag, size: 13, color: C.accent),
           const SizedBox(width: 6),
           Text(
             'Quests',
@@ -278,13 +277,13 @@ class _QuestListSectionState extends State<QuestListSection> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                 decoration: BoxDecoration(
-                  color: DnDTheme.mysticalPurple.withValues(alpha: 0.12),
+                  color: C.accent.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: DnDTheme.mysticalPurple.withValues(alpha: 0.3)),
+                  border: Border.all(color: C.accent.withValues(alpha: 0.3)),
                 ),
                 child: Text(
                   _questTypeLabel(quest.questType),
-                  style: const TextStyle(fontSize: 9, color: DnDTheme.mysticalPurple, fontWeight: FontWeight.w500),
+                  style: TextStyle(fontSize: 9, color: C.accent, fontWeight: FontWeight.w500),
                 ),
               ),
             ],

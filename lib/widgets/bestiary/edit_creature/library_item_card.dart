@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../models/item.dart';
-import '../../../theme/dnd_theme.dart';
+import '../../../theme/app_theme.dart';
 import '../../../viewmodels/edit_creature_viewmodel.dart';
 import '../../../widgets/ui_components/feedback/snackbar_helper.dart';
 
@@ -73,34 +73,34 @@ class ItemTypeHelper {
     }
   }
 
-  static Color getTypeColor(ItemType type) {
+  static Color getTypeColor(ItemType type, AppColorsExtension C) {
     switch (type) {
       case ItemType.Weapon:
-        return DnDTheme.errorRed;
+        return C.red;
       case ItemType.Armor:
-        return DnDTheme.arcaneBlue;
+        return C.accent;
       case ItemType.Shield:
-        return DnDTheme.warningOrange;
+        return C.amber;
       case ItemType.Consumable:
-        return DnDTheme.emeraldGreen;
+        return C.green;
       case ItemType.Tool:
-        return DnDTheme.warningOrange;
+        return C.amber;
       case ItemType.MagicItem:
-        return DnDTheme.ancientGold;
+        return C.amber;
       case ItemType.Potion:
-        return DnDTheme.emeraldGreen;
+        return C.green;
       case ItemType.Scroll:
-        return DnDTheme.mysticalPurple;
+        return C.accent;
       case ItemType.Treasure:
-        return DnDTheme.ancientGold;
+        return C.amber;
       case ItemType.Currency:
-        return DnDTheme.successGreen;
+        return C.green;
       case ItemType.Material:
-        return DnDTheme.warningOrange;
+        return C.amber;
       case ItemType.Component:
-        return DnDTheme.warningOrange;
+        return C.amber;
       default:
-        return DnDTheme.mysticalPurple;
+        return C.accent;
     }
   }
 
@@ -151,11 +151,12 @@ class LibraryItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final typeColor = ItemTypeHelper.getTypeColor(item.itemType);
+    final C = context.appColors;
+    final typeColor = ItemTypeHelper.getTypeColor(item.itemType, C);
     final typeIcon = ItemTypeHelper.getTypeIcon(item.itemType);
 
     return ListTile(
-      contentPadding: const EdgeInsets.all(DnDTheme.md),
+      contentPadding: const EdgeInsets.all(16),
       leading: Container(
         width: 48,
         height: 48,
@@ -172,8 +173,9 @@ class LibraryItemCard extends StatelessWidget {
       ),
       title: Text(
         item.name,
-        style: DnDTheme.bodyText1.copyWith(
-          color: Colors.white,
+        style: TextStyle(
+          fontSize: 14,
+          color: C.text,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -182,31 +184,25 @@ class LibraryItemCard extends StatelessWidget {
         children: [
           Text(
             ItemTypeHelper.getItemTypeDisplayName(item.itemType),
-            style: DnDTheme.bodyText2.copyWith(
-              color: typeColor,
-            ),
+            style: TextStyle(fontSize: 12, color: typeColor),
           ),
           if (item.description.isNotEmpty)
             Text(
               item.description,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: DnDTheme.bodyText2.copyWith(
-                color: Colors.white60,
-              ),
+              style: TextStyle(fontSize: 12, color: C.textMid),
             ),
           if (item.cost > 0)
             Text(
               '${item.cost.toStringAsFixed(2)} Gold',
-              style: DnDTheme.bodyText2.copyWith(
-                color: DnDTheme.ancientGold,
-              ),
+              style: TextStyle(fontSize: 12, color: C.amber),
             ),
         ],
       ),
       trailing: Icon(
         Icons.add_circle,
-        color: DnDTheme.successGreen,
+        color: C.green,
         size: 32,
       ),
       onTap: () => _showQuantityDialog(context),
@@ -214,33 +210,30 @@ class LibraryItemCard extends StatelessWidget {
   }
 
   Future<void> _showQuantityDialog(BuildContext context) async {
+    final C = context.appColors;
     final quantity = await showDialog<int>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
+        backgroundColor: C.bg,
         title: Text(
           'Menge für "${item.name}"',
-          style: DnDTheme.headline3.copyWith(
-            color: DnDTheme.ancientGold,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: C.amber),
         ),
         content: TextField(
           controller: quantityController,
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           autofocus: true,
-          style: DnDTheme.bodyText1.copyWith(color: Colors.white),
+          style: TextStyle(fontSize: 14, color: C.text),
           decoration: InputDecoration(
             filled: true,
-            fillColor: DnDTheme.slateGrey,
+            fillColor: C.bgPanel,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
-              borderSide: const BorderSide(color: DnDTheme.mysticalPurple),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: C.accent),
             ),
             hintText: 'Menge',
-            hintStyle: DnDTheme.bodyText2.copyWith(
-              color: Colors.white60,
-            ),
+            hintStyle: TextStyle(fontSize: 12, color: C.textMid),
           ),
         ),
         actions: [
@@ -248,9 +241,7 @@ class LibraryItemCard extends StatelessWidget {
             onPressed: () => Navigator.of(ctx).pop(),
             child: Text(
               'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(
-                color: DnDTheme.mysticalPurple,
-              ),
+              style: TextStyle(fontSize: 14, color: C.accent),
             ),
           ),
           ElevatedButton(
@@ -259,7 +250,7 @@ class LibraryItemCard extends StatelessWidget {
               Navigator.of(ctx).pop(amount > 0 ? amount : null);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.successGreen,
+              backgroundColor: C.green,
               foregroundColor: Colors.white,
             ),
             child: const Text('Hinzufügen'),

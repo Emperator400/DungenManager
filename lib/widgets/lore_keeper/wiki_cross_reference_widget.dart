@@ -3,7 +3,7 @@ import '../../models/wiki_link.dart';
 import '../../models/wiki_entry.dart';
 import '../../models/linked_wiki_entry.dart';
 import '../../services/wiki_link_service.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 
 /// Widget für die Anzeige von Cross-References und Backlinks
 class WikiCrossReferenceWidget extends StatefulWidget {
@@ -24,7 +24,7 @@ class _WikiCrossReferenceWidgetState extends State<WikiCrossReferenceWidget>
     with TickerProviderStateMixin {
   late TabController _tabController;
   final WikiLinkService _wikiLinkService = WikiLinkService();
-  
+
   List<LinkedWikiEntry> _outgoingLinks = [];
   List<LinkedWikiEntry> _backlinks = [];
   bool _isLoading = true;
@@ -44,14 +44,14 @@ class _WikiCrossReferenceWidgetState extends State<WikiCrossReferenceWidget>
 
   Future<void> _loadReferences() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final outgoingResult = await _wikiLinkService.getLinkedEntriesWithDetails(widget.entry.id);
       final backlinksResult = await _wikiLinkService.getBacklinksWithDetails(widget.entry.id);
-      
+
       final outgoing = outgoingResult.data ?? <Map<String, dynamic>>[];
       final backlinks = backlinksResult.data ?? <Map<String, dynamic>>[];
-      
+
       setState(() {
         _outgoingLinks = outgoing.map((item) => LinkedWikiEntry.fromMap(item)).toList();
         _backlinks = backlinks.map((item) => LinkedWikiEntry.fromMap(item)).toList();
@@ -64,25 +64,26 @@ class _WikiCrossReferenceWidgetState extends State<WikiCrossReferenceWidget>
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Column(
       children: [
-        _buildTabBar(),
-        _buildContent(),
+        _buildTabBar(C),
+        _buildContent(C),
       ],
     );
   }
 
-  Widget _buildTabBar() {
+  Widget _buildTabBar(AppColorsExtension C) {
     return Container(
       decoration: BoxDecoration(
-        color: DnDTheme.stoneGrey,
+        color: C.bg,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
       ),
       child: TabBar(
         controller: _tabController,
-        indicatorColor: DnDTheme.ancientGold,
-        labelColor: Colors.white,
-        unselectedLabelColor: Colors.white70,
+        indicatorColor: C.amber,
+        labelColor: C.text,
+        unselectedLabelColor: C.textMid,
         tabs: [
           Tab(
             text: 'Verweise (${_outgoingLinks.length})',
@@ -97,12 +98,12 @@ class _WikiCrossReferenceWidgetState extends State<WikiCrossReferenceWidget>
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(AppColorsExtension C) {
     if (_isLoading) {
-      return const Expanded(
+      return Expanded(
         child: Center(
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(DnDTheme.ancientGold),
+            valueColor: AlwaysStoppedAnimation<Color>(C.amber),
           ),
         ),
       );
@@ -112,26 +113,26 @@ class _WikiCrossReferenceWidgetState extends State<WikiCrossReferenceWidget>
       child: TabBarView(
         controller: _tabController,
         children: [
-          _buildLinksList(_outgoingLinks, 'verweist auf'),
-          _buildLinksList(_backlinks, 'verweist von'),
+          _buildLinksList(_outgoingLinks, 'verweist auf', C),
+          _buildLinksList(_backlinks, 'verweist von', C),
         ],
       ),
     );
   }
 
-  Widget _buildLinksList(List<LinkedWikiEntry> links, String description) {
+  Widget _buildLinksList(List<LinkedWikiEntry> links, String description, AppColorsExtension C) {
     if (links.isEmpty) {
-      return _buildEmptyState('Keine $description gefunden');
+      return _buildEmptyState('Keine $description gefunden', C);
     }
 
     return ListView.builder(
       padding: const EdgeInsets.all(8),
       itemCount: links.length,
-      itemBuilder: (context, index) => _buildLinkCard(links[index]),
+      itemBuilder: (context, index) => _buildLinkCard(links[index], C),
     );
   }
 
-  Widget _buildLinkCard(LinkedWikiEntry linkedEntry) {
+  Widget _buildLinkCard(LinkedWikiEntry linkedEntry, AppColorsExtension C) {
     final link = linkedEntry.link;
     final targetEntry = linkedEntry.targetEntry;
 
@@ -139,7 +140,7 @@ class _WikiCrossReferenceWidgetState extends State<WikiCrossReferenceWidget>
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: _getTypeColor(targetEntry.entryType),
+          backgroundColor: _getTypeColor(targetEntry.entryType, C),
           child: Icon(
             _getTypeIcon(targetEntry.entryType),
             color: Colors.white,
@@ -148,9 +149,9 @@ class _WikiCrossReferenceWidgetState extends State<WikiCrossReferenceWidget>
         ),
         title: Text(
           targetEntry.title,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: C.text,
           ),
         ),
         subtitle: Column(
@@ -159,7 +160,7 @@ class _WikiCrossReferenceWidgetState extends State<WikiCrossReferenceWidget>
             Text(
               _getTypeDisplayName(targetEntry.entryType),
               style: TextStyle(
-                color: _getTypeColor(targetEntry.entryType),
+                color: _getTypeColor(targetEntry.entryType, C),
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
@@ -168,7 +169,7 @@ class _WikiCrossReferenceWidgetState extends State<WikiCrossReferenceWidget>
             Text(
               _getLinkTypeDescription(link.linkType),
               style: TextStyle(
-                color: Colors.white70,
+                color: C.textMid,
                 fontSize: 11,
               ),
             ),
@@ -184,7 +185,7 @@ class _WikiCrossReferenceWidgetState extends State<WikiCrossReferenceWidget>
     );
   }
 
-  Widget _buildEmptyState(String message) {
+  Widget _buildEmptyState(String message, AppColorsExtension C) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -192,13 +193,13 @@ class _WikiCrossReferenceWidgetState extends State<WikiCrossReferenceWidget>
           Icon(
             Icons.link_off,
             size: 64,
-            color: Colors.white70.withValues(alpha: 0.3),
+            color: C.textSoft.withValues(alpha: 0.3),
           ),
           const SizedBox(height: 16),
           Text(
             message,
             style: TextStyle(
-              color: Colors.white70,
+              color: C.textMid,
               fontSize: 16,
             ),
             textAlign: TextAlign.center,
@@ -208,26 +209,26 @@ class _WikiCrossReferenceWidgetState extends State<WikiCrossReferenceWidget>
     );
   }
 
-  Color _getTypeColor(WikiEntryType type) {
+  Color _getTypeColor(WikiEntryType type, AppColorsExtension C) {
     switch (type) {
       case WikiEntryType.Person:
-        return Colors.blue;
+        return C.accent;
       case WikiEntryType.Place:
-        return Colors.green;
+        return C.green;
       case WikiEntryType.Faction:
-        return Colors.orange;
+        return C.amber;
       case WikiEntryType.Magic:
-        return Colors.purple;
+        return C.accent;
       case WikiEntryType.History:
-        return Colors.brown;
+        return C.accent;
       case WikiEntryType.Item:
-        return Colors.teal;
+        return C.green;
       case WikiEntryType.Quest:
-        return Colors.indigo;
+        return C.accent;
       case WikiEntryType.Creature:
-        return Colors.red;
+        return C.red;
       case WikiEntryType.Lore:
-        return DnDTheme.ancientGold;
+        return C.amber;
     }
   }
 
@@ -304,12 +305,13 @@ class WikiRelationshipGraphWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: DnDTheme.stoneGrey,
+        color: C.bg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white12),
+        border: Border.all(color: C.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -319,7 +321,7 @@ class WikiRelationshipGraphWidget extends StatelessWidget {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: C.text,
             ),
           ),
           const SizedBox(height: 8),
@@ -327,7 +329,7 @@ class WikiRelationshipGraphWidget extends StatelessWidget {
             'Visualisierung der Verbindungen dieses Eintrags mit anderen Wiki-Seiten.',
             style: TextStyle(
               fontSize: 14,
-              color: Colors.white70,
+              color: C.textMid,
             ),
           ),
           const SizedBox(height: 16),
@@ -335,25 +337,25 @@ class WikiRelationshipGraphWidget extends StatelessWidget {
           Container(
             height: 200,
             decoration: BoxDecoration(
-              color: DnDTheme.dungeonBlack,
+              color: C.bg,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.white12),
+              border: Border.all(color: C.border),
             ),
-            child: const Center(
+            child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
                     Icons.graphic_eq,
                     size: 48,
-                    color: Colors.white70,
+                    color: C.textMid,
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
                     'Graph-Visualisierung\n(in Kürze verfügbar)',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Colors.white70,
+                      color: C.textMid,
                       fontSize: 14,
                     ),
                   ),
@@ -380,6 +382,7 @@ class WikiBrokenLinksWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     if (brokenLinks.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -387,14 +390,14 @@ class WikiBrokenLinksWidget extends StatelessWidget {
           children: [
             Icon(
               Icons.check_circle,
-              color: Colors.green,
+              color: C.green,
               size: 20,
             ),
             const SizedBox(width: 8),
             Text(
               'Alle Links sind gültig',
               style: TextStyle(
-                color: Colors.green,
+                color: C.green,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -412,14 +415,14 @@ class WikiBrokenLinksWidget extends StatelessWidget {
             children: [
               Icon(
                 Icons.warning,
-                color: Colors.orange,
+                color: C.amber,
                 size: 20,
               ),
               const SizedBox(width: 8),
               Text(
                 '${brokenLinks.length} fehlerhafte Links gefunden',
-                style: const TextStyle(
-                  color: Colors.orange,
+                style: TextStyle(
+                  color: C.amber,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -433,33 +436,33 @@ class WikiBrokenLinksWidget extends StatelessWidget {
             ],
           ),
         ),
-        ...brokenLinks.map((link) => _buildBrokenLinkItem(link)).toList(),
+        ...brokenLinks.map((link) => _buildBrokenLinkItem(link, C)).toList(),
       ],
     );
   }
 
-  Widget _buildBrokenLinkItem(String link) {
+  Widget _buildBrokenLinkItem(String link, AppColorsExtension C) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.1),
+        color: C.amber.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+        border: Border.all(color: C.amber.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
           Icon(
             Icons.link_off,
-            color: Colors.orange,
+            color: C.amber,
             size: 16,
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               '[[$link]]',
-              style: const TextStyle(
-                color: Colors.orange,
+              style: TextStyle(
+                color: C.amber,
                 fontFamily: 'monospace',
               ),
             ),

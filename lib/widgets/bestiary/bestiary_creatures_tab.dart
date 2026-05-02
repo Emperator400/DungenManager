@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/creature.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 import '../../viewmodels/bestiary_viewmodel.dart';
 import '../../screens/bestiary/edit_creature_screen.dart';
 import '../ui_components/cards/unified_creature_card.dart';
@@ -46,25 +46,24 @@ class BestiaryCreaturesTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Consumer<BestiaryViewModel>(
       builder: (context, viewModel, child) {
         // Liste wird INNERHALB des Consumers basierend auf dem tabType berechnet
         final creatures = _getCreaturesForTab(viewModel);
-        
+
         if (viewModel.isLoading) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 CircularProgressIndicator(
-                  color: DnDTheme.ancientGold,
+                  color: C.amber,
                 ),
-                const SizedBox(height: DnDTheme.md),
+                const SizedBox(height: 16),
                 Text(
                   'Lade $title...',
-                  style: DnDTheme.bodyText1.copyWith(
-                    color: DnDTheme.ancientGold,
-                  ),
+                  style: TextStyle(fontSize: 14, color: C.amber),
                 ),
               ],
             ),
@@ -74,32 +73,32 @@ class BestiaryCreaturesTab extends StatelessWidget {
         if (viewModel.error != null) {
           return Center(
             child: Container(
-              padding: const EdgeInsets.all(DnDTheme.lg),
-              decoration: DnDTheme.getDungeonWallDecoration(),
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: C.bg,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: C.border),
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     Icons.error_outline,
-                    color: DnDTheme.errorRed,
+                    color: C.red,
                     size: 48,
                   ),
-                  const SizedBox(height: DnDTheme.md),
+                  const SizedBox(height: 16),
                   Text(
                     'Fehler beim Laden',
-                    style: DnDTheme.headline3.copyWith(
-                      color: DnDTheme.errorRed,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: C.red),
                   ),
-                  const SizedBox(height: DnDTheme.sm),
+                  const SizedBox(height: 8),
                   Text(
                     viewModel.error!,
-                    style: DnDTheme.bodyText2.copyWith(
-                      color: Colors.white70,
-                    ),
+                    style: TextStyle(fontSize: 12, color: C.textMid),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: DnDTheme.md),
+                  const SizedBox(height: 16),
                   ElevatedButton.icon(
                     onPressed: () {
                       viewModel.clearError();
@@ -108,7 +107,7 @@ class BestiaryCreaturesTab extends StatelessWidget {
                     icon: const Icon(Icons.refresh),
                     label: const Text('Erneut versuchen'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: DnDTheme.errorRed,
+                      backgroundColor: C.red,
                       foregroundColor: Colors.white,
                     ),
                   ),
@@ -121,29 +120,31 @@ class BestiaryCreaturesTab extends StatelessWidget {
         if (creatures.isEmpty) {
           return Center(
             child: Container(
-              padding: const EdgeInsets.all(DnDTheme.lg),
-              decoration: DnDTheme.getDungeonWallDecoration(),
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: C.bg,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: C.border),
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     Icons.pets_outlined,
                     size: 64,
-                    color: DnDTheme.mysticalPurple.withValues(alpha: 0.6),
+                    color: C.accent.withValues(alpha: 0.6),
                   ),
-                  const SizedBox(height: DnDTheme.md),
+                  const SizedBox(height: 16),
                   Text(
                     "Keine Kreaturen gefunden.",
-                    style: DnDTheme.bodyText1.copyWith(
-                      color: Colors.white70,
-                    ),
+                    style: TextStyle(fontSize: 14, color: C.text),
                     textAlign: TextAlign.center,
                   ),
-                  if (viewModel.searchQuery.isNotEmpty || 
+                  if (viewModel.searchQuery.isNotEmpty ||
                       viewModel.selectedSourceType != 'all' ||
                       viewModel.showFavoritesOnly)
                     Padding(
-                      padding: const EdgeInsets.only(top: DnDTheme.md),
+                      padding: const EdgeInsets.only(top: 16),
                       child: ElevatedButton.icon(
                         onPressed: () {
                           viewModel.resetFilters();
@@ -152,7 +153,7 @@ class BestiaryCreaturesTab extends StatelessWidget {
                         icon: const Icon(Icons.clear),
                         label: const Text('Filter zurücksetzen'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: DnDTheme.arcaneBlue,
+                          backgroundColor: C.accent,
                           foregroundColor: Colors.white,
                         ),
                       ),
@@ -164,14 +165,9 @@ class BestiaryCreaturesTab extends StatelessWidget {
         }
 
         return Container(
-          decoration: BoxDecoration(
-            gradient: DnDTheme.getMysticalGradient(
-              startColor: DnDTheme.dungeonBlack,
-              endColor: DnDTheme.stoneGrey,
-            ),
-          ),
+          color: C.bg,
           child: ListView.builder(
-            padding: const EdgeInsets.all(DnDTheme.sm),
+            padding: const EdgeInsets.all(8),
             itemCount: creatures.length,
             itemBuilder: (context, index) {
               final creature = creatures[index];
@@ -185,7 +181,7 @@ class BestiaryCreaturesTab extends StatelessWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('Fehler: $e'),
-                          backgroundColor: DnDTheme.errorRed,
+                          backgroundColor: C.red,
                         ),
                       );
                     }
@@ -210,7 +206,7 @@ class BestiaryCreaturesTab extends StatelessWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('${creature.name} wurde gelöscht'),
-                          backgroundColor: DnDTheme.successGreen,
+                          backgroundColor: C.green,
                         ),
                       );
                     }
@@ -219,7 +215,7 @@ class BestiaryCreaturesTab extends StatelessWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('Fehler beim Löschen: $e'),
-                          backgroundColor: DnDTheme.errorRed,
+                          backgroundColor: C.red,
                         ),
                       );
                     }

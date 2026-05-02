@@ -5,6 +5,7 @@ import 'dart:math';
 import '../../models/creature.dart';
 import '../../models/condition.dart';
 import '../../game_data/dnd_logic.dart';
+import '../../theme/app_theme.dart';
 
 class InitiativeTrackerScreen extends StatefulWidget {
   final List<Creature> creatures;
@@ -151,7 +152,9 @@ class _InitiativeTrackerScreenState extends State<InitiativeTrackerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Scaffold(
+      backgroundColor: C.bg,
       appBar: AppBar(
         title: const Text("Kampf-Tracker"),
         actions: [
@@ -193,7 +196,8 @@ class _InitiativeTrackerScreenState extends State<InitiativeTrackerScreen> {
   }
 
   Widget _buildCreatureExpansionTile(Creature creature) {
-    final cardColor = creature.isPlayer ? Colors.blue.shade800 : Colors.red.shade900;
+    final C = context.appColors;
+    final cardColor = creature.isPlayer ? C.accent : C.red;
     final hpPercentage = creature.maxHp > 0 ? creature.currentHp / creature.maxHp : 0.0;
 
     return Card(
@@ -216,11 +220,11 @@ class _InitiativeTrackerScreenState extends State<InitiativeTrackerScreen> {
             children: [
               Row(children: [
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text("HP: ${creature.currentHp} / ${creature.maxHp}", style: TextStyle(color: Colors.grey[300])),
+                  Text("HP: ${creature.currentHp} / ${creature.maxHp}", style: TextStyle(color: C.textSoft)),
                   const SizedBox(height: 4),
                   LinearProgressIndicator(
-                    value: hpPercentage, backgroundColor: Colors.black45, minHeight: 6, borderRadius: BorderRadius.circular(3),
-                    valueColor: AlwaysStoppedAnimation<Color>(hpPercentage > 0.5 ? Colors.green.shade400 : (hpPercentage > 0.2 ? Colors.amber.shade400 : Colors.red.shade700)),
+                    value: hpPercentage, backgroundColor: C.textMid, minHeight: 6, borderRadius: BorderRadius.circular(3),
+                    valueColor: AlwaysStoppedAnimation<Color>(hpPercentage > 0.5 ? C.green : (hpPercentage > 0.2 ? C.amber : C.red)),
                   ),
                 ])),
                 IconButton(icon: const Icon(Icons.remove_circle_outline, color: Colors.white, size: 20), onPressed: () => _changeHp(creature, -1)),
@@ -229,7 +233,7 @@ class _InitiativeTrackerScreenState extends State<InitiativeTrackerScreen> {
               const SizedBox(height: 8),
               Row(children: [
                 Expanded(child: creature.conditions.isEmpty
-                  ? Text("Keine Zustände", style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey[400]))
+                  ? Text("Keine Zustände", style: TextStyle(fontStyle: FontStyle.italic, color: C.textSoft))
                   : Wrap(
                       spacing: 6.0, runSpacing: 4.0,
                       children: creature.conditions.map((c) => Chip(
@@ -306,7 +310,7 @@ class _InitiativeTrackerScreenState extends State<InitiativeTrackerScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
       child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Text("$label: $score ", style: TextStyle(color: Colors.grey[300])),
+        Text("$label: $score ", style: TextStyle(color: context.appColors.textSoft)),
         Text("(${getModifierString(score)})", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ]),
     );

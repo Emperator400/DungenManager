@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/wiki_entry.dart';
 import '../../viewmodels/wiki_viewmodel.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 
 /// Enhanced Wiki Entry Card Widget mit Enhanced Design und ViewModel-Integration
 class EnhancedWikiEntryCardWidget extends StatelessWidget {
@@ -24,21 +24,19 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: DnDTheme.xs, vertical: DnDTheme.xs),
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        gradient: DnDTheme.getMysticalGradient(
-          startColor: DnDTheme.stoneGrey,
-          endColor: DnDTheme.slateGrey,
-        ),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        color: C.bgPanel,
+        borderRadius: BorderRadius.circular(12.0),
         border: Border.all(
-          color: DnDTheme.mysticalPurple.withValues(alpha: 0.3),
+          color: C.accent.withValues(alpha: 0.3),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: DnDTheme.dungeonBlack.withValues(alpha: 0.3),
+            color: C.bg.withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -46,25 +44,25 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
       ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        borderRadius: BorderRadius.circular(12.0),
         child: Padding(
-          padding: const EdgeInsets.all(DnDTheme.md),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(context),
-              const SizedBox(height: DnDTheme.sm),
-              _buildTitle(context),
-              const SizedBox(height: DnDTheme.xs),
-              _buildContentPreview(),
+              _buildHeader(context, C),
+              const SizedBox(height: 8),
+              _buildTitle(context, C),
+              const SizedBox(height: 4),
+              _buildContentPreview(C),
               if (entry.tags.isNotEmpty) ...[
-                const SizedBox(height: DnDTheme.sm),
-                _buildTags(),
+                const SizedBox(height: 8),
+                _buildTags(C),
               ],
-              const SizedBox(height: DnDTheme.sm),
-              _buildMetadata(context),
-              const SizedBox(height: DnDTheme.xs),
-              _buildActionButtons(context),
+              const SizedBox(height: 8),
+              _buildMetadata(context, C),
+              const SizedBox(height: 4),
+              _buildActionButtons(context, C),
             ],
           ),
         ),
@@ -72,35 +70,38 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, AppColorsExtension C) {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(DnDTheme.sm),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: _getTypeColor().withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+            color: _getTypeColor(C).withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(8.0),
             border: Border.all(
-              color: _getTypeColor().withValues(alpha: 0.5),
+              color: _getTypeColor(C).withValues(alpha: 0.5),
               width: 1,
             ),
           ),
           child: Icon(
             _getTypeIcon(),
-            color: _getTypeColor(),
+            color: _getTypeColor(C),
             size: 24,
           ),
         ),
-        const SizedBox(width: DnDTheme.sm),
+        const SizedBox(width: 8),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 _getTypeDisplayName(),
-                style: DnDTheme.bodyText2.copyWith(
+                style: TextStyle(
+                  fontSize: 12,
+                  color: C.textMid,
                   fontWeight: FontWeight.w600,
-                  color: _getTypeColor(),
+                ).copyWith(
+                  color: _getTypeColor(C),
                 ),
               ),
               Row(
@@ -108,35 +109,34 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
                   if (entry.location != null) ...[
                     Icon(
                       Icons.location_on,
-                      color: DnDTheme.arcaneBlue,
+                      color: C.accent,
                       size: 14,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       'Standort (${entry.location!.latitude.toStringAsFixed(2)}, ${entry.location!.longitude.toStringAsFixed(2)})',
-                      style: DnDTheme.caption.copyWith(
-                        color: Colors.white70,
-                      ),
+                      style: TextStyle(fontSize: 11, color: C.textSoft),
                     ),
                   ],
                   const Spacer(),
                   if (entry.campaignId == null)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: DnDTheme.xs,
+                        horizontal: 4,
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: DnDTheme.arcaneBlue.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                        color: C.accent.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8.0),
                         border: Border.all(
-                          color: DnDTheme.arcaneBlue.withValues(alpha: 0.5),
+                          color: C.accent.withValues(alpha: 0.5),
                         ),
                       ),
                       child: Text(
                         'Global',
-                        style: DnDTheme.caption.copyWith(
-                          color: DnDTheme.arcaneBlue,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: C.accent,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -146,29 +146,30 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
             ],
           ),
         ),
-        _buildFavoriteButton(context),
+        _buildFavoriteButton(context, C),
       ],
     );
   }
 
-  Widget _buildFavoriteButton(BuildContext context) {
+  Widget _buildFavoriteButton(BuildContext context, AppColorsExtension C) {
     return IconButton(
       onPressed: onToggleFavorite,
       icon: Icon(
         entry.isFavorite ? Icons.favorite : Icons.favorite_border,
-        color: entry.isFavorite ? DnDTheme.warningOrange : Colors.white70,
+        color: entry.isFavorite ? C.amber : Colors.white70,
         size: 20,
       ),
       tooltip: entry.isFavorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen',
     );
   }
 
-  Widget _buildTitle(BuildContext context) {
+  Widget _buildTitle(BuildContext context, AppColorsExtension C) {
     return Text(
       entry.title,
-      style: DnDTheme.bodyText1.copyWith(
+      style: TextStyle(
+        fontSize: 14,
+        color: C.text,
         fontWeight: FontWeight.bold,
-        color: Colors.white,
         height: 1.2,
       ),
       maxLines: 2,
@@ -176,17 +177,14 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildContentPreview() {
-    final content = entry.isMarkdown 
+  Widget _buildContentPreview(AppColorsExtension C) {
+    final content = entry.isMarkdown
         ? _stripMarkdown(entry.content)
         : entry.content;
-    
+
     return Text(
       content.length > 150 ? '${content.substring(0, 150)}...' : content,
-      style: DnDTheme.bodyText2.copyWith(
-        height: 1.4,
-        color: Colors.white70,
-      ),
+      style: TextStyle(fontSize: 12, color: C.textMid, height: 1.4),
       maxLines: 3,
       overflow: TextOverflow.ellipsis,
     );
@@ -205,100 +203,95 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
         .trim();
   }
 
-  Widget _buildTags() {
+  Widget _buildTags(AppColorsExtension C) {
     return Wrap(
-      spacing: DnDTheme.xs,
-      runSpacing: DnDTheme.xs,
-      children: entry.tags.take(4).map((tag) => _buildTagChip(tag)).toList(),
+      spacing: 4,
+      runSpacing: 4,
+      children: entry.tags.take(4).map((tag) => _buildTagChip(tag, C)).toList(),
     );
   }
 
-  Widget _buildTagChip(String tag) {
+  Widget _buildTagChip(String tag, AppColorsExtension C) {
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: DnDTheme.sm,
-        vertical: DnDTheme.xs,
+        horizontal: 8,
+        vertical: 4,
       ),
       decoration: BoxDecoration(
-        color: DnDTheme.ancientGold.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        color: C.amber.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12.0),
         border: Border.all(
-          color: DnDTheme.ancientGold.withValues(alpha: 0.3),
+          color: C.amber.withValues(alpha: 0.3),
         ),
       ),
       child: Text(
         tag,
-        style: DnDTheme.caption.copyWith(
-          color: DnDTheme.ancientGold,
+        style: TextStyle(
+          fontSize: 11,
+          color: C.amber,
           fontWeight: FontWeight.w500,
         ),
       ),
     );
   }
 
-  Widget _buildMetadata(BuildContext context) {
+  Widget _buildMetadata(BuildContext context, AppColorsExtension C) {
     return Row(
       children: [
         Icon(
           Icons.schedule,
           size: 14,
-          color: Colors.white70,
+          color: C.textSoft,
         ),
         const SizedBox(width: 4),
         Text(
           _formatDate(entry.updatedAt),
-          style: DnDTheme.caption.copyWith(
-            color: Colors.white70,
-          ),
+          style: TextStyle(fontSize: 11, color: C.textSoft),
         ),
         if (entry.childIds.isNotEmpty) ...[
-          const SizedBox(width: DnDTheme.sm),
+          const SizedBox(width: 8),
           Icon(
             Icons.link,
             size: 14,
-            color: Colors.white70,
+            color: C.textSoft,
           ),
           const SizedBox(width: 4),
           Text(
             '${entry.childIds.length} Verknüpfungen',
-            style: DnDTheme.caption.copyWith(
-              color: Colors.white70,
-            ),
+            style: TextStyle(fontSize: 11, color: C.textSoft),
           ),
         ],
         if (entry.isMarkdown) ...[
-          const SizedBox(width: DnDTheme.sm),
+          const SizedBox(width: 8),
           Icon(
             Icons.code,
             size: 14,
-            color: Colors.white70,
+            color: C.textSoft,
           ),
           const SizedBox(width: 4),
           Text(
             'Markdown',
-            style: DnDTheme.caption.copyWith(
-              color: Colors.white70,
-            ),
+            style: TextStyle(fontSize: 11, color: C.textSoft),
           ),
         ],
         const Spacer(),
-        _buildStatusChip(context),
+        _buildStatusChip(context, C),
       ],
     );
   }
 
-  Widget _buildStatusChip(BuildContext context) {
+  Widget _buildStatusChip(BuildContext context, AppColorsExtension C) {
     Color chipColor;
     String statusText;
-    
+
     if (entry.isFavorite) {
-      chipColor = DnDTheme.warningOrange;
+      chipColor = C.amber;
       statusText = 'Favorit';
     } else if (entry.childIds.isNotEmpty) {
-      chipColor = DnDTheme.arcaneBlue;
+      chipColor = C.accent;
       statusText = 'Verknüpft';
     } else if (entry.location != null) {
-      chipColor = DnDTheme.successGreen;
+      chipColor = C.green;
       statusText = 'Standort';
     } else {
       return const SizedBox.shrink();
@@ -306,19 +299,20 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: DnDTheme.xs,
+        horizontal: 4,
         vertical: 2,
       ),
       decoration: BoxDecoration(
         color: chipColor.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+        borderRadius: BorderRadius.circular(8.0),
         border: Border.all(
           color: chipColor.withValues(alpha: 0.5),
         ),
       ),
       child: Text(
         statusText,
-        style: DnDTheme.caption.copyWith(
+        style: TextStyle(
+          fontSize: 11,
           color: chipColor,
           fontWeight: FontWeight.w500,
         ),
@@ -326,7 +320,7 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButtons(BuildContext context) {
+  Widget _buildActionButtons(BuildContext context, AppColorsExtension C) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
@@ -337,32 +331,32 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
             label: const Text('Bearbeiten'),
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(
-                horizontal: DnDTheme.sm,
-                vertical: DnDTheme.xs,
+                horizontal: 8,
+                vertical: 4,
               ),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              foregroundColor: DnDTheme.arcaneBlue,
+              foregroundColor: C.accent,
             ),
           ),
         if (onDelete != null) ...[
-          const SizedBox(width: DnDTheme.xs),
+          const SizedBox(width: 4),
           TextButton.icon(
-            onPressed: () => _showDeleteConfirmation(context),
+            onPressed: () => _showDeleteConfirmation(context, C),
             icon: const Icon(Icons.delete_outline, size: 16),
             label: const Text('Löschen'),
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(
-                horizontal: DnDTheme.sm,
-                vertical: DnDTheme.xs,
+                horizontal: 8,
+                vertical: 4,
               ),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              foregroundColor: DnDTheme.errorRed,
+              foregroundColor: C.red,
             ),
           ),
         ],
-        const SizedBox(width: DnDTheme.xs),
+        const SizedBox(width: 4),
         PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert, size: 16),
           iconSize: 16,
@@ -376,63 +370,62 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
                 break;
             }
           },
-          itemBuilder: (context) => [
-            PopupMenuItem(
-              value: 'duplicate',
-              child: Row(
-                children: [
-                  Icon(Icons.copy, size: 16, color: DnDTheme.arcaneBlue),
-                  const SizedBox(width: 8),
-                  Text('Duplizieren', style: DnDTheme.bodyText2.copyWith(color: Colors.white)),
-                ],
+          itemBuilder: (context) {
+            final popC = context.appColors;
+            return [
+              PopupMenuItem(
+                value: 'duplicate',
+                child: Row(
+                  children: [
+                    Icon(Icons.copy, size: 16, color: popC.accent),
+                    const SizedBox(width: 8),
+                    Text('Duplizieren', style: TextStyle(fontSize: 12, color: popC.text)),
+                  ],
+                ),
               ),
-            ),
-            PopupMenuItem(
-              value: 'toggle_global',
-              child: Row(
-                children: [
-                  Icon(
-                    entry.campaignId == null ? Icons.campaign : Icons.public,
-                    size: 16,
-                    color: DnDTheme.arcaneBlue,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    entry.campaignId == null ? 'Zu Campaign machen' : 'Global machen',
-                    style: DnDTheme.bodyText2.copyWith(color: Colors.white),
-                  ),
-                ],
+              PopupMenuItem(
+                value: 'toggle_global',
+                child: Row(
+                  children: [
+                    Icon(
+                      entry.campaignId == null ? Icons.campaign : Icons.public,
+                      size: 16,
+                      color: popC.accent,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      entry.campaignId == null ? 'Zu Campaign machen' : 'Global machen',
+                      style: TextStyle(fontSize: 12, color: popC.text),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ];
+          },
         ),
       ],
     );
   }
 
-  void _showDeleteConfirmation(BuildContext context) {
+  void _showDeleteConfirmation(BuildContext context, AppColorsExtension C) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: DnDTheme.stoneGrey,
+        backgroundColor: C.bg,
         title: Text(
           'Löschen bestätigen',
-          style: DnDTheme.headline3.copyWith(
-            color: DnDTheme.errorRed,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: C.red),
         ),
         content: Text(
           'Möchtest du den Wiki-Eintrag "${entry.title}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
-          style: DnDTheme.bodyText1.copyWith(color: Colors.white70),
+          style: TextStyle(fontSize: 14, color: C.text),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
               'Abbrechen',
-              style: DnDTheme.bodyText1.copyWith(
-                color: DnDTheme.mysticalPurple,
-              ),
+              style: TextStyle(fontSize: 14, color: C.accent),
             ),
           ),
           ElevatedButton(
@@ -441,7 +434,7 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
               onDelete?.call();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.errorRed,
+              backgroundColor: C.red,
               foregroundColor: Colors.white,
             ),
             child: const Text('Löschen'),
@@ -474,26 +467,26 @@ class EnhancedWikiEntryCardWidget extends StatelessWidget {
     }
   }
 
-  Color _getTypeColor() {
+  Color _getTypeColor(AppColorsExtension C) {
     switch (entry.entryType) {
       case WikiEntryType.Person:
-        return DnDTheme.arcaneBlue;
+        return C.accent;
       case WikiEntryType.Place:
-        return DnDTheme.successGreen;
+        return C.green;
       case WikiEntryType.Lore:
-        return DnDTheme.mysticalPurple;
+        return C.accent;
       case WikiEntryType.Faction:
-        return DnDTheme.warningOrange;
+        return C.amber;
       case WikiEntryType.Magic:
-        return DnDTheme.infoBlue;
+        return C.accent;
       case WikiEntryType.History:
-        return DnDTheme.ancientGold;
+        return C.amber;
       case WikiEntryType.Item:
-        return DnDTheme.arcaneBlue;
+        return C.accent;
       case WikiEntryType.Quest:
-        return DnDTheme.mysticalPurple;
+        return C.accent;
       case WikiEntryType.Creature:
-        return DnDTheme.errorRed;
+        return C.red;
     }
   }
 

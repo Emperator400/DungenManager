@@ -7,6 +7,7 @@ import '../../models/campaign.dart';
 import '../../models/official_monster.dart';
 import '../../models/creature.dart';
 import '../../screens/bestiary/official_monsters_screen.dart';
+import '../../theme/app_theme.dart';
 
 class CampaignDndDataTab extends StatefulWidget {
   final Campaign campaign;
@@ -32,13 +33,13 @@ class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    
+
     try {
       // Lade verfügbare offizielle Monster (direkte Datenbank-Abfrage)
       final db = await DatabaseConnection.instance.database;
       final monsters = await db.query('official_monsters', orderBy: 'name ASC');
       _availableMonsters = monsters.map((m) => OfficialMonster.fromMap(m)).toList();
-      
+
 
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -83,29 +84,29 @@ class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
 
       // Speichere die Kreatur
       await _creatureRepository.create(creature);
-      
+
       // Aktualisiere die Kampagne mit der neuen Monster-ID
       final updatedMonsters = List<String>.from(widget.campaign.availableMonsters);
       if (!updatedMonsters.contains(monster.id)) {
         updatedMonsters.add(monster.id);
-        
+
         final updatedCampaign = widget.campaign.copyWith(
           settings: widget.campaign.settings.copyWith(
             availableMonsters: updatedMonsters,
           ),
           updatedAt: DateTime.now(),
         );
-        
+
         await _campaignRepository.update(updatedCampaign);
       }
-      
+
       // Lade die Daten neu
       await _loadData();
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${monster.name} wurde zur Kampagne hinzugefügt')),
       );
-      
+
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Fehler beim Hinzufügen: $e')),
@@ -115,6 +116,7 @@ class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -134,7 +136,7 @@ class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
           Expanded(
             child: TabBarView(
               children: [
-                _buildMonsterTab(),
+                _buildMonsterTab(C),
                 _buildSpellTab(),
                 _buildItemTab(),
               ],
@@ -145,7 +147,7 @@ class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
     );
   }
 
-  Widget _buildMonsterTab() {
+  Widget _buildMonsterTab(AppColorsExtension C) {
     return Column(
       children: [
         Padding(
@@ -157,7 +159,7 @@ class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
                   builder: (ctx) => const OfficialMonstersScreen(),
                 ),
               );
-              
+
               if (selectedMonster != null && mounted) {
                 await _addOfficialMonsterToCampaign(selectedMonster);
               }
@@ -172,7 +174,7 @@ class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
             itemBuilder: (context, index) {
               final monster = _availableMonsters[index];
               final isInCampaign = widget.campaign.availableMonsters.contains(monster.id);
-              
+
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: ListTile(
@@ -180,7 +182,7 @@ class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
                   title: Text(monster.name),
                   subtitle: Text('${monster.type} ${monster.subtype ?? ''} • CR ${monster.challengeRating}'),
                   trailing: isInCampaign
-                      ? const Icon(Icons.check_circle, color: Colors.green)
+                      ? Icon(Icons.check_circle, color: C.green)
                       : IconButton(
                           icon: const Icon(Icons.add_circle_outline),
                           onPressed: () => _addOfficialMonsterToCampaign(monster),
@@ -230,13 +232,13 @@ class _CampaignDndDataTabState extends State<CampaignDndDataTab> {
               const SizedBox(height: 8),
               if (monster.specialAbilities.isNotEmpty) ...[
                 const Text('Besondere Fähigkeiten:', style: TextStyle(fontWeight: FontWeight.bold)),
-                ...monster.specialAbilities.map((ability) => 
+                ...monster.specialAbilities.map((ability) =>
                   Text('• ${ability.name}: ${ability.description}')
                 ),
               ],
               if (monster.actions.isNotEmpty) ...[
                 const Text('Aktionen:', style: TextStyle(fontWeight: FontWeight.bold)),
-                ...monster.actions.map((action) => 
+                ...monster.actions.map((action) =>
                   Text('• ${action.name}: ${action.description}')
                 ),
               ],

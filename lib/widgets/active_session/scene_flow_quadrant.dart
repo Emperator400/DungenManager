@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 import '../../models/scene.dart';
 import '../../viewmodels/active_session_viewmodel.dart';
 import 'session_quadrant_base.dart';
@@ -19,19 +19,20 @@ class SceneFlowQuadrant extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     final scenes = viewModel.scenes;
 
     return SessionQuadrantBase(
       title: "Szenen-Ablauf",
       icon: Icons.list_alt,
-      color: DnDTheme.arcaneBlue,
-      content: scenes.isEmpty 
-          ? _buildEmptyState()
-          : _buildSceneList(scenes),
+      color: C.accent,
+      content: scenes.isEmpty
+          ? _buildEmptyState(context, C)
+          : _buildSceneList(context, scenes, C),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context, AppColorsExtension C) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -39,23 +40,23 @@ class SceneFlowQuadrant extends StatelessWidget {
           Icon(
             Icons.list_alt,
             size: 32,
-            color: Colors.white38,
+            color: C.textSoft,
           ),
           const SizedBox(height: 8),
           Text(
             'Keine Szenen',
-            style: DnDTheme.bodyText2.copyWith(
-              color: Colors.white70,
-              fontWeight: FontWeight.bold,
+            style: TextStyle(
               fontSize: 10,
+              color: C.textMid,
+              fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             'Erstelle deine erste Szene',
-            style: DnDTheme.bodyText2.copyWith(
-              color: Colors.white54,
+            style: TextStyle(
               fontSize: 8,
+              color: C.textSoft,
             ),
           ),
           const SizedBox(height: 8),
@@ -64,10 +65,10 @@ class SceneFlowQuadrant extends StatelessWidget {
             icon: const Icon(Icons.add, size: 14),
             label: const Text('Szene erstellen'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.arcaneBlue,
+              backgroundColor: C.accent,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(
-                horizontal: DnDTheme.sm,
+                horizontal: 8,
                 vertical: 4,
               ),
               textStyle: const TextStyle(fontSize: 9),
@@ -78,7 +79,7 @@ class SceneFlowQuadrant extends StatelessWidget {
     );
   }
 
-  Widget _buildSceneList(List<Scene> scenes) {
+  Widget _buildSceneList(BuildContext context, List<Scene> scenes, AppColorsExtension C) {
     return Column(
       children: [
         Expanded(
@@ -88,11 +89,13 @@ class SceneFlowQuadrant extends StatelessWidget {
             itemBuilder: (context, index) {
               final scene = scenes[index];
               final isActive = viewModel.currentSession.activeSceneId == scene.id;
-              
+
               return _buildSimpleSceneCard(
+                context: context,
                 scene: scene,
                 isActive: isActive,
                 onTap: () => onSceneTap(scene),
+                C: C,
               );
             },
           ),
@@ -104,10 +107,10 @@ class SceneFlowQuadrant extends StatelessWidget {
             icon: const Icon(Icons.add, size: 12),
             label: const Text('Neue Szene'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: DnDTheme.arcaneBlue,
+              backgroundColor: C.accent,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(
-                horizontal: DnDTheme.xs,
+                horizontal: 4,
                 vertical: 4,
               ),
               textStyle: const TextStyle(fontSize: 8),
@@ -122,9 +125,11 @@ class SceneFlowQuadrant extends StatelessWidget {
 
   /// Einfache Scene-Card vorerst - wird später durch scene_card_widget.dart ersetzt
   Widget _buildSimpleSceneCard({
+    required BuildContext context,
     required Scene scene,
     required bool isActive,
     required VoidCallback onTap,
+    required AppColorsExtension C,
   }) {
     return Theme(
       data: ThemeData(
@@ -137,17 +142,15 @@ class SceneFlowQuadrant extends StatelessWidget {
         leading: Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: scene.isCompleted 
-                ? DnDTheme.successGreen 
-                : DnDTheme.arcaneBlue,
-            borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+            color: scene.isCompleted ? C.green : C.accent,
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
             '${scene.orderIndex + 1}',
-            style: DnDTheme.bodyText2.copyWith(
+            style: TextStyle(
+              fontSize: 9,
               color: Colors.white,
               fontWeight: FontWeight.bold,
-              fontSize: 9,
             ),
           ),
         ),
@@ -156,23 +159,23 @@ class SceneFlowQuadrant extends StatelessWidget {
             Expanded(
               child: Text(
                 scene.name,
-                style: DnDTheme.bodyText2.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+                style: TextStyle(
                   fontSize: 9,
+                  color: C.text,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
             if (scene.isCompleted)
               Icon(
                 Icons.check_circle,
-                color: DnDTheme.successGreen,
+                color: C.green,
                 size: 12,
               ),
             if (isActive)
               Icon(
                 Icons.play_circle_filled,
-                color: DnDTheme.ancientGold,
+                color: C.amber,
                 size: 12,
               ),
             const SizedBox(width: 4),
@@ -180,7 +183,7 @@ class SceneFlowQuadrant extends StatelessWidget {
               onTap: onTap,
               child: Icon(
                 Icons.more_vert,
-                color: Colors.white70,
+                color: C.textSoft,
                 size: 12,
               ),
             ),
@@ -193,17 +196,14 @@ class SceneFlowQuadrant extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
               decoration: BoxDecoration(
-                gradient: DnDTheme.getMysticalGradient(
-                  startColor: isActive 
-                      ? DnDTheme.ancientGold.withValues(alpha: 0.2)
-                      : DnDTheme.slateGrey.withValues(alpha: 0.5),
-                  endColor: Colors.transparent,
-                ),
-                borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+                color: isActive
+                    ? C.amber.withValues(alpha: 0.1)
+                    : C.bgPanel,
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: isActive 
-                      ? DnDTheme.ancientGold.withValues(alpha: 0.3)
-                      : DnDTheme.arcaneBlue.withValues(alpha: 0.2),
+                  color: isActive
+                      ? C.amber.withValues(alpha: 0.3)
+                      : C.border,
                   width: 1,
                 ),
               ),
@@ -212,18 +212,18 @@ class SceneFlowQuadrant extends StatelessWidget {
                 children: [
                   Text(
                     'Beschreibung',
-                    style: DnDTheme.bodyText2.copyWith(
-                      color: DnDTheme.ancientGold,
-                      fontWeight: FontWeight.bold,
+                    style: TextStyle(
                       fontSize: 8,
+                      color: C.amber,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     scene.description,
-                    style: DnDTheme.bodyText2.copyWith(
-                      color: Colors.white,
+                    style: TextStyle(
                       fontSize: 9,
+                      color: C.text,
                     ),
                   ),
                 ],

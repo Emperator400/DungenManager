@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 import '../../models/campaign.dart';
 import '../../models/session.dart';
 
@@ -19,16 +19,14 @@ class SessionInfoBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: DnDTheme.sm, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        gradient: DnDTheme.getMysticalGradient(
-          startColor: DnDTheme.stoneGrey,
-          endColor: DnDTheme.slateGrey,
-        ),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusMedium),
+        color: C.bgPanel,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: DnDTheme.ancientGold.withValues(alpha: 0.3),
+          color: C.amber.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
@@ -36,16 +34,16 @@ class SessionInfoBar extends StatelessWidget {
           // Active Icon
           Container(
             decoration: BoxDecoration(
-              color: DnDTheme.ancientGold,
+              color: C.amber,
               shape: BoxShape.circle,
               border: Border.all(
-                color: DnDTheme.stoneGrey,
+                color: C.bg,
                 width: 2,
               ),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.play_circle_filled,
-              color: DnDTheme.dungeonBlack,
+              color: Colors.black,
               size: 16,
             ),
           ),
@@ -57,17 +55,17 @@ class SessionInfoBar extends StatelessWidget {
               children: [
                 Text(
                   'Kampagne: ${campaign.title}',
-                  style: DnDTheme.bodyText2.copyWith(
-                    color: Colors.white,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: C.text,
                     fontWeight: FontWeight.bold,
-                    fontSize: 11,
                   ),
                 ),
                 Text(
                   'Session-Laufzeit: $formattedInGameTime',
-                  style: DnDTheme.bodyText2.copyWith(
-                    color: Colors.white70,
+                  style: TextStyle(
                     fontSize: 9,
+                    color: C.textMid,
                   ),
                 ),
               ],
@@ -80,30 +78,27 @@ class SessionInfoBar extends StatelessWidget {
               vertical: 2,
             ),
             decoration: BoxDecoration(
-              gradient: DnDTheme.getMysticalGradient(
-                startColor: DnDTheme.arcaneBlue,
-                endColor: DnDTheme.mysticalPurple,
-              ),
-              borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+              color: C.bgActive,
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: DnDTheme.ancientGold.withValues(alpha: 0.5),
+                color: C.amber.withValues(alpha: 0.5),
               ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.timer,
-                  color: Colors.white,
+                  color: C.textMid,
                   size: 12,
                 ),
-                const SizedBox(width: DnDTheme.xs),
+                const SizedBox(width: 4),
                 Text(
                   'Aktiv',
-                  style: DnDTheme.bodyText2.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                  style: TextStyle(
                     fontSize: 9,
+                    color: C.text,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],

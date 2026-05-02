@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/player_character.dart';
+import '../../theme/app_theme.dart';
 
 /// Sortier-Optionen für die Liste
 enum SortOption {
@@ -62,14 +63,14 @@ class CharacterListHelpers {
   }
 
   /// HP-Status Farbe basierend auf aktuellen/maximalen HP
-  static Color getHpStatusColor(int currentHp, int maxHp) {
-    if (maxHp <= 0) return Colors.grey;
+  static Color getHpStatusColor(int currentHp, int maxHp, AppColorsExtension C) {
+    if (maxHp <= 0) return C.textMid;
     final percentage = currentHp / maxHp;
-    
-    if (percentage > 0.75) return Colors.green[600]!;
-    if (percentage > 0.5) return Colors.yellow[600]!;
-    if (percentage > 0.25) return Colors.orange[600]!;
-    return Colors.red[600]!;
+
+    if (percentage > 0.75) return C.green;
+    if (percentage > 0.5) return C.amber;
+    if (percentage > 0.25) return C.amber;
+    return C.red;
   }
 
   /// HP-Status Text erhalten
@@ -78,11 +79,11 @@ class CharacterListHelpers {
   }
 
   /// Level Badge Farbe
-  static Color getLevelBadgeColor(int level) {
-    if (level >= 15) return Colors.purple[600]!; // Legendary
-    if (level >= 10) return Colors.amber[600]!;  // Epic
-    if (level >= 5) return Colors.blue[600]!;    // Advanced
-    return Colors.grey[600]!;                      // Novice
+  static Color getLevelBadgeColor(int level, AppColorsExtension C) {
+    if (level >= 15) return C.accent;  // Legendary
+    if (level >= 10) return C.amber;   // Epic
+    if (level >= 5) return C.accent;   // Advanced
+    return C.textMid;                  // Novice
   }
 
   /// Level Badge Text
@@ -105,15 +106,15 @@ class CharacterListHelpers {
   }
 
   /// Attribut-Qualitätsfarbe
-  static Color getAttributeQualityColor(int value) {
-    if (value >= 18) return Colors.green[700]!;
-    if (value >= 16) return Colors.green[600]!;
-    if (value >= 14) return Colors.green[500]!;
-    if (value >= 12) return Colors.blue[600]!;
-    if (value >= 10) return Colors.blue[500]!;
-    if (value >= 8) return Colors.orange[600]!;
-    if (value >= 6) return Colors.orange[700]!;
-    return Colors.red[700]!;
+  static Color getAttributeQualityColor(int value, AppColorsExtension C) {
+    if (value >= 18) return C.green;
+    if (value >= 16) return C.green;
+    if (value >= 14) return C.green;
+    if (value >= 12) return C.accent;
+    if (value >= 10) return C.accent;
+    if (value >= 8) return C.amber;
+    if (value >= 6) return C.amber;
+    return C.red;
   }
 
   /// Wichtige Attribute für schnelle Anzeige (Top 3)
@@ -126,7 +127,7 @@ class CharacterListHelpers {
       {'name': 'WIS', 'value': pc.wisdom, 'label': 'Weisheit'},
       {'name': 'CHA', 'value': pc.charisma, 'label': 'Charisma'},
     ];
-    
+
     // Sortiere nach Wert (höchste zuerst) und nimm Top 3
     attributes.sort((a, b) => (b['value'] as int).compareTo(a['value'] as int));
     return attributes.take(3).cast<Map<String, dynamic>>().toList();
@@ -141,57 +142,57 @@ class CharacterListHelpers {
   }
 
   /// Status-Chip Daten für schnelle Info-Anzeige
-  static List<Map<String, dynamic>> getStatusChips(PlayerCharacter pc) {
+  static List<Map<String, dynamic>> getStatusChips(PlayerCharacter pc, AppColorsExtension C) {
     final chips = <Map<String, dynamic>>[];
-    
+
     // Level
     chips.add({
       'label': 'LVL ${pc.level}',
-      'color': getLevelBadgeColor(pc.level),
+      'color': getLevelBadgeColor(pc.level, C),
       'icon': Icons.star,
     });
-    
+
     // HP mit Status
     chips.add({
       'label': getHpStatusText(pc.maxHp, pc.maxHp), // Aktuell immer max HP
-      'color': getHpStatusColor(pc.maxHp, pc.maxHp),
+      'color': getHpStatusColor(pc.maxHp, pc.maxHp, C),
       'icon': Icons.favorite,
     });
-    
+
     // AC
     chips.add({
       'label': 'AC ${pc.armorClass}',
-      'color': Colors.blue[600]!,
+      'color': C.accent,
       'icon': Icons.shield,
     });
-    
+
     // Initiativ-Bonus
     final initiativeBonus = getModifier(pc.dexterity) + pc.initiativeBonus;
     chips.add({
       'label': 'INIT $initiativeBonus',
-      'color': Colors.orange[600]!,
+      'color': C.amber,
       'icon': Icons.bolt,
     });
-    
+
     return chips;
   }
 
   /// Kompakte Beschreibung für Vorschau
   static String getCompactDescription(PlayerCharacter pc) {
     final parts = <String>[];
-    
+
     if (pc.description != null && pc.description!.isNotEmpty) {
       parts.add(pc.description!);
     }
-    
+
     if (pc.raceName.isNotEmpty) {
       parts.add('${pc.raceName} ${pc.className}');
     }
-    
+
     if (parts.isEmpty) {
       parts.add('${pc.className} Level ${pc.level}');
     }
-    
+
     return parts.join(' • ');
   }
 

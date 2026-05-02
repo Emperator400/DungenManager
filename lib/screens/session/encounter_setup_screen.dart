@@ -128,11 +128,12 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
         ),
       );
     } else if (_viewModel.errorMessage != null && mounted) {
+      final C = context.appColors;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_viewModel.errorMessage!),
           duration: const Duration(seconds: 3),
-          backgroundColor: Colors.red,
+          backgroundColor: C.red,
         ),
       );
     }
@@ -238,11 +239,12 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
     }
 
     if (_viewModel.errorMessage != null && _viewModel.availableCharacters.isEmpty) {
+      final C = context.appColors;
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            Icon(Icons.error_outline, size: 64, color: C.red),
             const SizedBox(height: 16),
             Text(_viewModel.errorMessage!),
             const SizedBox(height: 16),
@@ -278,108 +280,111 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
     );
   }
 
-  Widget _buildSoundsPanel() => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.grey[850],
-          border: Border(
-            bottom: BorderSide(color: Colors.grey[700]!, width: 1),
-          ),
+  Widget _buildSoundsPanel() {
+    final C = context.appColors;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: C.bgActive,
+        border: Border(
+          bottom: BorderSide(color: C.border, width: 1),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.music_note, color: Colors.green, size: 20),
-                SizedBox(width: 8),
-                Text(
-                  'Verknüpfte Sounds',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.music_note, color: C.green, size: 20),
+              const SizedBox(width: 8),
+              const Text(
+                'Verknüpfte Sounds',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: _linkedSounds.map((sound) {
+              final isCurrentPlaying = _currentPlayingSoundId == sound.id;
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isCurrentPlaying
+                      ? C.green.withValues(alpha: 0.3)
+                      : C.bgActive,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isCurrentPlaying ? C.green : C.textMid,
+                    width: 1,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: _linkedSounds.map((sound) {
-                final isCurrentPlaying = _currentPlayingSoundId == sound.id;
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isCurrentPlaying
-                        ? Colors.green.withValues(alpha: 0.3)
-                        : Colors.grey[800],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isCurrentPlaying ? Colors.green : Colors.grey[600]!,
-                      width: 1,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        _currentPlayingSoundId == sound.id && _isPlaying
+                            ? Icons.pause
+                            : Icons.play_arrow,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                      onPressed: () => _togglePlayPause(sound.id, sound.filePath),
+                      tooltip: isCurrentPlaying && _isPlaying ? 'Pausieren' : 'Abspielen',
                     ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          _currentPlayingSoundId == sound.id && _isPlaying
-                              ? Icons.pause
-                              : Icons.play_arrow,
+                    SizedBox(
+                      width: 100,
+                      child: Text(
+                        sound.name,
+                        style: const TextStyle(
                           color: Colors.white,
-                          size: 16,
+                          fontSize: 12,
                         ),
-                        onPressed: () => _togglePlayPause(sound.id, sound.filePath),
-                        tooltip: isCurrentPlaying && _isPlaying ? 'Pausieren' : 'Abspielen',
+                        overflow: TextOverflow.ellipsis,
                       ),
+                    ),
+                    if (isCurrentPlaying) ...[
+                      const SizedBox(width: 4),
                       SizedBox(
-                        width: 100,
-                        child: Text(
-                          sound.name,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                          ),
-                          overflow: TextOverflow.ellipsis,
+                        width: 80,
+                        child: Slider(
+                          value: _volume,
+                          onChanged: (value) async {
+                            setState(() {
+                              _volume = value;
+                            });
+                            await SoundService.setVolume(_volume);
+                          },
+                          min: 0,
+                          max: 1,
+                          divisions: 10,
+                          activeColor: C.green,
+                          inactiveColor: C.textMid,
                         ),
                       ),
-                      if (isCurrentPlaying) ...[
-                        const SizedBox(width: 4),
-                        SizedBox(
-                          width: 80,
-                          child: Slider(
-                            value: _volume,
-                            onChanged: (value) async {
-                              setState(() {
-                                _volume = value;
-                              });
-                              await SoundService.setVolume(_volume);
-                            },
-                            min: 0,
-                            max: 1,
-                            divisions: 10,
-                            activeColor: Colors.green,
-                            inactiveColor: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        IconButton(
-                          icon: const Icon(Icons.stop, color: Colors.red, size: 16),
-                          onPressed: _stopSound,
-                          tooltip: 'Stoppen',
-                        ),
-                      ],
+                      const SizedBox(width: 4),
+                      IconButton(
+                        icon: Icon(Icons.stop, color: C.red, size: 16),
+                        onPressed: _stopSound,
+                        tooltip: 'Stoppen',
+                      ),
                     ],
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      );
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildEncounterInfo() => Padding(
         padding: const EdgeInsets.all(16),
@@ -452,10 +457,11 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
         .toList();
 
     if (characters.isEmpty) {
-      return const Center(
+      final C = context.appColors;
+      return Center(
         child: Text(
           'Keine Helden verfügbar',
-          style: TextStyle(color: Colors.grey),
+          style: TextStyle(color: C.textMid),
         ),
       );
     }
@@ -486,9 +492,10 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
         ),
       );
 
-  Widget _buildCharacterTile(PlayerCharacter character, {bool isDragging = false}) =>
-      Card(
-        color: Colors.blue[800],
+  Widget _buildCharacterTile(PlayerCharacter character, {bool isDragging = false}) {
+    final C = context.appColors;
+    return Card(
+        color: C.accent,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
@@ -518,30 +525,32 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
           ),
         ),
       );
+  }
 
   Widget _buildMonsterList() {
     // Monster nicht mehr ausblenden, damit sie mehrfach geklickt werden können
     final monsters = _viewModel.availableMonsters.toList();
 
     if (monsters.isEmpty) {
+      final C = context.appColors;
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               Icons.pets_outlined,
               size: 64,
-              color: Colors.grey,
+              color: C.textMid,
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Keine Gegner verfügbar',
-              style: TextStyle(color: Colors.grey, fontSize: 16),
+              style: TextStyle(color: C.textMid, fontSize: 16),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Importiere oder erstelle Monster im Bestiarium',
-              style: TextStyle(color: Colors.grey, fontSize: 12),
+              style: TextStyle(color: C.textMid, fontSize: 12),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
@@ -557,7 +566,7 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
               icon: const Icon(Icons.auto_stories),
               label: const Text('Bestiarium öffnen'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple,
+                backgroundColor: C.accent,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -598,8 +607,9 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
     // Zeigt an, wie oft das Monster bereits hinzugefügt wurde
     final count = _viewModel.getMonsterCount(monster.id);
 
+    final C = context.appColors;
     return Card(
-      color: Colors.red[900],
+      color: C.red,
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
@@ -621,7 +631,7 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
                       child: Text(
                         count.toString(),
                         style: TextStyle(
-                          color: Colors.red[900],
+                          color: C.red,
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
@@ -688,7 +698,7 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  icon: const Icon(Icons.refresh, color: Colors.grey),
+                  icon: Icon(Icons.refresh, color: C.textMid),
                   onPressed: _viewModel.clearAllInitiatives,
                   tooltip: 'Initiative zurücksetzen',
                 ),
@@ -707,18 +717,20 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
                 _addMonster(data);
               }
             },
-            builder: (context, candidateData, rejectedData) => Container(
+            builder: (context, candidateData, rejectedData) {
+              final innerC = context.appColors;
+              return Container(
               decoration: BoxDecoration(
                 color: candidateData.isNotEmpty
-                    ? Colors.orange.withValues(alpha: 0.2)
-                    : Colors.black.withValues(alpha: 0.2),
+                    ? innerC.amber.withValues(alpha: 0.2)
+                    : innerC.bgHover,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: selectedCharacters.isEmpty && selectedMonsters.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Text(
                         'Hier Teilnehmer reinziehen oder anklicken',
-                        style: TextStyle(color: Colors.grey),
+                        style: TextStyle(color: innerC.textMid),
                       ),
                     )
                   : ListView.builder(
@@ -753,7 +765,7 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
                         }
                       },
                     ),
-            ),
+            );},
           ),
         ),
       ],
@@ -761,18 +773,19 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
   }
 
   Widget _buildSelectedCharacterTileWithInitiative(
-    PlayerCharacter character, 
+    PlayerCharacter character,
     int position,
     int initiative,
     bool initiativeSet,
   ) {
+    final C = context.appColors;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.blue[800]?.withValues(alpha: 0.3),
+        color: C.accent.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: Colors.blue[700] ?? Colors.blue,
+          color: C.accent,
           width: 1,
         ),
       ),
@@ -788,7 +801,7 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
                   width: 28,
                   height: 28,
                   decoration: BoxDecoration(
-                    color: Colors.grey[700],
+                    color: C.bgActive,
                     shape: BoxShape.circle,
                   ),
                   child: Center(
@@ -804,7 +817,7 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
                 ),
                 const SizedBox(width: 8),
                 // Icon
-                const Icon(Icons.account_circle, color: Colors.blue, size: 32),
+                Icon(Icons.account_circle, color: C.accent, size: 32),
                 const SizedBox(width: 8),
                 // Name und Info
                 Expanded(
@@ -821,7 +834,7 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
                       ),
                       Text(
                         '${character.className} Lvl ${character.level}',
-                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                        style: TextStyle(color: C.textSoft, fontSize: 12),
                       ),
                     ],
                   ),
@@ -836,7 +849,7 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
                 const SizedBox(width: 8),
                 // Entfernen Button
                 IconButton(
-                  icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent, size: 20),
+                  icon: Icon(Icons.remove_circle_outline, color: C.red, size: 20),
                   onPressed: () => _viewModel.removeCharacterWithInitiative(character.id),
                   tooltip: 'Entfernen',
                   constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -850,8 +863,8 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
               spacing: 8,
               runSpacing: 4,
               children: [
-                _buildStatChip('HP', '${character.maxHp}', Colors.green),
-                _buildStatChip('AC', '${character.armorClass}', Colors.orange),
+                _buildStatChip('HP', '${character.maxHp}', C.green),
+                _buildStatChip('AC', '${character.armorClass}', C.amber),
                 _buildAbilityChip('STR', character.strength),
                 _buildAbilityChip('DEX', character.dexterity),
                 _buildAbilityChip('CON', character.constitution),
@@ -883,16 +896,17 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
     int initiative,
     bool initiativeSet,
   ) {
+    final C = context.appColors;
     final crText = monster.challengeRating?.toString() ?? '?';
     final typeText = monster.type ?? 'Unbekannt';
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.red[900]?.withValues(alpha: 0.3),
+        color: C.red.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: Colors.red[700] ?? Colors.red,
+          color: C.red,
           width: 1,
         ),
       ),
@@ -908,7 +922,7 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
                   width: 28,
                   height: 28,
                   decoration: BoxDecoration(
-                    color: Colors.grey[700],
+                    color: C.bgActive,
                     shape: BoxShape.circle,
                   ),
                   child: Center(
@@ -924,7 +938,7 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
                 ),
                 const SizedBox(width: 8),
                 // Icon
-                const Icon(Icons.shield, color: Colors.red, size: 32),
+                Icon(Icons.shield, color: C.red, size: 32),
                 const SizedBox(width: 8),
                 // Name und Info
                 Expanded(
@@ -941,7 +955,7 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
                       ),
                       Text(
                         '$typeText CR $crText',
-                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                        style: TextStyle(color: C.textSoft, fontSize: 12),
                       ),
                     ],
                   ),
@@ -956,7 +970,7 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
                 const SizedBox(width: 8),
                 // Entfernen Button
                 IconButton(
-                  icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent, size: 20),
+                  icon: Icon(Icons.remove_circle_outline, color: C.red, size: 20),
                   onPressed: () => _viewModel.removeMonsterWithInitiative(monster.id),
                   tooltip: 'Entfernen',
                   constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -970,8 +984,8 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
               spacing: 8,
               runSpacing: 4,
               children: [
-                _buildStatChip('HP', '${monster.maxHp}', Colors.green),
-                _buildStatChip('AC', '${monster.armorClass}', Colors.orange),
+                _buildStatChip('HP', '${monster.maxHp}', C.green),
+                _buildStatChip('AC', '${monster.armorClass}', C.amber),
                 _buildAbilityChip('STR', monster.strength),
                 _buildAbilityChip('DEX', monster.dexterity),
                 _buildAbilityChip('CON', monster.constitution),
@@ -1024,22 +1038,21 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
 
   /// Helper für Ability-Score-Chips mit Modifier
   Widget _buildAbilityChip(String label, int score) {
+    final C = context.appColors;
     final modifier = ((score - 10) ~/ 2);
     final modText = modifier >= 0 ? '+$modifier' : '$modifier';
-    // Nicht-const Variablen um const-Evaluation zu verhindern
     final padding = EdgeInsets.symmetric(horizontal: 4, vertical: 2);
-    final bgColor = Colors.grey[800] ?? Color(0xFF424242);
-    
+
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: bgColor,
+        color: C.bgActive,
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         '$label $score ($modText)',
         style: TextStyle(
-          color: Colors.white70,
+          color: C.textMid,
           fontSize: 9,
         ),
       ),
@@ -1048,23 +1061,20 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
 
   /// Helper für Attack-Chips
   Widget _buildAttackChip(String name, String damage) {
-    // Nicht-const Variablen um const-Evaluation zu verhindern
+    final C = context.appColors;
     final padding = EdgeInsets.symmetric(horizontal: 6, vertical: 2);
-    final bgColor = Colors.purple[900]?.withValues(alpha: 0.3) ?? Color(0x4D4A148C);
-    final borderColor = Colors.purple[700] ?? Color(0xFF7B1FA2);
-    final textColor = Colors.purple[200] ?? Color(0xFFCE93D8);
-    
+
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: bgColor,
+        color: C.accent.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: borderColor),
+        border: Border.all(color: C.accent.withValues(alpha: 0.5)),
       ),
       child: Text(
         damage.isNotEmpty ? '$name ($damage)' : name,
         style: TextStyle(
-          color: textColor,
+          color: C.accent,
           fontSize: 9,
         ),
       ),
@@ -1074,25 +1084,20 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
   /// Erstellt die InputDecoration für das Initiative-Feld
   /// Als separate Methode um const-Evaluation zu vermeiden
   InputDecoration _createInitInputDecoration(Color fillColor) {
-    // Verwende nicht-const Variablen um const-Evaluation zu verhindern
-    final hintColor = Colors.grey[600] ?? Color(0xFF9E9E9E);
-    final borderColor = Colors.grey[600] ?? Color(0xFF757575);
-    // Nicht-const EdgeInsets um const-Evaluation zu verhindern
+    final C = context.appColors;
     final contentPadding = EdgeInsets.symmetric(horizontal: 4, vertical: 8);
-    // Nicht-const Farbe um const-Evaluation zu verhindern
-    final goldColor = Color(0xFFD4AF37);
-    
+
     return InputDecoration(
       hintText: 'Init',
-      hintStyle: TextStyle(color: hintColor, fontSize: 10),
+      hintStyle: TextStyle(color: C.textMid, fontSize: 10),
       contentPadding: contentPadding,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(4),
-        borderSide: BorderSide(color: borderColor),
+        borderSide: BorderSide(color: C.border),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(4),
-        borderSide: BorderSide(color: goldColor, width: 2), // Gold
+        borderSide: BorderSide(color: C.amber, width: 2),
       ),
       filled: true,
       fillColor: fillColor,
@@ -1109,8 +1114,8 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
     final controller = TextEditingController(
       text: initiativeSet ? initiative.toString() : '',
     );
-    final textColor = initiativeSet ? C.amber : Colors.grey;
-    final fillColor = Colors.grey[850] ?? const Color(0xFF424242);
+    final textColor = initiativeSet ? C.amber : C.textMid;
+    final fillColor = C.bgActive;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -1180,9 +1185,14 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
             if (_viewModel.errorMessage != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  _viewModel.errorMessage!,
-                  style: const TextStyle(color: Colors.red),
+                child: Builder(
+                  builder: (context) {
+                    final C = context.appColors;
+                    return Text(
+                      _viewModel.errorMessage!,
+                      style: TextStyle(color: C.red),
+                    );
+                  },
                 ),
               ),
             ElevatedButton.icon(

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../theme/dnd_theme.dart';
+import '../../theme/app_theme.dart';
 
 /// Ein moderner UI-Chip für die Anzeige von PC-Informationen
 class PcInfoChip extends StatelessWidget {
@@ -40,9 +40,9 @@ class PcInfoChip extends StatelessWidget {
       label: label,
       value: value,
       icon: icon,
-      backgroundColor: color?.withValues(alpha: 0.15) ?? DnDTheme.slateGrey.withValues(alpha: 0.3),
+      backgroundColor: color?.withValues(alpha: 0.15) ?? AppColors.darkBgPanel.withValues(alpha: 0.3),
       textColor: color ?? Colors.white,
-      iconColor: color ?? DnDTheme.ancientGold,
+      iconColor: color ?? AppColors.darkAmber,
       onTap: onTap,
     );
   }
@@ -56,7 +56,7 @@ class PcInfoChip extends StatelessWidget {
   }) {
     final qualityColor = _getAttributeColor(value);
     final modText = modifier >= 0 ? '+$modifier' : '$modifier';
-    
+
     return PcInfoChip(
       label: name,
       value: '$value ($modText)',
@@ -79,9 +79,9 @@ class PcInfoChip extends StatelessWidget {
       label: label,
       value: amount.toStringAsFixed(0),
       icon: icon,
-      backgroundColor: color?.withValues(alpha: 0.15) ?? DnDTheme.slateGrey.withValues(alpha: 0.3),
+      backgroundColor: color?.withValues(alpha: 0.15) ?? AppColors.darkBgPanel.withValues(alpha: 0.3),
       textColor: color ?? Colors.white70,
-      iconColor: color ?? DnDTheme.ancientGold,
+      iconColor: color ?? AppColors.darkAmber,
       fontSize: 11,
       iconSize: 14,
     );
@@ -121,16 +121,17 @@ class PcInfoChip extends StatelessWidget {
     if (lower.contains('lawful')) return Colors.blue;
     if (lower.contains('chaotic')) return Colors.orange;
     if (lower.contains('neutral')) return Colors.grey;
-    return DnDTheme.mysticalPurple;
+    return AppColors.darkAccent;
   }
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     final chipContent = Container(
       padding: padding ?? const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        color: backgroundColor ?? DnDTheme.slateGrey.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+        color: backgroundColor ?? C.bgPanel.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(8.0),
         border: Border.all(
           color: (iconColor ?? textColor ?? Colors.white).withValues(alpha: 0.3),
           width: 1,
@@ -143,7 +144,7 @@ class PcInfoChip extends StatelessWidget {
             Icon(
               icon,
               size: iconSize ?? 16,
-              color: iconColor ?? textColor ?? Colors.white70,
+              color: iconColor ?? textColor ?? C.textSoft,
             ),
             const SizedBox(width: 4),
           ],
@@ -152,7 +153,7 @@ class PcInfoChip extends StatelessWidget {
               '$label ',
               style: TextStyle(
                 fontSize: fontSize ?? 12,
-                color: textColor?.withValues(alpha: 0.7) ?? Colors.white70,
+                color: textColor?.withValues(alpha: 0.7) ?? C.textSoft,
                 fontWeight: FontWeight.w400,
               ),
             ),
@@ -161,7 +162,7 @@ class PcInfoChip extends StatelessWidget {
             value,
             style: TextStyle(
               fontSize: fontSize ?? 12,
-              color: textColor ?? Colors.white,
+              color: textColor ?? C.text,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -174,12 +175,12 @@ class PcInfoChip extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(DnDTheme.radiusSmall),
+          borderRadius: BorderRadius.circular(8.0),
           child: chipContent,
         ),
       );
     }
-    
+
     return chipContent;
   }
 }
@@ -225,6 +226,7 @@ class PcChipSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final C = context.appColors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -235,14 +237,14 @@ class PcChipSection extends StatelessWidget {
                 Icon(
                   titleIcon,
                   size: 14,
-                  color: DnDTheme.ancientGold.withValues(alpha: 0.8),
+                  color: C.amber.withValues(alpha: 0.8),
                 ),
                 const SizedBox(width: 6),
               ],
               Text(
                 title!,
-                style: DnDTheme.bodyText2.copyWith(
-                  color: DnDTheme.ancientGold.withValues(alpha: 0.8),
+                style: TextStyle(
+                  color: C.amber.withValues(alpha: 0.8),
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.5,
