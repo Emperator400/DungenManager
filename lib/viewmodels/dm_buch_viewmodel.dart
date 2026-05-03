@@ -117,6 +117,16 @@ class DmBuchViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ── ORT REIHENFOLGE ───────────────────────────────────────────────────────
+
+  Future<void> reorderOrte(int oldIndex, int newIndex) async {
+    if (newIndex > oldIndex) newIndex -= 1;
+    final item = _orte.removeAt(oldIndex);
+    _orte.insert(newIndex, item);
+    notifyListeners();
+    await _ortService.reorderOrte(_orte);
+  }
+
   // ── ORT CRUD ──────────────────────────────────────────────────────────────
 
   Future<Ort?> createOrt({
@@ -232,6 +242,16 @@ class DmBuchViewModel extends ChangeNotifier {
     } catch (e) {
       debugPrint('[DmBuchViewModel] createSceneForOrt error: $e');
       return null;
+    }
+  }
+
+  Future<void> deleteScene(String sceneId) async {
+    try {
+      await _sceneRepo.delete(sceneId);
+      _selectedOrtScenes.removeWhere((s) => s.id == sceneId);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[DmBuchViewModel] deleteScene error: $e');
     }
   }
 

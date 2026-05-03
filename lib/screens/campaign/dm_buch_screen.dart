@@ -368,10 +368,16 @@ class _KarteTab extends StatelessWidget {
       );
     }
 
-    return ListView.builder(
+    return ReorderableListView.builder(
       padding: const EdgeInsets.all(10),
       itemCount: vm.orte.length,
+      onReorder: vm.reorderOrte,
+      proxyDecorator: (child, index, animation) => Material(
+        color: Colors.transparent,
+        child: child,
+      ),
       itemBuilder: (ctx, i) => Padding(
+        key: ValueKey(vm.orte[i].id),
         padding: const EdgeInsets.only(bottom: 6),
         child: _OrtCard(
           ort: vm.orte[i],
@@ -994,10 +1000,52 @@ class _SceneRowState extends State<_SceneRow> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              AppIcon(AppIconName.chevronRight, size: 12, color: C.textSoft),
+              if (_hovered)
+                GestureDetector(
+                  onTap: () => _confirmDelete(context, C),
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: AppIcon(AppIconName.trash, size: 13, color: C.red),
+                  ),
+                )
+              else
+                AppIcon(AppIconName.chevronRight, size: 12, color: C.textSoft),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, AppColorsExtension C) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: C.bgPanel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: C.border),
+        ),
+        title: Text('Szene löschen?',
+            style: TextStyle(fontSize: 15, color: C.text)),
+        content: Text(
+          '"${widget.scene.name}" wird unwiderruflich gelöscht.',
+          style: TextStyle(fontSize: 13, color: C.textMid),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Abbrechen', style: TextStyle(color: C.textMid)),
+          ),
+          FilledButton(
+            onPressed: () {
+              widget.vm.deleteScene(widget.scene.id);
+              Navigator.of(ctx).pop();
+            },
+            style: FilledButton.styleFrom(backgroundColor: C.red),
+            child: const Text('Löschen'),
+          ),
+        ],
       ),
     );
   }
