@@ -1304,15 +1304,12 @@ class _EditOrtDialogState extends State<_EditOrtDialog> {
                   child: Text('Ort bearbeiten',
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: C.text)),
                 ),
-                IconButton(
-                  onPressed: () async {
-                    Navigator.of(context).pop();
-                    await widget.vm.deleteOrt(widget.ort.id);
-                  },
-                  icon: Icon(Icons.delete_outline, size: 18, color: C.red),
-                  tooltip: 'Ort löschen',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
+                GestureDetector(
+                  onTap: () => _confirmDelete(context, C),
+                  child: Tooltip(
+                    message: 'Ort löschen',
+                    child: AppIcon(AppIconName.trash, size: 15, color: C.red),
+                  ),
                 ),
               ],
             ),
@@ -1386,6 +1383,40 @@ class _EditOrtDialogState extends State<_EditOrtDialog> {
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       );
+
+  void _confirmDelete(BuildContext context, AppColorsExtension C) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: C.bgPanel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: C.border),
+        ),
+        title: Text('Ort löschen?',
+            style: TextStyle(fontSize: 15, color: C.text)),
+        content: Text(
+          '"${widget.ort.name}" und alle zugeordneten Szenen werden unwiderruflich gelöscht.',
+          style: TextStyle(fontSize: 13, color: C.textMid),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Abbrechen', style: TextStyle(color: C.textMid)),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              Navigator.of(context).pop();
+              widget.vm.deleteOrt(widget.ort.id);
+            },
+            style: FilledButton.styleFrom(backgroundColor: C.red),
+            child: const Text('Löschen'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ── CREATE SCENE DIALOG ───────────────────────────────────────────────────────
