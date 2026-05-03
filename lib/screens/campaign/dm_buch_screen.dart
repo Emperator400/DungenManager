@@ -750,7 +750,15 @@ class _OrtDetail extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
       children: [
         // Szenen
-        _SectionHeader(title: 'Szenen', C: C, action: 'Szene hinzufügen', onAction: () {}),
+        _SectionHeader(
+          title: 'Szenen',
+          C: C,
+          action: 'Szene hinzufügen',
+          onAction: () => showDialog<void>(
+            context: context,
+            builder: (_) => _CreateSceneDialog(ort: ort, vm: vm),
+          ),
+        ),
         const SizedBox(height: 8),
         if (vm.selectedOrtScenes.isEmpty)
           _EmptyHint('Noch keine Szenen für diesen Ort.', C)
@@ -1226,6 +1234,141 @@ class _EditOrtDialogState extends State<_EditOrtDialog> {
                   },
                   style: FilledButton.styleFrom(backgroundColor: C.accent),
                   child: const Text('Speichern'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _inputDeco(AppColorsExtension C, String hint) => InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: C.textSoft),
+        filled: true,
+        fillColor: C.bgHover,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: C.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: C.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: C.accent),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      );
+}
+
+// ── CREATE SCENE DIALOG ───────────────────────────────────────────────────────
+
+class _CreateSceneDialog extends StatefulWidget {
+  const _CreateSceneDialog({required this.ort, required this.vm});
+
+  final Ort ort;
+  final DmBuchViewModel vm;
+
+  @override
+  State<_CreateSceneDialog> createState() => _CreateSceneDialogState();
+}
+
+class _CreateSceneDialogState extends State<_CreateSceneDialog> {
+  final _nameCtrl = TextEditingController();
+  final _descCtrl = TextEditingController();
+  SceneType _type = SceneType.Exploration;
+
+  static const Map<SceneType, String> _labels = {
+    SceneType.Introduction: 'Einführung',
+    SceneType.Exploration:  'Erforschung',
+    SceneType.Combat:       'Kampf',
+    SceneType.Social:       'Sozial',
+    SceneType.Puzzle:       'Rätsel',
+    SceneType.Climax:       'Höhepunkt',
+    SceneType.Resolution:   'Auflösung',
+  };
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _descCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final C = context.appColors;
+
+    return Dialog(
+      backgroundColor: C.bgPanel,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: C.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Szene für ${widget.ort.name}',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: C.text),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _nameCtrl,
+              autofocus: true,
+              style: TextStyle(fontSize: 13, color: C.text),
+              decoration: _inputDeco(C, 'Name der Szene'),
+            ),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<SceneType>(
+              value: _type,
+              dropdownColor: C.bgPanel,
+              style: TextStyle(fontSize: 13, color: C.text),
+              decoration: _inputDeco(C, 'Typ'),
+              items: SceneType.values
+                  .map((t) => DropdownMenuItem(
+                        value: t,
+                        child: Text(_labels[t] ?? t.name),
+                      ))
+                  .toList(),
+              onChanged: (t) { if (t != null) setState(() => _type = t); },
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _descCtrl,
+              maxLines: 3,
+              style: TextStyle(fontSize: 13, color: C.text),
+              decoration: _inputDeco(C, 'Beschreibung (optional)'),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('Abbrechen', style: TextStyle(color: C.textMid)),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: () async {
+                    final name = _nameCtrl.text.trim();
+                    if (name.isEmpty) return;
+                    await widget.vm.createSceneForOrt(
+                      widget.ort,
+                      name: name,
+                      type: _type,
+                      description: _descCtrl.text.trim(),
+                    );
+                    if (context.mounted) Navigator.of(context).pop();
+                  },
+                  style: FilledButton.styleFrom(backgroundColor: C.accent),
+                  child: const Text('Erstellen'),
                 ),
               ],
             ),

@@ -215,7 +215,7 @@ class Scene {
 
   /// Validates the scene model
   bool get isValid {
-    return name.isNotEmpty && sessionId.isNotEmpty;
+    return name.isNotEmpty && (sessionId.isNotEmpty || ortId != null);
   }
 
   @override

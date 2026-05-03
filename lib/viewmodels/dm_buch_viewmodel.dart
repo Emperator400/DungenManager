@@ -205,6 +205,31 @@ class DmBuchViewModel extends ChangeNotifier {
 
   // ── SZENEN ────────────────────────────────────────────────────────────────
 
+  Future<Scene?> createSceneForOrt(
+    Ort ort, {
+    required String name,
+    SceneType type = SceneType.Exploration,
+    String description = '',
+  }) async {
+    try {
+      final scene = Scene(
+        sessionId: '',
+        orderIndex: _selectedOrtScenes.length,
+        name: name,
+        description: description,
+        sceneType: type,
+        ortId: ort.id,
+      );
+      final saved = await _sceneRepo.create(scene);
+      _selectedOrtScenes.add(saved);
+      notifyListeners();
+      return saved;
+    } catch (e) {
+      debugPrint('[DmBuchViewModel] createSceneForOrt error: $e');
+      return null;
+    }
+  }
+
   Future<void> reloadScenes() async {
     if (_selectedOrt == null) return;
     await _loadScenesForOrt(_selectedOrt!.id);
