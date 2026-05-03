@@ -370,19 +370,21 @@ class _KarteTab extends StatelessWidget {
 
     return ReorderableListView.builder(
       padding: const EdgeInsets.all(10),
+      buildDefaultDragHandles: false,
       itemCount: vm.orte.length,
       onReorder: vm.reorderOrte,
-      proxyDecorator: (child, index, animation) => Material(
-        color: Colors.transparent,
-        child: child,
-      ),
-      itemBuilder: (ctx, i) => Padding(
+      proxyDecorator: (child, _, __) =>
+          Material(color: Colors.transparent, child: child),
+      itemBuilder: (ctx, i) => ReorderableDragStartListener(
         key: ValueKey(vm.orte[i].id),
-        padding: const EdgeInsets.only(bottom: 6),
-        child: _OrtCard(
-          ort: vm.orte[i],
-          selected: vm.selectedOrt?.id == vm.orte[i].id,
-          vm: vm,
+        index: i,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: _OrtCard(
+            ort: vm.orte[i],
+            selected: vm.selectedOrt?.id == vm.orte[i].id,
+            vm: vm,
+          ),
         ),
       ),
     );
@@ -848,15 +850,30 @@ class _OrtDetail extends StatelessWidget {
           ReorderableListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
+            buildDefaultDragHandles: false,
             onReorder: vm.reorderScenes,
             proxyDecorator: (child, _, __) =>
                 Material(color: Colors.transparent, child: child),
             itemCount: vm.selectedOrtScenes.length,
-            itemBuilder: (_, i) => Padding(
-              key: ValueKey(vm.selectedOrtScenes[i].id),
-              padding: const EdgeInsets.only(bottom: 6),
-              child: _SceneRow(scene: vm.selectedOrtScenes[i], vm: vm),
-            ),
+            itemBuilder: (_, i) {
+              final scene = vm.selectedOrtScenes[i];
+              return Padding(
+                key: ValueKey(scene.id),
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    ReorderableDragStartListener(
+                      index: i,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(0, 0, 6, 0),
+                        child: Icon(Icons.drag_handle, size: 14, color: context.appColors.textSoft),
+                      ),
+                    ),
+                    Expanded(child: _SceneRow(scene: scene, vm: vm)),
+                  ],
+                ),
+              );
+            },
           ),
         const SizedBox(height: 20),
 
