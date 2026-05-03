@@ -3,7 +3,11 @@ import 'dart:async';
 
 // Eigene Projekte
 import '../models/campaign.dart';
+import '../models/ort.dart';
+import '../models/quest.dart';
 import '../database/repositories/campaign_model_repository.dart';
+import '../database/repositories/ort_model_repository.dart';
+import '../database/repositories/quest_model_repository.dart';
 import '../database/core/database_connection.dart';
 import '../services/uuid_service.dart';
 import 'exceptions/service_exceptions.dart';
@@ -17,10 +21,16 @@ import 'exceptions/service_exceptions.dart';
 /// Verwendet spezifische Exceptions und ServiceResult Pattern.
 class CampaignService {
   final CampaignModelRepository _campaignRepository;
+  final OrtModelRepository _ortRepository;
+  final QuestModelRepository _questRepository;
 
   CampaignService({
     CampaignModelRepository? campaignRepository,
-  }) : _campaignRepository = campaignRepository ?? CampaignModelRepository(DatabaseConnection.instance);
+    OrtModelRepository? ortRepository,
+    QuestModelRepository? questRepository,
+  })  : _campaignRepository = campaignRepository ?? CampaignModelRepository(DatabaseConnection.instance),
+        _ortRepository = ortRepository ?? OrtModelRepository(DatabaseConnection.instance),
+        _questRepository = questRepository ?? QuestModelRepository(DatabaseConnection.instance);
 
   // ========== CRUD OPERATIONS ==========
 
@@ -589,7 +599,7 @@ class CampaignService {
       }
 
       final now = DateTime.now();
-      final copy = Campaign(
+      final copy = await _campaignRepository.create(Campaign(
         id: UuidService().generateId(),
         title: title,
         description: template.description,
@@ -602,9 +612,41 @@ class CampaignService {
         system: template.system,
         isTemplate: false,
         templateId: template.id,
-      );
+      ));
 
-      return await _campaignRepository.create(copy);
+      // Orte kopieren
+      final orte = await _ortRepository.findByCampaign(template.id);
+      for (final ort in orte) {
+        await _ortRepository.create(Ort.create(
+          campaignId: copy.id,
+          name: ort.name,
+          type: ort.type,
+          description: ort.description,
+          sortOrder: ort.sortOrder,
+          templateOrtId: ort.id,
+        ));
+      }
+
+      // Quests kopieren
+      final quests = await _questRepository.findByCampaign(template.id);
+      for (final quest in quests) {
+        await _questRepository.create(Quest.create(
+          campaignId: copy.id,
+          title: quest.title,
+          description: quest.description,
+          status: QuestStatus.active,
+          questType: quest.questType,
+          difficulty: quest.difficulty,
+          location: quest.location,
+          recommendedLevel: quest.recommendedLevel,
+          estimatedDurationHours: quest.estimatedDurationHours,
+          tags: List<String>.from(quest.tags),
+          rewards: List.from(quest.rewards),
+          involvedNpcs: List<String>.from(quest.involvedNpcs),
+        ));
+      }
+
+      return copy;
     });
   }
 

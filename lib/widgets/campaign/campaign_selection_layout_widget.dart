@@ -273,7 +273,7 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
         child: UnifiedCampaignCard(
           campaign: filtered[i],
           viewModel: viewModel,
-          onNavigate: () => _editCampaign(context, filtered[i]),
+          onNavigate: () => _navigateToCampaign(context, filtered[i]),
           onEdit: () => _editCampaign(context, filtered[i]),
           onUseCopy: () => _showUseCopyDialog(context, filtered[i], viewModel),
         ),
