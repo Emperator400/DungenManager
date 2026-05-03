@@ -346,42 +346,44 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
         vm.intelligence, vm.wisdom, vm.charisma,
       ];
 
-      final bottomRow = isWide
-          ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(child: _buildModifierCard(values, C)),
-              const SizedBox(width: 12),
-              Expanded(child: _buildInitiativeCard(vm, C)),
-            ])
-          : Column(children: [
-              _buildModifierCard(values, C),
-              const SizedBox(height: 12),
-              _buildInitiativeCard(vm, C),
-            ]);
+      final attrCard = _EditorCard(title: 'Attributspunkte', C: C, children: [
+        AttributesSectionWidget(
+          strength: vm.strength,
+          dexterity: vm.dexterity,
+          constitution: vm.constitution,
+          intelligence: vm.intelligence,
+          wisdom: vm.wisdom,
+          charisma: vm.charisma,
+          onStrengthChanged: vm.updateStrength,
+          onDexterityChanged: vm.updateDexterity,
+          onConstitutionChanged: vm.updateConstitution,
+          onIntelligenceChanged: vm.updateIntelligence,
+          onWisdomChanged: vm.updateWisdom,
+          onCharismaChanged: vm.updateCharisma,
+          useSectionCard: false,
+          title: '',
+        ),
+      ]);
+
+      final rightCol = Column(children: [
+        _buildModifierCard(values, C),
+        const SizedBox(height: 12),
+        _buildInitiativeCard(vm, C),
+      ]);
 
       return SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-        child: Column(children: [
-          _EditorCard(title: 'Attributspunkte', C: C, children: [
-            AttributesSectionWidget(
-              strength: vm.strength,
-              dexterity: vm.dexterity,
-              constitution: vm.constitution,
-              intelligence: vm.intelligence,
-              wisdom: vm.wisdom,
-              charisma: vm.charisma,
-              onStrengthChanged: vm.updateStrength,
-              onDexterityChanged: vm.updateDexterity,
-              onConstitutionChanged: vm.updateConstitution,
-              onIntelligenceChanged: vm.updateIntelligence,
-              onWisdomChanged: vm.updateWisdom,
-              onCharismaChanged: vm.updateCharisma,
-              useSectionCard: false,
-              title: '',
-            ),
-          ]),
-          const SizedBox(height: 12),
-          bottomRow,
-        ]),
+        child: isWide
+            ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(flex: 3, child: attrCard),
+                const SizedBox(width: 12),
+                Expanded(flex: 2, child: rightCol),
+              ])
+            : Column(children: [
+                attrCard,
+                const SizedBox(height: 12),
+                rightCol,
+              ]),
       );
     });
   }

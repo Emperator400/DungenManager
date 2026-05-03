@@ -49,7 +49,7 @@ class AbilityScoreWidget extends StatelessWidget {
           ),
           SizedBox(height: 6 * scale),
           _buildScoreInput(scale, C),
-          SizedBox(height: 3 * scale),
+          SizedBox(height: 1/2 * scale),
           _buildModifierDisplay(modifierString, scale, C),
         ],
       ),
@@ -138,8 +138,8 @@ class AbilityScoreGrid extends StatelessWidget {
       final screenScale = MediaQuery.of(context).size.width / 600;
       const crossAxisSpacing = 5.0;
       final cellWidth = (constraints.maxWidth - crossAxisSpacing * 2) / 3;
-      // Content height ≈ 102 * screenScale; derive aspect ratio from actual cell width
-      final contentHeight = 102.0 * screenScale;
+      // 102px base + 10px for border/TextField padding that don't scale
+      final contentHeight = 102.0 * screenScale + 10.0;
       final aspectRatio = (cellWidth / contentHeight).clamp(0.7, 1.8);
 
       return GridView.count(
