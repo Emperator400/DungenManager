@@ -11,6 +11,8 @@ import '../../viewmodels/dm_buch_viewmodel.dart';
 import '../../widgets/active_session/atmosphere_quadrant.dart';
 import '../../widgets/ui_components/shared/app_icon.dart';
 import '../../widgets/ui_components/shared/app_logo.dart';
+import '../characters/pc_list_screen.dart';
+import '../lore/lore_keeper_screen.dart';
 import '../quests/edit_quest_screen.dart';
 import '../scenes/edit_scene_screen.dart';
 import '../session/active_session_screen.dart';
@@ -279,6 +281,32 @@ class _LeftTabBar extends StatelessWidget {
                   onTap: () => vm.setLeftTab(DmBuchLeftTab.quests),
                 ),
                 const Spacer(),
+                // Spieler-Button
+                Tooltip(
+                  message: 'Spieler',
+                  child: _TopBarIconBtn(
+                    icon: AppIconName.users,
+                    C: C,
+                    onTap: () => _navigateTo(
+                      context,
+                      PlayerCharacterListScreen(campaign: vm.campaign),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                // Karte-Button
+                Tooltip(
+                  message: 'Karte',
+                  child: _TopBarIconBtn(
+                    icon: AppIconName.map,
+                    C: C,
+                    onTap: () => _navigateTo(
+                      context,
+                      const LoreKeeperScreen(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
                 if (vm.leftTab == DmBuchLeftTab.karte)
                   _TopBarIconBtn(
                     icon: AppIconName.plus,
@@ -296,6 +324,11 @@ class _LeftTabBar extends StatelessWidget {
       showDialog<void>(
         context: context,
         builder: (ctx) => _CreateOrtDialog(vm: vm),
+      );
+
+  void _navigateTo(BuildContext context, Widget screen) =>
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => screen),
       );
 }
 
