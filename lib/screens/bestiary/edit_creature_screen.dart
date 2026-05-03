@@ -322,7 +322,7 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
       ];
 
       return SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         child: isWide
             ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(child: Column(children: left)),
@@ -359,7 +359,7 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
             ]);
 
       return SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         child: Column(children: [
           _EditorCard(title: 'Attributspunkte', C: C, children: [
             AttributesSectionWidget(
@@ -489,7 +489,7 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
       ];
 
       return SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         child: isWide
             ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(child: Column(children: left)),
@@ -936,19 +936,19 @@ class _EditorCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: C.bgPanel,
         border: Border.all(color: C.border),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (title.isNotEmpty) ...[
             Text(title.toUpperCase(),
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.textMid, letterSpacing: 0.4)),
-            const SizedBox(height: 12),
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: C.textMid, letterSpacing: 0.4)),
+            const SizedBox(height: 10),
           ],
           ...children,
         ],
