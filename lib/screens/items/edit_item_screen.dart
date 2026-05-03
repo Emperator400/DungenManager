@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../viewmodels/edit_item_viewmodel.dart';
+
 import '../../models/item.dart';
 import '../../theme/app_theme.dart';
+import '../../viewmodels/edit_item_viewmodel.dart';
 
 class EditItemScreen extends StatefulWidget {
-  final Item? item;
-
   const EditItemScreen({super.key, this.item});
+
+  final Item? item;
 
   @override
   State<EditItemScreen> createState() => _EditItemScreenState();
@@ -70,1051 +71,495 @@ class _EditItemScreenState extends State<EditItemScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider<EditItemViewModel>.value(
-      value: _viewModel,
-      child: Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: SafeArea(
-          child: Consumer<EditItemViewModel>(
-            builder: (context, viewModel, child) {
-              return Column(
-                children: [
-                  _buildHeader(context, viewModel),
-                  Expanded(child: _buildForm(context, viewModel)),
-                ],
-              );
-            },
+  Widget build(BuildContext context) => ChangeNotifierProvider<EditItemViewModel>.value(
+    value: _viewModel,
+    child: Consumer<EditItemViewModel>(
+      builder: (context, vm, _) => Scaffold(
+        backgroundColor: context.appColors.bg,
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(52),
+          child: _TopBar(
+            vm: vm,
+            onBack: () => _handleBackNavigation(vm),
+            onSave: vm.isLoading ? null : () => _handleSave(vm),
           ),
         ),
+        body: SafeArea(child: _buildBody(context, vm)),
       ),
-    );
-  }
+    ),
+  );
 
-  Widget _buildHeader(BuildContext context, EditItemViewModel viewModel) {
-    final C = context.appColors;
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: C.bgPanel,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: IconButton(
-              onPressed: () => _handleBackNavigation(viewModel),
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
-              padding: const EdgeInsets.all(8),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  viewModel.item != null ? 'Item bearbeiten' : 'Neues Item',
-                  style: const TextStyle(
-                    fontSize: 22,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                if (viewModel.item != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    viewModel.item!.name,
-                    style: const TextStyle(fontSize: 14, color: Colors.white70),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (viewModel.hasUnsavedChanges)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEA580C),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFEA580C).withValues(alpha: 0.3),
-                    blurRadius: 8,
-                  ),
-                ],
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.edit, color: Colors.white, size: 14),
-                  SizedBox(width: 4),
-                  Text(
-                    'Bearbeitet',
-                    style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+  Widget _buildBody(BuildContext context, EditItemViewModel vm) => LayoutBuilder(
+    builder: (context, constraints) {
+      final C = context.appColors;
+      final isWide = constraints.maxWidth >= 600;
+      final itemType = vm.item?.itemType ?? ItemType.Weapon;
 
-  Widget _buildForm(BuildContext context, EditItemViewModel viewModel) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildBasicInfoSection(context, viewModel),
-            const SizedBox(height: 32),
-            _buildDetailsSection(context, viewModel),
-            const SizedBox(height: 32),
-            _buildAdvancedOptionsSection(context, viewModel),
-            const SizedBox(height: 32),
-            _buildPropertiesSection(context, viewModel),
-            const SizedBox(height: 32),
-            _buildActionButtons(context, viewModel),
-            const SizedBox(height: 32),
-          ],
+      final basicCard = _EditorCard(title: 'Grundlegende Informationen', C: C, children: [
+        _ThemedField(
+          controller: _nameController,
+          label: 'Item Name',
+          hint: 'z.B. Langschwert +1',
+          icon: Icons.shopping_bag_outlined,
+          C: C,
+          validator: (v) {
+            if (v == null || v.trim().isEmpty) {
+              return 'Name ist erforderlich';
+            }
+            if (v.trim().length < 2) {
+              return 'Name muss mindestens 2 Zeichen lang sein';
+            }
+            return null;
+          },
+          onChanged: vm.updateName,
         ),
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle({required String title, required IconData icon}) {
-    final C = context.appColors;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: C.amber.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: C.amber, size: 20),
-          ),
-          const SizedBox(width: 16),
-          Text(
-            title,
-            style: TextStyle(fontSize: 18, color: C.amber, fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBasicInfoSection(BuildContext context, EditItemViewModel viewModel) {
-    final C = context.appColors;
-    return Container(
-      decoration: BoxDecoration(
-        color: C.bgPanel,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: C.amber.withValues(alpha: 0.3), width: 2),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionTitle(title: 'Grundlegende Informationen', icon: Icons.info_outline),
-            TextFormField(
-              controller: _nameController,
-              style: const TextStyle(fontSize: 16, color: Colors.white),
-              decoration: InputDecoration(
-                labelText: 'Item Name',
-                hintText: 'z.B. Langschwert +1',
-                labelStyle: TextStyle(fontSize: 14, color: C.amber),
-                hintStyle: const TextStyle(fontSize: 14, color: Colors.white38),
-                prefixIcon: Icon(Icons.shopping_bag_outlined, color: C.amber),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: C.bgHover,
-                contentPadding: const EdgeInsets.all(16),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) return 'Name ist erforderlich';
-                if (value.trim().length < 2) return 'Name muss mindestens 2 Zeichen lang sein';
-                return null;
-              },
-              onChanged: (value) => viewModel.updateName(value),
-            ),
-            const SizedBox(height: 24),
-            TextFormField(
-              controller: _descriptionController,
-              maxLines: 3,
-              style: const TextStyle(fontSize: 16, color: Colors.white),
-              decoration: InputDecoration(
-                labelText: 'Beschreibung',
-                hintText: 'Beschreibe das Item...',
-                labelStyle: TextStyle(fontSize: 14, color: C.amber),
-                hintStyle: const TextStyle(fontSize: 14, color: Colors.white38),
-                prefixIcon: Icon(Icons.description_outlined, color: C.amber),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: C.bgHover,
-                contentPadding: const EdgeInsets.all(16),
-              ),
-              onChanged: (value) => viewModel.updateDescription(value),
-            ),
-            const SizedBox(height: 24),
-            DropdownButtonFormField<ItemType>(
-              value: viewModel.item?.itemType,
-              dropdownColor: C.bgPanel,
-              style: const TextStyle(fontSize: 16, color: Colors.white),
-              decoration: InputDecoration(
-                labelText: 'Item Typ',
-                labelStyle: TextStyle(fontSize: 14, color: C.amber),
-                prefixIcon: Icon(Icons.category_outlined, color: C.amber),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: C.bgHover,
-                contentPadding: const EdgeInsets.all(16),
-              ),
-              items: ItemType.values.map((type) {
-                return DropdownMenuItem(
-                  value: type,
-                  child: Row(
-                    children: [
-                      Icon(_getItemTypeIcon(type), color: C.amber, size: 20),
-                      const SizedBox(width: 16),
-                      Text(_getItemTypeDisplayName(type)),
-                    ],
-                  ),
-                );
-              }).toList(),
-              onChanged: (value) {
-                if (value != null) viewModel.updateType(value);
-              },
-            ),
-          ],
+        const SizedBox(height: 10),
+        _ThemedField(
+          controller: _descriptionController,
+          label: 'Beschreibung',
+          hint: 'Beschreibe das Item...',
+          icon: Icons.description_outlined,
+          maxLines: 3,
+          C: C,
+          onChanged: vm.updateDescription,
         ),
-      ),
-    );
-  }
-
-  Widget _buildDetailsSection(BuildContext context, EditItemViewModel viewModel) {
-    final C = context.appColors;
-    return Container(
-      decoration: BoxDecoration(
-        color: C.bgPanel,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: C.accent.withValues(alpha: 0.3), width: 2),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionTitle(title: 'Details', icon: Icons.tune_outlined),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _costController,
-                    keyboardType: TextInputType.number,
-                    style: const TextStyle(fontSize: 16, color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Wert (Gold)',
-                      hintText: '0',
-                      labelStyle: TextStyle(fontSize: 14, color: C.accent),
-                      hintStyle: const TextStyle(fontSize: 14, color: Colors.white38),
-                      prefixIcon: Icon(Icons.monetization_on_outlined, color: C.accent),
-                      suffixText: 'gp',
-                      suffixStyle: TextStyle(fontSize: 14, color: C.accent),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      filled: true,
-                      fillColor: C.bgHover,
-                      contentPadding: const EdgeInsets.all(16),
-                    ),
-                    onChanged: (value) => viewModel.updateValue(double.tryParse(value) ?? 0.0),
-                  ),
-                ),
-                const SizedBox(width: 24),
-                Expanded(
-                  child: TextFormField(
-                    controller: _weightController,
-                    keyboardType: TextInputType.number,
-                    style: const TextStyle(fontSize: 16, color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Gewicht (lbs)',
-                      hintText: '0.0',
-                      labelStyle: TextStyle(fontSize: 14, color: C.accent),
-                      hintStyle: const TextStyle(fontSize: 14, color: Colors.white38),
-                      prefixIcon: Icon(Icons.scale_outlined, color: C.accent),
-                      suffixText: 'lbs',
-                      suffixStyle: TextStyle(fontSize: 14, color: C.accent),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      filled: true,
-                      fillColor: C.bgHover,
-                      contentPadding: const EdgeInsets.all(16),
-                    ),
-                    onChanged: (value) => viewModel.updateWeight(double.tryParse(value) ?? 0.0),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAdvancedOptionsSection(BuildContext context, EditItemViewModel viewModel) {
-    final C = context.appColors;
-    final itemType = viewModel.item?.itemType ?? ItemType.Weapon;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: C.bgPanel,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF7C3AED).withValues(alpha: 0.3), width: 2),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionTitle(title: 'Erweiterte Optionen', icon: Icons.auto_awesome_outlined),
-            if (itemType == ItemType.Weapon) _buildWeaponSpecificFields(viewModel),
-            if (itemType == ItemType.Armor || itemType == ItemType.Shield)
-              _buildArmorSpecificFields(viewModel),
-            if (itemType == ItemType.MagicItem) _buildMagicItemSpecificFields(viewModel),
-            const SizedBox(height: 24),
-            _buildMagicPropertiesSection(viewModel),
-            const SizedBox(height: 24),
-            _buildDurabilitySection(viewModel),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWeaponSpecificFields(EditItemViewModel viewModel) {
-    final C = context.appColors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: C.red.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: C.red.withValues(alpha: 0.3)),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.gavel, color: C.red, size: 20),
-              const SizedBox(width: 16),
-              Text(
-                'Waffen-spezifische Optionen',
-                style: TextStyle(fontSize: 14, color: C.red, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _damageController,
-          style: const TextStyle(fontSize: 16, color: Colors.white),
-          decoration: InputDecoration(
-            labelText: 'Schadenswurf',
-            hintText: 'z.B. 1d8, 2d6+3',
-            labelStyle: TextStyle(fontSize: 14, color: C.red),
-            hintStyle: const TextStyle(fontSize: 14, color: Colors.white38),
-            prefixIcon: Icon(Icons.casino_outlined, color: C.red),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            filled: true,
-            fillColor: C.bgHover,
-            contentPadding: const EdgeInsets.all(16),
-          ),
-          onChanged: (value) => viewModel.updateDamage(value),
-        ),
-        const SizedBox(height: 16),
-        DropdownButtonFormField<String>(
-          value: viewModel.item?.damageType,
-          dropdownColor: C.bgPanel,
-          style: const TextStyle(fontSize: 16, color: Colors.white),
-          decoration: InputDecoration(
-            labelText: 'Schadenstyp',
-            labelStyle: TextStyle(fontSize: 14, color: C.red),
-            prefixIcon: Icon(Icons.whatshot_outlined, color: C.red),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            filled: true,
-            fillColor: C.bgHover,
-            contentPadding: const EdgeInsets.all(16),
-          ),
-          hint: const Text(
-            'Schadenstyp auswählen...',
-            style: TextStyle(fontSize: 14, color: Colors.white38),
-          ),
-          items: const [
-            DropdownMenuItem(value: 'Slashing', child: Text('Hiebschaden (Slashing)')),
-            DropdownMenuItem(value: 'Piercing', child: Text('Stichschaden (Piercing)')),
-            DropdownMenuItem(value: 'Bludgeoning', child: Text('Wuchtschaden (Bludgeoning)')),
-            DropdownMenuItem(value: 'Fire', child: Text('Feuerschaden')),
-            DropdownMenuItem(value: 'Cold', child: Text('Kälteschaden')),
-            DropdownMenuItem(value: 'Lightning', child: Text('Blitzschaden')),
-            DropdownMenuItem(value: 'Thunder', child: Text('Donnerschaden')),
-            DropdownMenuItem(value: 'Poison', child: Text('Giftschaden')),
-            DropdownMenuItem(value: 'Acid', child: Text('Säureschaden')),
-            DropdownMenuItem(value: 'Necrotic', child: Text('Nekrotischer Schaden')),
-            DropdownMenuItem(value: 'Radiant', child: Text('Strahlender Schaden')),
-            DropdownMenuItem(value: 'Psychic', child: Text('Psychischer Schaden')),
-            DropdownMenuItem(value: 'Force', child: Text('Magischer Schaden')),
-          ],
-          onChanged: (value) => viewModel.updateDamageType(value),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildArmorSpecificFields(EditItemViewModel viewModel) {
-    final C = context.appColors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: C.accent.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: C.accent.withValues(alpha: 0.3)),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.shield, color: C.accent, size: 20),
-              const SizedBox(width: 16),
-              Text(
-                'Rüstungs-spezifische Optionen',
-                style: TextStyle(fontSize: 14, color: C.accent, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        DropdownButtonFormField<String>(
-          value: viewModel.item?.armorCategory != null
-              ? viewModel.item!.armorCategory!.name
-              : null,
-          dropdownColor: C.bgPanel,
-          style: const TextStyle(fontSize: 16, color: Colors.white),
-          decoration: InputDecoration(
-            labelText: 'Rüstungskategorie',
-            labelStyle: TextStyle(fontSize: 14, color: C.accent),
-            prefixIcon: Icon(Icons.category, color: C.accent),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            filled: true,
-            fillColor: C.bgHover,
-            contentPadding: const EdgeInsets.all(16),
-          ),
-          hint: const Text(
-            'Kategorie auswählen...',
-            style: TextStyle(fontSize: 14, color: Colors.white38),
-          ),
-          items: const [
-            DropdownMenuItem(value: 'Light', child: Text('Leichte Rüstung')),
-            DropdownMenuItem(value: 'Medium', child: Text('Mittlere Rüstung')),
-            DropdownMenuItem(value: 'Heavy', child: Text('Schwere Rüstung')),
-          ],
-          onChanged: (value) {
-            if (value == null) {
-              viewModel.updateArmorCategory(null);
-            } else {
-              final category = ArmorCategory.values.firstWhere(
-                (c) => c.name == value,
-                orElse: () => ArmorCategory.Light,
-              );
-              viewModel.updateArmorCategory(category);
+        const SizedBox(height: 10),
+        _ThemedDropdown<ItemType>(
+          label: 'Item Typ',
+          selectedValue: vm.item?.itemType,
+          icon: Icons.category_outlined,
+          C: C,
+          items: ItemType.values.map((t) => DropdownMenuItem(
+            value: t,
+            child: Row(children: [
+              Icon(_getItemTypeIcon(t), color: C.textSoft, size: 16),
+              const SizedBox(width: 8),
+              Text(_getItemTypeDisplayName(t), style: TextStyle(color: C.text, fontSize: 14)),
+            ]),
+          )).toList(),
+          onChanged: (v) {
+            if (v != null) {
+              vm.updateType(v);
             }
           },
         ),
-        const SizedBox(height: 8),
-        if (viewModel.item?.armorCategory != null)
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: _getArmorCategoryColor(viewModel.item!.armorCategory!).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color:
-                    _getArmorCategoryColor(viewModel.item!.armorCategory!).withValues(alpha: 0.3),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.info_outline,
-                  color: _getArmorCategoryColor(viewModel.item!.armorCategory!),
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _getArmorCategoryDexInfo(viewModel.item!.armorCategory!),
-                    style: const TextStyle(fontSize: 12, color: Colors.white70),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _acFormulaController,
-          style: const TextStyle(fontSize: 16, color: Colors.white),
-          decoration: InputDecoration(
-            labelText: 'Rüstungsklasse (AC)',
-            hintText: 'z.B. 12 + Dex',
-            labelStyle: TextStyle(fontSize: 14, color: C.accent),
-            hintStyle: const TextStyle(fontSize: 14, color: Colors.white38),
-            prefixIcon: Icon(Icons.security, color: C.accent),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            filled: true,
-            fillColor: C.bgHover,
-            contentPadding: const EdgeInsets.all(16),
-          ),
-          onChanged: (value) => viewModel.updateAcFormula(value),
-        ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _strengthController,
-          keyboardType: TextInputType.number,
-          style: const TextStyle(fontSize: 16, color: Colors.white),
-          decoration: InputDecoration(
-            labelText: 'Stärkeanforderung',
-            hintText: '0',
-            labelStyle: TextStyle(fontSize: 14, color: C.accent),
-            hintStyle: const TextStyle(fontSize: 14, color: Colors.white38),
-            prefixIcon: Icon(Icons.fitness_center, color: C.accent),
-            suffixText: 'STR',
-            suffixStyle: TextStyle(fontSize: 14, color: C.accent),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            filled: true,
-            fillColor: C.bgHover,
-            contentPadding: const EdgeInsets.all(16),
-          ),
-          onChanged: (value) => viewModel.updateStrengthRequirement(int.tryParse(value)),
-        ),
-        const SizedBox(height: 16),
-        CheckboxListTile(
-          title: const Text(
-            'Nachteil auf Verstecken (Stealth)',
-            style: TextStyle(fontSize: 14, color: Colors.white70),
-          ),
-          subtitle: const Text(
-            'Das Item verursacht Nachteil auf Stealth-Checks',
-            style: TextStyle(fontSize: 12, color: Colors.white54),
-          ),
-          value: viewModel.item?.stealthDisadvantage ?? false,
-          onChanged: (value) => viewModel.updateStealthDisadvantage(value),
-          activeColor: C.accent,
-          checkColor: Colors.white,
-          contentPadding: EdgeInsets.zero,
-          controlAffinity: ListTileControlAffinity.leading,
-        ),
-      ],
-    );
-  }
+      ]);
 
-  Color _getArmorCategoryColor(ArmorCategory category) {
-    return switch (category) {
-      ArmorCategory.Light => const Color(0xFF22C55E),
-      ArmorCategory.Medium => const Color(0xFFEA580C),
-      ArmorCategory.Heavy => const Color(0xFFEF4444),
-    };
-  }
-
-  String _getArmorCategoryDexInfo(ArmorCategory category) {
-    return switch (category) {
-      ArmorCategory.Light => 'Leichte Rüstung: Volle Dexterity-Bonus auf AC anrechenbar',
-      ArmorCategory.Medium => 'Mittlere Rüstung: Dexterity-Bonus auf AC, maximal +2',
-      ArmorCategory.Heavy => 'Schwere Rüstung: Kein Dexterity-Bonus auf AC',
-    };
-  }
-
-  Widget _buildMagicItemSpecificFields(EditItemViewModel viewModel) {
-    final C = context.appColors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: C.amber.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: C.amber.withValues(alpha: 0.3)),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.auto_awesome, color: C.amber, size: 20),
-              const SizedBox(width: 16),
-              Text(
-                'Magische Eigenschaften',
-                style: TextStyle(fontSize: 14, color: C.amber, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _rarityController,
-          style: const TextStyle(fontSize: 16, color: Colors.white),
-          decoration: InputDecoration(
-            labelText: 'Seltenheit',
-            hintText: 'z.B. Uncommon, Rare, Very Rare, Legendary',
-            labelStyle: TextStyle(fontSize: 14, color: C.amber),
-            hintStyle: const TextStyle(fontSize: 14, color: Colors.white38),
-            prefixIcon: Icon(Icons.stars, color: C.amber),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            filled: true,
-            fillColor: C.bgHover,
-            contentPadding: const EdgeInsets.all(16),
-          ),
-          onChanged: (value) => viewModel.updateRarity(value),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMagicPropertiesSection(EditItemViewModel viewModel) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF7C3AED).withValues(alpha: 0.3)),
-          ),
-          child: const Row(
-            children: [
-              Icon(Icons.auto_fix_high, color: Color(0xFF7C3AED), size: 20),
-              SizedBox(width: 16),
-              Text(
-                'Magische Anforderung',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF7C3AED),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        CheckboxListTile(
-          title: const Text(
-            'Attunement erforderlich',
-            style: TextStyle(fontSize: 14, color: Colors.white70),
-          ),
-          subtitle: const Text(
-            'Das Item erfordert eine kurze Ruhephase zur Bindung',
-            style: TextStyle(fontSize: 12, color: Colors.white54),
-          ),
-          value: viewModel.item?.requiresAttunement ?? false,
-          onChanged: (value) => viewModel.updateRequiresAttunement(value),
-          activeColor: const Color(0xFF7C3AED),
-          checkColor: Colors.white,
-          contentPadding: EdgeInsets.zero,
-          controlAffinity: ListTileControlAffinity.leading,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDurabilitySection(EditItemViewModel viewModel) {
-    final C = context.appColors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: C.green.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: C.green.withValues(alpha: 0.3)),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.build_circle, color: C.green, size: 20),
-              const SizedBox(width: 16),
-              Text(
-                'Haltbarkeit',
-                style: TextStyle(fontSize: 14, color: C.green, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        CheckboxListTile(
-          title: const Text(
-            'Haltbarkeit aktivieren',
-            style: TextStyle(fontSize: 14, color: Colors.white70),
-          ),
-          subtitle: const Text(
-            'Das Item hat eine begrenzte Haltbarkeit',
-            style: TextStyle(fontSize: 12, color: Colors.white54),
-          ),
-          value: viewModel.item?.hasDurability ?? false,
-          onChanged: (value) => viewModel.updateHasDurability(value),
-          activeColor: C.green,
-          checkColor: Colors.white,
-          contentPadding: EdgeInsets.zero,
-          controlAffinity: ListTileControlAffinity.leading,
-        ),
-        if (viewModel.item?.hasDurability == true) ...[
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _maxDurabilityController,
+      final detailsCard = _EditorCard(title: 'Details', C: C, children: [
+        Row(children: [
+          Expanded(child: _ThemedField(
+            controller: _costController,
+            label: 'Wert (gp)',
+            hint: '0',
+            icon: Icons.monetization_on_outlined,
+            suffix: 'gp',
             keyboardType: TextInputType.number,
-            style: const TextStyle(fontSize: 16, color: Colors.white),
-            decoration: InputDecoration(
-              labelText: 'Maximale Haltbarkeit',
-              hintText: '0',
-              labelStyle: TextStyle(fontSize: 14, color: C.green),
-              hintStyle: const TextStyle(fontSize: 14, color: Colors.white38),
-              prefixIcon: Icon(Icons.battery_charging_full, color: C.green),
-              suffixText: 'HP',
-              suffixStyle: TextStyle(fontSize: 14, color: C.green),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              filled: true,
-              fillColor: C.bgHover,
-              contentPadding: const EdgeInsets.all(16),
-            ),
-            onChanged: (value) => viewModel.updateMaxDurability(int.tryParse(value)),
-          ),
-          const SizedBox(height: 16),
-          CheckboxListTile(
-            title: const Text(
-              'Reparierbar',
-              style: TextStyle(fontSize: 14, color: Colors.white70),
-            ),
-            subtitle: const Text(
-              'Das Item kann repariert werden',
-              style: TextStyle(fontSize: 12, color: Colors.white54),
-            ),
-            value: viewModel.item?.isRepairable ?? false,
-            onChanged: (value) => viewModel.updateIsRepairable(value),
-            activeColor: C.green,
-            checkColor: Colors.white,
-            contentPadding: EdgeInsets.zero,
-            controlAffinity: ListTileControlAffinity.leading,
-          ),
-        ],
-      ],
-    );
-  }
+            C: C,
+            onChanged: (v) => vm.updateValue(double.tryParse(v) ?? 0.0),
+          )),
+          const SizedBox(width: 8),
+          Expanded(child: _ThemedField(
+            controller: _weightController,
+            label: 'Gewicht (lbs)',
+            hint: '0.0',
+            icon: Icons.scale_outlined,
+            suffix: 'lbs',
+            keyboardType: TextInputType.number,
+            C: C,
+            onChanged: (v) => vm.updateWeight(double.tryParse(v) ?? 0.0),
+          )),
+        ]),
+      ]);
 
-  Widget _buildPropertiesSection(BuildContext context, EditItemViewModel viewModel) {
-    final C = context.appColors;
-    return Container(
-      decoration: BoxDecoration(
-        color: C.bgPanel,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: C.green.withValues(alpha: 0.3), width: 2),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionTitle(title: 'Eigenschaften', icon: Icons.edit_note_outlined),
-            TextFormField(
-              controller: _propertiesController,
-              maxLines: 4,
-              style: const TextStyle(fontSize: 16, color: Colors.white),
-              decoration: InputDecoration(
-                labelText: 'Spezielle Eigenschaften',
-                hintText: 'z.B. Magische Boni, Spezialfähigkeiten...',
-                labelStyle: TextStyle(fontSize: 14, color: C.green),
-                hintStyle: const TextStyle(fontSize: 14, color: Colors.white38),
-                prefixIcon: Icon(Icons.star_outline, color: C.green),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: C.bgHover,
-                contentPadding: const EdgeInsets.all(16),
-              ),
-              onChanged: (value) => viewModel.updateProperties(value),
-            ),
-          ],
+      final advancedCard = _EditorCard(title: 'Erweiterte Optionen', C: C, children: [
+        if (itemType == ItemType.Weapon) ...[
+          _buildWeaponFields(vm, C),
+          const SizedBox(height: 12),
+        ],
+        if (itemType == ItemType.Armor || itemType == ItemType.Shield) ...[
+          _buildArmorFields(vm, C),
+          const SizedBox(height: 12),
+        ],
+        if (itemType == ItemType.MagicItem) ...[
+          _buildMagicItemFields(vm, C),
+          const SizedBox(height: 12),
+        ],
+        _buildMagicPropertiesSection(vm, C),
+        const SizedBox(height: 12),
+        _buildDurabilitySection(vm, C),
+      ]);
+
+      final propertiesCard = _EditorCard(title: 'Eigenschaften', C: C, children: [
+        _ThemedField(
+          controller: _propertiesController,
+          label: 'Spezielle Eigenschaften',
+          hint: 'z.B. Magische Boni, Spezialfähigkeiten...',
+          icon: Icons.star_outline,
+          maxLines: 4,
+          C: C,
+          onChanged: vm.updateProperties,
         ),
-      ),
-    );
-  }
+      ]);
 
-  Widget _buildActionButtons(BuildContext context, EditItemViewModel viewModel) {
-    final C = context.appColors;
-    return Column(
-      children: [
-        if (viewModel.errorMessage != null)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            margin: const EdgeInsets.only(bottom: 24),
-            decoration: BoxDecoration(
-              color: C.red.withValues(alpha: 0.2),
-              border: Border.all(color: C.red, width: 2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.error_outline, color: C.red, size: 24),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    viewModel.errorMessage!,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: C.red,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        Row(
-          children: [
-            Expanded(
-              child: _buildPrimaryButton(
-                onPressed: viewModel.isLoading ? null : () => _handleSave(viewModel),
-                label: 'SPEICHERN',
-                icon: Icons.save,
-                color: C.green,
-                isLoading: viewModel.isLoading,
-              ),
-            ),
-            const SizedBox(width: 24),
-            Expanded(
-              child: _buildSecondaryButton(
-                onPressed: viewModel.isLoading ? null : () => _handleCancel(viewModel),
-                label: 'ABBRECHEN',
-                icon: Icons.close,
-              ),
-            ),
-          ],
+      final actionsWidget = _buildActionButtons(context, vm, C);
+
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: isWide
+              ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(child: Column(children: [
+                    basicCard,
+                    const SizedBox(height: 12),
+                    detailsCard,
+                    const SizedBox(height: 12),
+                    propertiesCard,
+                  ])),
+                  const SizedBox(width: 12),
+                  Expanded(child: Column(children: [
+                    advancedCard,
+                    const SizedBox(height: 12),
+                    actionsWidget,
+                  ])),
+                ])
+              : Column(children: [
+                  basicCard,
+                  const SizedBox(height: 12),
+                  detailsCard,
+                  const SizedBox(height: 12),
+                  advancedCard,
+                  const SizedBox(height: 12),
+                  propertiesCard,
+                  const SizedBox(height: 12),
+                  actionsWidget,
+                  const SizedBox(height: 16),
+                ]),
         ),
-        if (viewModel.item != null) ...[
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: _buildDangerButton(
-              onPressed: viewModel.isLoading ? null : () => _handleDelete(viewModel),
-              label: 'ITEM LÖSCHEN',
-              icon: Icons.delete_forever,
-            ),
+      );
+    },
+  );
+
+  // ── TYPE-SPECIFIC FIELDS ─────────────────────────────────────────────────────
+
+  Widget _buildWeaponFields(EditItemViewModel vm, AppColorsExtension C) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text('WAFFE', style: TextStyle(fontSize: 10, color: C.textSoft, letterSpacing: 0.8, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 8),
+      _ThemedField(
+        controller: _damageController,
+        label: 'Schadenswurf',
+        hint: 'z.B. 1d8, 2d6+3',
+        icon: Icons.casino_outlined,
+        C: C,
+        onChanged: vm.updateDamage,
+      ),
+      const SizedBox(height: 8),
+      _ThemedDropdown<String>(
+        label: 'Schadenstyp',
+        selectedValue: vm.item?.damageType,
+        icon: Icons.whatshot_outlined,
+        hint: 'Schadenstyp auswählen...',
+        C: C,
+        items: const [
+          DropdownMenuItem(value: 'Slashing', child: Text('Hiebschaden (Slashing)')),
+          DropdownMenuItem(value: 'Piercing', child: Text('Stichschaden (Piercing)')),
+          DropdownMenuItem(value: 'Bludgeoning', child: Text('Wuchtschaden (Bludgeoning)')),
+          DropdownMenuItem(value: 'Fire', child: Text('Feuerschaden')),
+          DropdownMenuItem(value: 'Cold', child: Text('Kälteschaden')),
+          DropdownMenuItem(value: 'Lightning', child: Text('Blitzschaden')),
+          DropdownMenuItem(value: 'Thunder', child: Text('Donnerschaden')),
+          DropdownMenuItem(value: 'Poison', child: Text('Giftschaden')),
+          DropdownMenuItem(value: 'Acid', child: Text('Säureschaden')),
+          DropdownMenuItem(value: 'Necrotic', child: Text('Nekrotischer Schaden')),
+          DropdownMenuItem(value: 'Radiant', child: Text('Strahlender Schaden')),
+          DropdownMenuItem(value: 'Psychic', child: Text('Psychischer Schaden')),
+          DropdownMenuItem(value: 'Force', child: Text('Magischer Schaden')),
+        ],
+        onChanged: vm.updateDamageType,
+      ),
+    ],
+  );
+
+  Widget _buildArmorFields(EditItemViewModel vm, AppColorsExtension C) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text('RÜSTUNG', style: TextStyle(fontSize: 10, color: C.textSoft, letterSpacing: 0.8, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 8),
+      _ThemedDropdown<String>(
+        label: 'Rüstungskategorie',
+        selectedValue: vm.item?.armorCategory?.name,
+        icon: Icons.category,
+        hint: 'Kategorie auswählen...',
+        C: C,
+        items: const [
+          DropdownMenuItem(value: 'Light', child: Text('Leichte Rüstung')),
+          DropdownMenuItem(value: 'Medium', child: Text('Mittlere Rüstung')),
+          DropdownMenuItem(value: 'Heavy', child: Text('Schwere Rüstung')),
+        ],
+        onChanged: (v) {
+          if (v == null) {
+            vm.updateArmorCategory(null);
+          } else {
+            final cat = ArmorCategory.values.firstWhere(
+              (c) => c.name == v,
+              orElse: () => ArmorCategory.Light,
+            );
+            vm.updateArmorCategory(cat);
+          }
+        },
+      ),
+      if (vm.item?.armorCategory != null) ...[
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: C.bgHover,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: C.border),
           ),
-        ],
+          child: Row(children: [
+            Icon(Icons.info_outline, color: C.textSoft, size: 14),
+            const SizedBox(width: 6),
+            Expanded(child: Text(
+              _getArmorCategoryDexInfo(vm.item!.armorCategory!),
+              style: TextStyle(fontSize: 11, color: C.textSoft),
+            )),
+          ]),
+        ),
       ],
-    );
-  }
-
-  Widget _buildPrimaryButton({
-    required VoidCallback? onPressed,
-    required String label,
-    required IconData icon,
-    required Color color,
-    bool isLoading = false,
-  }) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 24),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        elevation: 4,
-        shadowColor: color.withValues(alpha: 0.4),
+      const SizedBox(height: 8),
+      _ThemedField(
+        controller: _acFormulaController,
+        label: 'Rüstungsklasse (AC)',
+        hint: 'z.B. 12 + Dex',
+        icon: Icons.security,
+        C: C,
+        onChanged: vm.updateAcFormula,
       ),
-      child: isLoading
-          ? const SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-            )
-          : Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon),
-                const SizedBox(width: 16),
-                Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ],
-            ),
-    );
-  }
-
-  Widget _buildSecondaryButton({
-    required VoidCallback? onPressed,
-    required String label,
-    required IconData icon,
-  }) {
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.white70,
-        side: const BorderSide(color: Colors.white54, width: 2),
-        padding: const EdgeInsets.symmetric(vertical: 24),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      const SizedBox(height: 8),
+      _ThemedField(
+        controller: _strengthController,
+        label: 'Stärkeanforderung',
+        hint: '0',
+        icon: Icons.fitness_center,
+        suffix: 'STR',
+        keyboardType: TextInputType.number,
+        C: C,
+        onChanged: (v) => vm.updateStrengthRequirement(int.tryParse(v)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon),
-          const SizedBox(width: 16),
-          Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        ],
+      const SizedBox(height: 4),
+      _CheckRow(
+        label: 'Nachteil auf Verstecken (Stealth)',
+        subtitle: 'Verursacht Nachteil auf Stealth-Checks',
+        value: vm.item?.stealthDisadvantage ?? false,
+        onToggle: () => vm.updateStealthDisadvantage(!(vm.item?.stealthDisadvantage ?? false)),
+        C: C,
       ),
-    );
-  }
+    ],
+  );
 
-  Widget _buildDangerButton({
-    required VoidCallback? onPressed,
-    required String label,
-    required IconData icon,
-  }) {
-    final C = context.appColors;
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: C.red,
-        side: BorderSide(color: C.red, width: 2),
-        padding: const EdgeInsets.symmetric(vertical: 24),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  Widget _buildMagicItemFields(EditItemViewModel vm, AppColorsExtension C) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text('MAGISCHES ITEM', style: TextStyle(fontSize: 10, color: C.textSoft, letterSpacing: 0.8, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 8),
+      _ThemedField(
+        controller: _rarityController,
+        label: 'Seltenheit',
+        hint: 'z.B. Uncommon, Rare, Very Rare, Legendary',
+        icon: Icons.stars,
+        C: C,
+        onChanged: vm.updateRarity,
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon),
-          const SizedBox(width: 16),
-          Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        ],
+    ],
+  );
+
+  Widget _buildMagicPropertiesSection(EditItemViewModel vm, AppColorsExtension C) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text('MAGISCHE ANFORDERUNG', style: TextStyle(fontSize: 10, color: C.textSoft, letterSpacing: 0.8, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 8),
+      _CheckRow(
+        label: 'Attunement erforderlich',
+        subtitle: 'Item erfordert eine kurze Ruhephase zur Bindung',
+        value: vm.item?.requiresAttunement ?? false,
+        onToggle: () => vm.updateRequiresAttunement(!(vm.item?.requiresAttunement ?? false)),
+        C: C,
       ),
-    );
-  }
+    ],
+  );
 
-  IconData _getItemTypeIcon(ItemType type) {
-    return switch (type) {
-      ItemType.Weapon => Icons.gavel,
-      ItemType.Armor => Icons.shield,
-      ItemType.Shield => Icons.shield_outlined,
-      ItemType.Consumable => Icons.restaurant,
-      ItemType.Tool => Icons.build,
-      ItemType.Material => Icons.science,
-      ItemType.Component => Icons.category,
-      ItemType.MagicItem => Icons.auto_awesome,
-      ItemType.Scroll => Icons.description,
-      ItemType.Potion => Icons.local_drink,
-      ItemType.Treasure => Icons.diamond,
-      ItemType.Currency => Icons.monetization_on,
-      ItemType.AdventuringGear => Icons.inventory_2,
-      ItemType.SPELL_WEAPON => Icons.flare,
-    };
-  }
+  Widget _buildDurabilitySection(EditItemViewModel vm, AppColorsExtension C) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text('HALTBARKEIT', style: TextStyle(fontSize: 10, color: C.textSoft, letterSpacing: 0.8, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 8),
+      _CheckRow(
+        label: 'Haltbarkeit aktivieren',
+        subtitle: 'Das Item hat eine begrenzte Haltbarkeit',
+        value: vm.item?.hasDurability ?? false,
+        onToggle: () => vm.updateHasDurability(!(vm.item?.hasDurability ?? false)),
+        C: C,
+      ),
+      if (vm.item?.hasDurability ?? false) ...[
+        const SizedBox(height: 8),
+        _ThemedField(
+          controller: _maxDurabilityController,
+          label: 'Maximale Haltbarkeit',
+          hint: '0',
+          icon: Icons.battery_charging_full,
+          suffix: 'HP',
+          keyboardType: TextInputType.number,
+          C: C,
+          onChanged: (v) => vm.updateMaxDurability(int.tryParse(v)),
+        ),
+        const SizedBox(height: 4),
+        _CheckRow(
+          label: 'Reparierbar',
+          subtitle: 'Das Item kann repariert werden',
+          value: vm.item?.isRepairable ?? false,
+          onToggle: () => vm.updateIsRepairable(!(vm.item?.isRepairable ?? false)),
+          C: C,
+        ),
+      ],
+    ],
+  );
 
-  String _getItemTypeDisplayName(ItemType type) {
-    return switch (type) {
-      ItemType.Weapon => 'Waffe',
-      ItemType.Armor => 'Rüstung',
-      ItemType.Shield => 'Schild',
-      ItemType.Consumable => 'Verbrauchsgut',
-      ItemType.Tool => 'Werkzeug',
-      ItemType.Material => 'Material',
-      ItemType.Component => 'Komponente',
-      ItemType.MagicItem => 'Magisches Item',
-      ItemType.Scroll => 'Schriftrolle',
-      ItemType.Potion => 'Trank',
-      ItemType.Treasure => 'Schatz',
-      ItemType.Currency => 'Währung',
-      ItemType.AdventuringGear => 'Ausrüstung',
-      ItemType.SPELL_WEAPON => 'Spruch als Waffe',
-    };
-  }
+  // ── ACTIONS ───────────────────────────────────────────────────────────────────
 
-  void _handleSave(EditItemViewModel viewModel) async {
+  Widget _buildActionButtons(BuildContext context, EditItemViewModel vm, AppColorsExtension C) =>
+    Column(children: [
+      if (vm.errorMessage != null) ...[
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(10),
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: C.red.withValues(alpha: 0.12),
+            border: Border.all(color: C.red.withValues(alpha: 0.4)),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(children: [
+            Icon(Icons.error_outline, color: C.red, size: 16),
+            const SizedBox(width: 8),
+            Expanded(child: Text(vm.errorMessage!, style: TextStyle(color: C.red, fontSize: 13))),
+          ]),
+        ),
+      ],
+      Row(children: [
+        Expanded(child: _SaveBtn(
+          label: 'Speichern',
+          icon: Icons.save,
+          color: C.green,
+          isLoading: vm.isLoading,
+          onPressed: vm.isLoading ? null : () => _handleSave(vm),
+          C: C,
+        )),
+        const SizedBox(width: 8),
+        Expanded(child: _OutlineBtn(
+          label: 'Abbrechen',
+          icon: Icons.close,
+          onPressed: vm.isLoading ? null : () => _handleCancel(vm),
+          C: C,
+        )),
+      ]),
+      if (vm.item != null) ...[
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: _OutlineBtn(
+            label: 'Item löschen',
+            icon: Icons.delete_forever,
+            color: C.red,
+            onPressed: vm.isLoading ? null : () => _handleDelete(vm),
+            C: C,
+          ),
+        ),
+      ],
+    ]);
+
+  // ── HELPERS ───────────────────────────────────────────────────────────────────
+
+  String _getArmorCategoryDexInfo(ArmorCategory category) => switch (category) {
+    ArmorCategory.Light => 'Leichte Rüstung: Voller Dexterity-Bonus auf AC',
+    ArmorCategory.Medium => 'Mittlere Rüstung: Dexterity-Bonus auf AC, maximal +2',
+    ArmorCategory.Heavy => 'Schwere Rüstung: Kein Dexterity-Bonus auf AC',
+  };
+
+  IconData _getItemTypeIcon(ItemType type) => switch (type) {
+    ItemType.Weapon => Icons.gavel,
+    ItemType.Armor => Icons.shield,
+    ItemType.Shield => Icons.shield_outlined,
+    ItemType.Consumable => Icons.restaurant,
+    ItemType.Tool => Icons.build,
+    ItemType.Material => Icons.science,
+    ItemType.Component => Icons.category,
+    ItemType.MagicItem => Icons.auto_awesome,
+    ItemType.Scroll => Icons.description,
+    ItemType.Potion => Icons.local_drink,
+    ItemType.Treasure => Icons.diamond,
+    ItemType.Currency => Icons.monetization_on,
+    ItemType.AdventuringGear => Icons.inventory_2,
+    ItemType.SPELL_WEAPON => Icons.flare,
+  };
+
+  String _getItemTypeDisplayName(ItemType type) => switch (type) {
+    ItemType.Weapon => 'Waffe',
+    ItemType.Armor => 'Rüstung',
+    ItemType.Shield => 'Schild',
+    ItemType.Consumable => 'Verbrauchsgut',
+    ItemType.Tool => 'Werkzeug',
+    ItemType.Material => 'Material',
+    ItemType.Component => 'Komponente',
+    ItemType.MagicItem => 'Magisches Item',
+    ItemType.Scroll => 'Schriftrolle',
+    ItemType.Potion => 'Trank',
+    ItemType.Treasure => 'Schatz',
+    ItemType.Currency => 'Währung',
+    ItemType.AdventuringGear => 'Ausrüstung',
+    ItemType.SPELL_WEAPON => 'Spruch als Waffe',
+  };
+
+  // ── NAVIGATION HANDLERS ───────────────────────────────────────────────────────
+
+  Future<void> _handleSave(EditItemViewModel vm) async {
     if (_formKey.currentState?.validate() ?? false) {
-      final success = await viewModel.saveItem();
-      if (success && mounted) Navigator.of(context).pop(true);
+      final success = await vm.saveItem();
+      if (success && mounted) {
+        Navigator.of(context).pop(true);
+      }
     }
   }
 
-  void _handleCancel(EditItemViewModel viewModel) async {
-    if (viewModel.hasUnsavedChanges) {
+  Future<void> _handleCancel(EditItemViewModel vm) async {
+    if (vm.hasUnsavedChanges) {
       final shouldLeave = await _showUnsavedChangesDialog();
-      if (shouldLeave == true && mounted) Navigator.of(context).pop();
+      if ((shouldLeave ?? false) && mounted) {
+        Navigator.of(context).pop();
+      }
     } else {
       Navigator.of(context).pop();
     }
   }
 
-  void _handleDelete(EditItemViewModel viewModel) async {
+  Future<void> _handleDelete(EditItemViewModel vm) async {
     final confirmed = await _showDeleteConfirmationDialog();
-    if (confirmed == true && mounted) {
-      final success = await viewModel.deleteItem();
-      if (success && mounted) Navigator.of(context).pop(true);
+    if (confirmed ?? false) {
+      final success = await vm.deleteItem();
+      if (success && mounted) {
+        Navigator.of(context).pop(true);
+      }
     }
   }
 
-  void _handleBackNavigation(EditItemViewModel viewModel) async {
-    if (viewModel.hasUnsavedChanges) {
+  Future<void> _handleBackNavigation(EditItemViewModel vm) async {
+    if (vm.hasUnsavedChanges) {
       final shouldLeave = await _showUnsavedChangesDialog();
-      if (shouldLeave == true && mounted) Navigator.of(context).pop();
+      if ((shouldLeave ?? false) && mounted) {
+        Navigator.of(context).pop();
+      }
     } else {
       Navigator.of(context).pop();
     }
@@ -1124,32 +569,28 @@ class _EditItemScreenState extends State<EditItemScreen> {
     final C = context.appColors;
     return showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         backgroundColor: C.bgPanel,
-        title: Row(
-          children: [
-            const Icon(Icons.warning_amber_outlined, color: Color(0xFFEA580C), size: 28),
-            const SizedBox(width: 16),
-            const Text(
-              'Ungespeicherte Änderungen',
-              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        content: const Text(
+        title: Row(children: [
+          Icon(Icons.warning_amber_outlined, color: C.amber, size: 24),
+          const SizedBox(width: 12),
+          Text('Ungespeicherte Änderungen',
+              style: TextStyle(color: C.text, fontSize: 17, fontWeight: FontWeight.w600)),
+        ]),
+        content: Text(
           'Sie haben ungespeicherte Änderungen. Möchten Sie wirklich gehen?',
-          style: TextStyle(fontSize: 16, color: Colors.white70),
+          style: TextStyle(fontSize: 14, color: C.textMid),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            style: TextButton.styleFrom(foregroundColor: Colors.white70),
-            child: const Text('ABBRECHEN'),
+            onPressed: () => Navigator.of(ctx).pop(false),
+            style: TextButton.styleFrom(foregroundColor: C.textMid),
+            child: const Text('Abbrechen'),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Color(0xFFEA580C)),
-            child: const Text('VERLASSEN'),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(foregroundColor: C.amber),
+            child: const Text('Verlassen'),
           ),
         ],
       ),
@@ -1160,35 +601,388 @@ class _EditItemScreenState extends State<EditItemScreen> {
     final C = context.appColors;
     return showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         backgroundColor: C.bgPanel,
-        title: Row(
-          children: [
-            Icon(Icons.delete_forever, color: C.red, size: 28),
-            const SizedBox(width: 16),
-            const Text(
-              'Löschen bestätigen',
-              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        content: const Text(
+        title: Row(children: [
+          Icon(Icons.delete_forever, color: C.red, size: 24),
+          const SizedBox(width: 12),
+          Text('Löschen bestätigen',
+              style: TextStyle(color: C.text, fontSize: 17, fontWeight: FontWeight.w600)),
+        ]),
+        content: Text(
           'Möchten Sie dieses Item wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
-          style: TextStyle(fontSize: 16, color: Colors.white70),
+          style: TextStyle(fontSize: 14, color: C.textMid),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            style: TextButton.styleFrom(foregroundColor: Colors.white70),
-            child: const Text('ABBRECHEN'),
+            onPressed: () => Navigator.of(ctx).pop(false),
+            style: TextButton.styleFrom(foregroundColor: C.textMid),
+            child: const Text('Abbrechen'),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: () => Navigator.of(ctx).pop(true),
             style: TextButton.styleFrom(foregroundColor: C.red),
-            child: const Text('LÖSCHEN'),
+            child: const Text('Löschen'),
           ),
         ],
       ),
     );
   }
+}
+
+// ── TOP BAR ───────────────────────────────────────────────────────────────────
+
+class _TopBar extends StatelessWidget {
+  const _TopBar({required this.vm, required this.onBack, required this.onSave});
+
+  final EditItemViewModel vm;
+  final VoidCallback onBack;
+  final VoidCallback? onSave;
+
+  @override
+  Widget build(BuildContext context) {
+    final C = context.appColors;
+    return Container(
+      height: 52,
+      decoration: BoxDecoration(
+        color: C.bgPanel,
+        border: Border(bottom: BorderSide(color: C.border)),
+      ),
+      child: Row(children: [
+        const SizedBox(width: 4),
+        _IconBtn(icon: Icons.arrow_back_ios_new, onTap: onBack, C: C),
+        const SizedBox(width: 8),
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: C.amber.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          alignment: Alignment.center,
+          child: Icon(Icons.inventory_2_outlined, color: C.amber, size: 18),
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: Text(
+          vm.item == null ? 'Neues Item' : 'Item bearbeiten',
+          style: TextStyle(color: C.text, fontWeight: FontWeight.w600, fontSize: 15),
+          overflow: TextOverflow.ellipsis,
+        )),
+        if (vm.hasUnsavedChanges) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: C.amber.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: C.amber.withValues(alpha: 0.3)),
+            ),
+            child: Text('Bearbeitet',
+                style: TextStyle(color: C.amber, fontSize: 11, fontWeight: FontWeight.w500)),
+          ),
+          const SizedBox(width: 8),
+        ],
+        if (onSave != null)
+          GestureDetector(
+            onTap: onSave,
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: C.accent,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              alignment: Alignment.center,
+              child: const Text(
+                'Speichern',
+                style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        const SizedBox(width: 4),
+      ]),
+    );
+  }
+}
+
+// ── PRIVATE WIDGETS ───────────────────────────────────────────────────────────
+
+class _EditorCard extends StatelessWidget {
+  const _EditorCard({required this.title, required this.C, required this.children});
+
+  final String title;
+  final AppColorsExtension C;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: C.bgPanel,
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: C.border),
+    ),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(
+        title.toUpperCase(),
+        style: TextStyle(fontSize: 10, color: C.textSoft, letterSpacing: 1, fontWeight: FontWeight.w600),
+      ),
+      const SizedBox(height: 10),
+      ...children,
+    ]),
+  );
+}
+
+class _ThemedField extends StatelessWidget {
+  const _ThemedField({
+    required this.controller,
+    required this.label,
+    required this.icon,
+    required this.C,
+    required this.onChanged,
+    this.hint,
+    this.suffix,
+    this.maxLines = 1,
+    this.keyboardType,
+    this.validator,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final String? hint;
+  final String? suffix;
+  final IconData icon;
+  final int maxLines;
+  final TextInputType? keyboardType;
+  final AppColorsExtension C;
+  final void Function(String) onChanged;
+  final String? Function(String?)? validator;
+
+  @override
+  Widget build(BuildContext context) => TextFormField(
+    controller: controller,
+    maxLines: maxLines,
+    keyboardType: keyboardType,
+    style: TextStyle(fontSize: 14, color: C.text),
+    decoration: InputDecoration(
+      labelText: label,
+      hintText: hint,
+      labelStyle: TextStyle(fontSize: 12, color: C.textSoft),
+      hintStyle: TextStyle(fontSize: 13, color: C.textSoft.withValues(alpha: 0.5)),
+      prefixIcon: Icon(icon, color: C.textSoft, size: 18),
+      suffixText: suffix,
+      suffixStyle: TextStyle(fontSize: 12, color: C.textSoft),
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: C.border)),
+      enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: C.border)),
+      focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: C.accent)),
+      errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: C.red)),
+      focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: C.red)),
+      filled: true,
+      fillColor: C.bgHover,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      isDense: true,
+    ),
+    validator: validator,
+    onChanged: onChanged,
+  );
+}
+
+class _ThemedDropdown<T> extends StatelessWidget {
+  const _ThemedDropdown({
+    required this.label,
+    required this.selectedValue,
+    required this.icon,
+    required this.C,
+    required this.items,
+    required this.onChanged,
+    this.hint,
+  });
+
+  final String label;
+  final T? selectedValue;
+  final String? hint;
+  final IconData icon;
+  final AppColorsExtension C;
+  final List<DropdownMenuItem<T>> items;
+  final void Function(T?) onChanged;
+
+  @override
+  Widget build(BuildContext context) => DropdownButtonFormField<T>(
+    initialValue: selectedValue,
+    dropdownColor: C.bgPanel,
+    style: TextStyle(fontSize: 14, color: C.text),
+    decoration: InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(fontSize: 12, color: C.textSoft),
+      prefixIcon: Icon(icon, color: C.textSoft, size: 18),
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: C.border)),
+      enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: C.border)),
+      focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: C.accent)),
+      filled: true,
+      fillColor: C.bgHover,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      isDense: true,
+    ),
+    hint: hint != null
+        ? Text(hint!, style: TextStyle(color: C.textSoft.withValues(alpha: 0.6), fontSize: 13))
+        : null,
+    items: items,
+    onChanged: onChanged,
+  );
+}
+
+class _CheckRow extends StatelessWidget {
+  const _CheckRow({
+    required this.label,
+    required this.value,
+    required this.onToggle,
+    required this.C,
+    this.subtitle,
+  });
+
+  final String label;
+  final String? subtitle;
+  final bool value;
+  final VoidCallback onToggle;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onToggle,
+    borderRadius: BorderRadius.circular(6),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(children: [
+        Container(
+          width: 16,
+          height: 16,
+          decoration: BoxDecoration(
+            color: value ? C.accent : Colors.transparent,
+            border: Border.all(color: value ? C.accent : C.border, width: 1.5),
+            borderRadius: BorderRadius.circular(3),
+          ),
+          child: value ? const Icon(Icons.check, size: 11, color: Colors.white) : null,
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label, style: TextStyle(color: C.text, fontSize: 13)),
+          if (subtitle != null)
+            Text(subtitle!, style: TextStyle(color: C.textSoft, fontSize: 11)),
+        ])),
+      ]),
+    ),
+  );
+}
+
+class _SaveBtn extends StatelessWidget {
+  const _SaveBtn({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.C,
+    required this.onPressed,
+    this.isLoading = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color color;
+  final AppColorsExtension C;
+  final VoidCallback? onPressed;
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onPressed,
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 11),
+      decoration: BoxDecoration(
+        color: onPressed != null ? color : C.bgHover,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      alignment: Alignment.center,
+      child: isLoading
+          ? SizedBox(
+              height: 16,
+              width: 16,
+              child: CircularProgressIndicator(color: C.text, strokeWidth: 2))
+          : Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(icon, color: Colors.white, size: 16),
+              const SizedBox(width: 6),
+              Text(label,
+                  style: const TextStyle(
+                      color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+            ]),
+    ),
+  );
+}
+
+class _OutlineBtn extends StatelessWidget {
+  const _OutlineBtn({
+    required this.label,
+    required this.icon,
+    required this.C,
+    required this.onPressed,
+    this.color,
+  });
+
+  final String label;
+  final IconData icon;
+  final AppColorsExtension C;
+  final VoidCallback? onPressed;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final clr = color ?? C.textMid;
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: clr.withValues(alpha: onPressed != null ? 0.5 : 0.2)),
+        ),
+        alignment: Alignment.center,
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, color: onPressed != null ? clr : C.textSoft, size: 16),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: onPressed != null ? clr : C.textSoft,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+class _IconBtn extends StatelessWidget {
+  const _IconBtn({required this.icon, required this.onTap, required this.C});
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: SizedBox(
+      width: 36,
+      height: 36,
+      child: Icon(icon, color: C.textMid, size: 18),
+    ),
+  );
 }
