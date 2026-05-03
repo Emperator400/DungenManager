@@ -306,24 +306,11 @@ class _LeftTabBar extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 4),
-                if (vm.leftTab == DmBuchLeftTab.karte)
-                  _TopBarIconBtn(
-                    icon: AppIconName.plus,
-                    C: C,
-                    onTap: () => _showCreateOrtDialog(context),
-                  ),
               ],
             ),
           ),
           Divider(height: 1, thickness: 1, color: C.border),
         ],
-      );
-
-  void _showCreateOrtDialog(BuildContext context) =>
-      showDialog<void>(
-        context: context,
-        builder: (ctx) => _CreateOrtDialog(vm: vm),
       );
 
   void _navigateTo(BuildContext context, Widget screen) =>
@@ -379,47 +366,62 @@ class _KarteTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final C = context.appColors;
+    final orte = vm.orte;
 
-    if (vm.orte.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.map_outlined, size: 32, color: C.textSoft),
-            const SizedBox(height: 10),
-            Text(
-              'Noch keine Orte',
-              style: TextStyle(fontSize: 13, color: C.textSoft),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Tippe + um den ersten Ort anzulegen.',
-              style: TextStyle(fontSize: 11, color: C.textSoft),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ReorderableListView.builder(
-      padding: const EdgeInsets.all(10),
-      buildDefaultDragHandles: false,
-      itemCount: vm.orte.length,
-      onReorder: vm.reorderOrte,
-      proxyDecorator: (child, _, __) =>
-          Material(color: Colors.transparent, child: child),
-      itemBuilder: (ctx, i) => ReorderableDragStartListener(
-        key: ValueKey(vm.orte[i].id),
-        index: i,
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: _OrtCard(
-            ort: vm.orte[i],
-            selected: vm.selectedOrt?.id == vm.orte[i].id,
-            vm: vm,
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+          child: Row(
+            children: [
+              Text(
+                '${orte.length} Ort${orte.length != 1 ? "e" : ""}',
+                style: TextStyle(fontSize: 11, color: C.textSoft),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => _CreateOrtDialog(vm: vm),
+                ),
+                child: Text(
+                  'Ort erstellen',
+                  style: TextStyle(fontSize: 11, color: C.accent),
+                ),
+              ),
+            ],
           ),
         ),
-      ),
+        Expanded(
+          child: orte.isEmpty
+              ? Center(
+                  child: Text(
+                    'Noch keine Orte',
+                    style: TextStyle(fontSize: 13, color: C.textSoft),
+                  ),
+                )
+              : ReorderableListView.builder(
+                  padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+                  buildDefaultDragHandles: false,
+                  itemCount: orte.length,
+                  onReorder: vm.reorderOrte,
+                  proxyDecorator: (child, _, __) =>
+                      Material(color: Colors.transparent, child: child),
+                  itemBuilder: (ctx, i) => ReorderableDragStartListener(
+                    key: ValueKey(orte[i].id),
+                    index: i,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: _OrtCard(
+                        ort: orte[i],
+                        selected: vm.selectedOrt?.id == orte[i].id,
+                        vm: vm,
+                      ),
+                    ),
+                  ),
+                ),
+        ),
+      ],
     );
   }
 }
