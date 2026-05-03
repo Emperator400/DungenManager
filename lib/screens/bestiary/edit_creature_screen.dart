@@ -341,100 +341,108 @@ class _EditCreatureScreenState extends State<EditCreatureScreen>
       final C = context.appColors;
       final isWide = constraints.maxWidth >= 600;
 
-      final left = <Widget>[
-        _EditorCard(title: 'Attributspunkte', C: C, children: [
-          AttributesSectionWidget(
-            strength: vm.strength,
-            dexterity: vm.dexterity,
-            constitution: vm.constitution,
-            intelligence: vm.intelligence,
-            wisdom: vm.wisdom,
-            charisma: vm.charisma,
-            onStrengthChanged: vm.updateStrength,
-            onDexterityChanged: vm.updateDexterity,
-            onConstitutionChanged: vm.updateConstitution,
-            onIntelligenceChanged: vm.updateIntelligence,
-            onWisdomChanged: vm.updateWisdom,
-            onCharismaChanged: vm.updateCharisma,
-            useSectionCard: false,
-            title: '',
-          ),
-        ]),
-      ];
-
       final values = [
         vm.strength, vm.dexterity, vm.constitution,
         vm.intelligence, vm.wisdom, vm.charisma,
       ];
 
-      final right = <Widget>[
-        _EditorCard(title: 'Modifier Übersicht', C: C, children: [
-          for (int i = 0; i < 6; i++) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-              decoration: BoxDecoration(
-                color: _attrColors[i].withValues(alpha: 0.08),
-                border: Border.all(color: _attrColors[i].withValues(alpha: 0.18)),
-                borderRadius: BorderRadius.circular(7),
-              ),
-              child: Row(children: [
-                Container(
-                  width: 6, height: 6,
-                  decoration: BoxDecoration(color: _attrColors[i], shape: BoxShape.circle),
-                ),
-                const SizedBox(width: 10),
-                Expanded(child: Text(_attrLabels[i], style: TextStyle(color: C.textMid, fontSize: 12))),
-                Text('${values[i]}', style: TextStyle(color: C.text, fontWeight: FontWeight.w600, fontSize: 13)),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 36,
-                  child: Text(
-                    getModifier(values[i]) >= 0 ? '+${getModifier(values[i])}' : '${getModifier(values[i])}',
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      color: getModifier(values[i]) >= 0 ? C.green : C.red,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ]),
-            ),
-            if (i < 5) const SizedBox(height: 6),
-          ],
-        ]),
-        const SizedBox(height: 12),
-        _EditorCard(title: 'Initiative', C: C, children: [
-          Row(children: [
-            Expanded(child: _NumField(
-              label: 'Initiative Bonus',
-              value: vm.initiativeBonus,
-              icon: Icons.speed,
-              onChanged: vm.updateInitiativeBonus,
-            )),
-            const SizedBox(width: 12),
-            Expanded(child: _StatDisplay(
-              label: 'GESAMT',
-              value: vm.initiativeBonus >= 0 ? '+${vm.initiativeBonus}' : '${vm.initiativeBonus}',
-              sub: 'Initiative',
-              valueColor: _kAmber,
-              C: C,
-            )),
-          ]),
-        ]),
-      ];
+      final bottomRow = isWide
+          ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(child: _buildModifierCard(values, C)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildInitiativeCard(vm, C)),
+            ])
+          : Column(children: [
+              _buildModifierCard(values, C),
+              const SizedBox(height: 12),
+              _buildInitiativeCard(vm, C),
+            ]);
 
       return SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: isWide
-            ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Expanded(child: Column(children: left)),
-                const SizedBox(width: 12),
-                Expanded(child: Column(children: right)),
-              ])
-            : Column(children: [...left, const SizedBox(height: 12), ...right]),
+        child: Column(children: [
+          _EditorCard(title: 'Attributspunkte', C: C, children: [
+            AttributesSectionWidget(
+              strength: vm.strength,
+              dexterity: vm.dexterity,
+              constitution: vm.constitution,
+              intelligence: vm.intelligence,
+              wisdom: vm.wisdom,
+              charisma: vm.charisma,
+              onStrengthChanged: vm.updateStrength,
+              onDexterityChanged: vm.updateDexterity,
+              onConstitutionChanged: vm.updateConstitution,
+              onIntelligenceChanged: vm.updateIntelligence,
+              onWisdomChanged: vm.updateWisdom,
+              onCharismaChanged: vm.updateCharisma,
+              useSectionCard: false,
+              title: '',
+            ),
+          ]),
+          const SizedBox(height: 12),
+          bottomRow,
+        ]),
       );
     });
+  }
+
+  Widget _buildModifierCard(List<int> values, AppColorsExtension C) {
+    return _EditorCard(title: 'Modifier Übersicht', C: C, children: [
+      for (int i = 0; i < 6; i++) ...[
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: _attrColors[i].withValues(alpha: 0.08),
+            border: Border.all(color: _attrColors[i].withValues(alpha: 0.18)),
+            borderRadius: BorderRadius.circular(7),
+          ),
+          child: Row(children: [
+            Container(
+              width: 6, height: 6,
+              decoration: BoxDecoration(color: _attrColors[i], shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: Text(_attrLabels[i], style: TextStyle(color: C.textMid, fontSize: 12))),
+            Text('${values[i]}', style: TextStyle(color: C.text, fontWeight: FontWeight.w600, fontSize: 13)),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 36,
+              child: Text(
+                getModifier(values[i]) >= 0 ? '+${getModifier(values[i])}' : '${getModifier(values[i])}',
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  color: getModifier(values[i]) >= 0 ? C.green : C.red,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ]),
+        ),
+        if (i < 5) const SizedBox(height: 6),
+      ],
+    ]);
+  }
+
+  Widget _buildInitiativeCard(EditCreatureViewModel vm, AppColorsExtension C) {
+    return _EditorCard(title: 'Initiative', C: C, children: [
+      Row(children: [
+        Expanded(child: _NumField(
+          label: 'Initiative Bonus',
+          value: vm.initiativeBonus,
+          icon: Icons.speed,
+          onChanged: vm.updateInitiativeBonus,
+        )),
+        const SizedBox(width: 12),
+        Expanded(child: _StatDisplay(
+          label: 'GESAMT',
+          value: vm.initiativeBonus >= 0 ? '+${vm.initiativeBonus}' : '${vm.initiativeBonus}',
+          sub: 'Initiative',
+          valueColor: _kAmber,
+          C: C,
+        )),
+      ]),
+    ]);
   }
 
   // ── TAB: FÄHIGKEITEN ────────────────────────────────────────────────────────
