@@ -17,7 +17,7 @@ import '../../widgets/ui_components/shared/app_logo.dart';
 
 import '../../database/core/database_connection.dart';
 import '../../database/repositories/campaign_model_repository.dart';
-import '../../screens/navigation/main_navigation_screen.dart';
+import '../../screens/campaign/dm_buch_screen.dart';
 import '../../widgets/campaign/campaign_edit_modal_widget.dart';
 
 class CampaignSelectionLayout extends StatefulWidget {
@@ -350,7 +350,7 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
     if (!context.mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (context) => EnhancedMainNavigationScreen(campaign: campaign),
+        builder: (context) => DmBuchScreen(campaign: campaign),
       ),
     );
   }
