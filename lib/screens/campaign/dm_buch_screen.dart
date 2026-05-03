@@ -13,6 +13,7 @@ import '../../widgets/ui_components/shared/app_icon.dart';
 import '../../widgets/ui_components/shared/app_logo.dart';
 import '../quests/edit_quest_screen.dart';
 import '../scenes/edit_scene_screen.dart';
+import '../session/active_session_screen.dart';
 
 // ── ENTRY POINT ───────────────────────────────────────────────────────────────
 
@@ -114,6 +115,12 @@ class _TopBar extends StatelessWidget {
                   // Modus-Toggle
                   _ModeToggle(vm: vm, C: C),
                   const SizedBox(width: 8),
+
+                  // Session starten (nur im Live-Modus)
+                  if (vm.mode == DmBuchMode.live) ...[
+                    _StartSessionBtn(vm: vm, C: C),
+                    const SizedBox(width: 8),
+                  ],
 
                   // Sync-Button (nur für Kopie-Kampagnen)
                   if (vm.campaign.templateId != null) ...[
@@ -1507,6 +1514,89 @@ class _TypeDropdown extends StatelessWidget {
             .toList(),
         onChanged: (t) { if (t != null) onChanged(t); },
       );
+}
+
+// ── START SESSION BUTTON ──────────────────────────────────────────────────────
+
+class _StartSessionBtn extends StatefulWidget {
+  const _StartSessionBtn({required this.vm, required this.C});
+
+  final DmBuchViewModel vm;
+  final AppColorsExtension C;
+
+  @override
+  State<_StartSessionBtn> createState() => _StartSessionBtnState();
+}
+
+class _StartSessionBtnState extends State<_StartSessionBtn> {
+  bool _loading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final C = widget.C;
+
+    return GestureDetector(
+      onTap: _loading ? null : () => _start(context),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 100),
+        height: 28,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: C.accent,
+          borderRadius: BorderRadius.circular(7),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_loading)
+              SizedBox(
+                width: 10,
+                height: 10,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.5,
+                  color: C.bg,
+                ),
+              )
+            else
+              Icon(Icons.play_arrow_rounded, size: 14, color: C.bg),
+            const SizedBox(width: 5),
+            Text(
+              'Session starten',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: C.bg,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _start(BuildContext context) async {
+    setState(() => _loading = true);
+    final session = await widget.vm.startSession();
+    if (!mounted) return;
+    setState(() => _loading = false);
+    if (session == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Session konnte nicht erstellt werden'),
+          backgroundColor: widget.C.red,
+        ),
+      );
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ActiveSessionScreen(
+          session: session,
+          campaign: widget.vm.campaign,
+        ),
+      ),
+    );
+  }
 }
 
 // ── SYNC BUTTON ───────────────────────────────────────────────────────────────

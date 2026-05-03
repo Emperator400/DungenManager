@@ -4,10 +4,12 @@ import '../database/core/database_connection.dart';
 import '../database/repositories/ort_model_repository.dart';
 import '../database/repositories/quest_model_repository.dart';
 import '../database/repositories/scene_model_repository.dart';
+import '../database/repositories/session_model_repository.dart';
 import '../models/campaign.dart';
 import '../models/ort.dart';
 import '../models/quest.dart';
 import '../models/scene.dart';
+import '../models/session.dart';
 import '../services/ort_service.dart';
 
 enum DmBuchMode { vorbereitung, live }
@@ -20,6 +22,7 @@ class DmBuchViewModel extends ChangeNotifier {
   final OrtModelRepository _ortRepo;
   final QuestModelRepository _questRepo;
   final SceneModelRepository _sceneRepo;
+  final SessionModelRepository _sessionRepo;
 
   DmBuchViewModel({
     required this.campaign,
@@ -27,10 +30,12 @@ class DmBuchViewModel extends ChangeNotifier {
     OrtModelRepository? ortRepo,
     QuestModelRepository? questRepo,
     SceneModelRepository? sceneRepo,
+    SessionModelRepository? sessionRepo,
   })  : _ortService = ortService ?? OrtService(),
         _ortRepo = ortRepo ?? OrtModelRepository(DatabaseConnection.instance),
         _questRepo = questRepo ?? QuestModelRepository(DatabaseConnection.instance),
-        _sceneRepo = sceneRepo ?? SceneModelRepository(DatabaseConnection.instance);
+        _sceneRepo = sceneRepo ?? SceneModelRepository(DatabaseConnection.instance),
+        _sessionRepo = sessionRepo ?? SessionModelRepository(DatabaseConnection.instance);
 
   // ── STATE ──────────────────────────────────────────────────────────────────
 
@@ -247,5 +252,26 @@ class DmBuchViewModel extends ChangeNotifier {
   Future<void> reloadQuests() async {
     await _loadQuests();
     notifyListeners();
+  }
+
+  // ── SESSION ───────────────────────────────────────────────────────────────
+
+  /// Erstellt eine neue Session für diese Kampagne und gibt sie zurück.
+  Future<Session?> startSession() async {
+    try {
+      final now = DateTime.now();
+      final title =
+          'Session vom ${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}';
+      final session = Session(
+        campaignId: campaign.id,
+        title: title,
+        inGameTimeInMinutes: 480,
+        liveNotes: '',
+      );
+      return await _sessionRepo.create(session);
+    } catch (e) {
+      debugPrint('[DmBuchViewModel] startSession error: $e');
+      return null;
+    }
   }
 }
