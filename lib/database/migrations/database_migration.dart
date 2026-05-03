@@ -71,6 +71,9 @@ class DatabaseMigration {
   
   // Füge damage_type Spalte zur items Tabelle hinzu
   await _addDamageTypeColumn(db);
+
+  // Füge armor_category Spalte zur items Tabelle hinzu
+  await _addArmorCategoryColumn(db);
   
   // Stelle sicher, dass encounters Tabelle scene_id Spalte hat
   await _ensureEncountersSceneIdColumn(db);
@@ -187,6 +190,7 @@ class DatabaseMigration {
           properties TEXT,
           ac_formula TEXT,
           strength_requirement INTEGER,
+          armor_category TEXT,
           stealth_disadvantage INTEGER DEFAULT 0,
           rarity TEXT,
           requires_attunement INTEGER DEFAULT 0,
@@ -539,6 +543,23 @@ class DatabaseMigration {
       }
     } catch (e) {
       debugPrint('Error adding damage_type column: $e');
+    }
+  }
+
+  Future<void> _addArmorCategoryColumn(Database db) async {
+    try {
+      final tableExists = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='items'",
+      );
+      if (tableExists.isEmpty) return;
+      final tableInfo = await db.rawQuery('PRAGMA table_info(items)');
+      final hasArmorCategory = tableInfo.any((c) => c['name'] == 'armor_category');
+      if (!hasArmorCategory) {
+        await db.execute('ALTER TABLE items ADD COLUMN armor_category TEXT');
+        debugPrint('Added armor_category column to items table');
+      }
+    } catch (e) {
+      debugPrint('Error adding armor_category column: $e');
     }
   }
 
