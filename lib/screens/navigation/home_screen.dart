@@ -18,7 +18,7 @@ import '../audio/sound_library_screen.dart';
 import '../campaign/campaign_selection_screen.dart';
 import '../items/item_library_screen.dart';
 import '../lore/lore_keeper_screen.dart';
-import '../navigation/main_navigation_screen.dart';
+import '../campaign/dm_buch_screen.dart';
 import '../quests/quest_library_screen.dart';
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
@@ -143,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!context.mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => EnhancedMainNavigationScreen(campaign: c),
+        builder: (_) => DmBuchScreen(campaign: c),
       ),
     ).then((_) => _loadLastCampaign());
   }

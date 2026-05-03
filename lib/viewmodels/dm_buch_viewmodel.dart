@@ -245,6 +245,19 @@ class DmBuchViewModel extends ChangeNotifier {
     }
   }
 
+  Future<void> reorderScenes(int oldIndex, int newIndex) async {
+    if (newIndex > oldIndex) newIndex -= 1;
+    final item = _selectedOrtScenes.removeAt(oldIndex);
+    _selectedOrtScenes.insert(newIndex, item);
+    notifyListeners();
+    for (var i = 0; i < _selectedOrtScenes.length; i++) {
+      if (_selectedOrtScenes[i].orderIndex != i) {
+        _selectedOrtScenes[i] = _selectedOrtScenes[i].copyWith(orderIndex: i);
+        await _sceneRepo.update(_selectedOrtScenes[i]);
+      }
+    }
+  }
+
   Future<void> deleteScene(String sceneId) async {
     try {
       await _sceneRepo.delete(sceneId);
@@ -276,19 +289,42 @@ class DmBuchViewModel extends ChangeNotifier {
 
   // ── SESSION ───────────────────────────────────────────────────────────────
 
-  /// Erstellt eine neue Session für diese Kampagne und gibt sie zurück.
+  /// Erstellt eine neue Session und importiert Szenen des ausgewählten Orts.
+  /// Gibt die erstellte Session zurück, oder null bei Fehler.
   Future<Session?> startSession() async {
     try {
       final now = DateTime.now();
-      final title =
-          'Session vom ${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}';
-      final session = Session(
+      final ortName = _selectedOrt?.name;
+      final title = ortName != null
+          ? '$ortName — ${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}'
+          : 'Session vom ${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}';
+
+      final session = await _sessionRepo.create(Session(
         campaignId: campaign.id,
         title: title,
         inGameTimeInMinutes: 480,
         liveNotes: '',
-      );
-      return await _sessionRepo.create(session);
+      ));
+
+      if (_selectedOrt != null && _selectedOrtScenes.isNotEmpty) {
+        for (var i = 0; i < _selectedOrtScenes.length; i++) {
+          final src = _selectedOrtScenes[i];
+          await _sceneRepo.create(Scene(
+            sessionId: session.id,
+            orderIndex: i,
+            name: src.name,
+            description: src.description,
+            sceneType: src.sceneType,
+            complexity: src.complexity,
+            estimatedDuration: src.estimatedDuration,
+            linkedSoundIds: List<String>.from(src.linkedSoundIds),
+            soundVolumes: Map<String, double>.from(src.soundVolumes),
+            ortId: src.ortId,
+          ));
+        }
+      }
+
+      return session;
     } catch (e) {
       debugPrint('[DmBuchViewModel] startSession error: $e');
       return null;

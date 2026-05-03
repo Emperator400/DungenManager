@@ -845,10 +845,19 @@ class _OrtDetail extends StatelessWidget {
         if (vm.selectedOrtScenes.isEmpty)
           _EmptyHint('Noch keine Szenen für diesen Ort.', C)
         else
-          ...vm.selectedOrtScenes.map((s) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: _SceneRow(scene: s, vm: vm),
-              )),
+          ReorderableListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            onReorder: vm.reorderScenes,
+            proxyDecorator: (child, _, __) =>
+                Material(color: Colors.transparent, child: child),
+            itemCount: vm.selectedOrtScenes.length,
+            itemBuilder: (_, i) => Padding(
+              key: ValueKey(vm.selectedOrtScenes[i].id),
+              padding: const EdgeInsets.only(bottom: 6),
+              child: _SceneRow(scene: vm.selectedOrtScenes[i], vm: vm),
+            ),
+          ),
         const SizedBox(height: 20),
 
         // Live-Modus Aktionen
@@ -1655,6 +1664,7 @@ class _StartSessionBtnState extends State<_StartSessionBtn> {
 
   Future<void> _start(BuildContext context) async {
     setState(() => _loading = true);
+    final sceneCount = widget.vm.selectedOrtScenes.length;
     final session = await widget.vm.startSession();
     if (!mounted) return;
     setState(() => _loading = false);
@@ -1667,6 +1677,18 @@ class _StartSessionBtnState extends State<_StartSessionBtn> {
       );
       return;
     }
+    if (sceneCount > 0 && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '$sceneCount Szene${sceneCount == 1 ? '' : 'n'} aus Ort importiert',
+          ),
+          duration: const Duration(seconds: 2),
+          backgroundColor: widget.C.green,
+        ),
+      );
+    }
+    if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => ActiveSessionScreen(
