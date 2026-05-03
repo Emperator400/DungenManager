@@ -82,6 +82,7 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen> {
     _player.onPlayerComplete.listen((_) {
       if (mounted) setState(() { _isPlaying = false; _playingId = null; });
     });
+    _vm.loadSounds();
   }
 
   @override
@@ -148,10 +149,14 @@ class _SoundLibraryScreenState extends State<SoundLibraryScreen> {
 
   Future<void> _openEditor([Sound? sound]) async {
     await Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => ChangeNotifierProvider(
-          create: (_) => EditSoundViewModel(),
-          child: EditSoundScreen(sound: sound),
+      PageRouteBuilder<void>(
+        opaque: false,
+        pageBuilder: (context, animation, _) => FadeTransition(
+          opacity: animation,
+          child: ChangeNotifierProvider(
+            create: (_) => EditSoundViewModel(),
+            child: EditSoundScreen(sound: sound),
+          ),
         ),
       ),
     );
