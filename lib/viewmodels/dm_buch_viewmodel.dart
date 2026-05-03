@@ -179,6 +179,30 @@ class DmBuchViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ── TEMPLATE-SYNC ─────────────────────────────────────────────────────────
+
+  bool _isSyncing = false;
+  bool get isSyncing => _isSyncing;
+
+  /// Synchronisiert Definitions-Felder (Name, Typ, Beschreibung) von der Vorlage.
+  /// Gibt die Anzahl aktualisierter Orte zurück, oder null bei Fehler.
+  Future<int?> syncFromTemplate() async {
+    if (campaign.templateId == null) return null;
+    _isSyncing = true;
+    notifyListeners();
+    try {
+      final result = await _ortService.syncFromTemplate(campaign.templateId!);
+      await _loadOrte();
+      return result.updated;
+    } catch (e) {
+      debugPrint('[DmBuchViewModel] syncFromTemplate error: $e');
+      return null;
+    } finally {
+      _isSyncing = false;
+      notifyListeners();
+    }
+  }
+
   // ── SZENEN ────────────────────────────────────────────────────────────────
 
   Future<void> reloadScenes() async {

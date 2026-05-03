@@ -114,6 +114,12 @@ class _TopBar extends StatelessWidget {
                   _ModeToggle(vm: vm, C: C),
                   const SizedBox(width: 8),
 
+                  // Sync-Button (nur für Kopie-Kampagnen)
+                  if (vm.campaign.templateId != null) ...[
+                    _SyncBtn(vm: vm, C: C),
+                    const SizedBox(width: 4),
+                  ],
+
                   // Dark/Light Toggle
                   _TopBarIconBtn(
                     icon: themeNotifier.isDark
@@ -1289,6 +1295,58 @@ class _TypeDropdown extends StatelessWidget {
             .toList(),
         onChanged: (t) { if (t != null) onChanged(t); },
       );
+}
+
+// ── SYNC BUTTON ───────────────────────────────────────────────────────────────
+
+class _SyncBtn extends StatelessWidget {
+  const _SyncBtn({required this.vm, required this.C});
+
+  final DmBuchViewModel vm;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) {
+    if (vm.isSyncing) {
+      return SizedBox(
+        width: 30,
+        height: 30,
+        child: Center(
+          child: SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.5,
+              color: C.textMid,
+            ),
+          ),
+        ),
+      );
+    }
+    return Tooltip(
+      message: 'Änderungen aus Vorlage übernehmen',
+      child: _TopBarIconBtn(
+        icon: AppIconName.refresh,
+        C: C,
+        onTap: () async {
+          final count = await vm.syncFromTemplate();
+          if (!context.mounted) return;
+          final msg = count == null
+              ? 'Sync fehlgeschlagen'
+              : count == 0
+                  ? 'Alles aktuell – keine Änderungen'
+                  : '$count Ort${count == 1 ? '' : 'e'} aktualisiert';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(msg),
+              duration: const Duration(seconds: 3),
+              backgroundColor: count == null ? C.red : C.green,
+            ),
+          );
+        },
+      ),
+    );
+  }
 }
 
 // ── SHARED ICON BTN ───────────────────────────────────────────────────────────
