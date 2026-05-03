@@ -7,10 +7,12 @@ import '../../theme/app_theme.dart';
 
 class EditQuestScreen extends StatefulWidget {
   final Quest? quest;
+  final String? campaignId;
 
   const EditQuestScreen({
     super.key,
     this.quest,
+    this.campaignId,
   });
 
   @override
@@ -31,45 +33,52 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
   final _recommendedLevelFocusNode = FocusNode();
   final _estimatedDurationFocusNode = FocusNode();
 
-  EditQuestViewModel? _viewModel;
+  late final EditQuestViewModel _viewModel;
 
   @override
   void initState() {
     super.initState();
+    _viewModel = EditQuestViewModel();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _viewModel = context.read<EditQuestViewModel>();
-      _viewModel!.initialize(widget.quest);
+      _viewModel.initialize(widget.quest, campaignId: widget.campaignId);
       _populateFields();
-      _viewModel!.addListener(_onViewModelChanged);
+      _viewModel.addListener(_onViewModelChanged);
     });
   }
 
   void _onViewModelChanged() {
-    final quest = _viewModel?.quest;
+    final quest = _viewModel.quest;
     if (quest != null && mounted) {
       if (!_titleFocusNode.hasFocus && _titleController.text != quest.title) {
         _titleController.text = quest.title;
       }
-      if (!_descriptionFocusNode.hasFocus && _descriptionController.text != quest.description) {
+      if (!_descriptionFocusNode.hasFocus &&
+          _descriptionController.text != quest.description) {
         _descriptionController.text = quest.description;
       }
-      if (!_locationFocusNode.hasFocus && _locationController.text != (quest.location ?? '')) {
+      if (!_locationFocusNode.hasFocus &&
+          _locationController.text != (quest.location ?? '')) {
         _locationController.text = quest.location ?? '';
       }
       if (!_recommendedLevelFocusNode.hasFocus &&
-          _recommendedLevelController.text != (quest.recommendedLevel?.toString() ?? '')) {
-        _recommendedLevelController.text = quest.recommendedLevel?.toString() ?? '';
+          _recommendedLevelController.text !=
+              (quest.recommendedLevel?.toString() ?? '')) {
+        _recommendedLevelController.text =
+            quest.recommendedLevel?.toString() ?? '';
       }
       if (!_estimatedDurationFocusNode.hasFocus &&
-          _estimatedDurationController.text != (quest.estimatedDurationHours?.toString() ?? '')) {
-        _estimatedDurationController.text = quest.estimatedDurationHours?.toString() ?? '';
+          _estimatedDurationController.text !=
+              (quest.estimatedDurationHours?.toString() ?? '')) {
+        _estimatedDurationController.text =
+            quest.estimatedDurationHours?.toString() ?? '';
       }
     }
   }
 
   @override
   void dispose() {
-    _viewModel?.removeListener(_onViewModelChanged);
+    _viewModel.removeListener(_onViewModelChanged);
+    _viewModel.dispose();
     _titleController.dispose();
     _descriptionController.dispose();
     _locationController.dispose();
@@ -84,133 +93,160 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
   }
 
   void _populateFields() {
-    final viewModel = context.read<EditQuestViewModel>();
-    final quest = viewModel.quest;
-
+    final quest = _viewModel.quest;
     if (quest != null) {
       _titleController.text = quest.title;
       _descriptionController.text = quest.description;
       _locationController.text = quest.location ?? '';
-      _recommendedLevelController.text = quest.recommendedLevel?.toString() ?? '';
-      _estimatedDurationController.text = quest.estimatedDurationHours?.toString() ?? '';
+      _recommendedLevelController.text =
+          quest.recommendedLevel?.toString() ?? '';
+      _estimatedDurationController.text =
+          quest.estimatedDurationHours?.toString() ?? '';
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final C = context.appColors;
-    return Scaffold(
-      backgroundColor: C.bg,
-      body: SafeArea(
-        child: Consumer<EditQuestViewModel>(
-          builder: (context, viewModel, child) {
-            return Column(
-              children: [
-                _buildHeader(context, viewModel),
-                Expanded(
-                  child: _buildForm(context, viewModel),
-                ),
-              ],
-            );
-          },
+    return ChangeNotifierProvider<EditQuestViewModel>.value(
+      value: _viewModel,
+      child: Scaffold(
+        backgroundColor: C.bg,
+        appBar: _buildAppBar(context, C),
+        body: SafeArea(
+          top: false,
+          child: Consumer<EditQuestViewModel>(
+            builder: (context, vm, _) => _buildForm(context, vm),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, EditQuestViewModel viewModel) {
-    final C = context.appColors;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+  // ── APP BAR ───────────────────────────────────────────────────────────────────
+
+  PreferredSizeWidget _buildAppBar(BuildContext context, AppColorsExtension C) {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(48),
+      child: Container(
+        height: 48,
         color: C.bgPanel,
-        border: Border(
-          bottom: BorderSide(
-            color: C.amber.withValues(alpha: 0.3),
-            width: 2,
-          ),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: IconButton(
-              onPressed: () => _handleBackNavigation(viewModel),
-              icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  viewModel.quest != null ? 'Quest bearbeiten' : 'Neuer Quest',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black26,
-                        blurRadius: 4,
-                        offset: Offset(0, 2),
+        child: Column(
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Consumer<EditQuestViewModel>(
+                  builder: (_, vm, __) => Row(
+                    children: [
+                      if (Navigator.canPop(context)) ...[
+                        GestureDetector(
+                          onTap: () => _handleBackNavigation(vm),
+                          child: SizedBox(
+                            width: 30,
+                            height: 30,
+                            child: Icon(Icons.arrow_back, size: 18, color: C.textMid),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Container(width: 1, height: 18, color: C.border),
+                        const SizedBox(width: 10),
+                      ],
+                      Container(
+                        width: 26,
+                        height: 26,
+                        decoration: BoxDecoration(
+                          color: C.amber.withValues(alpha: 0.18),
+                          border: Border.all(color: C.amber.withValues(alpha: 0.4)),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Center(
+                          child: Icon(Icons.assignment, size: 13, color: C.amber),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        vm.quest != null ? 'Quest bearbeiten' : 'Neue Quest',
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: C.text),
+                      ),
+                      const Spacer(),
+                      if (vm.hasUnsavedChanges)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: C.amber.withValues(alpha: 0.18),
+                            border: Border.all(
+                                color: C.amber.withValues(alpha: 0.4)),
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.edit, size: 10, color: C.amber),
+                              const SizedBox(width: 4),
+                              Text('Bearbeitet',
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      color: C.amber,
+                                      fontWeight: FontWeight.w500)),
+                            ],
+                          ),
+                        ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: vm.isLoading
+                            ? null
+                            : () => _handleSave(vm),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: vm.isLoading
+                                ? C.accent.withValues(alpha: 0.5)
+                                : C.accent,
+                            borderRadius: BorderRadius.circular(7),
+                          ),
+                          child: vm.isLoading
+                              ? SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white),
+                                )
+                              : const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.save, size: 13, color: Colors.white),
+                                    SizedBox(width: 5),
+                                    Text('Speichern',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                        ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  viewModel.quest != null ? 'Details ändern' : 'Erstelle eine neue Quest',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (viewModel.hasUnsavedChanges)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: C.amber,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.edit, color: Colors.black87, size: 14),
-                  SizedBox(width: 4),
-                  Text(
-                    'Bearbeitet',
-                    style: TextStyle(
-                      color: Colors.black87,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
               ),
             ),
-        ],
+            Divider(height: 1, thickness: 1, color: C.border),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildForm(BuildContext context, EditQuestViewModel viewModel) {
+  // ── FORM ──────────────────────────────────────────────────────────────────────
+
+  Widget _buildForm(BuildContext context, EditQuestViewModel vm) {
+    final C = context.appColors;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Form(
@@ -218,435 +254,361 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildBasicInfoSection(context, viewModel),
+            if (vm.errorMessage != null) ...[
+              _ErrorBanner(message: vm.errorMessage!, C: C),
+              const SizedBox(height: 12),
+            ],
+            _buildSection(
+              C: C,
+              title: 'Grundlegende Informationen',
+              child: Column(
+                children: [
+                  _field(
+                    context: context,
+                    controller: _titleController,
+                    focusNode: _titleFocusNode,
+                    label: 'Titel *',
+                    hint: 'z.B. Die Rettung vom Drachenhort',
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Titel ist erforderlich';
+                      if (v.trim().length < 2) return 'Mindestens 2 Zeichen';
+                      return null;
+                    },
+                    onChanged: vm.updateTitle,
+                  ),
+                  const SizedBox(height: 12),
+                  _field(
+                    context: context,
+                    controller: _descriptionController,
+                    focusNode: _descriptionFocusNode,
+                    label: 'Beschreibung *',
+                    hint: 'Beschreibe den Quest und seine Ziele…',
+                    maxLines: 4,
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Beschreibung ist erforderlich' : null,
+                    onChanged: vm.updateDescription,
+                  ),
+                  const SizedBox(height: 12),
+                  _field(
+                    context: context,
+                    controller: _locationController,
+                    focusNode: _locationFocusNode,
+                    label: 'Ort',
+                    hint: 'Wo findet der Quest statt?',
+                    onChanged: vm.updateLocation,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildSection(
+              C: C,
+              title: 'Quest-Details',
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _dropdown<QuestStatus>(
+                          context: context,
+                          value: vm.quest?.status,
+                          label: 'Status',
+                          items: QuestStatus.values,
+                          displayName: _statusLabel,
+                          onChanged: (v) {
+                            if (v != null) vm.updateStatus(v);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _dropdown<QuestType>(
+                          context: context,
+                          value: vm.quest?.questType,
+                          label: 'Typ',
+                          items: QuestType.values,
+                          displayName: _typeLabel,
+                          onChanged: (v) {
+                            if (v != null) vm.updateQuestType(v);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _dropdown<QuestDifficulty>(
+                          context: context,
+                          value: vm.quest?.difficulty,
+                          label: 'Schwierigkeit',
+                          items: QuestDifficulty.values,
+                          displayName: _difficultyLabel,
+                          onChanged: (v) {
+                            if (v != null) vm.updateDifficulty(v);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _field(
+                          context: context,
+                          controller: _recommendedLevelController,
+                          focusNode: _recommendedLevelFocusNode,
+                          label: 'Level',
+                          hint: '1–20',
+                          keyboardType: TextInputType.number,
+                          onChanged: (v) {
+                            final l = int.tryParse(v);
+                            if (l != null) vm.updateRecommendedLevel(l);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _field(
+                    context: context,
+                    controller: _estimatedDurationController,
+                    focusNode: _estimatedDurationFocusNode,
+                    label: 'Dauer (Stunden)',
+                    hint: 'z.B. 2.5',
+                    keyboardType: TextInputType.number,
+                    onChanged: (v) {
+                      final d = double.tryParse(v);
+                      if (d != null) vm.updateEstimatedDuration(d);
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildRewardsSection(context, vm, C),
             const SizedBox(height: 20),
-            _buildQuestDetailsSection(context, viewModel),
-            const SizedBox(height: 20),
-            _buildRewardsSection(context, viewModel),
-            const SizedBox(height: 32),
-            _buildActionButtons(context, viewModel),
+            _buildBottomButtons(context, vm, C),
+            const SizedBox(height: 16),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSectionHeader(IconData icon, String title) {
-    final C = context.appColors;
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: C.accent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: Colors.white, size: 20),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBasicInfoSection(BuildContext context, EditQuestViewModel viewModel) {
-    final C = context.appColors;
+  Widget _buildSection({
+    required AppColorsExtension C,
+    required String title,
+    required Widget child,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: C.bgPanel,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: C.accent.withValues(alpha: 0.5),
-          width: 2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: C.accent.withValues(alpha: 0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: C.border),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionHeader(Icons.info_outline, 'Grundlegende Informationen'),
-          const SizedBox(height: 20),
-          _buildTextField(
-            controller: _titleController,
-            focusNode: _titleFocusNode,
-            label: 'Quest Titel *',
-            hint: 'z.B. Die Rettung vom Drachenhort',
-            icon: Icons.title,
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Titel ist erforderlich';
-              }
-              if (value.trim().length < 2) {
-                return 'Titel muss mindestens 2 Zeichen lang sein';
-              }
-              return null;
-            },
-            onChanged: (value) => viewModel.updateTitle(value),
+          Text(
+            title.toUpperCase(),
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: C.textSoft,
+              letterSpacing: 0.6,
+            ),
           ),
-          const SizedBox(height: 16),
-          _buildTextField(
-            controller: _descriptionController,
-            focusNode: _descriptionFocusNode,
-            label: 'Beschreibung *',
-            hint: 'Beschreibe den Quest und seine Ziele...',
-            icon: Icons.description,
-            maxLines: 4,
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Beschreibung ist erforderlich';
-              }
-              return null;
-            },
-            onChanged: (value) => viewModel.updateDescription(value),
-          ),
-          const SizedBox(height: 16),
-          _buildTextField(
-            controller: _locationController,
-            focusNode: _locationFocusNode,
-            label: 'Ort',
-            hint: 'Wo findet der Quest statt?',
-            icon: Icons.place,
-            onChanged: (value) => viewModel.updateLocation(value),
-          ),
+          const SizedBox(height: 12),
+          child,
         ],
       ),
     );
   }
 
-  Widget _buildQuestDetailsSection(BuildContext context, EditQuestViewModel viewModel) {
-    final C = context.appColors;
+  Widget _buildRewardsSection(
+      BuildContext context, EditQuestViewModel vm, AppColorsExtension C) {
+    final rewards = vm.quest?.rewards ?? [];
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: C.bgPanel,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: C.accent.withValues(alpha: 0.5),
-          width: 2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: C.accent.withValues(alpha: 0.2),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionHeader(Icons.tune, 'Quest-Details'),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: _buildDropdownField<QuestStatus>(
-                  value: viewModel.quest?.status,
-                  label: 'Status',
-                  icon: Icons.track_changes,
-                  items: QuestStatus.values,
-                  displayName: _getQuestStatusDisplayName,
-                  onChanged: (value) {
-                    if (value != null) viewModel.updateStatus(value);
-                  },
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildDropdownField<QuestType>(
-                  value: viewModel.quest?.questType,
-                  label: 'Typ',
-                  icon: Icons.category,
-                  items: QuestType.values,
-                  displayName: _getQuestTypeDisplayName,
-                  onChanged: (value) {
-                    if (value != null) viewModel.updateQuestType(value);
-                  },
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildDropdownField<QuestDifficulty>(
-                  value: viewModel.quest?.difficulty,
-                  label: 'Schwierigkeit',
-                  icon: Icons.bar_chart,
-                  items: QuestDifficulty.values,
-                  displayName: _getQuestDifficultyDisplayName,
-                  onChanged: (value) {
-                    if (value != null) viewModel.updateDifficulty(value);
-                  },
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildTextField(
-                  controller: _recommendedLevelController,
-                  focusNode: _recommendedLevelFocusNode,
-                  label: 'Empfohlenes Level',
-                  hint: '1-20',
-                  icon: Icons.stars,
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) {
-                    final level = int.tryParse(value);
-                    if (level != null) viewModel.updateRecommendedLevel(level);
-                  },
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildTextField(
-            controller: _estimatedDurationController,
-            focusNode: _estimatedDurationFocusNode,
-            label: 'Geschätzte Dauer (Stunden)',
-            hint: 'z.B. 2.5',
-            icon: Icons.schedule,
-            keyboardType: TextInputType.number,
-            onChanged: (value) {
-              final duration = double.tryParse(value);
-              if (duration != null) viewModel.updateEstimatedDuration(duration);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRewardsSection(BuildContext context, EditQuestViewModel viewModel) {
-    final C = context.appColors;
-    final rewards = viewModel.quest?.rewards ?? [];
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: C.bgPanel,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: C.accent.withValues(alpha: 0.5),
-          width: 2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: C.accent.withValues(alpha: 0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: C.border),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildSectionHeader(Icons.card_giftcard, 'Belohnungen'),
-              ElevatedButton.icon(
-                onPressed: () => _showAddRewardDialog(viewModel),
-                icon: const Icon(Icons.add, size: 20),
-                label: const Text('Belohnung'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: C.amber,
-                  foregroundColor: Colors.black87,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              Text(
+                'BELOHNUNGEN',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: C.textSoft,
+                  letterSpacing: 0.6,
+                ),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => _showAddRewardDialog(vm),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: C.amber.withValues(alpha: 0.15),
+                    border:
+                        Border.all(color: C.amber.withValues(alpha: 0.4)),
+                    borderRadius: BorderRadius.circular(5),
                   ),
-                  elevation: 4,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add, size: 12, color: C.amber),
+                      const SizedBox(width: 4),
+                      Text('Belohnung',
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: C.amber,
+                              fontWeight: FontWeight.w500)),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           if (rewards.isEmpty)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.symmetric(vertical: 16),
               decoration: BoxDecoration(
                 color: C.bgHover,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: C.accent.withValues(alpha: 0.4),
-                  width: 2,
-                ),
+                border: Border.all(color: C.border),
+                borderRadius: BorderRadius.circular(7),
               ),
               child: Column(
                 children: [
-                  Icon(
-                    Icons.card_giftcard_outlined,
-                    size: 48,
-                    color: C.accent.withValues(alpha: 0.7),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Noch keine Belohnungen',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: C.textSoft,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Füge Belohnungen hinzu, um Spieler zu motivieren',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: C.textSoft,
-                    ),
-                  ),
+                  Icon(Icons.card_giftcard_outlined,
+                      size: 28, color: C.border),
+                  const SizedBox(height: 8),
+                  Text('Noch keine Belohnungen',
+                      style: TextStyle(fontSize: 12, color: C.textSoft)),
                 ],
               ),
             )
           else
             Column(
-              children: rewards.map((reward) => _buildRewardCard(viewModel, reward)).toList(),
+              children: rewards
+                  .map((r) => _RewardRow(
+                        reward: r,
+                        C: C,
+                        onDelete: () => _showDeleteRewardDialog(vm, r),
+                      ))
+                  .toList(),
             ),
         ],
       ),
     );
   }
 
-  Widget _buildRewardCard(EditQuestViewModel viewModel, QuestReward reward) {
-    final C = context.appColors;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: C.bgHover,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: C.accent.withValues(alpha: 0.3),
-          width: 1.5,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: C.accent,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              _getRewardIcon(reward),
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  reward.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: Colors.white,
-                  ),
+  Widget _buildBottomButtons(
+      BuildContext context, EditQuestViewModel vm, AppColorsExtension C) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed:
+                    vm.isLoading ? null : () => _handleCancel(vm),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: C.textMid,
+                  side: BorderSide(color: C.border),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    if (reward.goldAmount != null && reward.goldAmount! > 0)
-                      _buildRewardChip(
-                        Icons.monetization_on,
-                        '${reward.goldAmount} Gold',
-                        C.amber,
-                      ),
-                    if (reward.experiencePoints != null && reward.experiencePoints! > 0) ...[
-                      const SizedBox(width: 8),
-                      _buildRewardChip(
-                        Icons.auto_graph,
-                        '${reward.experiencePoints} EP',
-                        C.accent,
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              color: C.red.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: IconButton(
-              onPressed: () => _showDeleteRewardDialog(viewModel, reward),
-              icon: Icon(
-                Icons.delete_outline,
-                color: C.red,
-                size: 22,
+                child: const Text('Abbrechen',
+                    style: TextStyle(fontSize: 13)),
               ),
-              tooltip: 'Löschen',
             ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 2,
+              child: FilledButton(
+                onPressed: vm.isLoading ? null : () => _handleSave(vm),
+                style: FilledButton.styleFrom(
+                  backgroundColor: C.green,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+                child: vm.isLoading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Text('Speichern',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
+        ),
+        if (vm.quest != null) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed:
+                      vm.isLoading ? null : () => _handleDuplicate(vm),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: C.accent,
+                    side: BorderSide(color: C.accent.withValues(alpha: 0.4)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: const Icon(Icons.copy, size: 14),
+                  label: const Text('Duplizieren',
+                      style: TextStyle(fontSize: 12)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed:
+                      vm.isLoading ? null : () => _handleDelete(vm),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: C.red,
+                    side: BorderSide(color: C.red.withValues(alpha: 0.4)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: const Icon(Icons.delete_outline, size: 14),
+                  label: const Text('Löschen',
+                      style: TextStyle(fontSize: 12)),
+                ),
+              ),
+            ],
           ),
         ],
-      ),
+      ],
     );
   }
 
-  Widget _buildRewardChip(IconData icon, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // ── FIELD BUILDERS ────────────────────────────────────────────────────────────
 
-  IconData _getRewardIcon(QuestReward reward) {
-    if (reward.goldAmount != null && reward.goldAmount! > 0) {
-      return Icons.monetization_on;
-    }
-    if (reward.experiencePoints != null && reward.experiencePoints! > 0) {
-      return Icons.auto_graph;
-    }
-    return Icons.card_giftcard;
-  }
-
-  Widget _buildTextField({
+  Widget _field({
+    required BuildContext context,
     required TextEditingController controller,
     FocusNode? focusNode,
     required String label,
     required String hint,
-    required IconData icon,
     int maxLines = 1,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
@@ -658,42 +620,46 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
       focusNode: focusNode,
       maxLines: maxLines,
       keyboardType: keyboardType,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(fontSize: 13, color: C.text),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        labelStyle: TextStyle(color: C.accent),
-        hintStyle: const TextStyle(color: Colors.white54),
+        labelStyle: TextStyle(fontSize: 12, color: C.textMid),
+        hintStyle: TextStyle(fontSize: 12, color: C.textSoft),
+        filled: true,
+        fillColor: C.bgHover,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: C.accent.withValues(alpha: 0.4)),
+          borderRadius: BorderRadius.circular(7),
+          borderSide: BorderSide(color: C.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(7),
+          borderSide: BorderSide(color: C.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: C.accent, width: 2),
+          borderRadius: BorderRadius.circular(7),
+          borderSide: BorderSide(color: C.accent),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: C.red, width: 2),
+          borderRadius: BorderRadius.circular(7),
+          borderSide: BorderSide(color: C.red),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: C.red, width: 2),
+          borderRadius: BorderRadius.circular(7),
+          borderSide: BorderSide(color: C.red),
         ),
-        filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.05),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        floatingLabelBehavior: FloatingLabelBehavior.auto,
       ),
       validator: validator,
       onChanged: onChanged,
     );
   }
 
-  Widget _buildDropdownField<T>({
+  Widget _dropdown<T>({
+    required BuildContext context,
     required T? value,
     required String label,
-    required IconData icon,
     required List<T> items,
     required String Function(T) displayName,
     required void Function(T?) onChanged,
@@ -702,539 +668,506 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
     return DropdownButtonFormField<T>(
       value: value,
       dropdownColor: C.bgPanel,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(fontSize: 13, color: C.text),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: C.accent),
+        labelStyle: TextStyle(fontSize: 12, color: C.textMid),
+        filled: true,
+        fillColor: C.bgHover,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: C.accent.withValues(alpha: 0.4)),
+          borderRadius: BorderRadius.circular(7),
+          borderSide: BorderSide(color: C.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(7),
+          borderSide: BorderSide(color: C.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: C.accent, width: 2),
+          borderRadius: BorderRadius.circular(7),
+          borderSide: BorderSide(color: C.accent),
         ),
-        filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.05),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
-      items: items.map((item) {
-        return DropdownMenuItem(
-          value: item,
-          child: Text(displayName(item)),
-        );
-      }).toList(),
+      items: items
+          .map((item) => DropdownMenuItem(
+                value: item,
+                child: Text(displayName(item),
+                    style: TextStyle(fontSize: 13, color: C.text)),
+              ))
+          .toList(),
       onChanged: onChanged,
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, EditQuestViewModel viewModel) {
+  // ── LABEL HELPERS ─────────────────────────────────────────────────────────────
+
+  String _statusLabel(QuestStatus s) => switch (s) {
+        QuestStatus.active    => 'Aktiv',
+        QuestStatus.completed => 'Abgeschlossen',
+        QuestStatus.failed    => 'Fehlgeschlagen',
+        QuestStatus.abandoned => 'Aufgegeben',
+        QuestStatus.onHold    => 'Pausiert',
+      };
+
+  String _typeLabel(QuestType t) => switch (t) {
+        QuestType.main     => 'Hauptquest',
+        QuestType.side     => 'Nebenquest',
+        QuestType.personal => 'Persönlich',
+        QuestType.faction  => 'Fraktions-Quest',
+      };
+
+  String _difficultyLabel(QuestDifficulty d) => switch (d) {
+        QuestDifficulty.easy      => 'Leicht',
+        QuestDifficulty.medium    => 'Mittel',
+        QuestDifficulty.hard      => 'Schwer',
+        QuestDifficulty.deadly    => 'Tödlich',
+        QuestDifficulty.epic      => 'Episch',
+        QuestDifficulty.legendary => 'Legendär',
+      };
+
+  // ── DIALOGS ───────────────────────────────────────────────────────────────────
+
+  void _showAddRewardDialog(EditQuestViewModel vm) {
+    final descCtrl = TextEditingController();
+    final goldCtrl = TextEditingController();
+    final xpCtrl = TextEditingController();
     final C = context.appColors;
-    return Column(
-      children: [
-        if (viewModel.errorMessage != null)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              color: C.red.withValues(alpha: 0.12),
-              border: Border.all(color: C.red, width: 2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.error_outline, color: C.red),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    viewModel.errorMessage!,
-                    style: TextStyle(
-                      color: C.red,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        Row(
-          children: [
-            Expanded(
-              child: ElevatedButton(
-                onPressed: viewModel.isLoading ? null : () => _handleSave(viewModel),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: C.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 4,
-                  shadowColor: C.green.withValues(alpha: 0.4),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (viewModel.isLoading)
-                      const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    else ...[
-                      const Icon(Icons.save, size: 20),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'SPEICHERN',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: OutlinedButton(
-                onPressed: viewModel.isLoading ? null : () => _handleCancel(viewModel),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: C.textSoft,
-                  side: BorderSide(color: C.textMid, width: 2),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.cancel, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'ABBRECHEN',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: C.bgPanel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: C.border),
         ),
-        if (viewModel.quest != null) ...[
-          const SizedBox(height: 16),
-          Row(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: viewModel.isLoading ? null : () => _handleDuplicate(viewModel),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: C.accent,
-                    side: BorderSide(color: C.accent, width: 2),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+              Text('Belohnung hinzufügen',
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: C.text)),
+              const SizedBox(height: 14),
+              _dialogField(ctx, descCtrl, 'Beschreibung', 'z.B. Magisches Schwert'),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _dialogField(ctx, goldCtrl, 'Gold (optional)', '0',
+                        keyboardType: TextInputType.number),
                   ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.copy, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        'DUPLIZIEREN',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _dialogField(ctx, xpCtrl, 'EP (optional)', '0',
+                        keyboardType: TextInputType.number),
                   ),
-                ),
+                ],
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: viewModel.isLoading ? null : () => _handleDelete(viewModel),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: C.red,
-                    side: BorderSide(color: C.red, width: 2),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: Text('Abbrechen',
+                        style: TextStyle(color: C.textMid, fontSize: 13)),
                   ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.delete_outline, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        'LÖSCHEN',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () {
+                      final gold = int.tryParse(goldCtrl.text) ?? 0;
+                      final xp = int.tryParse(xpCtrl.text) ?? 0;
+                      if (descCtrl.text.trim().isNotEmpty ||
+                          gold > 0 ||
+                          xp > 0) {
+                        vm.addReward(QuestReward(
+                          id: DateTime.now()
+                              .millisecondsSinceEpoch
+                              .toString(),
+                          type: gold > 0
+                              ? QuestRewardType.gold
+                              : QuestRewardType.experience,
+                          name: descCtrl.text.trim().isNotEmpty
+                              ? descCtrl.text
+                              : (gold > 0 ? 'Gold Belohnung' : 'EP Belohnung'),
+                          description: descCtrl.text.trim().isNotEmpty
+                              ? descCtrl.text
+                              : null,
+                          goldAmount: gold > 0 ? gold : null,
+                          experiencePoints: xp > 0 ? xp : null,
+                        ));
+                        Navigator.of(ctx).pop();
+                      }
+                    },
+                    style: FilledButton.styleFrom(
+                        backgroundColor: C.amber,
+                        foregroundColor: Colors.black87),
+                    child: const Text('Hinzufügen',
+                        style: TextStyle(fontSize: 13)),
                   ),
-                ),
+                ],
               ),
             ],
           ),
-        ],
-      ],
-    );
-  }
-
-  String _getQuestStatusDisplayName(QuestStatus status) {
-    return switch (status) {
-      QuestStatus.active => 'Aktiv',
-      QuestStatus.completed => 'Abgeschlossen',
-      QuestStatus.failed => 'Fehlgeschlagen',
-      QuestStatus.abandoned => 'Aufgegeben',
-      QuestStatus.onHold => 'Pausiert',
-    };
-  }
-
-  String _getQuestTypeDisplayName(QuestType type) {
-    return switch (type) {
-      QuestType.main => 'Hauptquest',
-      QuestType.side => 'Nebenquest',
-      QuestType.personal => 'Persönlich',
-      QuestType.faction => 'Fraktions-Quest',
-    };
-  }
-
-  String _getQuestDifficultyDisplayName(QuestDifficulty difficulty) {
-    return switch (difficulty) {
-      QuestDifficulty.easy => 'Leicht',
-      QuestDifficulty.medium => 'Mittel',
-      QuestDifficulty.hard => 'Schwer',
-      QuestDifficulty.deadly => 'Tödlich',
-      QuestDifficulty.epic => 'Episch',
-      QuestDifficulty.legendary => 'Legendär',
-    };
-  }
-
-  void _showAddRewardDialog(EditQuestViewModel viewModel) {
-    final descriptionController = TextEditingController();
-    final goldController = TextEditingController();
-    final xpController = TextEditingController();
-    final C = context.appColors;
-
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white.withValues(alpha: 0.98),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
         ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: C.accent,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.card_giftcard, color: Colors.white, size: 24),
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              'Belohnung hinzufügen',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: descriptionController,
-              decoration: InputDecoration(
-                labelText: 'Beschreibung',
-                hintText: 'z.B. Magisches Schwert',
-                prefixIcon: const Icon(Icons.description),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: goldController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Gold (optional)',
-                hintText: '0',
-                prefixIcon: const Icon(Icons.monetization_on),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: xpController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Erfahrungspunkte (optional)',
-                hintText: '0',
-                prefixIcon: const Icon(Icons.auto_graph),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          OutlinedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: OutlinedButton.styleFrom(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            child: const Text('ABBRECHEN'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final gold = int.tryParse(goldController.text) ?? 0;
-              final xp = int.tryParse(xpController.text) ?? 0;
-
-              if (descriptionController.text.trim().isNotEmpty || gold > 0 || xp > 0) {
-                final reward = QuestReward(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  type: gold > 0 ? QuestRewardType.gold : QuestRewardType.experience,
-                  name: descriptionController.text.trim().isNotEmpty
-                      ? descriptionController.text
-                      : (gold > 0 ? 'Gold Belohnung' : 'EP Belohnung'),
-                  description: descriptionController.text.trim().isNotEmpty
-                      ? descriptionController.text
-                      : null,
-                  goldAmount: gold > 0 ? gold : null,
-                  experiencePoints: xp > 0 ? xp : null,
-                );
-                viewModel.addReward(reward);
-                Navigator.of(context).pop();
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: C.amber,
-              foregroundColor: Colors.black87,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            child: const Text('HINZUFÜGEN'),
-          ),
-        ],
       ),
     );
   }
 
-  void _showDeleteRewardDialog(EditQuestViewModel viewModel, QuestReward reward) {
+  void _showDeleteRewardDialog(EditQuestViewModel vm, QuestReward reward) {
     final C = context.appColors;
     showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white.withValues(alpha: 0.98),
+      builder: (ctx) => Dialog(
+        backgroundColor: C.bgPanel,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: C.border),
         ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: C.red.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Belohnung löschen',
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: C.text)),
+              const SizedBox(height: 10),
+              Text('"${reward.name}" wirklich löschen?',
+                  style: TextStyle(fontSize: 13, color: C.textMid)),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: Text('Abbrechen',
+                        style: TextStyle(color: C.textMid, fontSize: 13)),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () {
+                      vm.removeReward(reward);
+                      Navigator.of(ctx).pop();
+                    },
+                    style: FilledButton.styleFrom(backgroundColor: C.red),
+                    child: const Text('Löschen',
+                        style: TextStyle(fontSize: 13)),
+                  ),
+                ],
               ),
-              child: Icon(Icons.delete_outline, color: C.red),
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              'Belohnung löschen',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        content: Text(
-          'Möchten Sie diese Belohnung wirklich löschen?\n\n${reward.name}',
-          style: const TextStyle(fontSize: 16),
-        ),
-        actions: [
-          OutlinedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: OutlinedButton.styleFrom(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            child: const Text('ABBRECHEN'),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              viewModel.removeReward(reward);
-              Navigator.of(context).pop();
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: C.red,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            child: const Text('LÖSCHEN'),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  void _handleSave(EditQuestViewModel viewModel) async {
+  Widget _dialogField(
+    BuildContext ctx,
+    TextEditingController ctrl,
+    String label,
+    String hint, {
+    TextInputType? keyboardType,
+  }) {
+    final C = ctx.appColors;
+    return TextField(
+      controller: ctrl,
+      keyboardType: keyboardType,
+      style: TextStyle(fontSize: 13, color: C.text),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        labelStyle: TextStyle(fontSize: 12, color: C.textMid),
+        hintStyle: TextStyle(fontSize: 12, color: C.textSoft),
+        filled: true,
+        fillColor: C.bgHover,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(7),
+          borderSide: BorderSide(color: C.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(7),
+          borderSide: BorderSide(color: C.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(7),
+          borderSide: BorderSide(color: C.accent),
+        ),
+      ),
+    );
+  }
+
+  // ── ACTIONS ───────────────────────────────────────────────────────────────────
+
+  Future<void> _handleSave(EditQuestViewModel vm) async {
     if (_formKey.currentState?.validate() ?? false) {
-      final success = await viewModel.saveQuest();
-      if (success && mounted) {
-        Navigator.of(context).pop(true);
-      }
+      final success = await vm.saveQuest();
+      if (success && mounted) Navigator.of(context).pop(true);
     }
   }
 
-  void _handleCancel(EditQuestViewModel viewModel) {
-    if (viewModel.hasUnsavedChanges) {
-      _showUnsavedChangesDialog(viewModel);
+  void _handleCancel(EditQuestViewModel vm) {
+    if (vm.hasUnsavedChanges) {
+      _showDiscardDialog();
     } else {
       Navigator.of(context).pop();
     }
   }
 
-  void _handleDelete(EditQuestViewModel viewModel) async {
-    final confirmed = await _showDeleteConfirmationDialog();
+  Future<void> _handleDelete(EditQuestViewModel vm) async {
+    final confirmed = await _showConfirmDialog(
+      title: 'Quest löschen',
+      message:
+          'Möchtest du diese Quest wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
+      confirmLabel: 'Löschen',
+      isDestructive: true,
+    );
     if (confirmed == true) {
-      final success = await viewModel.deleteQuest();
-      if (success && mounted) {
-        Navigator.of(context).pop(true);
-      }
+      final success = await vm.deleteQuest();
+      if (success && mounted) Navigator.of(context).pop(true);
     }
   }
 
-  void _handleDuplicate(EditQuestViewModel viewModel) {
-    viewModel.duplicateQuest();
+  void _handleDuplicate(EditQuestViewModel vm) {
+    vm.duplicateQuest();
     _populateFields();
   }
 
-  void _handleBackNavigation(EditQuestViewModel viewModel) {
-    if (viewModel.hasUnsavedChanges) {
-      _showUnsavedChangesDialog(viewModel);
+  void _handleBackNavigation(EditQuestViewModel vm) {
+    if (vm.hasUnsavedChanges) {
+      _showDiscardDialog();
     } else {
       Navigator.of(context).pop();
     }
   }
 
-  Future<bool?> _showUnsavedChangesDialog(EditQuestViewModel viewModel) {
+  void _showDiscardDialog() {
+    final C = context.appColors;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: C.bgPanel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: C.border),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Änderungen verwerfen',
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: C.text)),
+              const SizedBox(height: 10),
+              Text(
+                  'Du hast ungespeicherte Änderungen. Wirklich verlassen?',
+                  style: TextStyle(fontSize: 13, color: C.textMid)),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: Text('Weiter bearbeiten',
+                        style: TextStyle(color: C.textMid, fontSize: 13)),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      Navigator.of(context).pop();
+                    },
+                    style: FilledButton.styleFrom(backgroundColor: C.accent),
+                    child: const Text('Verlassen',
+                        style: TextStyle(fontSize: 13)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<bool?> _showConfirmDialog({
+    required String title,
+    required String message,
+    required String confirmLabel,
+    bool isDestructive = false,
+  }) {
     final C = context.appColors;
     return showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white.withValues(alpha: 0.98),
+      builder: (ctx) => Dialog(
+        backgroundColor: C.bgPanel,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: C.border),
         ),
-        title: Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: C.amber, size: 28),
-            const SizedBox(width: 12),
-            const Text(
-              'Ungespeicherte Änderungen',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        content: const Text(
-          'Sie haben ungespeicherte Änderungen. Möchten Sie wirklich gehen?',
-          style: TextStyle(fontSize: 16),
-        ),
-        actions: [
-          OutlinedButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            style: OutlinedButton.styleFrom(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            child: const Text('ABBRECHEN'),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title,
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: C.text)),
+              const SizedBox(height: 10),
+              Text(message,
+                  style: TextStyle(fontSize: 13, color: C.textMid)),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: Text('Abbrechen',
+                        style: TextStyle(color: C.textMid, fontSize: 13)),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    style: FilledButton.styleFrom(
+                        backgroundColor:
+                            isDestructive ? C.red : C.accent),
+                    child: Text(confirmLabel,
+                        style: const TextStyle(fontSize: 13)),
+                  ),
+                ],
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: C.accent,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        ),
+      ),
+    );
+  }
+}
+
+// ── LOCAL WIDGETS ─────────────────────────────────────────────────────────────
+
+class _RewardRow extends StatelessWidget {
+  const _RewardRow({
+    required this.reward,
+    required this.C,
+    required this.onDelete,
+  });
+
+  final QuestReward reward;
+  final AppColorsExtension C;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: C.bgHover,
+        border: Border.all(color: C.border),
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            reward.goldAmount != null && reward.goldAmount! > 0
+                ? Icons.monetization_on
+                : reward.experiencePoints != null &&
+                        reward.experiencePoints! > 0
+                    ? Icons.auto_graph
+                    : Icons.card_giftcard,
+            size: 14,
+            color: C.amber,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(reward.name,
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: C.text)),
+                if ((reward.goldAmount ?? 0) > 0 ||
+                    (reward.experiencePoints ?? 0) > 0)
+                  Row(
+                    children: [
+                      if ((reward.goldAmount ?? 0) > 0) ...[
+                        Text('${reward.goldAmount} GP',
+                            style:
+                                TextStyle(fontSize: 11, color: C.amber)),
+                        if ((reward.experiencePoints ?? 0) > 0)
+                          const SizedBox(width: 8),
+                      ],
+                      if ((reward.experiencePoints ?? 0) > 0)
+                        Text('${reward.experiencePoints} EP',
+                            style: TextStyle(
+                                fontSize: 11, color: C.accent)),
+                    ],
+                  ),
+              ],
             ),
-            child: const Text('VERLASSEN'),
+          ),
+          GestureDetector(
+            onTap: onDelete,
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: C.red.withValues(alpha: 0.08),
+                border: Border.all(color: C.red.withValues(alpha: 0.25)),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(Icons.delete_outline, size: 13, color: C.red),
+            ),
           ),
         ],
       ),
     );
   }
+}
 
-  Future<bool?> _showDeleteConfirmationDialog() {
-    final C = context.appColors;
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white.withValues(alpha: 0.98),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: C.red.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.dangerous, color: C.red),
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              'Löschen bestätigen',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        content: const Text(
-          'Möchten Sie diesen Quest wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
-          style: TextStyle(fontSize: 16),
-        ),
-        actions: [
-          OutlinedButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            style: OutlinedButton.styleFrom(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            child: const Text('ABBRECHEN'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: C.red,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            child: const Text('LÖSCHEN'),
+class _ErrorBanner extends StatelessWidget {
+  const _ErrorBanner({required this.message, required this.C});
+
+  final String message;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: C.red.withValues(alpha: 0.08),
+        border: Border.all(color: C.red.withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline, size: 14, color: C.red),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(message,
+                style: TextStyle(fontSize: 12, color: C.red)),
           ),
         ],
       ),
