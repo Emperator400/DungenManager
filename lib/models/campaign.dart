@@ -398,6 +398,8 @@ class Campaign {
   final CampaignStats stats;
   final String accentColor;
   final String system;
+  final bool isTemplate;
+  final String? templateId;
 
   /// Tabellenname für die Datenbank
   static const String tableName = 'campaigns';
@@ -423,6 +425,8 @@ class Campaign {
     this.stats = const CampaignStats(),
     this.accentColor = '#7c3aed',
     this.system = 'D&D 5e',
+    this.isTemplate = false,
+    this.templateId,
   });
 
   /// Factory für neue Kampagnen mit automatisch generierter ID
@@ -578,6 +582,8 @@ class Campaign {
         stats: CampaignStats.fromDatabaseMap(statsMap),
         accentColor: map['accent_color'] as String? ?? '#7c3aed',
         system: map['system'] as String? ?? 'D&D 5e',
+        isTemplate: (map['is_template'] as int? ?? 0) == 1,
+        templateId: map['template_id'] as String?,
       );
     } catch (e) {
       debugPrint('Fehler beim Parsen der Kampagne: $e');
@@ -690,6 +696,8 @@ class Campaign {
       'stats': _encodeJson(stats.toDatabaseMap()),
       'accent_color': accentColor,
       'system': system,
+      'is_template': isTemplate ? 1 : 0,
+      'template_id': templateId,
     };
   }
 
@@ -715,6 +723,8 @@ class Campaign {
     CampaignStats? stats,
     String? accentColor,
     String? system,
+    bool? isTemplate,
+    Object? templateId = _sentinel,
   }) {
     return Campaign(
       id: id ?? this.id,
@@ -737,8 +747,12 @@ class Campaign {
       stats: stats ?? this.stats,
       accentColor: accentColor ?? this.accentColor,
       system: system ?? this.system,
+      isTemplate: isTemplate ?? this.isTemplate,
+      templateId: templateId == _sentinel ? this.templateId : templateId as String?,
     );
   }
+
+  static const Object _sentinel = Object();
 
   @override
   bool operator ==(Object other) {

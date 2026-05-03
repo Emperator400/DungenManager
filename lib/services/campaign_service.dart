@@ -5,6 +5,7 @@ import 'dart:async';
 import '../models/campaign.dart';
 import '../database/repositories/campaign_model_repository.dart';
 import '../database/core/database_connection.dart';
+import '../services/uuid_service.dart';
 import 'exceptions/service_exceptions.dart';
 
 /// Service für Campaign Business Logic
@@ -562,6 +563,49 @@ class CampaignService {
     } catch (e) {
       return null;
     }
+  }
+
+  // ========== TEMPLATE OPERATIONS ==========
+
+  /// Gibt alle Vorlagen zurück
+  Future<ServiceResult<List<Campaign>>> getTemplates() async {
+    return performServiceOperation('getTemplates', () async {
+      final all = await _campaignRepository.findAll();
+      return all.where((c) => c.isTemplate).toList();
+    });
+  }
+
+  /// Erstellt eine Kopie einer Vorlage als neue aktive Kampagne
+  Future<ServiceResult<Campaign>> createCopyFromTemplate(
+    Campaign template, {
+    required String title,
+  }) async {
+    return performServiceOperation('createCopyFromTemplate', () async {
+      if (!template.isTemplate) {
+        throw ValidationException(
+          'Nur Vorlagen können kopiert werden',
+          operation: 'createCopyFromTemplate',
+        );
+      }
+
+      final now = DateTime.now();
+      final copy = Campaign(
+        id: UuidService().generateId(),
+        title: title,
+        description: template.description,
+        status: CampaignStatus.planning,
+        type: template.type,
+        createdAt: now,
+        updatedAt: now,
+        settings: template.settings,
+        accentColor: template.accentColor,
+        system: template.system,
+        isTemplate: false,
+        templateId: template.id,
+      );
+
+      return await _campaignRepository.create(copy);
+    });
   }
 
   // ========== PRIVATE HELPER METHODS ==========

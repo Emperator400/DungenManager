@@ -36,13 +36,14 @@ abstract final class CampaignEditModal {
   static Future<void> show(
     BuildContext context, {
     Campaign? campaign,
+    bool isTemplate = false,
   }) {
     return showDialog<void>(
       context: context,
       barrierColor: Colors.black54,
       builder: (ctx) => ChangeNotifierProvider.value(
         value: context.read<CampaignViewModel>(),
-        child: _CampaignEditModal(campaign: campaign),
+        child: _CampaignEditModal(campaign: campaign, isTemplate: isTemplate),
       ),
     );
   }
@@ -51,8 +52,9 @@ abstract final class CampaignEditModal {
 // ── MODAL ─────────────────────────────────────────────────────────────────────
 
 class _CampaignEditModal extends StatefulWidget {
-  const _CampaignEditModal({this.campaign});
+  const _CampaignEditModal({this.campaign, this.isTemplate = false});
   final Campaign? campaign;
+  final bool isTemplate;
 
   @override
   State<_CampaignEditModal> createState() => _CampaignEditModalState();
@@ -479,13 +481,22 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
     final desc  = _descCtrl.text.trim();
 
     if (_isNew) {
-      await vm.createCampaign(
-        title: title,
-        description: desc,
-        accentColor: _accentColor,
-        system: _system,
-        status: _status,
-      );
+      if (widget.isTemplate) {
+        await vm.createTemplate(
+          title: title,
+          description: desc,
+          accentColor: _accentColor,
+          system: _system,
+        );
+      } else {
+        await vm.createCampaign(
+          title: title,
+          description: desc,
+          accentColor: _accentColor,
+          system: _system,
+          status: _status,
+        );
+      }
     } else {
       await vm.updateCampaign(
         widget.campaign!.copyWith(

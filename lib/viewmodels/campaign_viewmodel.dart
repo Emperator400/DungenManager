@@ -73,37 +73,50 @@ class CampaignViewModel extends ChangeNotifier {
   List<Campaign>? _cachedFilteredCampaigns;
   bool _isCacheValid = false;
   
+  List<Campaign> get templates => _campaigns.where((c) => c.isTemplate).toList();
+  List<Campaign> get activeCampaigns => _campaigns.where((c) => !c.isTemplate).toList();
+
   List<Campaign> get filteredCampaigns {
     if (_isCacheValid && _cachedFilteredCampaigns != null) {
       return _cachedFilteredCampaigns!;
     }
-    
+
     debugPrint('🔍 [CampaignViewModel] Berechne gefilterte Kampagnen (Cache-Miss)');
-    
+
+    final source = activeCampaigns;
     final filtered = <Campaign>[];
-    
-    // Search filter
+
     if (_searchQuery.isEmpty) {
-      filtered.addAll(_campaigns);
+      filtered.addAll(source);
     } else {
       final query = _searchQuery.toLowerCase();
-      for (final campaign in _campaigns) {
+      for (final campaign in source) {
         if (campaign.title.toLowerCase().contains(query) ||
             campaign.description.toLowerCase().contains(query)) {
           filtered.add(campaign);
         }
       }
     }
-    
-    // Sorting
+
     if (filtered.length > 1) {
       filtered.sort((a, b) => _compareCampaigns(a, b));
     }
-    
+
     _cachedFilteredCampaigns = filtered;
     _isCacheValid = true;
-    
+
     return filtered;
+  }
+
+  List<Campaign> get filteredTemplates {
+    final source = templates;
+    if (_searchQuery.isEmpty) return source;
+    final query = _searchQuery.toLowerCase();
+    return source
+        .where((c) =>
+            c.title.toLowerCase().contains(query) ||
+            c.description.toLowerCase().contains(query))
+        .toList();
   }
   
   void _invalidateFilteredCache() {
@@ -315,6 +328,72 @@ class CampaignViewModel extends ChangeNotifier {
     }
   }
   
+  /// Erstellt eine neue Vorlage
+  Future<void> createTemplate({
+    required String title,
+    required String description,
+    String accentColor = '#7c3aed',
+    String system = 'D&D 5e',
+  }) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final template = Campaign.create(
+        title: title,
+        description: description,
+        accentColor: accentColor,
+        system: system,
+      ).copyWith(isTemplate: true);
+
+      if (_campaignRepo == null) throw Exception('CampaignModelRepository nicht verfügbar');
+      final saved = await _campaignRepo!.create(template);
+      _campaigns.insert(0, saved);
+      _invalidateFilteredCache();
+      notifyListeners();
+    } catch (e) {
+      _setError('Fehler beim Erstellen der Vorlage: $e');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Erstellt eine Kopie aus einer Vorlage
+  Future<Campaign?> createCopyFromTemplate(
+    Campaign template, {
+    required String title,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      if (_campaignRepo == null) throw Exception('CampaignModelRepository nicht verfügbar');
+      final now = DateTime.now();
+      final copy = Campaign(
+        id: UuidService().generateId(),
+        title: title,
+        description: template.description,
+        status: CampaignStatus.planning,
+        type: template.type,
+        createdAt: now,
+        updatedAt: now,
+        settings: template.settings,
+        accentColor: template.accentColor,
+        system: template.system,
+        isTemplate: false,
+        templateId: template.id,
+      );
+      final saved = await _campaignRepo!.create(copy);
+      _campaigns.insert(0, saved);
+      _invalidateFilteredCache();
+      notifyListeners();
+      return saved;
+    } catch (e) {
+      _setError('Fehler beim Kopieren der Vorlage: $e');
+      return null;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   void setViewMode(CampaignViewMode mode) {
     _viewMode = mode;
     notifyListeners();

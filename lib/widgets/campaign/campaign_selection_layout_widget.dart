@@ -20,8 +20,15 @@ import '../../database/repositories/campaign_model_repository.dart';
 import '../../screens/navigation/main_navigation_screen.dart';
 import '../../widgets/campaign/campaign_edit_modal_widget.dart';
 
-class CampaignSelectionLayout extends StatelessWidget {
+class CampaignSelectionLayout extends StatefulWidget {
   const CampaignSelectionLayout({super.key});
+
+  @override
+  State<CampaignSelectionLayout> createState() => _CampaignSelectionLayoutState();
+}
+
+class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
+  int _activeTab = 0; // 0 = Kampagnen, 1 = Vorlagen
 
   @override
   Widget build(BuildContext context) {
@@ -36,13 +43,46 @@ class CampaignSelectionLayout extends StatelessWidget {
           color: C.accent,
           child: Column(
             children: [
-              _buildFilterSection(context, viewModel, C),
+              _buildTabBar(C),
+              if (_activeTab == 0) _buildFilterSection(context, viewModel, C),
               Expanded(child: _buildContent(context, viewModel, C)),
             ],
           ),
         ),
       ),
       floatingActionButton: _buildFab(context, C),
+    );
+  }
+
+  Widget _buildTabBar(AppColorsExtension C) {
+    return Container(
+      color: C.bgPanel,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Row(
+              children: [
+                _TabPill(
+                  label: 'Kampagnen',
+                  active: _activeTab == 0,
+                  C: C,
+                  onTap: () => setState(() => _activeTab = 0),
+                ),
+                const SizedBox(width: 6),
+                _TabPill(
+                  label: 'Vorlagen',
+                  active: _activeTab == 1,
+                  C: C,
+                  onTap: () => setState(() => _activeTab = 1),
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, thickness: 1, color: C.border),
+        ],
+      ),
     );
   }
 
@@ -80,7 +120,9 @@ class CampaignSelectionLayout extends StatelessWidget {
                     const SizedBox(width: 8),
                     Consumer<CampaignViewModel>(
                       builder: (context, vm, _) => Text(
-                        '${vm.campaigns.length}',
+                        _activeTab == 0
+                            ? '${vm.activeCampaigns.length}'
+                            : '${vm.templates.length}',
                         style: TextStyle(fontSize: 12, color: C.textSoft),
                       ),
                     ),
@@ -157,13 +199,23 @@ class CampaignSelectionLayout extends StatelessWidget {
       );
     }
 
+    return _activeTab == 0
+        ? _buildCampaignList(context, viewModel, C)
+        : _buildTemplateList(context, viewModel, C);
+  }
+
+  Widget _buildCampaignList(
+    BuildContext context,
+    CampaignViewModel viewModel,
+    AppColorsExtension C,
+  ) {
     final filtered = viewModel.filteredCampaigns;
 
     if (filtered.isEmpty) {
-      return viewModel.campaigns.isEmpty
+      return viewModel.activeCampaigns.isEmpty
           ? EmptyStateWidget.withCreate(
               title: 'Noch keine Kampagnen',
-              message: 'Erstelle deine erste Kampagne, um dein Abenteuer zu beginnen!',
+              message: 'Erstelle deine erste Kampagne oder nutze eine Vorlage.',
               icon: Icons.campaign_outlined,
               iconColor: C.accent,
               onCreate: () => _showCreateCampaignDialog(context),
@@ -195,25 +247,54 @@ class CampaignSelectionLayout extends StatelessWidget {
     );
   }
 
+  Widget _buildTemplateList(
+    BuildContext context,
+    CampaignViewModel viewModel,
+    AppColorsExtension C,
+  ) {
+    final filtered = viewModel.filteredTemplates;
+
+    if (filtered.isEmpty) {
+      return EmptyStateWidget.withCreate(
+        title: 'Noch keine Vorlagen',
+        message: 'Erstelle eine Vorlage, um sie für mehrere Gruppen wiederzuverwenden.',
+        icon: Icons.copy_outlined,
+        iconColor: C.accent,
+        onCreate: () => _showCreateTemplateDialog(context),
+        buttonText: 'Erste Vorlage erstellen',
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: filtered.length,
+      itemBuilder: (ctx, i) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: UnifiedCampaignCard(
+          campaign: filtered[i],
+          viewModel: viewModel,
+          onNavigate: () => _editCampaign(context, filtered[i]),
+          onEdit: () => _editCampaign(context, filtered[i]),
+          onUseCopy: () => _showUseCopyDialog(context, filtered[i], viewModel),
+        ),
+      ),
+    );
+  }
+
   Widget _buildFab(BuildContext context, AppColorsExtension C) {
-    return Consumer<CampaignViewModel>(
-      builder: (context, vm, _) {
-        if (vm.campaigns.isEmpty) {
-          return const SizedBox.shrink();
-        }
-        return FilledButton.icon(
-          onPressed: () => _showCreateCampaignDialog(context),
-          icon: AppIcon(AppIconName.plus, size: 14, color: Colors.white),
-          label: const Text('Neue Kampagne'),
-          style: FilledButton.styleFrom(
-            backgroundColor: C.accent,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          ),
-        );
-      },
+    return FilledButton.icon(
+      onPressed: () => _activeTab == 0
+          ? _showCreateCampaignDialog(context)
+          : _showCreateTemplateDialog(context),
+      icon: AppIcon(AppIconName.plus, size: 14, color: Colors.white),
+      label: Text(_activeTab == 0 ? 'Neue Kampagne' : 'Neue Vorlage'),
+      style: FilledButton.styleFrom(
+        backgroundColor: C.accent,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+      ),
     );
   }
 
@@ -276,6 +357,102 @@ class CampaignSelectionLayout extends StatelessWidget {
 
   void _showCreateCampaignDialog(BuildContext context) {
     CampaignEditModal.show(context);
+  }
+
+  void _showCreateTemplateDialog(BuildContext context) {
+    CampaignEditModal.show(context, isTemplate: true);
+  }
+
+  Future<void> _showUseCopyDialog(
+    BuildContext context,
+    Campaign template,
+    CampaignViewModel viewModel,
+  ) async {
+    final C = context.appColors;
+    final controller = TextEditingController(text: '${template.title} — Gruppe 1');
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: C.bgPanel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: C.border),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Kopie von "${template.title}" erstellen',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: C.text),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Wähle einen Namen für die neue Kampagne.',
+                style: TextStyle(fontSize: 12, color: C.textMid),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                style: TextStyle(fontSize: 13, color: C.text),
+                decoration: InputDecoration(
+                  hintText: 'Name der Kampagne',
+                  hintStyle: TextStyle(color: C.textSoft),
+                  filled: true,
+                  fillColor: C.bgHover,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: C.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: C.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: C.accent),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: Text('Abbrechen', style: TextStyle(color: C.textMid)),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    style: FilledButton.styleFrom(backgroundColor: C.accent),
+                    child: const Text('Kopie erstellen'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (!(confirmed ?? false) || !context.mounted) return;
+
+    final title = controller.text.trim();
+    if (title.isEmpty) return;
+
+    final copy = await viewModel.createCopyFromTemplate(template, title: title);
+    if (copy != null && context.mounted) {
+      setState(() => _activeTab = 0);
+      SnackBarHelper.showSuccess(context, 'Kopie "${copy.title}" erstellt');
+    } else if (context.mounted) {
+      SnackBarHelper.showError(context, 'Fehler beim Erstellen der Kopie');
+    }
   }
 
   Future<void> _checkForUpdatesManually(BuildContext context) async {
@@ -394,4 +571,44 @@ class _HoverIconButtonState extends State<_HoverIconButton> {
       ),
     );
   }
+}
+
+// ── TAB PILL ──────────────────────────────────────────────────────────────────
+
+class _TabPill extends StatelessWidget {
+  const _TabPill({
+    required this.label,
+    required this.active,
+    required this.C,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool active;
+  final AppColorsExtension C;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          decoration: BoxDecoration(
+            color: active ? C.accent.withValues(alpha: 0.12) : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: active ? C.accent.withValues(alpha: 0.35) : Colors.transparent,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+              color: active ? C.accent : C.textMid,
+            ),
+          ),
+        ),
+      );
 }

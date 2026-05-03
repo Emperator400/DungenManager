@@ -15,6 +15,7 @@ class UnifiedCampaignCard extends UnifiedCardBase {
     this.onNavigate,
     super.onEdit,
     this.onDuplicate,
+    this.onUseCopy,
     super.onToggleFavorite,
     super.isSelected,
   });
@@ -23,6 +24,7 @@ class UnifiedCampaignCard extends UnifiedCardBase {
   final CampaignViewModel viewModel;
   final VoidCallback? onNavigate;
   final VoidCallback? onDuplicate;
+  final VoidCallback? onUseCopy;
 
   @override
   Widget buildCardContent(BuildContext context) =>
@@ -105,9 +107,21 @@ class _CampaignCardContentState extends State<_CampaignCardContent> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 4),
-                              _StatusBadge(
-                                status: c.campaign.statusDescription,
-                                C: C,
+                              Row(
+                                children: [
+                                  _StatusBadge(
+                                    status: c.campaign.statusDescription,
+                                    C: C,
+                                  ),
+                                  if (c.campaign.isTemplate) ...[
+                                    const SizedBox(width: 5),
+                                    _TemplateBadge(C: C),
+                                  ],
+                                  if (c.campaign.templateId != null) ...[
+                                    const SizedBox(width: 5),
+                                    _CopyBadge(C: C),
+                                  ],
+                                ],
                               ),
                             ],
                           ),
@@ -198,7 +212,10 @@ class _PopupBtn extends StatelessWidget {
         offset: const Offset(0, 30),
         onSelected: (v) => _handle(context, v),
         itemBuilder: (_) => [
-          _item('duplicate', AppIconName.copy, 'Duplizieren', C),
+          if (card.onUseCopy != null)
+            _item('use_copy', AppIconName.copy, 'Als Kopie verwenden', C)
+          else
+            _item('duplicate', AppIconName.copy, 'Duplizieren', C),
           _item('delete', AppIconName.trash, 'Löschen', C, color: C.red),
         ],
         child: Container(
@@ -239,6 +256,8 @@ class _PopupBtn extends StatelessWidget {
     switch (action) {
       case 'duplicate':
         card.onDuplicate?.call();
+      case 'use_copy':
+        card.onUseCopy?.call();
       case 'delete':
         _showDeleteDialog(context);
     }
@@ -454,3 +473,52 @@ class _IconBtn extends StatelessWidget {
 
 String _formatDate(DateTime date) =>
     '${date.day}.${date.month}.${date.year}';
+
+// ── TEMPLATE / COPY BADGES ────────────────────────────────────────────────────
+
+class _TemplateBadge extends StatelessWidget {
+  const _TemplateBadge({required this.C});
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: C.accent.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: C.accent.withValues(alpha: 0.25)),
+        ),
+        child: Text(
+          'Vorlage',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+            color: C.accent,
+          ),
+        ),
+      );
+}
+
+class _CopyBadge extends StatelessWidget {
+  const _CopyBadge({required this.C});
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: C.textSoft.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: C.border),
+        ),
+        child: Text(
+          'Kopie',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+            color: C.textMid,
+          ),
+        ),
+      );
+}
+

@@ -90,7 +90,24 @@ class DatabaseMigration {
   // Füge accent_color und system Spalten zur campaigns Tabelle hinzu
   await _addCampaignColorAndSystemColumns(db);
 
+  // Füge is_template und template_id Spalten zur campaigns Tabelle hinzu
+  await _addCampaignTemplateColumns(db);
+
   debugPrint('Database migration completed successfully');
+  }
+
+  Future<void> _addCampaignTemplateColumns(Database db) async {
+    final columns = await db.rawQuery("PRAGMA table_info('campaigns')");
+    final columnNames = columns.map((c) => c['name'] as String).toSet();
+
+    if (!columnNames.contains('is_template')) {
+      await db.execute("ALTER TABLE campaigns ADD COLUMN is_template INTEGER NOT NULL DEFAULT 0");
+      debugPrint('Added is_template column to campaigns');
+    }
+    if (!columnNames.contains('template_id')) {
+      await db.execute("ALTER TABLE campaigns ADD COLUMN template_id TEXT");
+      debugPrint('Added template_id column to campaigns');
+    }
   }
   
   /// Erstellt die PlayerCharacter-Tabelle
