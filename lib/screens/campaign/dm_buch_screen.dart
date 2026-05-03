@@ -11,6 +11,7 @@ import '../../viewmodels/dm_buch_viewmodel.dart';
 import '../../widgets/active_session/atmosphere_quadrant.dart';
 import '../../widgets/ui_components/shared/app_icon.dart';
 import '../../widgets/ui_components/shared/app_logo.dart';
+import '../quests/edit_quest_screen.dart';
 import '../scenes/edit_scene_screen.dart';
 
 // ── ENTRY POINT ───────────────────────────────────────────────────────────────
@@ -485,59 +486,127 @@ class _QuestsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final C = context.appColors;
-    final quests = vm.activeQuests;
+    final quests = vm.quests;
 
-    if (quests.isEmpty) {
-      return Center(
-        child: Text(
-          'Keine aktiven Quests',
-          style: TextStyle(fontSize: 13, color: C.textSoft),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+          child: Row(
+            children: [
+              Text(
+                '${quests.length} Quest${quests.length != 1 ? "s" : ""}',
+                style: TextStyle(fontSize: 11, color: C.textSoft),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => Navigator.of(context)
+                    .push(MaterialPageRoute<void>(
+                      builder: (_) => EditQuestScreen(campaignId: vm.campaign.id),
+                    ))
+                    .then((_) => vm.reloadQuests()),
+                child: Text(
+                  'Quest erstellen',
+                  style: TextStyle(fontSize: 11, color: C.accent),
+                ),
+              ),
+            ],
+          ),
         ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(10),
-      itemCount: quests.length,
-      itemBuilder: (ctx, i) => _QuestRow(quest: quests[i], C: C),
+        Expanded(
+          child: quests.isEmpty
+              ? Center(
+                  child: Text(
+                    'Noch keine Quests',
+                    style: TextStyle(fontSize: 13, color: C.textSoft),
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+                  itemCount: quests.length,
+                  itemBuilder: (ctx, i) => _QuestRow(
+                    quest: quests[i],
+                    C: C,
+                    onTap: () => Navigator.of(context)
+                        .push(MaterialPageRoute<void>(
+                          builder: (_) => EditQuestScreen(quest: quests[i]),
+                        ))
+                        .then((_) => vm.reloadQuests()),
+                  ),
+                ),
+        ),
+      ],
     );
   }
 }
 
-class _QuestRow extends StatelessWidget {
-  const _QuestRow({required this.quest, required this.C});
+class _QuestRow extends StatefulWidget {
+  const _QuestRow({required this.quest, required this.C, required this.onTap});
 
   final Quest quest;
   final AppColorsExtension C;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.only(bottom: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: C.bgPanel,
-          border: Border.all(color: C.border),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(color: C.accent, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                quest.title,
-                style: TextStyle(fontSize: 12, color: C.text),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+  State<_QuestRow> createState() => _QuestRowState();
+}
+
+class _QuestRowState extends State<_QuestRow> {
+  bool _hovered = false;
+
+  Color _statusColor(AppColorsExtension C) {
+    switch (widget.quest.status) {
+      case QuestStatus.active:    return C.accent;
+      case QuestStatus.completed: return C.green;
+      case QuestStatus.failed:    return C.red;
+      case QuestStatus.abandoned: return C.textSoft;
+      case QuestStatus.onHold:    return C.amber;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final C = widget.C;
+    final dot = _statusColor(C);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 100),
+          margin: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: _hovered ? C.bgHover : C.bgPanel,
+            border: Border.all(color: C.border),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
               ),
-            ),
-          ],
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  widget.quest.title,
+                  style: TextStyle(fontSize: 12, color: C.text),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 6),
+              AppIcon(AppIconName.chevronRight, size: 12, color: C.textSoft),
+            ],
+          ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 // ── RIGHT PANE ────────────────────────────────────────────────────────────────

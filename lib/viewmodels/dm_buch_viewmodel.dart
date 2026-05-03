@@ -243,4 +243,9 @@ class DmBuchViewModel extends ChangeNotifier {
 
   List<Quest> get activeQuests =>
       _quests.where((q) => q.status == QuestStatus.active).toList();
+
+  Future<void> reloadQuests() async {
+    await _loadQuests();
+    notifyListeners();
+  }
 }
