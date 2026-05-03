@@ -35,6 +35,15 @@ class SceneModelRepository extends ModelRepository<Scene> {
     );
   }
 
+  /// Findet alle Szenen für einen Ort
+  Future<List<Scene>> findByOrtId(String ortId) async {
+    return await findWhere(
+      where: 'ort_id = ?',
+      whereArgs: [ortId],
+      orderBy: 'order_index ASC',
+    );
+  }
+
   /// Findet abgeschlossene Szenen
   Future<List<Scene>> findCompletedScenes() async {
     return await findWhere(

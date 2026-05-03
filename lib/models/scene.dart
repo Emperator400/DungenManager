@@ -41,6 +41,7 @@ class Scene {
   final Map<String, dynamic> sceneData; // Flexible Zusatzdaten (DM-Notizen, Ziele, etc.)
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? ortId;
 
   Scene({
     String? id,
@@ -61,6 +62,7 @@ class Scene {
     Map<String, dynamic>? sceneData,
     DateTime? createdAt,
     DateTime? updatedAt,
+    this.ortId,
   })  : id = id ?? UuidService().generateId(),
         linkedWikiEntryIds = linkedWikiEntryIds ?? [],
         linkedQuestIds = linkedQuestIds ?? [],
@@ -91,6 +93,7 @@ class Scene {
     Map<String, dynamic>? sceneData,
     DateTime? createdAt,
     DateTime? updatedAt,
+    Object? ortId = _sentinel,
   }) {
     return Scene(
       id: id ?? this.id,
@@ -111,8 +114,11 @@ class Scene {
       sceneData: sceneData ?? this.sceneData,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
+      ortId: ortId == _sentinel ? this.ortId : ortId as String?,
     );
   }
+
+  static const Object _sentinel = Object();
 
   Map<String, dynamic> toMap() {
     return {
@@ -312,6 +318,7 @@ class Scene {
       'scene_data': jsonEncode(sceneData),
       'created_at': createdAt.millisecondsSinceEpoch,
       'updated_at': updatedAt.millisecondsSinceEpoch,
+      'ort_id': ortId,
     };
   }
 
@@ -349,6 +356,7 @@ class Scene {
         sceneData: _parseMapData(map['scene_data'] ?? map['sceneData']),
         createdAt: ModelParsingHelper.safeDateTime(map, 'created_at', ModelParsingHelper.safeDateTime(map, 'createdAt', DateTime.now())),
         updatedAt: ModelParsingHelper.safeDateTime(map, 'updated_at', ModelParsingHelper.safeDateTime(map, 'updatedAt', DateTime.now())),
+        ortId: map['ort_id'] as String?,
       );
     } catch (e) {
       // Fallback bei Parsing-Fehlern

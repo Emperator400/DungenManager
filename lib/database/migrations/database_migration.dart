@@ -93,7 +93,50 @@ class DatabaseMigration {
   // Füge is_template und template_id Spalten zur campaigns Tabelle hinzu
   await _addCampaignTemplateColumns(db);
 
+  // Erstelle orte Tabelle und füge ort_id zu scenes hinzu
+  await _createOrteTable(db);
+  await _addOrtIdToScenes(db);
+
   debugPrint('Database migration completed successfully');
+  }
+
+  Future<void> _createOrteTable(Database db) async {
+    final result = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='orte'",
+    );
+    if (result.isNotEmpty) return;
+
+    await db.execute('''
+      CREATE TABLE orte (
+        id TEXT PRIMARY KEY,
+        campaign_id TEXT NOT NULL,
+        name TEXT NOT NULL DEFAULT '',
+        type TEXT NOT NULL DEFAULT 'other',
+        description TEXT NOT NULL DEFAULT '',
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        last_visited_at TEXT,
+        memory TEXT,
+        template_ort_id TEXT
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX idx_orte_campaign ON orte (campaign_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_orte_template ON orte (template_ort_id)',
+    );
+    debugPrint('Created orte table');
+  }
+
+  Future<void> _addOrtIdToScenes(Database db) async {
+    final columns = await db.rawQuery("PRAGMA table_info('scenes')");
+    final names = columns.map((c) => c['name'] as String).toSet();
+    if (!names.contains('ort_id')) {
+      await db.execute('ALTER TABLE scenes ADD COLUMN ort_id TEXT');
+      debugPrint('Added ort_id column to scenes');
+    }
   }
 
   Future<void> _addCampaignTemplateColumns(Database db) async {
