@@ -149,7 +149,7 @@ class DmApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dbConnection = DatabaseConnection.instance;
-
+  
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeNotifier()),

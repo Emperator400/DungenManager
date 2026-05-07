@@ -22,8 +22,10 @@ import '../../widgets/audio/sound_player_widget.dart';
 import '../../widgets/active_session/live_notes_quadrant.dart';
 import '../../widgets/active_session/atmosphere_quadrant.dart';
 import '../../widgets/active_session/quest_list_section.dart';
+import '../../widgets/active_session/hero_list_section.dart';
 import 'encounter_setup_screen.dart';
 import '../scenes/edit_scene_screen.dart';
+import '../../widgets/dm_buch/lore_keeper_picker_dialog.dart';
 
 class ActiveSessionScreen extends StatefulWidget {
   final Session session;
@@ -248,7 +250,17 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
       color: C.bg,
       child: Column(
         children: [
-          // Header
+          // Helden
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 280),
+            child: SingleChildScrollView(
+              child: HeroListSection(
+                campaignId: viewModel.campaign.id,
+              ),
+            ),
+          ),
+          Container(height: 1, color: C.border),
+          // Szenen Header
           Container(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
             decoration: BoxDecoration(
@@ -308,10 +320,32 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                 ),
                 const SizedBox(width: 8),
                 GestureDetector(
+                  onTap: _showCreateSceneFromLoreKeeper,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: C.bgHover,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: C.border),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.menu_book_outlined, size: 12, color: C.accent),
+                        const SizedBox(width: 5),
+                        Text(
+                          'LoreKeeper',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: C.accent),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                GestureDetector(
                   onTap: _showCreateSceneDialog,
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: C.accent,
                       borderRadius: BorderRadius.circular(6),
@@ -322,12 +356,8 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                         Icon(Icons.add, size: 12, color: Colors.white),
                         const SizedBox(width: 5),
                         Text(
-                          'Neue Szene',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white,
-                          ),
+                          'Neu',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Colors.white),
                         ),
                       ],
                     ),
@@ -1378,6 +1408,26 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     _showEditSceneDialog(null, isCreate: true);
   }
 
+  Future<void> _showCreateSceneFromLoreKeeper() async {
+    final wikiRepo = context.read<WikiEntryModelRepository>();
+    final entries = await wikiRepo.findByCampaign(widget.campaign.id);
+    if (!mounted) return;
+    final entry = await LoreKeeperPickerDialog.show(
+      context,
+      entries: entries,
+      title: 'Szene aus LoreKeeper',
+    );
+    if (entry != null && mounted) {
+      _showEditSceneDialog(
+        null,
+        isCreate: true,
+        initialName: entry.title,
+        initialDescription: entry.content,
+        initialLinkedWikiEntryIds: [entry.id],
+      );
+    }
+  }
+
   void _showResetConfirmDialog(
     ActiveSessionViewModel viewModel,
     AppColorsExtension C,
@@ -1423,7 +1473,13 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
     );
   }
 
-  void _showEditSceneDialog(Scene? scene, {bool isCreate = false}) async {
+  void _showEditSceneDialog(
+    Scene? scene, {
+    bool isCreate = false,
+    String? initialName,
+    String? initialDescription,
+    List<String>? initialLinkedWikiEntryIds,
+  }) async {
     final sceneRepository = context.read<SceneModelRepository>();
     final creatureRepository = context.read<CreatureModelRepository>();
     final playerCharacterRepository =
@@ -1455,6 +1511,9 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
           child: EditSceneScreen(
             scene: scene,
             sessionId: sessionId,
+            initialName: initialName,
+            initialDescription: initialDescription,
+            initialLinkedWikiEntryIds: initialLinkedWikiEntryIds,
           ),
         ),
       ),

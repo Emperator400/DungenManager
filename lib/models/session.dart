@@ -26,6 +26,7 @@ class Session {
   final List<String> questProgressIds; // Quest-Fortschritt
   final List<String> characterTrackingIds; // Character-Tracking
   final List<String> linkedSoundIds; // Verknüpfte Sounds für Session-Musik
+  final String? ortId;
   final DateTime createdAt;
   final DateTime? startedAt;
   final DateTime? completedAt;
@@ -42,6 +43,7 @@ class Session {
     this.questProgressIds = const [],
     this.characterTrackingIds = const [],
     this.linkedSoundIds = const [],
+    this.ortId,
     DateTime? createdAt,
     this.startedAt,
     this.completedAt,
@@ -92,6 +94,7 @@ class Session {
       'questProgressIds': _serializeStringList(questProgressIds),
       'characterTrackingIds': _serializeStringList(characterTrackingIds),
       'linkedSoundIds': _serializeStringList(linkedSoundIds),
+      'ortId': ortId,
       'createdAt': createdAt.toIso8601String(),
       'startedAt': startedAt?.toIso8601String(),
       'completedAt': completedAt?.toIso8601String(),
@@ -117,6 +120,7 @@ class Session {
       questProgressIds: _deserializeStringList(map['questProgressIds'] as String?),
       characterTrackingIds: _deserializeStringList(map['characterTrackingIds'] as String?),
       linkedSoundIds: _deserializeStringList(map['linkedSoundIds'] as String?),
+      ortId: ModelParsingHelper.safeStringOrNull(map, 'ortId', null),
       createdAt: ModelParsingHelper.safeDateTime(map, 'createdAt', DateTime.now()),
       startedAt: ModelParsingHelper.safeDateTimeOrNull(map, 'startedAt', null),
       completedAt: ModelParsingHelper.safeDateTimeOrNull(map, 'completedAt', null),
@@ -136,6 +140,7 @@ class Session {
     List<String>? questProgressIds,
     List<String>? characterTrackingIds,
     List<String>? linkedSoundIds,
+    String? ortId,
     DateTime? createdAt,
     DateTime? startedAt,
     DateTime? completedAt,
@@ -152,6 +157,7 @@ class Session {
       questProgressIds: questProgressIds ?? this.questProgressIds,
       characterTrackingIds: characterTrackingIds ?? this.characterTrackingIds,
       linkedSoundIds: linkedSoundIds ?? this.linkedSoundIds,
+      ortId: ortId ?? this.ortId,
       createdAt: createdAt ?? this.createdAt,
       startedAt: startedAt ?? this.startedAt,
       completedAt: completedAt ?? this.completedAt,

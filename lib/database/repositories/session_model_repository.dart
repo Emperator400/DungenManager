@@ -34,6 +34,15 @@ class SessionModelRepository extends ModelRepository<Session> {
     );
   }
 
+  /// Findet Sessions nach Ort
+  Future<List<Session>> findByOrtId(String ortId) async {
+    return await findWhere(
+      where: 'ortId = ?',
+      whereArgs: [ortId],
+      orderBy: 'createdAt DESC',
+    );
+  }
+
   /// Findet Sessions nach Status
   Future<List<Session>> findByStatus(String status) async {
     return await findWhere(

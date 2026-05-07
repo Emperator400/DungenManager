@@ -91,7 +91,7 @@ class EditSceneViewModel extends ChangeNotifier {
        _encounterRepository = encounterRepository;
 
   /// Initialisiert das ViewModel mit einer Scene oder erstellt eine neue
-  Future<void> initialize(Scene? scene, {String? sessionId}) async {
+  Future<void> initialize(Scene? scene, {String? sessionId, String? initialName, String? initialDescription}) async {
     try {
       _setLoading(true);
       _clearError();
@@ -114,8 +114,8 @@ class EditSceneViewModel extends ChangeNotifier {
         _scene = Scene(
           sessionId: sessionId,
           orderIndex: maxOrderIndex,
-          name: '',
-          description: '',
+          name: initialName ?? '',
+          description: initialDescription ?? '',
         );
         debugPrint('➕ [EditSceneViewModel] Initialisiere als NEU (neue Scene)');
       } else {
@@ -782,8 +782,7 @@ class EditSceneViewModel extends ChangeNotifier {
   bool _hasValidScene() {
     if (_scene == null) return false;
     
-    // Grundlegende Validierung
-    return _scene!.name.trim().isNotEmpty && _scene!.sessionId.isNotEmpty;
+    return _scene!.name.trim().isNotEmpty;
   }
 
   /// Sichere notifyListeners-Methode die prüft ob das ViewModel disposed wurde

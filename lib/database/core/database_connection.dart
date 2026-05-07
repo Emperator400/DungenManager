@@ -93,7 +93,7 @@ class DatabaseConnection {
 
     final db = await openDatabase(
       path,
-      version: 18,
+      version: 22,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       onOpen: (db) async => db.execute('PRAGMA foreign_keys = ON'),
@@ -187,7 +187,8 @@ class DatabaseConnection {
         wiki_entry_ids TEXT,
         session_ids TEXT,
         settings TEXT,
-        stats TEXT
+        stats TEXT,
+        verlaufsplan TEXT
       )
     ''');
     
@@ -511,6 +512,7 @@ class DatabaseConnection {
         questProgressIds TEXT,
         characterTrackingIds TEXT,
         linkedSoundIds TEXT,
+        ortId TEXT,
         createdAt TEXT NOT NULL,
         startedAt TEXT,
         completedAt TEXT,
@@ -529,7 +531,7 @@ class DatabaseConnection {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS scenes (
         id TEXT PRIMARY KEY,
-        session_id TEXT NOT NULL,
+        session_id TEXT,
         order_index INTEGER NOT NULL DEFAULT 0,
         name TEXT NOT NULL,
         description TEXT DEFAULT '',
@@ -546,6 +548,7 @@ class DatabaseConnection {
         scene_data TEXT DEFAULT '{}',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
+        ort_id TEXT,
         FOREIGN KEY (session_id) REFERENCES sessions (id) ON DELETE CASCADE
       )
     ''');
@@ -1028,18 +1031,121 @@ class DatabaseConnection {
       try {
         final tableInfo = await db.rawQuery('PRAGMA table_info(scenes)');
         final existingColumns = tableInfo.map((column) => column['name'] as String).toSet();
-        
-        // sound_volumes hinzufügen
+
         if (!existingColumns.contains('sound_volumes')) {
           await db.execute('ALTER TABLE scenes ADD COLUMN sound_volumes TEXT DEFAULT "{}"');
           debugPrint('✅ sound_volumes Spalte hinzugefügt');
         } else {
           debugPrint('ℹ️ sound_volumes Spalte existiert bereits');
         }
-        
+
         debugPrint('✅ scenes Tabelle aktualisiert (Version 18)');
       } catch (e) {
         debugPrint('⚠️ Konnte sound_volumes Spalte nicht hinzufügen: $e');
+      }
+    }
+
+    if (oldVersion < 19 && newVersion >= 19) {
+      debugPrint('🔄 Füge Wiki- und Verbindungs-Spalten zu orte hinzu (v18 → v19)...');
+      try {
+        final tableInfo = await db.rawQuery('PRAGMA table_info(orte)');
+        final existingColumns = tableInfo.map((column) => column['name'] as String).toSet();
+
+        if (!existingColumns.contains('linked_wiki_entry_ids')) {
+          await db.execute("ALTER TABLE orte ADD COLUMN linked_wiki_entry_ids TEXT");
+          debugPrint('✅ linked_wiki_entry_ids Spalte hinzugefügt');
+        }
+        if (!existingColumns.contains('connected_ort_ids')) {
+          await db.execute("ALTER TABLE orte ADD COLUMN connected_ort_ids TEXT");
+          debugPrint('✅ connected_ort_ids Spalte hinzugefügt');
+        }
+        debugPrint('✅ orte Tabelle aktualisiert (Version 19)');
+      } catch (e) {
+        debugPrint('⚠️ Konnte orte Spalten nicht hinzufügen: $e');
+      }
+    }
+
+    if (oldVersion < 20 && newVersion >= 20) {
+      debugPrint('🔄 Mache session_id in scenes nullable und füge ort_id hinzu (v19 → v20)...');
+      try {
+        final tableInfo = await db.rawQuery('PRAGMA table_info(scenes)');
+        final existingColumns = tableInfo.map((c) => c['name'] as String).toSet();
+        final hasOrtId = existingColumns.contains('ort_id');
+
+        await db.execute('ALTER TABLE scenes RENAME TO scenes_old');
+        await db.execute('''
+          CREATE TABLE scenes (
+            id TEXT PRIMARY KEY,
+            session_id TEXT,
+            order_index INTEGER NOT NULL DEFAULT 0,
+            name TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            scene_type TEXT NOT NULL DEFAULT 'Exploration',
+            is_completed INTEGER NOT NULL DEFAULT 0,
+            estimated_duration INTEGER,
+            complexity TEXT,
+            linked_wiki_entry_ids TEXT DEFAULT '[]',
+            linked_quest_ids TEXT DEFAULT '[]',
+            linked_encounter_id TEXT,
+            linked_character_ids TEXT DEFAULT '[]',
+            linked_sound_ids TEXT DEFAULT '[]',
+            sound_volumes TEXT DEFAULT '{}',
+            scene_data TEXT DEFAULT '{}',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            ort_id TEXT,
+            FOREIGN KEY (session_id) REFERENCES sessions (id) ON DELETE CASCADE
+          )
+        ''');
+
+        final cols = 'id, session_id, order_index, name, description, scene_type, is_completed, '
+            'estimated_duration, complexity, linked_wiki_entry_ids, linked_quest_ids, '
+            'linked_encounter_id, linked_character_ids, linked_sound_ids, sound_volumes, '
+            'scene_data, created_at, updated_at';
+        if (hasOrtId) {
+          await db.execute('INSERT INTO scenes ($cols, ort_id) SELECT $cols, ort_id FROM scenes_old');
+        } else {
+          await db.execute('INSERT INTO scenes ($cols) SELECT $cols FROM scenes_old');
+        }
+
+        await db.execute('DROP TABLE scenes_old');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_scenes_session_id ON scenes(session_id)');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_scenes_order_index ON scenes(order_index)');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_scenes_scene_type ON scenes(scene_type)');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_scenes_is_completed ON scenes(is_completed)');
+        debugPrint('✅ scenes Tabelle migriert (Version 20)');
+      } catch (e) {
+        debugPrint('⚠️ Konnte scenes Tabelle nicht migrieren: $e');
+      }
+    }
+
+    if (oldVersion < 21 && newVersion >= 21) {
+      debugPrint('🔄 Füge ortId Spalte zu sessions hinzu (v20 → v21)...');
+      try {
+        final tableInfo = await db.rawQuery('PRAGMA table_info(sessions)');
+        final existingColumns = tableInfo.map((c) => c['name'] as String).toSet();
+        if (!existingColumns.contains('ortId')) {
+          await db.execute('ALTER TABLE sessions ADD COLUMN ortId TEXT');
+          debugPrint('✅ ortId Spalte zu sessions hinzugefügt');
+        }
+        debugPrint('✅ sessions Tabelle aktualisiert (Version 21)');
+      } catch (e) {
+        debugPrint('⚠️ Konnte ortId zu sessions nicht hinzufügen: $e');
+      }
+    }
+
+    if (oldVersion < 22 && newVersion >= 22) {
+      debugPrint('🔄 Füge verlaufsplan Spalte zu campaigns hinzu (v21 → v22)...');
+      try {
+        final tableInfo = await db.rawQuery('PRAGMA table_info(campaigns)');
+        final existingColumns = tableInfo.map((c) => c['name'] as String).toSet();
+        if (!existingColumns.contains('verlaufsplan')) {
+          await db.execute('ALTER TABLE campaigns ADD COLUMN verlaufsplan TEXT');
+          debugPrint('✅ verlaufsplan Spalte zu campaigns hinzugefügt');
+        }
+        debugPrint('✅ campaigns Tabelle aktualisiert (Version 22)');
+      } catch (e) {
+        debugPrint('⚠️ Konnte verlaufsplan zu campaigns nicht hinzufügen: $e');
       }
     }
   }

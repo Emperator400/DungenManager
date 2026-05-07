@@ -1,4 +1,5 @@
 import '../services/uuid_service.dart';
+import '../utils/string_list_parser.dart';
 
 enum OrtType {
   dungeon,
@@ -30,12 +31,22 @@ class Ort {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  // Wiki-Verlinkungen
+  final List<String> linkedWikiEntryIds;
+
+  // Verbindungen zu anderen Orten (für Graph-Darstellung)
+  final List<String> connectedOrtIds;
+
   // Zustandsfelder — werden beim Template-Sync NIE überschrieben
   final DateTime? lastVisitedAt;
   final String? memory;
 
   // Template-Linking
   final String? templateOrtId;
+
+  // Karten-Koordinaten (0.0–1.0 relativ zur Kartengröße)
+  final double? mapX;
+  final double? mapY;
 
   static const String tableName = 'orte';
 
@@ -48,9 +59,13 @@ class Ort {
     this.sortOrder = 0,
     required this.createdAt,
     required this.updatedAt,
+    this.linkedWikiEntryIds = const [],
+    this.connectedOrtIds = const [],
     this.lastVisitedAt,
     this.memory,
     this.templateOrtId,
+    this.mapX,
+    this.mapY,
   });
 
   factory Ort.create({
@@ -60,6 +75,7 @@ class Ort {
     String description = '',
     int sortOrder = 0,
     String? templateOrtId,
+    List<String> linkedWikiEntryIds = const [],
   }) {
     final now = DateTime.now();
     return Ort(
@@ -71,6 +87,8 @@ class Ort {
       sortOrder: sortOrder,
       createdAt: now,
       updatedAt: now,
+      linkedWikiEntryIds: linkedWikiEntryIds,
+      connectedOrtIds: const [],
       templateOrtId: templateOrtId,
     );
   }
@@ -88,11 +106,15 @@ class Ort {
       sortOrder: map['sort_order'] as int? ?? 0,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
+      linkedWikiEntryIds: StringListParser.parseStringList(map['linked_wiki_entry_ids'] as String?),
+      connectedOrtIds: StringListParser.parseStringList(map['connected_ort_ids'] as String?),
       lastVisitedAt: map['last_visited_at'] != null
           ? DateTime.tryParse(map['last_visited_at'] as String)
           : null,
       memory: map['memory'] as String?,
       templateOrtId: map['template_ort_id'] as String?,
+      mapX: (map['map_x'] as num?)?.toDouble(),
+      mapY: (map['map_y'] as num?)?.toDouble(),
     );
   }
 
@@ -105,9 +127,13 @@ class Ort {
         'sort_order': sortOrder,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
+        'linked_wiki_entry_ids': linkedWikiEntryIds.isEmpty ? null : linkedWikiEntryIds.join(','),
+        'connected_ort_ids': connectedOrtIds.isEmpty ? null : connectedOrtIds.join(','),
         'last_visited_at': lastVisitedAt?.toIso8601String(),
         'memory': memory,
         'template_ort_id': templateOrtId,
+        'map_x': mapX,
+        'map_y': mapY,
       };
 
   Ort copyWith({
@@ -119,9 +145,13 @@ class Ort {
     int? sortOrder,
     DateTime? createdAt,
     DateTime? updatedAt,
+    List<String>? linkedWikiEntryIds,
+    List<String>? connectedOrtIds,
     Object? lastVisitedAt = _sentinel,
     Object? memory = _sentinel,
     Object? templateOrtId = _sentinel,
+    Object? mapX = _sentinel,
+    Object? mapY = _sentinel,
   }) =>
       Ort(
         id: id ?? this.id,
@@ -132,6 +162,8 @@ class Ort {
         sortOrder: sortOrder ?? this.sortOrder,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
+        linkedWikiEntryIds: linkedWikiEntryIds ?? List<String>.from(this.linkedWikiEntryIds),
+        connectedOrtIds: connectedOrtIds ?? List<String>.from(this.connectedOrtIds),
         lastVisitedAt: lastVisitedAt == _sentinel
             ? this.lastVisitedAt
             : lastVisitedAt as DateTime?,
@@ -139,6 +171,8 @@ class Ort {
         templateOrtId: templateOrtId == _sentinel
             ? this.templateOrtId
             : templateOrtId as String?,
+        mapX: mapX == _sentinel ? this.mapX : mapX as double?,
+        mapY: mapY == _sentinel ? this.mapY : mapY as double?,
       );
 
   static const Object _sentinel = Object();
@@ -146,6 +180,7 @@ class Ort {
   bool get hasBeenVisited => lastVisitedAt != null;
   bool get hasMemory => memory != null && memory!.isNotEmpty;
   bool get isCopy => templateOrtId != null;
+  bool get isOnMap => mapX != null && mapY != null;
 
   @override
   bool operator ==(Object other) =>

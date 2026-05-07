@@ -1,41 +1,56 @@
 import 'package:flutter/foundation.dart';
 
 import '../database/core/database_connection.dart';
+import '../database/repositories/campaign_model_repository.dart';
 import '../database/repositories/ort_model_repository.dart';
+import '../database/repositories/player_character_model_repository.dart';
 import '../database/repositories/quest_model_repository.dart';
-import '../database/repositories/scene_model_repository.dart';
 import '../database/repositories/session_model_repository.dart';
+import '../database/repositories/wiki_entry_model_repository.dart';
 import '../models/campaign.dart';
 import '../models/ort.dart';
+import '../models/player_character.dart';
 import '../models/quest.dart';
-import '../models/scene.dart';
+import '../models/quest_reward.dart';
 import '../models/session.dart';
+import '../models/verlaufs_eintrag.dart';
+import '../models/wiki_entry.dart';
+export '../models/wiki_entry.dart' show WikiEntry, WikiEntryType;
 import '../services/ort_service.dart';
 
 enum DmBuchMode { vorbereitung, live }
 
-enum DmBuchLeftTab { karte, quests }
+enum DmBuchLeftTab { karte, quests, spieler, verlauf }
 
 class DmBuchViewModel extends ChangeNotifier {
-  final Campaign campaign;
+  Campaign _campaign;
+  Campaign get campaign => _campaign;
+
   final OrtService _ortService;
   final OrtModelRepository _ortRepo;
   final QuestModelRepository _questRepo;
-  final SceneModelRepository _sceneRepo;
   final SessionModelRepository _sessionRepo;
+  final WikiEntryModelRepository _wikiRepo;
+  final CampaignModelRepository _campaignRepo;
+  final PlayerCharacterModelRepository _pcRepo;
 
   DmBuchViewModel({
-    required this.campaign,
+    required Campaign campaign,
     OrtService? ortService,
     OrtModelRepository? ortRepo,
     QuestModelRepository? questRepo,
-    SceneModelRepository? sceneRepo,
     SessionModelRepository? sessionRepo,
-  })  : _ortService = ortService ?? OrtService(),
+    WikiEntryModelRepository? wikiRepo,
+    CampaignModelRepository? campaignRepo,
+    PlayerCharacterModelRepository? pcRepo,
+  })  : _campaign = campaign,
+        _ortService = ortService ?? OrtService(),
         _ortRepo = ortRepo ?? OrtModelRepository(DatabaseConnection.instance),
         _questRepo = questRepo ?? QuestModelRepository(DatabaseConnection.instance),
-        _sceneRepo = sceneRepo ?? SceneModelRepository(DatabaseConnection.instance),
-        _sessionRepo = sessionRepo ?? SessionModelRepository(DatabaseConnection.instance);
+        _sessionRepo = sessionRepo ?? SessionModelRepository(DatabaseConnection.instance),
+        _wikiRepo = wikiRepo ?? WikiEntryModelRepository(DatabaseConnection.instance),
+        _campaignRepo = campaignRepo ?? CampaignModelRepository(DatabaseConnection.instance),
+        _pcRepo = pcRepo ?? PlayerCharacterModelRepository(DatabaseConnection.instance);
 
   // ── STATE ──────────────────────────────────────────────────────────────────
 
@@ -51,11 +66,28 @@ class DmBuchViewModel extends ChangeNotifier {
   Ort? _selectedOrt;
   Ort? get selectedOrt => _selectedOrt;
 
-  List<Scene> _selectedOrtScenes = [];
-  List<Scene> get selectedOrtScenes => _selectedOrtScenes;
+  List<Session> _selectedOrtSessions = [];
+  List<Session> get selectedOrtSessions => _selectedOrtSessions;
 
   List<Quest> _quests = [];
   List<Quest> get quests => _quests;
+
+  List<WikiEntry> _wikiEntries = [];
+  List<WikiEntry> get wikiEntries => _wikiEntries;
+
+  List<PlayerCharacter> _characters = [];
+  List<PlayerCharacter> get characters => _characters;
+
+  // ── FOKUS-AUSWAHL ──────────────────────────────────────────────────────────
+
+  Quest? _selectedQuest;
+  Quest? get selectedQuest => _selectedQuest;
+
+  PlayerCharacter? _selectedCharacter;
+  PlayerCharacter? get selectedCharacter => _selectedCharacter;
+
+  VerlaufsEintrag? _selectedVerlaufsEintrag;
+  VerlaufsEintrag? get selectedVerlaufsEintrag => _selectedVerlaufsEintrag;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -70,7 +102,7 @@ class DmBuchViewModel extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      await Future.wait([_loadOrte(), _loadQuests()]);
+      await Future.wait([_loadOrte(), _loadQuests(), _loadWikiEntries(), _loadCharacters()]);
     } catch (e) {
       _error = 'Fehler beim Laden: $e';
     } finally {
@@ -87,8 +119,21 @@ class DmBuchViewModel extends ChangeNotifier {
     _quests = await _questRepo.findByCampaign(campaign.id);
   }
 
-  Future<void> _loadScenesForOrt(String ortId) async {
-    _selectedOrtScenes = await _sceneRepo.findByOrtId(ortId);
+  Future<void> _loadWikiEntries() async {
+    _wikiEntries = await _wikiRepo.findByCampaign(campaign.id);
+  }
+
+  Future<void> _loadCharacters() async {
+    _characters = await _pcRepo.findByCampaign(campaign.id);
+  }
+
+  Future<void> reloadCharacters() async {
+    await _loadCharacters();
+    notifyListeners();
+  }
+
+  Future<void> _loadSessionsForOrt(String ortId) async {
+    _selectedOrtSessions = await _sessionRepo.findByOrtId(ortId);
   }
 
   // ── NAVIGATION ────────────────────────────────────────────────────────────
@@ -105,15 +150,45 @@ class DmBuchViewModel extends ChangeNotifier {
 
   Future<void> selectOrt(Ort ort) async {
     _selectedOrt = ort;
-    _selectedOrtScenes = [];
+    _selectedOrtSessions = [];
     notifyListeners();
-    await _loadScenesForOrt(ort.id);
+    await _loadSessionsForOrt(ort.id);
     notifyListeners();
   }
 
   void deselectOrt() {
     _selectedOrt = null;
-    _selectedOrtScenes = [];
+    _selectedOrtSessions = [];
+    notifyListeners();
+  }
+
+  void selectQuest(Quest quest) {
+    _selectedQuest = quest;
+    notifyListeners();
+  }
+
+  void deselectQuest() {
+    _selectedQuest = null;
+    notifyListeners();
+  }
+
+  void selectCharacter(PlayerCharacter character) {
+    _selectedCharacter = character;
+    notifyListeners();
+  }
+
+  void deselectCharacter() {
+    _selectedCharacter = null;
+    notifyListeners();
+  }
+
+  void selectVerlaufsEintrag(VerlaufsEintrag eintrag) {
+    _selectedVerlaufsEintrag = eintrag;
+    notifyListeners();
+  }
+
+  void deselectVerlaufsEintrag() {
+    _selectedVerlaufsEintrag = null;
     notifyListeners();
   }
 
@@ -129,10 +204,17 @@ class DmBuchViewModel extends ChangeNotifier {
 
   // ── ORT CRUD ──────────────────────────────────────────────────────────────
 
+  Future<Ort?> createOrtFromWikiEntry(WikiEntry entry) => createOrt(
+        name: entry.title,
+        description: entry.content,
+        linkedWikiEntryIds: [entry.id],
+      );
+
   Future<Ort?> createOrt({
     required String name,
     OrtType type = OrtType.other,
     String description = '',
+    List<String> linkedWikiEntryIds = const [],
   }) async {
     try {
       final ort = Ort.create(
@@ -141,6 +223,7 @@ class DmBuchViewModel extends ChangeNotifier {
         type: type,
         description: description,
         sortOrder: _orte.length,
+        linkedWikiEntryIds: linkedWikiEntryIds,
       );
       final saved = await _ortService.createOrt(ort);
       _orte.add(saved);
@@ -170,7 +253,7 @@ class DmBuchViewModel extends ChangeNotifier {
       _orte.removeWhere((o) => o.id == ortId);
       if (_selectedOrt?.id == ortId) {
         _selectedOrt = null;
-        _selectedOrtScenes = [];
+        _selectedOrtSessions = [];
       }
       notifyListeners();
     } catch (e) {
@@ -218,116 +301,237 @@ class DmBuchViewModel extends ChangeNotifier {
     }
   }
 
-  // ── SZENEN ────────────────────────────────────────────────────────────────
+  // ── SESSIONS FÜR ORT ─────────────────────────────────────────────────────
 
-  Future<Scene?> createSceneForOrt(
-    Ort ort, {
-    required String name,
-    SceneType type = SceneType.Exploration,
-    String description = '',
-  }) async {
+  Future<Session?> createSessionForOrt(Ort ort, {required String title}) async {
     try {
-      final scene = Scene(
-        sessionId: '',
-        orderIndex: _selectedOrtScenes.length,
-        name: name,
-        description: description,
-        sceneType: type,
+      final session = await _sessionRepo.create(Session(
+        campaignId: campaign.id,
+        title: title,
         ortId: ort.id,
-      );
-      final saved = await _sceneRepo.create(scene);
-      _selectedOrtScenes.add(saved);
+      ));
+      _selectedOrtSessions.insert(0, session);
       notifyListeners();
-      return saved;
+      return session;
     } catch (e) {
-      debugPrint('[DmBuchViewModel] createSceneForOrt error: $e');
+      debugPrint('[DmBuchViewModel] createSessionForOrt error: $e');
       return null;
     }
   }
 
-  Future<void> reorderScenes(int oldIndex, int newIndex) async {
-    if (newIndex > oldIndex) newIndex -= 1;
-    final item = _selectedOrtScenes.removeAt(oldIndex);
-    _selectedOrtScenes.insert(newIndex, item);
-    notifyListeners();
-    for (var i = 0; i < _selectedOrtScenes.length; i++) {
-      if (_selectedOrtScenes[i].orderIndex != i) {
-        _selectedOrtScenes[i] = _selectedOrtScenes[i].copyWith(orderIndex: i);
-        await _sceneRepo.update(_selectedOrtScenes[i]);
-      }
-    }
-  }
-
-  Future<void> deleteScene(String sceneId) async {
+  Future<void> deleteOrtSession(String sessionId) async {
     try {
-      await _sceneRepo.delete(sceneId);
-      _selectedOrtScenes.removeWhere((s) => s.id == sceneId);
+      await _sessionRepo.delete(sessionId);
+      _selectedOrtSessions.removeWhere((s) => s.id == sessionId);
       notifyListeners();
     } catch (e) {
-      debugPrint('[DmBuchViewModel] deleteScene error: $e');
+      debugPrint('[DmBuchViewModel] deleteOrtSession error: $e');
     }
   }
 
-  Future<void> reloadScenes() async {
+  Future<void> reloadSessions() async {
     if (_selectedOrt == null) return;
-    await _loadScenesForOrt(_selectedOrt!.id);
+    await _loadSessionsForOrt(_selectedOrt!.id);
     notifyListeners();
   }
 
   // ── HILFSMETHODEN ─────────────────────────────────────────────────────────
-
-  int sceneCountForOrt(String ortId) =>
-      _selectedOrt?.id == ortId ? _selectedOrtScenes.length : 0;
 
   List<Quest> get activeQuests =>
       _quests.where((q) => q.status == QuestStatus.active).toList();
 
   Future<void> reloadQuests() async {
     await _loadQuests();
+    if (_selectedQuest != null) {
+      _selectedQuest = _quests.where((q) => q.id == _selectedQuest!.id).cast<Quest?>().firstOrNull;
+    }
     notifyListeners();
   }
 
-  // ── SESSION ───────────────────────────────────────────────────────────────
+  Future<List<Quest>> loadLibraryQuests() =>
+      _questRepo.findQuestsWithoutCampaign();
 
-  /// Erstellt eine neue Session und importiert Szenen des ausgewählten Orts.
-  /// Gibt die erstellte Session zurück, oder null bei Fehler.
-  Future<Session?> startSession() async {
+  Future<void> addQuestFromLibrary(Quest libraryQuest) async {
     try {
-      final now = DateTime.now();
-      final ortName = _selectedOrt?.name;
-      final title = ortName != null
-          ? '$ortName — ${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}'
-          : 'Session vom ${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}';
-
-      final session = await _sessionRepo.create(Session(
+      final copy = Quest.create(
+        title: libraryQuest.title,
+        description: libraryQuest.description,
+        questType: libraryQuest.questType,
+        difficulty: libraryQuest.difficulty,
         campaignId: campaign.id,
-        title: title,
-        inGameTimeInMinutes: 480,
-        liveNotes: '',
-      ));
-
-      if (_selectedOrt != null && _selectedOrtScenes.isNotEmpty) {
-        for (var i = 0; i < _selectedOrtScenes.length; i++) {
-          final src = _selectedOrtScenes[i];
-          await _sceneRepo.create(Scene(
-            sessionId: session.id,
-            orderIndex: i,
-            name: src.name,
-            description: src.description,
-            sceneType: src.sceneType,
-            complexity: src.complexity,
-            estimatedDuration: src.estimatedDuration,
-            linkedSoundIds: List<String>.from(src.linkedSoundIds),
-            soundVolumes: Map<String, double>.from(src.soundVolumes),
-            ortId: src.ortId,
-          ));
-        }
-      }
-
-      return session;
+        location: libraryQuest.location,
+        recommendedLevel: libraryQuest.recommendedLevel,
+        estimatedDurationHours: libraryQuest.estimatedDurationHours,
+        tags: List<String>.from(libraryQuest.tags),
+        rewards: List<QuestReward>.from(libraryQuest.rewards),
+        involvedNpcs: List<String>.from(libraryQuest.involvedNpcs),
+        linkedWikiEntryIds: List<String>.from(libraryQuest.linkedWikiEntryIds),
+      );
+      final saved = await _questRepo.create(copy);
+      _quests.add(saved);
+      notifyListeners();
     } catch (e) {
-      debugPrint('[DmBuchViewModel] startSession error: $e');
-      return null;
+      debugPrint('[DmBuchViewModel] addQuestFromLibrary error: $e');
+    }
+  }
+
+  // ── WIKI-VERLINKUNG ───────────────────────────────────────────────────────
+
+  Future<void> linkWikiEntry(Ort ort, String wikiEntryId) async {
+    if (ort.linkedWikiEntryIds.contains(wikiEntryId)) return;
+    final updated = ort.copyWith(
+      linkedWikiEntryIds: [...ort.linkedWikiEntryIds, wikiEntryId],
+      updatedAt: DateTime.now(),
+    );
+    await _ortRepo.update(updated);
+    _refreshOrt(updated);
+  }
+
+  Future<void> unlinkWikiEntry(Ort ort, String wikiEntryId) async {
+    final updated = ort.copyWith(
+      linkedWikiEntryIds: ort.linkedWikiEntryIds.where((id) => id != wikiEntryId).toList(),
+      updatedAt: DateTime.now(),
+    );
+    await _ortRepo.update(updated);
+    _refreshOrt(updated);
+  }
+
+  // ── ORT-VERBINDUNGEN ──────────────────────────────────────────────────────
+
+  Future<void> connectOrte(Ort a, Ort b) async {
+    if (a.id == b.id) return;
+    if (!a.connectedOrtIds.contains(b.id)) {
+      final updatedA = a.copyWith(
+        connectedOrtIds: [...a.connectedOrtIds, b.id],
+        updatedAt: DateTime.now(),
+      );
+      await _ortRepo.update(updatedA);
+      _refreshOrt(updatedA);
+    }
+    if (!b.connectedOrtIds.contains(a.id)) {
+      final updatedB = b.copyWith(
+        connectedOrtIds: [...b.connectedOrtIds, a.id],
+        updatedAt: DateTime.now(),
+      );
+      await _ortRepo.update(updatedB);
+      _refreshOrt(updatedB);
+    }
+  }
+
+  Future<void> disconnectOrte(Ort a, Ort b) async {
+    final updatedA = a.copyWith(
+      connectedOrtIds: a.connectedOrtIds.where((id) => id != b.id).toList(),
+      updatedAt: DateTime.now(),
+    );
+    await _ortRepo.update(updatedA);
+    _refreshOrt(updatedA);
+
+    final updatedB = b.copyWith(
+      connectedOrtIds: b.connectedOrtIds.where((id) => id != a.id).toList(),
+      updatedAt: DateTime.now(),
+    );
+    await _ortRepo.update(updatedB);
+    _refreshOrt(updatedB);
+  }
+
+  void _refreshOrt(Ort updated) {
+    final idx = _orte.indexWhere((o) => o.id == updated.id);
+    if (idx != -1) _orte[idx] = updated;
+    if (_selectedOrt?.id == updated.id) _selectedOrt = updated;
+    notifyListeners();
+  }
+
+  // ── VERLAUFSPLAN ──────────────────────────────────────────────────────────
+
+  List<VerlaufsEintrag> get verlaufsplan => _campaign.verlaufsplan;
+
+  Future<void> addVerlaufsEintrag(VerlaufsEintrag eintrag) async {
+    final updated = _campaign.copyWith(
+      verlaufsplan: [..._campaign.verlaufsplan, eintrag],
+      updatedAt: DateTime.now(),
+    );
+    await _saveCampaign(updated);
+  }
+
+  Future<void> updateVerlaufsEintrag(VerlaufsEintrag eintrag) async {
+    final list = _campaign.verlaufsplan.map((e) => e.id == eintrag.id ? eintrag : e).toList();
+    final updated = _campaign.copyWith(verlaufsplan: list, updatedAt: DateTime.now());
+    await _saveCampaign(updated);
+  }
+
+  Future<void> removeVerlaufsEintrag(String id) async {
+    final list = _campaign.verlaufsplan.where((e) => e.id != id).toList();
+    final updated = _campaign.copyWith(verlaufsplan: list, updatedAt: DateTime.now());
+    await _saveCampaign(updated);
+  }
+
+  Future<void> toggleVerlaufsEintrag(String id) async {
+    final list = _campaign.verlaufsplan
+        .map((e) => e.id == id ? e.copyWith(isDone: !e.isDone) : e)
+        .toList();
+    final updated = _campaign.copyWith(verlaufsplan: list, updatedAt: DateTime.now());
+    await _saveCampaign(updated);
+  }
+
+  Future<void> saveConnectionNote(String id, String note) async {
+    final list = _campaign.verlaufsplan
+        .map((e) => e.id == id ? e.copyWith(connectionNote: note.isEmpty ? null : note) : e)
+        .toList();
+    final updated = _campaign.copyWith(verlaufsplan: list, updatedAt: DateTime.now());
+    await _saveCampaign(updated);
+  }
+
+  // ── VERLAUFS-GRAPHEN ─────────────────────────────────────────────────────────
+
+  String? get verlaufsKarteImagePath => _campaign.verlaufsKarteImagePath;
+
+  Future<void> setVerlaufsKarteImage(String? path) async {
+    final updated = _campaign.copyWith(
+      verlaufsKarteImagePath: path,
+      updatedAt: DateTime.now(),
+    );
+    await _saveCampaign(updated);
+  }
+
+  Future<void> addVerlaufsConnection(String fromId, String toId) async {
+    final from = _campaign.verlaufsplan.where((e) => e.id == fromId).firstOrNull;
+    if (from == null || from.connections.contains(toId)) return;
+    await updateVerlaufsEintrag(
+      from.copyWith(connections: [...from.connections, toId]),
+    );
+  }
+
+  Future<void> removeVerlaufsConnection(String fromId, String toId) async {
+    final from = _campaign.verlaufsplan.where((e) => e.id == fromId).firstOrNull;
+    if (from == null) return;
+    await updateVerlaufsEintrag(
+      from.copyWith(connections: from.connections.where((id) => id != toId).toList()),
+    );
+  }
+
+  // ── VERLAUFSPLAN REIHENFOLGE ──────────────────────────────────────────────
+
+  Future<void> reorderVerlaufsplan(int oldIndex, int newIndex) async {
+    if (newIndex > oldIndex) newIndex -= 1;
+    final list = List<VerlaufsEintrag>.from(_campaign.verlaufsplan);
+    list.insert(newIndex, list.removeAt(oldIndex));
+    final updated = _campaign.copyWith(verlaufsplan: list, updatedAt: DateTime.now());
+    await _saveCampaign(updated);
+  }
+
+  Future<void> _saveCampaign(Campaign updated) async {
+    try {
+      _campaign = await _campaignRepo.update(updated);
+      // Keep selected Verlaufs entry in sync
+      if (_selectedVerlaufsEintrag != null) {
+        _selectedVerlaufsEintrag = _campaign.verlaufsplan
+            .where((e) => e.id == _selectedVerlaufsEintrag!.id)
+            .cast<VerlaufsEintrag?>()
+            .firstOrNull;
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[DmBuchViewModel] _saveCampaign error: $e');
     }
   }
 }

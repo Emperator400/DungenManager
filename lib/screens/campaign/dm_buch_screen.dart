@@ -1,20 +1,30 @@
+import 'dart:io';
+import 'dart:math';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/campaign.dart';
 import '../../models/ort.dart';
+import '../../models/player_character.dart';
 import '../../models/quest.dart';
-import '../../models/scene.dart';
+import '../../models/session.dart';
+import '../../models/verlaufs_eintrag.dart';
+import '../../models/wiki_entry.dart';
+import '../../widgets/dm_buch/lore_keeper_picker_dialog.dart';
+import '../../widgets/dm_buch/quest_picker_dialog.dart';
+import '../../widgets/dm_buch/ort_graph_view.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/theme_notifier.dart';
 import '../../viewmodels/dm_buch_viewmodel.dart';
 import '../../widgets/active_session/atmosphere_quadrant.dart';
 import '../../widgets/ui_components/shared/app_icon.dart';
 import '../../widgets/ui_components/shared/app_logo.dart';
-import '../characters/pc_list_screen.dart';
+import '../characters/edit_pc_screen.dart';
 import '../lore/lore_keeper_screen.dart';
 import '../quests/edit_quest_screen.dart';
-import '../scenes/edit_scene_screen.dart';
 import '../session/active_session_screen.dart';
 
 // ── ENTRY POINT ───────────────────────────────────────────────────────────────
@@ -117,12 +127,6 @@ class _TopBar extends StatelessWidget {
                   // Modus-Toggle
                   _ModeToggle(vm: vm, C: C),
                   const SizedBox(width: 8),
-
-                  // Session starten (nur im Live-Modus)
-                  if (vm.mode == DmBuchMode.live) ...[
-                    _StartSessionBtn(vm: vm, C: C),
-                    const SizedBox(width: 8),
-                  ],
 
                   // Sync-Button (nur für Kopie-Kampagnen)
                   if (vm.campaign.templateId != null) ...[
@@ -240,9 +244,12 @@ class _LeftPane extends StatelessWidget {
           _LeftTabBar(vm: vm, C: C),
           // Inhalt
           Expanded(
-            child: vm.leftTab == DmBuchLeftTab.karte
-                ? _KarteTab(vm: vm)
-                : _QuestsTab(vm: vm),
+            child: switch (vm.leftTab) {
+              DmBuchLeftTab.karte   => _KarteTab(vm: vm),
+              DmBuchLeftTab.quests  => _QuestsTab(vm: vm),
+              DmBuchLeftTab.spieler => _SpielerTab(vm: vm),
+              DmBuchLeftTab.verlauf => _VerlaufTab(vm: vm),
+            },
           ),
           // Audio Mixer — immer sichtbar
           Divider(height: 1, thickness: 1, color: C.border),
@@ -280,19 +287,21 @@ class _LeftTabBar extends StatelessWidget {
                   C: C,
                   onTap: () => vm.setLeftTab(DmBuchLeftTab.quests),
                 ),
-                const Spacer(),
-                // Spieler-Button
-                Tooltip(
-                  message: 'Spieler',
-                  child: _TopBarIconBtn(
-                    icon: AppIconName.users,
-                    C: C,
-                    onTap: () => _navigateTo(
-                      context,
-                      PlayerCharacterListScreen(campaign: vm.campaign),
-                    ),
-                  ),
+                const SizedBox(width: 6),
+                _LeftTabPill(
+                  label: 'Spieler',
+                  active: vm.leftTab == DmBuchLeftTab.spieler,
+                  C: C,
+                  onTap: () => vm.setLeftTab(DmBuchLeftTab.spieler),
                 ),
+                const SizedBox(width: 6),
+                _LeftTabPill(
+                  label: 'Verlauf',
+                  active: vm.leftTab == DmBuchLeftTab.verlauf,
+                  C: C,
+                  onTap: () => vm.setLeftTab(DmBuchLeftTab.verlauf),
+                ),
+                const Spacer(),
                 const SizedBox(width: 4),
                 // Karte-Button
                 Tooltip(
@@ -358,14 +367,47 @@ class _LeftTabPill extends StatelessWidget {
 
 // ── KARTE TAB ─────────────────────────────────────────────────────────────────
 
-class _KarteTab extends StatelessWidget {
+class _KarteTab extends StatefulWidget {
   const _KarteTab({required this.vm});
 
   final DmBuchViewModel vm;
 
   @override
+  State<_KarteTab> createState() => _KarteTabState();
+}
+
+class _KarteTabState extends State<_KarteTab> {
+  bool _verlaufsSort = false;
+
+  // Builds the ordered list when Verlauf sort is active.
+  // Each Verlaufsplan Ort entry becomes its own row (duplicates kept),
+  // then remaining Orte not in the plan follow at the bottom.
+  List<({Ort ort, int? stepIndex, bool stepDone, String? stepEntryId})> _verlaufsSorted() {
+    final vm = widget.vm;
+    final sorted = <({Ort ort, int? stepIndex, bool stepDone, String? stepEntryId})>[];
+    final inPlanOrtIds = <String>{};
+
+    for (var i = 0; i < vm.verlaufsplan.length; i++) {
+      final entry = vm.verlaufsplan[i];
+      if (entry.type != VerlaufsEintragType.ort || entry.refId == null) continue;
+      final ort = vm.orte.where((o) => o.id == entry.refId).firstOrNull;
+      if (ort == null) continue;
+      inPlanOrtIds.add(ort.id);
+      sorted.add((ort: ort, stepIndex: i, stepDone: entry.isDone, stepEntryId: entry.id));
+    }
+
+    for (final ort in vm.orte) {
+      if (!inPlanOrtIds.contains(ort.id)) {
+        sorted.add((ort: ort, stepIndex: null, stepDone: false, stepEntryId: null));
+      }
+    }
+    return sorted;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final C = context.appColors;
+    final vm = widget.vm;
     final orte = vm.orte;
 
     return Column(
@@ -378,16 +420,52 @@ class _KarteTab extends StatelessWidget {
                 '${orte.length} Ort${orte.length != 1 ? "e" : ""}',
                 style: TextStyle(fontSize: 11, color: C.textSoft),
               ),
+              const SizedBox(width: 8),
+              // Verlauf-Sort Toggle
+              GestureDetector(
+                onTap: () => setState(() => _verlaufsSort = !_verlaufsSort),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: _verlaufsSort ? C.accent.withValues(alpha: 0.12) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(5),
+                    border: Border.all(
+                      color: _verlaufsSort ? C.accent.withValues(alpha: 0.4) : C.border,
+                    ),
+                  ),
+                  child: Text(
+                    'Verlauf',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: _verlaufsSort ? C.accent : C.textMid,
+                      fontWeight: _verlaufsSort ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ),
               const Spacer(),
+              _LoreKeeperBtn(
+                onTap: () async {
+                  final entry = await LoreKeeperPickerDialog.show(
+                    context,
+                    entries: vm.wikiEntries,
+                    typeFilter: const [WikiEntryType.Place],
+                    title: 'Ort aus LoreKeeper',
+                  );
+                  if (entry != null && context.mounted) {
+                    await vm.createOrtFromWikiEntry(entry);
+                  }
+                },
+                C: C,
+              ),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: () => showDialog<void>(
                   context: context,
                   builder: (_) => _CreateOrtDialog(vm: vm),
                 ),
-                child: Text(
-                  'Ort erstellen',
-                  style: TextStyle(fontSize: 11, color: C.accent),
-                ),
+                child: Text('Neu', style: TextStyle(fontSize: 11, color: C.accent)),
               ),
             ],
           ),
@@ -400,27 +478,108 @@ class _KarteTab extends StatelessWidget {
                     style: TextStyle(fontSize: 13, color: C.textSoft),
                   ),
                 )
-              : ReorderableListView.builder(
-                  padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
-                  buildDefaultDragHandles: false,
-                  itemCount: orte.length,
-                  onReorder: vm.reorderOrte,
-                  proxyDecorator: (child, _, __) =>
-                      Material(color: Colors.transparent, child: child),
-                  itemBuilder: (ctx, i) => ReorderableDragStartListener(
-                    key: ValueKey(orte[i].id),
-                    index: i,
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: _OrtCard(
-                        ort: orte[i],
-                        selected: vm.selectedOrt?.id == orte[i].id,
-                        vm: vm,
+              : _verlaufsSort
+                  ? _VerlaufsSortedList(items: _verlaufsSorted(), vm: vm)
+                  : ReorderableListView.builder(
+                      padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+                      buildDefaultDragHandles: false,
+                      itemCount: orte.length,
+                      onReorder: vm.reorderOrte,
+                      proxyDecorator: (child, _, __) =>
+                          Material(color: Colors.transparent, child: child),
+                      itemBuilder: (ctx, i) => ReorderableDragStartListener(
+                        key: ValueKey(orte[i].id),
+                        index: i,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: _OrtCard(
+                            ort: orte[i],
+                            selected: vm.selectedOrt?.id == orte[i].id,
+                            vm: vm,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
         ),
+      ],
+    );
+  }
+}
+
+class _VerlaufsSortedList extends StatelessWidget {
+  const _VerlaufsSortedList({required this.items, required this.vm});
+
+  final List<({Ort ort, int? stepIndex, bool stepDone, String? stepEntryId})> items;
+  final DmBuchViewModel vm;
+
+  @override
+  Widget build(BuildContext context) {
+    final inPlan  = items.where((e) => e.stepIndex != null).toList();
+    final notPlan = items.where((e) => e.stepIndex == null).toList();
+    final C = context.appColors;
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+      children: [
+        ...inPlan.asMap().entries.map((entry) {
+          final i = entry.key;
+          final e = entry.value;
+          final eintrag = e.stepEntryId != null
+              ? vm.verlaufsplan.where((v) => v.id == e.stepEntryId).firstOrNull
+              : null;
+          final isLast = i == inPlan.length - 1;
+          return Column(
+            key: ValueKey(e.stepEntryId ?? e.ort.id),
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(bottom: isLast ? 6 : 0),
+                child: _OrtCard(
+                  ort: e.ort,
+                  selected: vm.selectedOrt?.id == e.ort.id,
+                  vm: vm,
+                  stepIndex: e.stepIndex,
+                  stepDone: e.stepDone,
+                  onToggleDone: e.stepEntryId != null
+                      ? () => vm.toggleVerlaufsEintrag(e.stepEntryId!)
+                      : null,
+                ),
+              ),
+              if (!isLast && eintrag != null)
+                _VerlaufsConnector(
+                  eintrag: eintrag,
+                  vm: vm,
+                  editable: false,
+                  C: context.appColors,
+                ),
+            ],
+          );
+        }),
+        if (notPlan.isNotEmpty) ...[
+          if (inPlan.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+              child: Row(
+                children: [
+                  Expanded(child: Divider(height: 1, color: C.border)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text('Nicht im Plan', style: TextStyle(fontSize: 10, color: C.textSoft)),
+                  ),
+                  Expanded(child: Divider(height: 1, color: C.border)),
+                ],
+              ),
+            ),
+          ...notPlan.map((e) => Padding(
+                key: ValueKey(e.ort.id),
+                padding: const EdgeInsets.only(bottom: 6),
+                child: _OrtCard(
+                  ort: e.ort,
+                  selected: vm.selectedOrt?.id == e.ort.id,
+                  vm: vm,
+                ),
+              )),
+        ],
       ],
     );
   }
@@ -431,11 +590,17 @@ class _OrtCard extends StatefulWidget {
     required this.ort,
     required this.selected,
     required this.vm,
+    this.stepIndex,
+    this.stepDone = false,
+    this.onToggleDone,
   });
 
   final Ort ort;
   final bool selected;
   final DmBuchViewModel vm;
+  final int? stepIndex;
+  final bool stepDone;
+  final VoidCallback? onToggleDone;
 
   @override
   State<_OrtCard> createState() => _OrtCardState();
@@ -480,12 +645,41 @@ class _OrtCardState extends State<_OrtCard> {
           ),
           child: Row(
             children: [
-              // Typ-Punkt
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              ),
+              // Schritt-Badge (Verlaufsplan-Modus) oder Typ-Punkt
+              if (widget.stepIndex != null)
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: widget.stepDone
+                        ? C.green.withValues(alpha: 0.1)
+                        : C.accent.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: widget.stepDone
+                          ? C.green.withValues(alpha: 0.35)
+                          : C.accent.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Center(
+                    child: widget.stepDone
+                        ? Icon(Icons.check, size: 11, color: C.green)
+                        : Text(
+                            '${widget.stepIndex! + 1}',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: C.accent,
+                            ),
+                          ),
+                  ),
+                )
+              else
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -496,7 +690,8 @@ class _OrtCardState extends State<_OrtCard> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: C.text,
+                        color: widget.stepDone ? C.textSoft : C.text,
+                        decoration: widget.stepDone ? TextDecoration.lineThrough : null,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -513,9 +708,21 @@ class _OrtCardState extends State<_OrtCard> {
                 Container(
                   width: 6,
                   height: 6,
-                  decoration: BoxDecoration(
-                    color: C.amber,
-                    shape: BoxShape.circle,
+                  margin: const EdgeInsets.only(right: 6),
+                  decoration: BoxDecoration(color: C.amber, shape: BoxShape.circle),
+                ),
+              // Verlaufsplan-Checkmark
+              if (widget.onToggleDone != null)
+                GestureDetector(
+                  onTap: widget.onToggleDone,
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Icon(
+                      widget.stepDone ? Icons.check_circle : Icons.radio_button_unchecked,
+                      size: 17,
+                      color: widget.stepDone ? C.green : C.textSoft,
+                    ),
                   ),
                 ),
             ],
@@ -524,6 +731,554 @@ class _OrtCardState extends State<_OrtCard> {
       ),
     );
   }
+}
+
+// ── FOKUS LEER ────────────────────────────────────────────────────────────────
+
+class _EmptyFocus extends StatelessWidget {
+  const _EmptyFocus({required this.message, required this.C});
+
+  final String message;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.touch_app_outlined, size: 36, color: C.textSoft),
+            const SizedBox(height: 12),
+            Text(message, style: TextStyle(fontSize: 14, color: C.textSoft)),
+          ],
+        ),
+      );
+}
+
+// ── QUEST DETAIL PANE ─────────────────────────────────────────────────────────
+
+class _QuestDetailPane extends StatelessWidget {
+  const _QuestDetailPane({required this.quest, required this.vm});
+
+  final Quest quest;
+  final DmBuchViewModel vm;
+
+  Color _typeColor(AppColorsExtension C) {
+    switch (quest.questType) {
+      case QuestType.main:     return C.accent;
+      case QuestType.side:     return C.green;
+      case QuestType.personal: return C.amber;
+      case QuestType.faction:  return C.red;
+    }
+  }
+
+  Color _statusColor(AppColorsExtension C) {
+    switch (quest.status) {
+      case QuestStatus.active:    return C.accent;
+      case QuestStatus.completed: return C.green;
+      case QuestStatus.failed:    return C.red;
+      case QuestStatus.abandoned: return C.textSoft;
+      case QuestStatus.onHold:    return C.amber;
+    }
+  }
+
+  String _statusLabel() {
+    switch (quest.status) {
+      case QuestStatus.active:    return 'Aktiv';
+      case QuestStatus.completed: return 'Abgeschlossen';
+      case QuestStatus.failed:    return 'Gescheitert';
+      case QuestStatus.abandoned: return 'Abgebrochen';
+      case QuestStatus.onHold:    return 'Pausiert';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final C = context.appColors;
+    final typeColor = _typeColor(C);
+    final statusColor = _statusColor(C);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Header
+        Container(
+          padding: const EdgeInsets.fromLTRB(20, 16, 16, 14),
+          decoration: BoxDecoration(
+            color: C.bgPanel,
+            border: Border(bottom: BorderSide(color: C.border)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      quest.title,
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: C.text),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        _TagPill(quest.questTypeDescription, typeColor, C),
+                        const SizedBox(width: 6),
+                        _TagPill(_statusLabel(), statusColor, C),
+                        const SizedBox(width: 6),
+                        _TagPill(quest.difficultyDescription, C.textMid, C),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              _TopBarIconBtn(
+                icon: AppIconName.edit,
+                C: C,
+                onTap: () => Navigator.of(context)
+                    .push(MaterialPageRoute<void>(
+                      builder: (_) => EditQuestScreen(quest: quest),
+                    ))
+                    .then((_) => vm.reloadQuests()),
+              ),
+            ],
+          ),
+        ),
+        // Body
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+            children: [
+              if (quest.description.isNotEmpty) ...[
+                Text('Beschreibung', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.textSoft, letterSpacing: 0.5)),
+                const SizedBox(height: 8),
+                Text(quest.description, style: TextStyle(fontSize: 13, color: C.textMid, height: 1.6)),
+                const SizedBox(height: 20),
+              ],
+              if (quest.location != null && quest.location!.isNotEmpty) ...[
+                _DetailRow(label: 'Ort', value: quest.location!, C: C),
+                const SizedBox(height: 10),
+              ],
+              if (quest.recommendedLevel != null) ...[
+                _DetailRow(label: 'Empf. Level', value: 'Lvl ${quest.recommendedLevel}', C: C),
+                const SizedBox(height: 10),
+              ],
+              if (quest.estimatedDurationHours != null) ...[
+                _DetailRow(label: 'Dauer', value: '${quest.estimatedDurationHours}h', C: C),
+                const SizedBox(height: 10),
+              ],
+              if (quest.tags.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text('Tags', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.textSoft, letterSpacing: 0.5)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: quest.tags.map((t) => _TagPill(t, C.textMid, C)).toList(),
+                ),
+                const SizedBox(height: 16),
+              ],
+              if (quest.totalXP > 0 || quest.totalGoldAmount > 0) ...[
+                Text('Belohnungen', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.textSoft, letterSpacing: 0.5)),
+                const SizedBox(height: 8),
+                if (quest.totalXP > 0) _DetailRow(label: 'EP', value: '${quest.totalXP}', C: C),
+                if (quest.totalGoldAmount > 0) ...[const SizedBox(height: 6), _DetailRow(label: 'Gold', value: '${quest.totalGoldAmount}', C: C)],
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── SPIELER DETAIL PANE ───────────────────────────────────────────────────────
+
+class _SpielerDetailPane extends StatelessWidget {
+  const _SpielerDetailPane({required this.character, required this.vm});
+
+  final PlayerCharacter character;
+  final DmBuchViewModel vm;
+
+  Color _classColor(AppColorsExtension C) {
+    final lower = character.className.toLowerCase();
+    if (lower.contains('barbar') || lower.contains('krieger') || lower.contains('fighter')) return C.red;
+    if (lower.contains('magier') || lower.contains('wizard') || lower.contains('warlock') || lower.contains('sorcerer') || lower.contains('hexenmeister')) return C.accent;
+    if (lower.contains('kleriker') || lower.contains('cleric') || lower.contains('paladin')) return C.amber;
+    if (lower.contains('schurke') || lower.contains('rogue') || lower.contains('bard') || lower.contains('barde')) return C.amber;
+    if (lower.contains('ranger') || lower.contains('waldläufer') || lower.contains('druide') || lower.contains('druid') || lower.contains('monk')) return C.green;
+    return C.textMid;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final C = context.appColors;
+    final classColor = _classColor(C);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Header
+        Container(
+          padding: const EdgeInsets.fromLTRB(20, 16, 16, 14),
+          decoration: BoxDecoration(
+            color: C.bgPanel,
+            border: Border(bottom: BorderSide(color: C.border)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      character.name,
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: C.text),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      character.playerName.isNotEmpty ? '${character.playerName} · ${character.raceName}' : character.raceName,
+                      style: TextStyle(fontSize: 12, color: C.textSoft),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        _TagPill('${character.className}', classColor, C),
+                        const SizedBox(width: 6),
+                        _TagPill('Level ${character.level}', C.textMid, C),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              _TopBarIconBtn(
+                icon: AppIconName.edit,
+                C: C,
+                onTap: () => Navigator.of(context)
+                    .push(MaterialPageRoute<void>(
+                      builder: (_) => EditPCScreen(
+                        campaignId: character.campaignId,
+                        pcToEdit: character,
+                      ),
+                    ))
+                    .then((_) => vm.reloadCharacters()),
+              ),
+            ],
+          ),
+        ),
+        // Kernwerte
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: C.border)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _BigStat('HP', '${character.maxHp}', C.green, C),
+              _BigStat('RK', '${character.armorClass}', C.accent, C),
+              _BigStat('INI', '${character.initiativeBonus >= 0 ? '+' : ''}${character.initiativeBonus}', C.amber, C),
+            ],
+          ),
+        ),
+        // Attribute
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+            children: [
+              Text('Attribute', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.textSoft, letterSpacing: 0.5)),
+              const SizedBox(height: 10),
+              _AttributeGrid(character: character, C: C),
+              if (character.description != null && character.description!.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                Text('Hintergrund', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.textSoft, letterSpacing: 0.5)),
+                const SizedBox(height: 8),
+                Text(character.description!, style: TextStyle(fontSize: 13, color: C.textMid, height: 1.6)),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BigStat extends StatelessWidget {
+  const _BigStat(this.label, this.value, this.color, this.C);
+
+  final String label;
+  final String value;
+  final Color color;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        children: [
+          Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: color)),
+          const SizedBox(height: 2),
+          Text(label, style: TextStyle(fontSize: 10, color: C.textSoft, letterSpacing: 0.4)),
+        ],
+      );
+}
+
+class _AttributeGrid extends StatelessWidget {
+  const _AttributeGrid({required this.character, required this.C});
+
+  final PlayerCharacter character;
+  final AppColorsExtension C;
+
+  int _modifier(int score) => ((score - 10) / 2).floor();
+  String _mod(int score) {
+    final m = _modifier(score);
+    return m >= 0 ? '+$m' : '$m';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final attrs = [
+      ('STR', character.strength),
+      ('DEX', character.dexterity),
+      ('KON', character.constitution),
+      ('INT', character.intelligence),
+      ('WEI', character.wisdom),
+      ('CHA', character.charisma),
+    ];
+    return GridView.count(
+      crossAxisCount: 3,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 8,
+      childAspectRatio: 1.6,
+      children: attrs.map((a) => Container(
+            decoration: BoxDecoration(
+              color: C.bgHover,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: C.border),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(a.$1, style: TextStyle(fontSize: 9, color: C.textSoft, letterSpacing: 0.4)),
+                const SizedBox(height: 2),
+                Text('${a.$2}', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: C.text)),
+                Text(_mod(a.$2), style: TextStyle(fontSize: 10, color: C.textMid)),
+              ],
+            ),
+          )).toList(),
+    );
+  }
+}
+
+// ── VERLAUF DETAIL PANE ───────────────────────────────────────────────────────
+
+class _VerlaufsDetailPane extends StatelessWidget {
+  const _VerlaufsDetailPane({required this.eintrag, required this.vm});
+
+  final VerlaufsEintrag eintrag;
+  final DmBuchViewModel vm;
+
+  Color _typeColor(AppColorsExtension C) {
+    switch (eintrag.type) {
+      case VerlaufsEintragType.ort:      return C.accent;
+      case VerlaufsEintragType.quest:    return C.amber;
+      case VerlaufsEintragType.ereignis: return C.textMid;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final C = context.appColors;
+    final color = _typeColor(C);
+    final isVorbereitung = vm.mode == DmBuchMode.vorbereitung;
+
+    // Resolve referenced Ort or Quest
+    final referencedOrt = eintrag.type == VerlaufsEintragType.ort && eintrag.refId != null
+        ? vm.orte.where((o) => o.id == eintrag.refId).cast<Ort?>().firstOrNull
+        : null;
+    final referencedQuest = eintrag.type == VerlaufsEintragType.quest && eintrag.refId != null
+        ? vm.quests.where((q) => q.id.toString() == eintrag.refId).cast<Quest?>().firstOrNull
+        : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Header
+        Container(
+          padding: const EdgeInsets.fromLTRB(20, 16, 16, 14),
+          decoration: BoxDecoration(
+            color: C.bgPanel,
+            border: Border(bottom: BorderSide(color: C.border)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 4,
+                height: 40,
+                margin: const EdgeInsets.only(right: 14, top: 2),
+                decoration: BoxDecoration(
+                  color: eintrag.isDone ? color.withValues(alpha: 0.3) : color,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      eintrag.label,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: eintrag.isDone ? C.textSoft : C.text,
+                        decoration: eintrag.isDone ? TextDecoration.lineThrough : null,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        _TagPill(eintrag.type.label, color, C),
+                        if (eintrag.isDone) ...[
+                          const SizedBox(width: 6),
+                          _TagPill('Erledigt', C.green, C),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (vm.mode == DmBuchMode.live)
+                GestureDetector(
+                  onTap: () => vm.toggleVerlaufsEintrag(eintrag.id),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Icon(
+                      eintrag.isDone ? Icons.check_circle : Icons.radio_button_unchecked,
+                      size: 20,
+                      color: eintrag.isDone ? C.green : C.textSoft,
+                    ),
+                  ),
+                ),
+              if (isVorbereitung)
+                GestureDetector(
+                  onTap: () {
+                    vm.removeVerlaufsEintrag(eintrag.id);
+                    vm.deselectVerlaufsEintrag();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Icon(Icons.delete_outline, size: 16, color: C.textSoft),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        // Body
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+            children: [
+              if (eintrag.note != null && eintrag.note!.isNotEmpty) ...[
+                Text('Notiz', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.textSoft, letterSpacing: 0.5)),
+                const SizedBox(height: 8),
+                Text(eintrag.note!, style: TextStyle(fontSize: 13, color: C.textMid, height: 1.6)),
+                const SizedBox(height: 20),
+              ],
+              if (referencedOrt != null) ...[
+                Text('Verknüpfter Ort', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.textSoft, letterSpacing: 0.5)),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: C.bgHover,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: C.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(referencedOrt.name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.text)),
+                      const SizedBox(height: 4),
+                      Text(referencedOrt.type.label, style: TextStyle(fontSize: 11, color: C.textSoft)),
+                      if (referencedOrt.description.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(referencedOrt.description, style: TextStyle(fontSize: 12, color: C.textMid), maxLines: 3, overflow: TextOverflow.ellipsis),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+              if (referencedQuest != null) ...[
+                Text('Verknüpfte Quest', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.textSoft, letterSpacing: 0.5)),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: C.bgHover,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: C.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(referencedQuest.title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.text)),
+                      const SizedBox(height: 4),
+                      Text(referencedQuest.questTypeDescription, style: TextStyle(fontSize: 11, color: C.textSoft)),
+                      if (referencedQuest.description.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(referencedQuest.description, style: TextStyle(fontSize: 12, color: C.textMid), maxLines: 3, overflow: TextOverflow.ellipsis),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── SHARED DETAIL HELPERS ─────────────────────────────────────────────────────
+
+class _TagPill extends StatelessWidget {
+  const _TagPill(this.label, this.color, this.C);
+
+  final String label;
+  final Color color;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
+        ),
+        child: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: color)),
+      );
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.label, required this.value, required this.C});
+
+  final String label;
+  final String value;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(label, style: TextStyle(fontSize: 12, color: C.textSoft)),
+          ),
+          Text(value, style: TextStyle(fontSize: 12, color: C.text)),
+        ],
+      );
 }
 
 // ── QUESTS TAB ────────────────────────────────────────────────────────────────
@@ -550,15 +1305,27 @@ class _QuestsTab extends StatelessWidget {
               ),
               const Spacer(),
               GestureDetector(
+                onTap: () async {
+                  final libraryQuests = await vm.loadLibraryQuests();
+                  if (!context.mounted) return;
+                  final picked = await QuestPickerDialog.show(
+                    context,
+                    quests: libraryQuests,
+                  );
+                  if (picked != null && context.mounted) {
+                    await vm.addQuestFromLibrary(picked);
+                  }
+                },
+                child: Text('Bibliothek', style: TextStyle(fontSize: 11, color: C.accent)),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
                 onTap: () => Navigator.of(context)
                     .push(MaterialPageRoute<void>(
                       builder: (_) => EditQuestScreen(campaignId: vm.campaign.id),
                     ))
                     .then((_) => vm.reloadQuests()),
-                child: Text(
-                  'Quest erstellen',
-                  style: TextStyle(fontSize: 11, color: C.accent),
-                ),
+                child: Text('Neu', style: TextStyle(fontSize: 11, color: C.accent)),
               ),
             ],
           ),
@@ -577,11 +1344,8 @@ class _QuestsTab extends StatelessWidget {
                   itemBuilder: (ctx, i) => _QuestRow(
                     quest: quests[i],
                     C: C,
-                    onTap: () => Navigator.of(context)
-                        .push(MaterialPageRoute<void>(
-                          builder: (_) => EditQuestScreen(quest: quests[i]),
-                        ))
-                        .then((_) => vm.reloadQuests()),
+                    selected: vm.selectedQuest?.id == quests[i].id,
+                    onTap: () => vm.selectQuest(quests[i]),
                   ),
                 ),
         ),
@@ -591,11 +1355,12 @@ class _QuestsTab extends StatelessWidget {
 }
 
 class _QuestRow extends StatefulWidget {
-  const _QuestRow({required this.quest, required this.C, required this.onTap});
+  const _QuestRow({required this.quest, required this.C, required this.onTap, this.selected = false});
 
   final Quest quest;
   final AppColorsExtension C;
   final VoidCallback onTap;
+  final bool selected;
 
   @override
   State<_QuestRow> createState() => _QuestRowState();
@@ -629,8 +1394,14 @@ class _QuestRowState extends State<_QuestRow> {
           margin: const EdgeInsets.only(bottom: 6),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: _hovered ? C.bgHover : C.bgPanel,
-            border: Border.all(color: C.border),
+            color: widget.selected
+                ? C.accent.withValues(alpha: 0.08)
+                : _hovered
+                    ? C.bgHover
+                    : C.bgPanel,
+            border: Border.all(
+              color: widget.selected ? C.accent.withValues(alpha: 0.4) : C.border,
+            ),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -649,8 +1420,6 @@ class _QuestRowState extends State<_QuestRow> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 6),
-              AppIcon(AppIconName.chevronRight, size: 12, color: C.textSoft),
             ],
           ),
         ),
@@ -671,20 +1440,68 @@ class _RightPane extends StatelessWidget {
     final C = context.appColors;
     final ort = vm.selectedOrt;
 
-    if (ort == null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.touch_app_outlined, size: 36, color: C.textSoft),
-            const SizedBox(height: 12),
-            Text(
-              'Wähle einen Ort aus der Karte',
-              style: TextStyle(fontSize: 14, color: C.textSoft),
+    // Karte-Tab: Graph + optionales Detail-Panel
+    if (vm.leftTab == DmBuchLeftTab.karte) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Graph (nimmt gesamten Platz, außer wenn Detail offen)
+          Expanded(
+            child: OrtGraphView(
+              orte: vm.orte,
+              selectedOrt: ort,
+              onSelect: vm.selectOrt,
+            ),
+          ),
+          // Detail-Panel — nur wenn ein Ort ausgewählt
+          if (ort != null) ...[
+            VerticalDivider(width: 1, thickness: 1, color: C.border),
+            SizedBox(
+              width: 340,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _OrtHeader(ort: ort, vm: vm),
+                  if (ort.hasBeenVisited) _MemoryBanner(ort: ort, vm: vm, C: C),
+                  Expanded(child: _OrtDetail(ort: ort, vm: vm)),
+                ],
+              ),
             ),
           ],
-        ),
+        ],
       );
+    }
+
+    // Quests-Tab
+    if (vm.leftTab == DmBuchLeftTab.quests) {
+      final quest = vm.selectedQuest;
+      if (quest == null) {
+        return _EmptyFocus(message: 'Wähle eine Quest aus der Liste', C: C);
+      }
+      return _QuestDetailPane(quest: quest, vm: vm);
+    }
+
+    // Spieler-Tab
+    if (vm.leftTab == DmBuchLeftTab.spieler) {
+      final character = vm.selectedCharacter;
+      if (character == null) {
+        return _EmptyFocus(message: 'Wähle einen Helden aus der Liste', C: C);
+      }
+      return _SpielerDetailPane(character: character, vm: vm);
+    }
+
+    // Verlauf-Tab
+    if (vm.leftTab == DmBuchLeftTab.verlauf) {
+      final eintrag = vm.selectedVerlaufsEintrag;
+      if (eintrag == null) {
+        return _EmptyFocus(message: 'Wähle einen Eintrag aus dem Verlaufsplan', C: C);
+      }
+      return _VerlaufsDetailPane(eintrag: eintrag, vm: vm);
+    }
+
+    // Karte-Tab ohne Auswahl / Fallback
+    if (ort == null) {
+      return _EmptyFocus(message: 'Wähle einen Ort aus der Karte', C: C);
     }
 
     return Column(
@@ -737,7 +1554,7 @@ class _OrtHeader extends StatelessWidget {
                     _TypeTag(type: ort.type, C: C),
                     const SizedBox(width: 8),
                     Text(
-                      '${vm.selectedOrtScenes.length} Szene${vm.selectedOrtScenes.length != 1 ? "n" : ""}',
+                      '${vm.selectedOrtSessions.length} Session${vm.selectedOrtSessions.length != 1 ? "s" : ""}',
                       style: TextStyle(fontSize: 11, color: C.textSoft),
                     ),
                   ],
@@ -868,48 +1685,104 @@ class _OrtDetail extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
       children: [
-        // Szenen
+        // Sessions
         _SectionHeader(
-          title: 'Szenen',
+          title: 'Sessions',
           C: C,
-          action: 'Szene hinzufügen',
+          action: 'Session hinzufügen',
           onAction: () => showDialog<void>(
             context: context,
-            builder: (_) => _CreateSceneDialog(ort: ort, vm: vm),
+            builder: (_) => _CreateSessionDialog(ort: ort, vm: vm),
           ),
         ),
         const SizedBox(height: 8),
-        if (vm.selectedOrtScenes.isEmpty)
-          _EmptyHint('Noch keine Szenen für diesen Ort.', C)
+        if (vm.selectedOrtSessions.isEmpty)
+          _EmptyHint('Noch keine Sessions für diesen Ort.', C)
         else
-          ReorderableListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            buildDefaultDragHandles: false,
-            onReorder: vm.reorderScenes,
-            proxyDecorator: (child, _, __) =>
-                Material(color: Colors.transparent, child: child),
-            itemCount: vm.selectedOrtScenes.length,
-            itemBuilder: (_, i) {
-              final scene = vm.selectedOrtScenes[i];
-              return Padding(
-                key: ValueKey(scene.id),
+          ...vm.selectedOrtSessions.map((session) => Padding(
+                key: ValueKey(session.id),
                 padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  children: [
-                    ReorderableDragStartListener(
-                      index: i,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(0, 0, 6, 0),
-                        child: Icon(Icons.drag_handle, size: 14, color: context.appColors.textSoft),
-                      ),
-                    ),
-                    Expanded(child: _SceneRow(scene: scene, vm: vm)),
-                  ],
-                ),
-              );
-            },
+                child: _SessionRow(session: session, vm: vm),
+              )),
+        const SizedBox(height: 20),
+
+        // Wiki-Verknüpfungen
+        _SectionHeader(
+          title: 'Wiki-Einträge',
+          C: C,
+          action: 'Hinzufügen',
+          onAction: () => _showWikiPickerDialog(context),
+        ),
+        const SizedBox(height: 8),
+        if (ort.linkedWikiEntryIds.isEmpty)
+          _EmptyHint('Noch keine Wiki-Einträge verknüpft.', C)
+        else
+          ...ort.linkedWikiEntryIds.map((wikiId) {
+            final entry = vm.wikiEntries.where((w) => w.id == wikiId).firstOrNull;
+            if (entry == null) return const SizedBox.shrink();
+            return _WikiEntryRow(entry: entry, onRemove: () => vm.unlinkWikiEntry(ort, wikiId), C: C);
+          }),
+
+        const SizedBox(height: 20),
+
+        // Verbindungen zu anderen Orten
+        _SectionHeader(
+          title: 'Verbindungen',
+          C: C,
+          action: 'Verbinden',
+          onAction: () => _showConnectOrtDialog(context),
+        ),
+        const SizedBox(height: 8),
+        if (ort.connectedOrtIds.isEmpty)
+          _EmptyHint('Noch keine Verbindungen zu anderen Orten.', C)
+        else
+          ...ort.connectedOrtIds.map((targetId) {
+            final target = vm.orte.where((o) => o.id == targetId).firstOrNull;
+            if (target == null) return const SizedBox.shrink();
+            return _ConnectedOrtRow(
+              target: target,
+              onRemove: () => vm.disconnectOrte(ort, target),
+              onSelect: () => vm.selectOrt(target),
+              C: C,
+            );
+          }),
+
+        const SizedBox(height: 20),
+
+        // Verlaufsplan
+        _SectionHeader(
+          title: 'Verlaufsplan',
+          C: C,
+          action: 'Hinzufügen',
+          onAction: () => vm.addVerlaufsEintrag(
+            VerlaufsEintrag.create(
+              type: VerlaufsEintragType.ort,
+              refId: ort.id,
+              label: ort.name,
+            ),
           ),
+        ),
+        const SizedBox(height: 8),
+        Builder(builder: (context) {
+          final steps = vm.verlaufsplan
+              .asMap()
+              .entries
+              .where((e) => e.value.type == VerlaufsEintragType.ort && e.value.refId == ort.id)
+              .toList();
+          if (steps.isEmpty) return _EmptyHint('Dieser Ort ist noch nicht im Verlaufsplan.', C);
+          return Column(
+            children: steps.map((e) => _OrtVerlaufsRow(
+              index: e.key,
+              eintrag: e.value,
+              C: C,
+              onTap: () {
+                vm.setLeftTab(DmBuchLeftTab.verlauf);
+                vm.selectVerlaufsEintrag(e.value);
+              },
+            )).toList(),
+          );
+        }),
+
         const SizedBox(height: 20),
 
         // Live-Modus Aktionen
@@ -1006,76 +1879,384 @@ class _OrtDetail extends StatelessWidget {
       ),
     );
   }
-}
 
-class _SceneRow extends StatefulWidget {
-  const _SceneRow({required this.scene, required this.vm});
-
-  final Scene scene;
-  final DmBuchViewModel vm;
-
-  @override
-  State<_SceneRow> createState() => _SceneRowState();
-}
-
-class _SceneRowState extends State<_SceneRow> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
+  void _showWikiPickerDialog(BuildContext context) {
     final C = context.appColors;
-
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: () => Navigator.of(context)
-            .push(MaterialPageRoute<void>(
-              builder: (_) => EditSceneScreen(scene: widget.scene),
-            ))
-            .then((_) => widget.vm.reloadScenes()),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 100),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: _hovered ? C.bgHover : C.bgPanel,
-            border: Border.all(color: C.border),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: widget.scene.isCompleted ? C.green : C.textSoft,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  widget.scene.name,
-                  style: TextStyle(fontSize: 13, color: C.text),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (_hovered)
-                GestureDetector(
-                  onTap: () => _confirmDelete(context, C),
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: AppIcon(AppIconName.trash, size: 13, color: C.red),
+    final available = vm.wikiEntries
+        .where((w) => !ort.linkedWikiEntryIds.contains(w.id))
+        .toList();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: C.bgPanel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: C.border),
+        ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 380, maxHeight: 480),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Wiki-Eintrag verknüpfen',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.text)),
+                const SizedBox(height: 12),
+                if (available.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: Text('Alle Wiki-Einträge bereits verknüpft.',
+                        style: TextStyle(fontSize: 12, color: C.textSoft)),
+                  )
+                else
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: available.length,
+                      itemBuilder: (_, i) {
+                        final entry = available[i];
+                        return ListTile(
+                          dense: true,
+                          title: Text(entry.title,
+                              style: TextStyle(fontSize: 13, color: C.text)),
+                          subtitle: Text(entry.entryType.name,
+                              style: TextStyle(fontSize: 11, color: C.textSoft)),
+                          onTap: () {
+                            vm.linkWikiEntry(ort, entry.id);
+                            Navigator.of(ctx).pop();
+                          },
+                        );
+                      },
+                    ),
                   ),
-                )
-              else
-                AppIcon(AppIconName.chevronRight, size: 12, color: C.textSoft),
-            ],
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: Text('Schließen', style: TextStyle(color: C.textMid)),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  void _showConnectOrtDialog(BuildContext context) {
+    final C = context.appColors;
+    final available = vm.orte
+        .where((o) => o.id != ort.id && !ort.connectedOrtIds.contains(o.id))
+        .toList();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: C.bgPanel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: C.border),
+        ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 380, maxHeight: 480),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Ort verbinden',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.text)),
+                const SizedBox(height: 12),
+                if (available.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: Text('Keine weiteren Orte verfügbar.',
+                        style: TextStyle(fontSize: 12, color: C.textSoft)),
+                  )
+                else
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: available.length,
+                      itemBuilder: (_, i) {
+                        final target = available[i];
+                        return ListTile(
+                          dense: true,
+                          leading: Container(
+                            width: 8, height: 8,
+                            decoration: BoxDecoration(
+                              color: _ortTypeColor(target.type, C),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          title: Text(target.name,
+                              style: TextStyle(fontSize: 13, color: C.text)),
+                          subtitle: Text(target.type.label,
+                              style: TextStyle(fontSize: 11, color: C.textSoft)),
+                          onTap: () {
+                            vm.connectOrte(ort, target);
+                            Navigator.of(ctx).pop();
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: Text('Schließen', style: TextStyle(color: C.textMid)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _ortTypeColor(OrtType type, AppColorsExtension C) {
+    switch (type) {
+      case OrtType.dungeon:    return C.red;
+      case OrtType.city:       return C.green;
+      case OrtType.building:   return C.accent;
+      case OrtType.wilderness: return C.amber;
+      case OrtType.other:      return C.textSoft;
+    }
+  }
+}
+
+class _WikiEntryRow extends StatelessWidget {
+  const _WikiEntryRow({required this.entry, required this.onRemove, required this.C});
+  final WikiEntry entry;
+  final VoidCallback onRemove;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.only(bottom: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: C.bgHover,
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: C.border),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.menu_book_outlined, size: 13, color: C.accent),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(entry.title,
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: C.text),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(entry.entryType.name,
+                      style: TextStyle(fontSize: 10, color: C.textSoft)),
+                ],
+              ),
+            ),
+            GestureDetector(
+              onTap: onRemove,
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(Icons.close, size: 13, color: C.textSoft),
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+class _ConnectedOrtRow extends StatelessWidget {
+  const _ConnectedOrtRow({
+    required this.target, required this.onRemove,
+    required this.onSelect, required this.C,
+  });
+  final Ort target;
+  final VoidCallback onRemove;
+  final VoidCallback onSelect;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.only(bottom: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: C.bgHover,
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: C.border),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 8, height: 8,
+              decoration: BoxDecoration(
+                color: _typeColor(C),
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: GestureDetector(
+                onTap: onSelect,
+                child: Text(target.name,
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: C.text),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+            ),
+            Text(target.type.label,
+                style: TextStyle(fontSize: 10, color: C.textSoft)),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: onRemove,
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(Icons.close, size: 13, color: C.textSoft),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Color _typeColor(AppColorsExtension C) {
+    switch (target.type) {
+      case OrtType.dungeon:    return C.red;
+      case OrtType.city:       return C.green;
+      case OrtType.building:   return C.accent;
+      case OrtType.wilderness: return C.amber;
+      case OrtType.other:      return C.textSoft;
+    }
+  }
+}
+
+class _SessionRow extends StatefulWidget {
+  const _SessionRow({required this.session, required this.vm});
+
+  final Session session;
+  final DmBuchViewModel vm;
+
+  @override
+  State<_SessionRow> createState() => _SessionRowState();
+}
+
+class _SessionRowState extends State<_SessionRow> {
+  bool _hovered = false;
+
+  Color _statusColor(AppColorsExtension C) {
+    if (widget.session.isCompleted) return C.amber;
+    if (widget.session.isActive) return C.green;
+    return C.textSoft;
+  }
+
+  String _statusLabel() {
+    if (widget.session.isCompleted) return 'Abgeschlossen';
+    if (widget.session.isActive) return 'Aktiv';
+    return 'Geplant';
+  }
+
+  String _formattedDate() {
+    final d = widget.session.createdAt;
+    return '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final C = context.appColors;
+    final statusColor = _statusColor(C);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => _openSession(context),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 100),
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: _hovered ? statusColor.withValues(alpha: 0.45) : C.border,
+            ),
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: _hovered ? C.bgHover : C.bgPanel,
+              border: Border(left: BorderSide(color: statusColor, width: 3)),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        widget.session.title,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: C.text,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Container(
+                            width: 5,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: statusColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _statusLabel(),
+                            style: TextStyle(fontSize: 10, color: C.textSoft),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _formattedDate(),
+                            style: TextStyle(fontSize: 10, color: C.textSoft),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                if (_hovered)
+                  GestureDetector(
+                    onTap: () => _confirmDelete(context, C),
+                    child: Icon(Icons.delete_outline, size: 13, color: C.red),
+                  )
+                else
+                  Icon(Icons.play_arrow_rounded, size: 14,
+                      color: statusColor.withValues(alpha: 0.7)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openSession(BuildContext context) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ActiveSessionScreen(
+          session: widget.session,
+          campaign: widget.vm.campaign,
+        ),
+      ),
+    );
+    if (context.mounted) widget.vm.reloadSessions();
   }
 
   void _confirmDelete(BuildContext context, AppColorsExtension C) {
@@ -1087,10 +2268,10 @@ class _SceneRowState extends State<_SceneRow> {
           borderRadius: BorderRadius.circular(10),
           side: BorderSide(color: C.border),
         ),
-        title: Text('Szene löschen?',
+        title: Text('Session löschen?',
             style: TextStyle(fontSize: 15, color: C.text)),
         content: Text(
-          '"${widget.scene.name}" wird unwiderruflich gelöscht.',
+          '"${widget.session.title}" wird unwiderruflich gelöscht.',
           style: TextStyle(fontSize: 13, color: C.textMid),
         ),
         actions: [
@@ -1100,13 +2281,93 @@ class _SceneRowState extends State<_SceneRow> {
           ),
           FilledButton(
             onPressed: () {
-              widget.vm.deleteScene(widget.scene.id);
+              widget.vm.deleteOrtSession(widget.session.id);
               Navigator.of(ctx).pop();
             },
             style: FilledButton.styleFrom(backgroundColor: C.red),
             child: const Text('Löschen'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _OrtVerlaufsRow extends StatefulWidget {
+  const _OrtVerlaufsRow({required this.index, required this.eintrag, required this.C, required this.onTap});
+
+  final int index;
+  final VerlaufsEintrag eintrag;
+  final AppColorsExtension C;
+  final VoidCallback onTap;
+
+  @override
+  State<_OrtVerlaufsRow> createState() => _OrtVerlaufsRowState();
+}
+
+class _OrtVerlaufsRowState extends State<_OrtVerlaufsRow> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final C = widget.C;
+    final e = widget.eintrag;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 100),
+          margin: const EdgeInsets.only(bottom: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            color: _hovered ? C.bgHover : C.bg,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: C.border),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: C.accent.withValues(alpha: e.isDone ? 0.05 : 0.12),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: C.accent.withValues(alpha: e.isDone ? 0.2 : 0.4)),
+                ),
+                child: Center(
+                  child: Text(
+                    '${widget.index + 1}',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: e.isDone ? C.textSoft : C.accent,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  e.label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: e.isDone ? C.textSoft : C.text,
+                    decoration: e.isDone ? TextDecoration.lineThrough : null,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (e.isDone)
+                Icon(Icons.check_circle, size: 13, color: C.green)
+              else
+                Icon(Icons.chevron_right, size: 13, color: C.textSoft),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1480,37 +2741,24 @@ class _EditOrtDialogState extends State<_EditOrtDialog> {
   }
 }
 
-// ── CREATE SCENE DIALOG ───────────────────────────────────────────────────────
+// ── CREATE SESSION DIALOG ─────────────────────────────────────────────────────
 
-class _CreateSceneDialog extends StatefulWidget {
-  const _CreateSceneDialog({required this.ort, required this.vm});
+class _CreateSessionDialog extends StatefulWidget {
+  const _CreateSessionDialog({required this.ort, required this.vm});
 
   final Ort ort;
   final DmBuchViewModel vm;
 
   @override
-  State<_CreateSceneDialog> createState() => _CreateSceneDialogState();
+  State<_CreateSessionDialog> createState() => _CreateSessionDialogState();
 }
 
-class _CreateSceneDialogState extends State<_CreateSceneDialog> {
-  final _nameCtrl = TextEditingController();
-  final _descCtrl = TextEditingController();
-  SceneType _type = SceneType.Exploration;
-
-  static const Map<SceneType, String> _labels = {
-    SceneType.Introduction: 'Einführung',
-    SceneType.Exploration:  'Erforschung',
-    SceneType.Combat:       'Kampf',
-    SceneType.Social:       'Sozial',
-    SceneType.Puzzle:       'Rätsel',
-    SceneType.Climax:       'Höhepunkt',
-    SceneType.Resolution:   'Auflösung',
-  };
+class _CreateSessionDialogState extends State<_CreateSessionDialog> {
+  final _titleCtrl = TextEditingController();
 
   @override
   void dispose() {
-    _nameCtrl.dispose();
-    _descCtrl.dispose();
+    _titleCtrl.dispose();
     super.dispose();
   }
 
@@ -1531,36 +2779,15 @@ class _CreateSceneDialogState extends State<_CreateSceneDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Szene für ${widget.ort.name}',
+              'Session für ${widget.ort.name}',
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: C.text),
             ),
             const SizedBox(height: 16),
             TextField(
-              controller: _nameCtrl,
+              controller: _titleCtrl,
               autofocus: true,
               style: TextStyle(fontSize: 13, color: C.text),
-              decoration: _inputDeco(C, 'Name der Szene'),
-            ),
-            const SizedBox(height: 10),
-            DropdownButtonFormField<SceneType>(
-              value: _type,
-              dropdownColor: C.bgPanel,
-              style: TextStyle(fontSize: 13, color: C.text),
-              decoration: _inputDeco(C, 'Typ'),
-              items: SceneType.values
-                  .map((t) => DropdownMenuItem(
-                        value: t,
-                        child: Text(_labels[t] ?? t.name),
-                      ))
-                  .toList(),
-              onChanged: (t) { if (t != null) setState(() => _type = t); },
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _descCtrl,
-              maxLines: 3,
-              style: TextStyle(fontSize: 13, color: C.text),
-              decoration: _inputDeco(C, 'Beschreibung (optional)'),
+              decoration: _inputDeco(C, 'Titel der Session'),
             ),
             const SizedBox(height: 16),
             Row(
@@ -1573,14 +2800,9 @@ class _CreateSceneDialogState extends State<_CreateSceneDialog> {
                 const SizedBox(width: 8),
                 FilledButton(
                   onPressed: () async {
-                    final name = _nameCtrl.text.trim();
-                    if (name.isEmpty) return;
-                    await widget.vm.createSceneForOrt(
-                      widget.ort,
-                      name: name,
-                      type: _type,
-                      description: _descCtrl.text.trim(),
-                    );
+                    final title = _titleCtrl.text.trim();
+                    if (title.isEmpty) return;
+                    await widget.vm.createSessionForOrt(widget.ort, title: title);
                     if (context.mounted) Navigator.of(context).pop();
                   },
                   style: FilledButton.styleFrom(backgroundColor: C.accent),
@@ -1656,102 +2878,6 @@ class _TypeDropdown extends StatelessWidget {
       );
 }
 
-// ── START SESSION BUTTON ──────────────────────────────────────────────────────
-
-class _StartSessionBtn extends StatefulWidget {
-  const _StartSessionBtn({required this.vm, required this.C});
-
-  final DmBuchViewModel vm;
-  final AppColorsExtension C;
-
-  @override
-  State<_StartSessionBtn> createState() => _StartSessionBtnState();
-}
-
-class _StartSessionBtnState extends State<_StartSessionBtn> {
-  bool _loading = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final C = widget.C;
-
-    return GestureDetector(
-      onTap: _loading ? null : () => _start(context),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 100),
-        height: 28,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
-          color: C.accent,
-          borderRadius: BorderRadius.circular(7),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (_loading)
-              SizedBox(
-                width: 10,
-                height: 10,
-                child: CircularProgressIndicator(
-                  strokeWidth: 1.5,
-                  color: C.bg,
-                ),
-              )
-            else
-              Icon(Icons.play_arrow_rounded, size: 14, color: C.bg),
-            const SizedBox(width: 5),
-            Text(
-              'Session starten',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: C.bg,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _start(BuildContext context) async {
-    setState(() => _loading = true);
-    final sceneCount = widget.vm.selectedOrtScenes.length;
-    final session = await widget.vm.startSession();
-    if (!mounted) return;
-    setState(() => _loading = false);
-    if (session == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Session konnte nicht erstellt werden'),
-          backgroundColor: widget.C.red,
-        ),
-      );
-      return;
-    }
-    if (sceneCount > 0 && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '$sceneCount Szene${sceneCount == 1 ? '' : 'n'} aus Ort importiert',
-          ),
-          duration: const Duration(seconds: 2),
-          backgroundColor: widget.C.green,
-        ),
-      );
-    }
-    if (!mounted) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => ActiveSessionScreen(
-          session: session,
-          campaign: widget.vm.campaign,
-        ),
-      ),
-    );
-  }
-}
-
 // ── SYNC BUTTON ───────────────────────────────────────────────────────────────
 
 class _SyncBtn extends StatelessWidget {
@@ -1799,6 +2925,1668 @@ class _SyncBtn extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+// ── SPIELER TAB ───────────────────────────────────────────────────────────────
+
+class _SpielerTab extends StatelessWidget {
+  const _SpielerTab({required this.vm});
+
+  final DmBuchViewModel vm;
+
+  @override
+  Widget build(BuildContext context) {
+    final C = context.appColors;
+    final characters = vm.characters;
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+          child: Row(
+            children: [
+              Text(
+                '${characters.length} Held${characters.length != 1 ? "en" : ""}',
+                style: TextStyle(fontSize: 11, color: C.textSoft),
+              ),
+              const Spacer(),
+              _AddHeldChip(
+                onTap: () => Navigator.of(context)
+                    .push(MaterialPageRoute<void>(
+                      builder: (_) => EditPCScreen(campaignId: vm.campaign.id),
+                    ))
+                    .then((_) => vm.reloadCharacters()),
+                C: C,
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: characters.isEmpty
+              ? Center(
+                  child: Text(
+                    'Noch keine Helden',
+                    style: TextStyle(fontSize: 13, color: C.textSoft),
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+                  itemCount: characters.length,
+                  itemBuilder: (ctx, i) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: _HeldCard(
+                      character: characters[i],
+                      selected: vm.selectedCharacter?.id == characters[i].id,
+                      onTap: () => vm.selectCharacter(characters[i]),
+                    ),
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeldCard extends StatefulWidget {
+  const _HeldCard({required this.character, required this.onTap, this.selected = false});
+
+  final PlayerCharacter character;
+  final VoidCallback onTap;
+  final bool selected;
+
+  @override
+  State<_HeldCard> createState() => _HeldCardState();
+}
+
+class _HeldCardState extends State<_HeldCard> {
+  bool _hovered = false;
+
+  Color _classColor(AppColorsExtension C) {
+    final lower = widget.character.className.toLowerCase();
+    if (lower.contains('barbar') || lower.contains('krieger') || lower.contains('fighter')) return C.red;
+    if (lower.contains('magier') || lower.contains('wizard') || lower.contains('warlock') || lower.contains('sorcerer') || lower.contains('hexenmeister')) return C.accent;
+    if (lower.contains('kleriker') || lower.contains('cleric') || lower.contains('paladin')) return C.amber;
+    if (lower.contains('schurke') || lower.contains('rogue') || lower.contains('bard') || lower.contains('barde')) return C.amber;
+    if (lower.contains('ranger') || lower.contains('waldläufer') || lower.contains('druide') || lower.contains('druid') || lower.contains('monk')) return C.green;
+    return C.textMid;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final C = context.appColors;
+    final color = _classColor(C);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 100),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: widget.selected
+                ? C.accent.withValues(alpha: 0.08)
+                : _hovered
+                    ? C.bgHover
+                    : C.bgPanel,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: widget.selected ? C.accent.withValues(alpha: 0.4) : C.border,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.character.name,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: C.text,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      '${widget.character.className} · Lvl ${widget.character.level}',
+                      style: TextStyle(fontSize: 11, color: C.textSoft),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              _StatPill('RK ${widget.character.armorClass}', C.accent, C),
+              const SizedBox(width: 4),
+              _StatPill('${widget.character.maxHp} HP', C.green, C),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AddHeldChip extends StatefulWidget {
+  const _AddHeldChip({required this.onTap, required this.C});
+
+  final VoidCallback onTap;
+  final AppColorsExtension C;
+
+  @override
+  State<_AddHeldChip> createState() => _AddHeldChipState();
+}
+
+class _AddHeldChipState extends State<_AddHeldChip> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final C = widget.C;
+    return Tooltip(
+      message: 'Held hinzufügen',
+      waitDuration: const Duration(milliseconds: 400),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 100),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: _hovered ? C.accent.withValues(alpha: 0.1) : Colors.transparent,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: _hovered ? C.accent.withValues(alpha: 0.5) : C.border,
+              ),
+            ),
+            child: Icon(Icons.add, size: 13, color: _hovered ? C.accent : C.textSoft),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatPill extends StatelessWidget {
+  const _StatPill(this.label, this.color, this.C);
+
+  final String label;
+  final Color color;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.w500),
+        ),
+      );
+}
+
+// ── VERLAUF TAB ───────────────────────────────────────────────────────────────
+
+class _VerlaufTab extends StatefulWidget {
+  const _VerlaufTab({required this.vm});
+
+  final DmBuchViewModel vm;
+
+  @override
+  State<_VerlaufTab> createState() => _VerlaufTabState();
+}
+
+class _VerlaufTabState extends State<_VerlaufTab> {
+  bool _showGraph = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final C = context.appColors;
+    final vm = widget.vm;
+    final plan = vm.verlaufsplan;
+    final isVorbereitung = vm.mode == DmBuchMode.vorbereitung;
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+          child: Row(
+            children: [
+              if (!_showGraph)
+                Text(
+                  '${plan.length} Eintr${plan.length != 1 ? "äge" : "ag"}',
+                  style: TextStyle(fontSize: 11, color: C.textSoft),
+                ),
+              const Spacer(),
+              _VerlaufsViewToggle(
+                showGraph: _showGraph,
+                onToggle: (v) => setState(() => _showGraph = v),
+                C: C,
+              ),
+              if (isVorbereitung && !_showGraph) ...[
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => showDialog<void>(
+                    context: context,
+                    builder: (_) => _AddVerlaufsEintragDialog(vm: vm),
+                  ),
+                  child: Text('Hinzufügen', style: TextStyle(fontSize: 11, color: C.accent)),
+                ),
+              ],
+            ],
+          ),
+        ),
+        Expanded(
+          child: _showGraph
+              ? _VerlaufsGraphView(vm: vm)
+              : plan.isEmpty
+                  ? Center(
+                      child: Text(
+                        'Noch kein Verlaufsplan',
+                        style: TextStyle(fontSize: 13, color: C.textSoft),
+                      ),
+                    )
+                  : ReorderableListView.builder(
+                      padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+                      buildDefaultDragHandles: false,
+                      onReorder: isVorbereitung ? vm.reorderVerlaufsplan : (_, __) {},
+                      itemCount: plan.length,
+                      itemBuilder: (ctx, i) => _VerlaufsRow(
+                        key: ValueKey(plan[i].id),
+                        index: i,
+                        eintrag: plan[i],
+                        vm: vm,
+                        isVorbereitung: isVorbereitung,
+                        selected: vm.selectedVerlaufsEintrag?.id == plan[i].id,
+                        showConnector: i < plan.length - 1,
+                      ),
+                    ),
+        ),
+      ],
+    );
+  }
+}
+
+class _VerlaufsRow extends StatefulWidget {
+  const _VerlaufsRow({
+    super.key,
+    required this.index,
+    required this.eintrag,
+    required this.vm,
+    required this.isVorbereitung,
+    this.selected = false,
+    this.showConnector = false,
+  });
+
+  final int index;
+  final VerlaufsEintrag eintrag;
+  final DmBuchViewModel vm;
+  final bool isVorbereitung;
+  final bool selected;
+  final bool showConnector;
+
+  @override
+  State<_VerlaufsRow> createState() => _VerlaufsRowState();
+}
+
+class _VerlaufsRowState extends State<_VerlaufsRow> {
+  bool _hovered = false;
+
+  Color _typeColor(AppColorsExtension C) {
+    switch (widget.eintrag.type) {
+      case VerlaufsEintragType.ort:      return C.accent;
+      case VerlaufsEintragType.quest:    return C.amber;
+      case VerlaufsEintragType.ereignis: return C.textMid;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final C = context.appColors;
+    final e = widget.eintrag;
+    final color = _typeColor(C);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+      MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: () => widget.vm.selectVerlaufsEintrag(widget.eintrag),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 100),
+          margin: const EdgeInsets.only(bottom: 5),
+          decoration: BoxDecoration(
+            color: widget.selected
+                ? C.accent.withValues(alpha: 0.08)
+                : e.isDone
+                    ? C.bgHover.withValues(alpha: 0.5)
+                    : _hovered
+                        ? C.bgHover
+                        : C.bgPanel,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: widget.selected
+                  ? C.accent.withValues(alpha: 0.4)
+                  : e.isDone
+                      ? C.border.withValues(alpha: 0.5)
+                      : C.border,
+            ),
+        ),
+        child: Row(
+          children: [
+            // Farb-Streifen
+            Container(
+              width: 4,
+              height: 48,
+              decoration: BoxDecoration(
+                color: e.isDone ? color.withValues(alpha: 0.3) : color,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(8),
+                  bottomLeft: Radius.circular(8),
+                ),
+              ),
+            ),
+            // Nummer
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Text(
+                '${widget.index + 1}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: e.isDone ? C.textSoft : color,
+                ),
+              ),
+            ),
+            // Inhalt
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      e.label,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: e.isDone ? C.textSoft : C.text,
+                        decoration: e.isDone ? TextDecoration.lineThrough : null,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (e.note != null && e.note!.isNotEmpty)
+                      Text(
+                        e.note!,
+                        style: TextStyle(fontSize: 10, color: C.textSoft),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    else
+                      Text(
+                        e.type.label,
+                        style: TextStyle(fontSize: 10, color: C.textSoft),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            // Aktionen
+            if (widget.vm.mode == DmBuchMode.live)
+              GestureDetector(
+                onTap: () => widget.vm.toggleVerlaufsEintrag(e.id),
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Icon(
+                    e.isDone ? Icons.check_circle : Icons.radio_button_unchecked,
+                    size: 16,
+                    color: e.isDone ? C.green : C.textSoft,
+                  ),
+                ),
+              ),
+            if (widget.isVorbereitung) ...[
+              ReorderableDragStartListener(
+                index: widget.index,
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Icon(Icons.drag_handle, size: 14, color: C.textSoft),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => widget.vm.removeVerlaufsEintrag(e.id),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 8, 8, 8),
+                  child: Icon(Icons.close, size: 13, color: C.textSoft),
+                ),
+              ),
+            ],
+          ],
+        ),
+        ),
+      ),
+      ),
+      // Connector to next step
+      if (widget.showConnector)
+        _VerlaufsConnector(
+          eintrag: e,
+          vm: widget.vm,
+          editable: widget.isVorbereitung,
+          C: C,
+        ),
+      ],
+    );
+  }
+}
+
+// ── VERLAUFS CONNECTOR ────────────────────────────────────────────────────────
+
+class _VerlaufsConnector extends StatelessWidget {
+  const _VerlaufsConnector({
+    required this.eintrag,
+    required this.vm,
+    required this.editable,
+    required this.C,
+  });
+
+  final VerlaufsEintrag eintrag;
+  final DmBuchViewModel vm;
+  final bool editable;
+  final AppColorsExtension C;
+
+  void _edit(BuildContext context) {
+    final ctrl = TextEditingController(text: eintrag.connectionNote ?? '');
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: C.bgPanel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: C.border),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Verbindungsnotiz',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.text),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Was passiert auf dem Weg zum nächsten Schritt?',
+                style: TextStyle(fontSize: 11, color: C.textSoft),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: ctrl,
+                autofocus: true,
+                maxLines: 3,
+                style: TextStyle(fontSize: 13, color: C.text),
+                decoration: InputDecoration(
+                  hintText: 'z.B. "3-tägiger Marsch durch den Wald…"',
+                  hintStyle: TextStyle(color: C.textSoft),
+                  filled: true,
+                  fillColor: C.bgHover,
+                  contentPadding: const EdgeInsets.all(12),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: C.border)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: C.border)),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: C.accent)),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: Text('Abbrechen', style: TextStyle(color: C.textMid)),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () async {
+                      await vm.saveConnectionNote(eintrag.id, ctrl.text.trim());
+                      if (ctx.mounted) Navigator.of(ctx).pop();
+                    },
+                    style: FilledButton.styleFrom(backgroundColor: C.accent),
+                    child: const Text('Speichern'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasNote = eintrag.connectionNote != null && eintrag.connectionNote!.isNotEmpty;
+
+    return GestureDetector(
+      onTap: editable ? () => _edit(context) : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          children: [
+            const SizedBox(width: 18),
+            // Vertical line
+            Container(width: 1.5, height: hasNote ? 10 : 8, color: C.border),
+            const SizedBox(width: 10),
+            if (hasNote)
+              Expanded(
+                child: Text(
+                  eintrag.connectionNote!,
+                  style: TextStyle(fontSize: 10, color: C.textSoft, fontStyle: FontStyle.italic),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              )
+            else if (editable)
+              Text(
+                '+ Verbindung hinzufügen',
+                style: TextStyle(fontSize: 10, color: C.border),
+              ),
+            if (hasNote && editable) ...[
+              const SizedBox(width: 6),
+              Icon(Icons.edit, size: 10, color: C.border),
+            ],
+            // Vertical line continuation
+            const SizedBox(width: 10),
+            Container(width: 1.5, height: hasNote ? 10 : 8, color: C.border),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── ADD VERLAUFS EINTRAG DIALOG ───────────────────────────────────────────────
+
+class _AddVerlaufsEintragDialog extends StatefulWidget {
+  const _AddVerlaufsEintragDialog({required this.vm});
+
+  final DmBuchViewModel vm;
+
+  @override
+  State<_AddVerlaufsEintragDialog> createState() => _AddVerlaufsEintragDialogState();
+}
+
+class _AddVerlaufsEintragDialogState extends State<_AddVerlaufsEintragDialog> {
+  VerlaufsEintragType _type = VerlaufsEintragType.ort;
+  String? _selectedRefId;
+  final _labelCtrl = TextEditingController();
+  final _noteCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _labelCtrl.dispose();
+    _noteCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final C = context.appColors;
+    final vm = widget.vm;
+
+    return Dialog(
+      backgroundColor: C.bgPanel,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: C.border),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 380),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Verlaufseintrag', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: C.text)),
+              const SizedBox(height: 14),
+              // Typ-Auswahl
+              Row(
+                children: VerlaufsEintragType.values.map((t) {
+                  final active = _type == t;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: GestureDetector(
+                      onTap: () => setState(() {
+                        _type = t;
+                        _selectedRefId = null;
+                        _labelCtrl.clear();
+                      }),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 100),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: active ? C.accent.withValues(alpha: 0.1) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: active ? C.accent.withValues(alpha: 0.4) : C.border,
+                          ),
+                        ),
+                        child: Text(
+                          t.label,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: active ? C.accent : C.textMid,
+                            fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 12),
+              // Referenz-Picker (Ort / Quest) oder Label-Feld (Ereignis)
+              if (_type == VerlaufsEintragType.ort)
+                _RefPicker<Ort>(
+                  items: vm.orte,
+                  selectedId: _selectedRefId,
+                  labelOf: (o) => o.name,
+                  idOf: (o) => o.id,
+                  hint: 'Ort auswählen',
+                  C: C,
+                  onChanged: (o) => setState(() {
+                    _selectedRefId = o.id;
+                    _labelCtrl.text = o.name;
+                  }),
+                )
+              else if (_type == VerlaufsEintragType.quest)
+                _RefPicker<Quest>(
+                  items: vm.quests,
+                  selectedId: _selectedRefId,
+                  labelOf: (q) => q.title,
+                  idOf: (q) => q.id.toString(),
+                  hint: 'Quest auswählen',
+                  C: C,
+                  onChanged: (q) => setState(() {
+                    _selectedRefId = q.id.toString();
+                    _labelCtrl.text = q.title;
+                  }),
+                )
+              else
+                _inputField(C, _labelCtrl, 'Beschreibung des Ereignisses', autofocus: true),
+              const SizedBox(height: 10),
+              _inputField(C, _noteCtrl, 'Notiz (optional)'),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text('Abbrechen', style: TextStyle(color: C.textMid)),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: _canSave ? () => _save(context) : null,
+                    style: FilledButton.styleFrom(backgroundColor: C.accent),
+                    child: const Text('Hinzufügen'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  bool get _canSave {
+    if (_type == VerlaufsEintragType.ereignis) return _labelCtrl.text.trim().isNotEmpty;
+    return _selectedRefId != null;
+  }
+
+  void _save(BuildContext context) {
+    final eintrag = VerlaufsEintrag.create(
+      type: _type,
+      refId: _selectedRefId,
+      label: _labelCtrl.text.trim(),
+      note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
+    );
+    widget.vm.addVerlaufsEintrag(eintrag);
+    Navigator.of(context).pop();
+  }
+
+  Widget _inputField(AppColorsExtension C, TextEditingController ctrl, String hint, {bool autofocus = false}) =>
+      TextField(
+        controller: ctrl,
+        autofocus: autofocus,
+        style: TextStyle(fontSize: 13, color: C.text),
+        onChanged: (_) => setState(() {}),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(color: C.textSoft),
+          filled: true,
+          fillColor: C.bgHover,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: C.border)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: C.border)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: C.accent)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        ),
+      );
+}
+
+class _RefPicker<T> extends StatelessWidget {
+  const _RefPicker({
+    required this.items,
+    required this.selectedId,
+    required this.labelOf,
+    required this.idOf,
+    required this.hint,
+    required this.C,
+    required this.onChanged,
+  });
+
+  final List<T> items;
+  final String? selectedId;
+  final String Function(T) labelOf;
+  final String Function(T) idOf;
+  final String hint;
+  final AppColorsExtension C;
+  final void Function(T) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = items.where((i) => idOf(i) == selectedId).firstOrNull;
+    return GestureDetector(
+      onTap: () => _showPicker(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: C.bgHover,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: C.border),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                selected != null ? labelOf(selected) : hint,
+                style: TextStyle(fontSize: 13, color: selected != null ? C.text : C.textSoft),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Icon(Icons.unfold_more, size: 14, color: C.textSoft),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showPicker(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: C.bgPanel,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide(color: C.border)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 340, maxHeight: 420),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(hint, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.text)),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: items.length,
+                    itemBuilder: (_, i) {
+                      final item = items[i];
+                      final isSelected = idOf(item) == selectedId;
+                      return ListTile(
+                        dense: true,
+                        selected: isSelected,
+                        selectedColor: C.accent,
+                        title: Text(labelOf(item), style: TextStyle(fontSize: 13, color: C.text)),
+                        onTap: () {
+                          onChanged(item);
+                          Navigator.of(ctx).pop();
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── LORE KEEPER BTN ──────────────────────────────────────────────────────────
+
+class _LoreKeeperBtn extends StatefulWidget {
+  const _LoreKeeperBtn({required this.onTap, required this.C});
+  final VoidCallback onTap;
+  final AppColorsExtension C;
+
+  @override
+  State<_LoreKeeperBtn> createState() => _LoreKeeperBtnState();
+}
+
+class _LoreKeeperBtnState extends State<_LoreKeeperBtn> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 100),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: _hovered ? widget.C.accent.withValues(alpha: 0.1) : Colors.transparent,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: _hovered ? widget.C.accent.withValues(alpha: 0.4) : widget.C.border,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.menu_book_outlined, size: 11, color: widget.C.accent),
+                const SizedBox(width: 4),
+                Text('LoreKeeper', style: TextStyle(fontSize: 11, color: widget.C.accent)),
+              ],
+            ),
+          ),
+        ),
+      );
+}
+
+// ── VERLAUFS GRAPH VIEW ───────────────────────────────────────────────────────
+
+class _VerlaufsViewToggle extends StatelessWidget {
+  const _VerlaufsViewToggle({
+    required this.showGraph,
+    required this.onToggle,
+    required this.C,
+  });
+
+  final bool showGraph;
+  final void Function(bool) onToggle;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _ToggleBtn(
+          icon: Icons.list,
+          active: !showGraph,
+          onTap: () => onToggle(false),
+          C: C,
+        ),
+        const SizedBox(width: 3),
+        _ToggleBtn(
+          icon: Icons.map_outlined,
+          active: showGraph,
+          onTap: () => onToggle(true),
+          C: C,
+        ),
+      ],
+    );
+  }
+}
+
+class _ToggleBtn extends StatelessWidget {
+  const _ToggleBtn({
+    required this.icon,
+    required this.active,
+    required this.onTap,
+    required this.C,
+  });
+
+  final IconData icon;
+  final bool active;
+  final VoidCallback onTap;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        width: 26,
+        height: 22,
+        decoration: BoxDecoration(
+          color: active ? C.accent.withValues(alpha: 0.15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(5),
+          border: Border.all(
+            color: active ? C.accent.withValues(alpha: 0.4) : Colors.transparent,
+          ),
+        ),
+        child: Icon(icon, size: 13, color: active ? C.accent : C.textSoft),
+      ),
+    );
+  }
+}
+
+class _VerlaufsGraphView extends StatefulWidget {
+  const _VerlaufsGraphView({required this.vm});
+
+  final DmBuchViewModel vm;
+
+  @override
+  State<_VerlaufsGraphView> createState() => _VerlaufsGraphViewState();
+}
+
+class _VerlaufsGraphViewState extends State<_VerlaufsGraphView> {
+  static const double _cW = 4000;
+  static const double _cH = 2500;
+  static const double _nodeW = 130;
+  static const double _nodeH = 46;
+
+  final TransformationController _tc = TransformationController();
+  final Map<String, Offset> _dragPos = {};
+
+  bool _connectMode = false;
+  String? _connectSource;
+
+  @override
+  void dispose() {
+    _tc.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickMap(BuildContext ctx) async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
+    if (result != null && result.files.single.path != null && ctx.mounted) {
+      await widget.vm.setVerlaufsKarteImage(result.files.single.path);
+    }
+  }
+
+  Offset _nodePos(VerlaufsEintrag e, Ort ort) =>
+      _dragPos[e.id] ?? Offset(ort.mapX! * _cW, ort.mapY! * _cH);
+
+  void _onPanUpdate(VerlaufsEintrag e, Ort ort, DragUpdateDetails d) {
+    final scale = _tc.value.getMaxScaleOnAxis();
+    final cur = _nodePos(e, ort);
+    setState(() {
+      _dragPos[e.id] = Offset(
+        (cur.dx + d.delta.dx / scale).clamp(0.0, _cW),
+        (cur.dy + d.delta.dy / scale).clamp(0.0, _cH),
+      );
+    });
+  }
+
+  Future<void> _onPanEnd(VerlaufsEintrag e, Ort ort) async {
+    final pos = _dragPos.remove(e.id);
+    if (pos == null) return;
+    setState(() {});
+    await widget.vm.updateOrt(ort.copyWith(
+      mapX: (pos.dx / _cW).clamp(0.0, 1.0),
+      mapY: (pos.dy / _cH).clamp(0.0, 1.0),
+    ));
+  }
+
+  Future<void> _onNodeTap(VerlaufsEintrag e) async {
+    final vm = widget.vm;
+    if (_connectMode) {
+      if (_connectSource == null) {
+        setState(() => _connectSource = e.id);
+      } else if (_connectSource == e.id) {
+        setState(() => _connectSource = null);
+      } else {
+        final srcId = _connectSource!;
+        setState(() => _connectSource = null);
+        final src = vm.verlaufsplan.where((x) => x.id == srcId).firstOrNull;
+        if (src != null) {
+          if (src.connections.contains(e.id)) {
+            await vm.removeVerlaufsConnection(srcId, e.id);
+          } else {
+            await vm.addVerlaufsConnection(srcId, e.id);
+          }
+        }
+      }
+    } else {
+      vm.selectVerlaufsEintrag(e);
+    }
+  }
+
+  Future<void> _placeAtCenter(VerlaufsEintrag e, Ort ort, Size viewSize) async {
+    final inv = Matrix4.inverted(_tc.value);
+    final screenCenter = Offset(viewSize.width / 2, viewSize.height / 2);
+    final canvas = MatrixUtils.transformPoint(inv, screenCenter);
+    await widget.vm.updateOrt(ort.copyWith(
+      mapX: (canvas.dx / _cW).clamp(0.0, 1.0),
+      mapY: (canvas.dy / _cH).clamp(0.0, 1.0),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = widget.vm;
+    final C = context.appColors;
+    final isVorbereitung = vm.mode == DmBuchMode.vorbereitung;
+
+    final ortEintraege = vm.verlaufsplan
+        .where((e) => e.type == VerlaufsEintragType.ort && e.refId != null)
+        .toList();
+
+    final ortMap = <String, Ort>{};
+    for (final e in ortEintraege) {
+      final ort = vm.orte.where((o) => o.id == e.refId).firstOrNull;
+      if (ort != null) ortMap[e.id] = ort;
+    }
+
+    final positioned = ortEintraege.where((e) => ortMap[e.id]?.isOnMap == true).toList();
+    final unpositioned = ortEintraege.where((e) => ortMap[e.id]?.isOnMap != true).toList();
+
+    final positions = <String, Offset>{};
+    for (final e in positioned) {
+      final ort = ortMap[e.id]!;
+      positions[e.id] = _dragPos[e.id] ?? Offset(ort.mapX! * _cW, ort.mapY! * _cH);
+    }
+
+    return LayoutBuilder(builder: (context, constraints) {
+      final viewSize = Size(constraints.maxWidth, constraints.maxHeight);
+
+      return Stack(
+        children: [
+          InteractiveViewer(
+            transformationController: _tc,
+            boundaryMargin: const EdgeInsets.all(double.infinity),
+            minScale: 0.03,
+            maxScale: 5.0,
+            panEnabled: _dragPos.isEmpty,
+            child: SizedBox(
+              width: _cW,
+              height: _cH,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // Hintergrund: Karte oder Dot-Grid
+                  if (vm.verlaufsKarteImagePath != null)
+                    Positioned.fill(
+                      child: Image.file(
+                        File(vm.verlaufsKarteImagePath!),
+                        fit: BoxFit.fill,
+                        errorBuilder: (_, __, ___) =>
+                            ColoredBox(color: C.bgPanel),
+                      ),
+                    )
+                  else
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: _GraphGridPainter(C),
+                      ),
+                    ),
+
+                  // Kanten (Pfeile)
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _VerlaufsEdgePainter(
+                        eintraege: positioned,
+                        positions: positions,
+                        connectSource: _connectSource,
+                        lineColor: C.accent.withValues(alpha: 0.75),
+                        sourceColor: C.amber,
+                      ),
+                      isComplex: true,
+                    ),
+                  ),
+
+                  // Knoten
+                  for (final e in positioned)
+                    Builder(builder: (_) {
+                      final ort = ortMap[e.id]!;
+                      final pos = positions[e.id]!;
+
+                      Widget node = _VerlaufsMapNode(
+                        eintrag: e,
+                        ort: ort,
+                        selected: vm.selectedVerlaufsEintrag?.id == e.id,
+                        isConnectSource: _connectSource == e.id,
+                        C: C,
+                      );
+
+                      node = GestureDetector(
+                        onTap: () => _onNodeTap(e),
+                        onPanUpdate: (isVorbereitung && !_connectMode)
+                            ? (d) => _onPanUpdate(e, ort, d)
+                            : null,
+                        onPanEnd: (isVorbereitung && !_connectMode)
+                            ? (_) => _onPanEnd(e, ort)
+                            : null,
+                        child: node,
+                      );
+
+                      return Positioned(
+                        left: pos.dx - _nodeW / 2,
+                        top: pos.dy - _nodeH / 2,
+                        width: _nodeW,
+                        height: _nodeH,
+                        child: node,
+                      );
+                    }),
+                ],
+              ),
+            ),
+          ),
+
+          // Toolbar
+          Positioned(
+            right: 10,
+            top: 8,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _GraphMapBtn(
+                  icon: Icons.map_outlined,
+                  label: vm.verlaufsKarteImagePath == null
+                      ? 'Karte laden'
+                      : 'Karte wechseln',
+                  onTap: () => _pickMap(context),
+                  C: C,
+                ),
+                if (vm.verlaufsKarteImagePath != null) ...[
+                  const SizedBox(height: 4),
+                  _GraphMapBtn(
+                    icon: Icons.close,
+                    label: 'Karte entfernen',
+                    onTap: () => vm.setVerlaufsKarteImage(null),
+                    C: C,
+                  ),
+                ],
+                if (isVorbereitung) ...[
+                  const SizedBox(height: 8),
+                  _GraphMapBtn(
+                    icon: _connectMode ? Icons.link_off : Icons.link,
+                    label: _connectMode
+                        ? 'Verbindungs-Modus beenden'
+                        : 'Verbindungen bearbeiten',
+                    active: _connectMode,
+                    onTap: () => setState(() {
+                      _connectMode = !_connectMode;
+                      _connectSource = null;
+                    }),
+                    C: C,
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          // Unpositionierte Orte
+          if (unpositioned.isNotEmpty)
+            Positioned(
+              left: 10,
+              top: 8,
+              child: _UnpositionedPanel(
+                eintraege: unpositioned,
+                ortMap: ortMap,
+                isVorbereitung: isVorbereitung,
+                onPlace: isVorbereitung
+                    ? (e, ort) => _placeAtCenter(e, ort, viewSize)
+                    : null,
+                C: C,
+              ),
+            ),
+
+          // Verbindungs-Modus Hinweis
+          if (_connectMode)
+            Positioned(
+              bottom: 12,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: C.amber.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: C.amber.withValues(alpha: 0.4)),
+                  ),
+                  child: Text(
+                    _connectSource == null
+                        ? 'Tippe auf einen Ort als Ausgangspunkt'
+                        : 'Tippe auf den Ziel-Ort  •  Nochmals tippen zum Abbrechen',
+                    style: TextStyle(fontSize: 11, color: C.amber),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      );
+    });
+  }
+}
+
+// ── VERLAUFS EDGE PAINTER ────────────────────────────────────────────────────
+
+class _VerlaufsEdgePainter extends CustomPainter {
+  const _VerlaufsEdgePainter({
+    required this.eintraege,
+    required this.positions,
+    required this.connectSource,
+    required this.lineColor,
+    required this.sourceColor,
+  });
+
+  final List<VerlaufsEintrag> eintraege;
+  final Map<String, Offset> positions;
+  final String? connectSource;
+  final Color lineColor;
+  final Color sourceColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (final e in eintraege) {
+      final from = positions[e.id];
+      if (from == null || e.connections.isEmpty) continue;
+
+      final isSource = connectSource == e.id;
+      final paint = Paint()
+        ..color = isSource ? sourceColor.withValues(alpha: 0.85) : lineColor
+        ..strokeWidth = isSource ? 2.5 : 1.8
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+
+      for (final toId in e.connections) {
+        final to = positions[toId];
+        if (to == null) continue;
+        _drawArrow(canvas, from, to, paint);
+      }
+    }
+  }
+
+  static void _drawArrow(Canvas canvas, Offset from, Offset to, Paint paint) {
+    final dir = to - from;
+    if (dir.distance < 2) return;
+
+    const nodeR = 28.0;
+    const arrowLen = 13.0;
+    const arrowAngle = 0.42;
+
+    final unit = dir / dir.distance;
+    final start = from + unit * nodeR;
+    final end = to - unit * nodeR;
+
+    if ((end - start).distance < nodeR) return;
+
+    canvas.drawLine(start, end, paint);
+
+    final angle = atan2(dir.dy, dir.dx);
+    final path = Path()
+      ..moveTo(end.dx, end.dy)
+      ..lineTo(
+        end.dx - arrowLen * cos(angle - arrowAngle),
+        end.dy - arrowLen * sin(angle - arrowAngle),
+      )
+      ..moveTo(end.dx, end.dy)
+      ..lineTo(
+        end.dx - arrowLen * cos(angle + arrowAngle),
+        end.dy - arrowLen * sin(angle + arrowAngle),
+      );
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_VerlaufsEdgePainter old) =>
+      old.eintraege != eintraege ||
+      old.positions != positions ||
+      old.connectSource != connectSource;
+}
+
+// ── VERLAUFS MAP NODE ─────────────────────────────────────────────────────────
+
+class _VerlaufsMapNode extends StatefulWidget {
+  const _VerlaufsMapNode({
+    required this.eintrag,
+    required this.ort,
+    required this.selected,
+    required this.isConnectSource,
+    required this.C,
+  });
+
+  final VerlaufsEintrag eintrag;
+  final Ort ort;
+  final bool selected;
+  final bool isConnectSource;
+  final AppColorsExtension C;
+
+  @override
+  State<_VerlaufsMapNode> createState() => _VerlaufsMapNodeState();
+}
+
+class _VerlaufsMapNodeState extends State<_VerlaufsMapNode> {
+  bool _hovered = false;
+
+  Color _typeColor(AppColorsExtension C) {
+    switch (widget.ort.type) {
+      case OrtType.dungeon:    return C.red;
+      case OrtType.city:       return C.green;
+      case OrtType.building:   return C.accent;
+      case OrtType.wilderness: return C.amber;
+      case OrtType.other:      return C.textSoft;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final C = widget.C;
+    final e = widget.eintrag;
+    final accentColor = widget.isConnectSource ? C.amber : _typeColor(C);
+    final isActive = widget.selected || widget.isConnectSource;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: isActive
+              ? accentColor.withValues(alpha: 0.14)
+              : _hovered
+                  ? C.bgHover
+                  : C.bgPanel.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(
+            color: isActive ? accentColor : C.border,
+            width: isActive ? 1.8 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isActive ? 0.22 : 0.12),
+              blurRadius: isActive ? 12 : 5,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 4,
+              decoration: BoxDecoration(
+                color: e.isDone
+                    ? accentColor.withValues(alpha: 0.4)
+                    : accentColor,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(9),
+                  bottomLeft: Radius.circular(9),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    e.label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: e.isDone
+                          ? C.textSoft
+                          : (isActive ? accentColor : C.text),
+                      decoration:
+                          e.isDone ? TextDecoration.lineThrough : null,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 5,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: accentColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        widget.ort.type.label,
+                        style: TextStyle(fontSize: 9, color: C.textSoft),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (e.isDone)
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: Icon(Icons.check_circle, size: 11, color: C.green),
+              ),
+            const SizedBox(width: 4),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── UNPOSITIONED PANEL ────────────────────────────────────────────────────────
+
+class _UnpositionedPanel extends StatelessWidget {
+  const _UnpositionedPanel({
+    required this.eintraege,
+    required this.ortMap,
+    required this.isVorbereitung,
+    required this.onPlace,
+    required this.C,
+  });
+
+  final List<VerlaufsEintrag> eintraege;
+  final Map<String, Ort> ortMap;
+  final bool isVorbereitung;
+  final Future<void> Function(VerlaufsEintrag, Ort)? onPlace;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 190, maxHeight: 260),
+      decoration: BoxDecoration(
+        color: C.bgPanel.withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: C.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '${eintraege.length} Ort${eintraege.length != 1 ? "e" : ""} ohne Position',
+            style: TextStyle(fontSize: 10, color: C.textSoft),
+          ),
+          const SizedBox(height: 6),
+          Flexible(
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: eintraege.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 4),
+              itemBuilder: (_, i) {
+                final e = eintraege[i];
+                final ort = ortMap[e.id];
+                return Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        e.label,
+                        style: TextStyle(fontSize: 11, color: C.text),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (onPlace != null && ort != null)
+                      GestureDetector(
+                        onTap: () => onPlace!(e, ort),
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 6),
+                          child: Icon(
+                            Icons.add_location_alt_outlined,
+                            size: 14,
+                            color: C.accent,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── GRAPH GRID PAINTER ────────────────────────────────────────────────────────
+
+class _GraphGridPainter extends CustomPainter {
+  const _GraphGridPainter(this.C);
+
+  final AppColorsExtension C;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = C.border.withValues(alpha: 0.35);
+    const spacing = 60.0;
+    final cols = (size.width / spacing).ceil() + 1;
+    final rows = (size.height / spacing).ceil() + 1;
+    for (int x = 0; x <= cols; x++) {
+      for (int y = 0; y <= rows; y++) {
+        canvas.drawCircle(Offset(x * spacing, y * spacing), 1.4, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_GraphGridPainter old) => false;
+}
+
+// ── GRAPH MAP BUTTON ──────────────────────────────────────────────────────────
+
+class _GraphMapBtn extends StatefulWidget {
+  const _GraphMapBtn({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    required this.C,
+    this.active = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final AppColorsExtension C;
+  final bool active;
+
+  @override
+  State<_GraphMapBtn> createState() => _GraphMapBtnState();
+}
+
+class _GraphMapBtnState extends State<_GraphMapBtn> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final C = widget.C;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: widget.active
+                ? C.amber.withValues(alpha: 0.15)
+                : _hovered
+                    ? C.bgHover
+                    : C.bgPanel.withValues(alpha: 0.96),
+            borderRadius: BorderRadius.circular(7),
+            border: Border.all(
+              color: widget.active
+                  ? C.amber.withValues(alpha: 0.5)
+                  : C.border,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 4,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                widget.icon,
+                size: 13,
+                color: widget.active ? C.amber : C.textMid,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                widget.label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: widget.active ? C.amber : C.textMid,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

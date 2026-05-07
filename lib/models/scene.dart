@@ -301,7 +301,7 @@ class Scene {
   Map<String, dynamic> toDatabaseMap() {
     return {
       'id': id,
-      'session_id': sessionId,
+      'session_id': sessionId.isEmpty ? null : sessionId,
       'order_index': orderIndex,
       'name': name,
       'description': description,

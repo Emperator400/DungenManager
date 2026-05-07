@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
 import '../services/uuid_service.dart';
-import '../utils/string_list_parser.dart';
 import '../utils/model_parsing_helper.dart';
+import '../utils/string_list_parser.dart';
+import 'verlaufs_eintrag.dart';
 
 /// Kampagnen-Status
 enum CampaignStatus {
@@ -400,6 +401,8 @@ class Campaign {
   final String system;
   final bool isTemplate;
   final String? templateId;
+  final List<VerlaufsEintrag> verlaufsplan;
+  final String? verlaufsKarteImagePath;
 
   /// Tabellenname für die Datenbank
   static const String tableName = 'campaigns';
@@ -427,6 +430,8 @@ class Campaign {
     this.system = 'D&D 5e',
     this.isTemplate = false,
     this.templateId,
+    this.verlaufsplan = const [],
+    this.verlaufsKarteImagePath,
   });
 
   /// Factory für neue Kampagnen mit automatisch generierter ID
@@ -584,6 +589,8 @@ class Campaign {
         system: map['system'] as String? ?? 'D&D 5e',
         isTemplate: (map['is_template'] as int? ?? 0) == 1,
         templateId: map['template_id'] as String?,
+        verlaufsplan: VerlaufsEintrag.listFromJson(map['verlaufsplan'] as String?),
+        verlaufsKarteImagePath: map['verlaufs_karte_image_path'] as String?,
       );
     } catch (e) {
       debugPrint('Fehler beim Parsen der Kampagne: $e');
@@ -698,6 +705,8 @@ class Campaign {
       'system': system,
       'is_template': isTemplate ? 1 : 0,
       'template_id': templateId,
+      'verlaufsplan': verlaufsplan.isEmpty ? null : VerlaufsEintrag.listToJson(verlaufsplan),
+      'verlaufs_karte_image_path': verlaufsKarteImagePath,
     };
   }
 
@@ -725,6 +734,8 @@ class Campaign {
     String? system,
     bool? isTemplate,
     Object? templateId = _sentinel,
+    List<VerlaufsEintrag>? verlaufsplan,
+    Object? verlaufsKarteImagePath = _sentinel,
   }) {
     return Campaign(
       id: id ?? this.id,
@@ -749,6 +760,10 @@ class Campaign {
       system: system ?? this.system,
       isTemplate: isTemplate ?? this.isTemplate,
       templateId: templateId == _sentinel ? this.templateId : templateId as String?,
+      verlaufsplan: verlaufsplan ?? List<VerlaufsEintrag>.from(this.verlaufsplan),
+      verlaufsKarteImagePath: verlaufsKarteImagePath == _sentinel
+          ? this.verlaufsKarteImagePath
+          : verlaufsKarteImagePath as String?,
     );
   }
 

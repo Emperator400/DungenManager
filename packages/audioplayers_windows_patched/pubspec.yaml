@@ -1,0 +1,19 @@
+name: audioplayers_windows
+description: Patched Windows implementation of audioplayers — fixes non-platform-thread event dispatch.
+version: 4.3.0
+
+flutter:
+  plugin:
+    implements: audioplayers
+    platforms:
+      windows:
+        pluginClass: AudioplayersWindowsPlugin
+
+dependencies:
+  audioplayers_platform_interface: ^7.1.1
+  flutter:
+    sdk: flutter
+
+environment:
+  sdk: ^3.0.0
+  flutter: ">=3.27.0"

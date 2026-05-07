@@ -8,11 +8,15 @@ import '../../theme/app_theme.dart';
 class EditQuestScreen extends StatefulWidget {
   final Quest? quest;
   final String? campaignId;
+  final String? initialTitle;
+  final String? initialDescription;
 
   const EditQuestScreen({
     super.key,
     this.quest,
     this.campaignId,
+    this.initialTitle,
+    this.initialDescription,
   });
 
   @override
@@ -95,8 +99,8 @@ class _EditQuestScreenState extends State<EditQuestScreen> {
   void _populateFields() {
     final quest = _viewModel.quest;
     if (quest != null) {
-      _titleController.text = quest.title;
-      _descriptionController.text = quest.description;
+      _titleController.text = quest.title.isNotEmpty ? quest.title : (widget.initialTitle ?? '');
+      _descriptionController.text = quest.description.isNotEmpty ? quest.description : (widget.initialDescription ?? '');
       _locationController.text = quest.location ?? '';
       _recommendedLevelController.text =
           quest.recommendedLevel?.toString() ?? '';

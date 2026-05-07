@@ -97,7 +97,19 @@ class DatabaseMigration {
   await _createOrteTable(db);
   await _addOrtIdToScenes(db);
 
+  // Füge verlaufs_karte_image_path zur campaigns Tabelle hinzu
+  await _addVerlaufsKarteImagePathColumn(db);
+
   debugPrint('Database migration completed successfully');
+  }
+
+  Future<void> _addVerlaufsKarteImagePathColumn(Database db) async {
+    final cols = await db.rawQuery("PRAGMA table_info('campaigns')");
+    final names = cols.map((c) => c['name'] as String).toSet();
+    if (!names.contains('verlaufs_karte_image_path')) {
+      await db.execute('ALTER TABLE campaigns ADD COLUMN verlaufs_karte_image_path TEXT');
+      debugPrint('Added verlaufs_karte_image_path column to campaigns');
+    }
   }
 
   Future<void> _createOrteTable(Database db) async {
@@ -118,7 +130,9 @@ class DatabaseMigration {
         updated_at TEXT NOT NULL,
         last_visited_at TEXT,
         memory TEXT,
-        template_ort_id TEXT
+        template_ort_id TEXT,
+        map_x REAL,
+        map_y REAL
       )
     ''');
     await db.execute(

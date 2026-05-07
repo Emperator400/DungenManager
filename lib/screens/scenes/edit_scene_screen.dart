@@ -30,8 +30,18 @@ const Map<SceneType, String> _typeLabel = {
 class EditSceneScreen extends StatefulWidget {
   final Scene? scene;
   final String? sessionId;
+  final String? initialName;
+  final String? initialDescription;
+  final List<String>? initialLinkedWikiEntryIds;
 
-  const EditSceneScreen({Key? key, this.scene, this.sessionId}) : super(key: key);
+  const EditSceneScreen({
+    Key? key,
+    this.scene,
+    this.sessionId,
+    this.initialName,
+    this.initialDescription,
+    this.initialLinkedWikiEntryIds,
+  }) : super(key: key);
 
   @override
   State<EditSceneScreen> createState() => _EditSceneScreenState();
@@ -50,7 +60,17 @@ class _EditSceneScreenState extends State<EditSceneScreen> {
   Future<void> _initializeViewModel() async {
     if (!mounted) return;
     final vm = context.read<EditSceneViewModel>();
-    await vm.initialize(widget.scene, sessionId: widget.sessionId);
+    await vm.initialize(
+      widget.scene,
+      sessionId: widget.sessionId,
+      initialName: widget.initialName,
+      initialDescription: widget.initialDescription,
+    );
+    if (widget.initialLinkedWikiEntryIds != null) {
+      for (final id in widget.initialLinkedWikiEntryIds!) {
+        await vm.addWikiEntry(id);
+      }
+    }
     if (!mounted) return;
     _controllersFromViewModel();
     await vm.loadAvailableQuests();
