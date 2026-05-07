@@ -1490,13 +1490,22 @@ class _RightPane extends StatelessWidget {
       return _SpielerDetailPane(character: character, vm: vm);
     }
 
-    // Verlauf-Tab
+    // Verlauf-Tab: Graphen-Karte + optionales Detail-Panel
     if (vm.leftTab == DmBuchLeftTab.verlauf) {
       final eintrag = vm.selectedVerlaufsEintrag;
-      if (eintrag == null) {
-        return _EmptyFocus(message: 'Wähle einen Eintrag aus dem Verlaufsplan', C: C);
-      }
-      return _VerlaufsDetailPane(eintrag: eintrag, vm: vm);
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: _VerlaufsGraphView(vm: vm)),
+          if (eintrag != null) ...[
+            VerticalDivider(width: 1, thickness: 1, color: C.border),
+            SizedBox(
+              width: 340,
+              child: _VerlaufsDetailPane(eintrag: eintrag, vm: vm),
+            ),
+          ],
+        ],
+      );
     }
 
     // Karte-Tab ohne Auswahl / Fallback
@@ -3146,22 +3155,14 @@ class _StatPill extends StatelessWidget {
 
 // ── VERLAUF TAB ───────────────────────────────────────────────────────────────
 
-class _VerlaufTab extends StatefulWidget {
+class _VerlaufTab extends StatelessWidget {
   const _VerlaufTab({required this.vm});
 
   final DmBuchViewModel vm;
 
   @override
-  State<_VerlaufTab> createState() => _VerlaufTabState();
-}
-
-class _VerlaufTabState extends State<_VerlaufTab> {
-  bool _showGraph = false;
-
-  @override
   Widget build(BuildContext context) {
     final C = context.appColors;
-    final vm = widget.vm;
     final plan = vm.verlaufsplan;
     final isVorbereitung = vm.mode == DmBuchMode.vorbereitung;
 
@@ -3171,19 +3172,12 @@ class _VerlaufTabState extends State<_VerlaufTab> {
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
           child: Row(
             children: [
-              if (!_showGraph)
-                Text(
-                  '${plan.length} Eintr${plan.length != 1 ? "äge" : "ag"}',
-                  style: TextStyle(fontSize: 11, color: C.textSoft),
-                ),
-              const Spacer(),
-              _VerlaufsViewToggle(
-                showGraph: _showGraph,
-                onToggle: (v) => setState(() => _showGraph = v),
-                C: C,
+              Text(
+                '${plan.length} Eintr${plan.length != 1 ? "äge" : "ag"}',
+                style: TextStyle(fontSize: 11, color: C.textSoft),
               ),
-              if (isVorbereitung && !_showGraph) ...[
-                const SizedBox(width: 8),
+              const Spacer(),
+              if (isVorbereitung)
                 GestureDetector(
                   onTap: () => showDialog<void>(
                     context: context,
@@ -3191,35 +3185,32 @@ class _VerlaufTabState extends State<_VerlaufTab> {
                   ),
                   child: Text('Hinzufügen', style: TextStyle(fontSize: 11, color: C.accent)),
                 ),
-              ],
             ],
           ),
         ),
         Expanded(
-          child: _showGraph
-              ? _VerlaufsGraphView(vm: vm)
-              : plan.isEmpty
-                  ? Center(
-                      child: Text(
-                        'Noch kein Verlaufsplan',
-                        style: TextStyle(fontSize: 13, color: C.textSoft),
-                      ),
-                    )
-                  : ReorderableListView.builder(
-                      padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
-                      buildDefaultDragHandles: false,
-                      onReorder: isVorbereitung ? vm.reorderVerlaufsplan : (_, __) {},
-                      itemCount: plan.length,
-                      itemBuilder: (ctx, i) => _VerlaufsRow(
-                        key: ValueKey(plan[i].id),
-                        index: i,
-                        eintrag: plan[i],
-                        vm: vm,
-                        isVorbereitung: isVorbereitung,
-                        selected: vm.selectedVerlaufsEintrag?.id == plan[i].id,
-                        showConnector: i < plan.length - 1,
-                      ),
-                    ),
+          child: plan.isEmpty
+              ? Center(
+                  child: Text(
+                    'Noch kein Verlaufsplan',
+                    style: TextStyle(fontSize: 13, color: C.textSoft),
+                  ),
+                )
+              : ReorderableListView.builder(
+                  padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+                  buildDefaultDragHandles: false,
+                  onReorder: isVorbereitung ? vm.reorderVerlaufsplan : (_, __) {},
+                  itemCount: plan.length,
+                  itemBuilder: (ctx, i) => _VerlaufsRow(
+                    key: ValueKey(plan[i].id),
+                    index: i,
+                    eintrag: plan[i],
+                    vm: vm,
+                    isVorbereitung: isVorbereitung,
+                    selected: vm.selectedVerlaufsEintrag?.id == plan[i].id,
+                    showConnector: i < plan.length - 1,
+                  ),
+                ),
         ),
       ],
     );
@@ -3831,74 +3822,6 @@ class _LoreKeeperBtnState extends State<_LoreKeeperBtn> {
 }
 
 // ── VERLAUFS GRAPH VIEW ───────────────────────────────────────────────────────
-
-class _VerlaufsViewToggle extends StatelessWidget {
-  const _VerlaufsViewToggle({
-    required this.showGraph,
-    required this.onToggle,
-    required this.C,
-  });
-
-  final bool showGraph;
-  final void Function(bool) onToggle;
-  final AppColorsExtension C;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _ToggleBtn(
-          icon: Icons.list,
-          active: !showGraph,
-          onTap: () => onToggle(false),
-          C: C,
-        ),
-        const SizedBox(width: 3),
-        _ToggleBtn(
-          icon: Icons.map_outlined,
-          active: showGraph,
-          onTap: () => onToggle(true),
-          C: C,
-        ),
-      ],
-    );
-  }
-}
-
-class _ToggleBtn extends StatelessWidget {
-  const _ToggleBtn({
-    required this.icon,
-    required this.active,
-    required this.onTap,
-    required this.C,
-  });
-
-  final IconData icon;
-  final bool active;
-  final VoidCallback onTap;
-  final AppColorsExtension C;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        width: 26,
-        height: 22,
-        decoration: BoxDecoration(
-          color: active ? C.accent.withValues(alpha: 0.15) : Colors.transparent,
-          borderRadius: BorderRadius.circular(5),
-          border: Border.all(
-            color: active ? C.accent.withValues(alpha: 0.4) : Colors.transparent,
-          ),
-        ),
-        child: Icon(icon, size: 13, color: active ? C.accent : C.textSoft),
-      ),
-    );
-  }
-}
 
 class _VerlaufsGraphView extends StatefulWidget {
   const _VerlaufsGraphView({required this.vm});
