@@ -100,6 +100,10 @@ class DatabaseMigration {
   // Füge verlaufs_karte_image_path zur campaigns Tabelle hinzu
   await _addVerlaufsKarteImagePathColumn(db);
 
+  // Globales Spieler-System
+  await _createPlayersTable(db);
+  await _addPlayerIdToPlayerCharacters(db);
+
   debugPrint('Database migration completed successfully');
   }
 
@@ -1387,6 +1391,39 @@ class DatabaseMigration {
       }
     } catch (e) {
       debugPrint('Error adding accent_color/system columns: $e');
+    }
+  }
+
+  Future<void> _createPlayersTable(Database db) async {
+    final result = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='players'",
+    );
+    if (result.isNotEmpty) return;
+
+    await db.execute('''
+      CREATE TABLE players (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        color TEXT NOT NULL DEFAULT '#6B6B66',
+        avatar_path TEXT,
+        notes TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('CREATE INDEX idx_players_name ON players(name)');
+    debugPrint('Created players table');
+  }
+
+  Future<void> _addPlayerIdToPlayerCharacters(Database db) async {
+    final columns = await db.rawQuery("PRAGMA table_info('player_characters')");
+    final names = columns.map((c) => c['name'] as String).toSet();
+    if (!names.contains('player_id')) {
+      await db.execute('ALTER TABLE player_characters ADD COLUMN player_id TEXT');
+      await db.execute(
+        'CREATE INDEX idx_player_characters_player_id ON player_characters(player_id)',
+      );
+      debugPrint('Added player_id column to player_characters');
     }
   }
 }

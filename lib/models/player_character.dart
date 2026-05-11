@@ -76,6 +76,9 @@ class PlayerCharacter {
   final int hitDiceCount; // Anzahl der Trefferwürfel (normalerweise = Level)
   final int hitDiceRemaining; // Verbleibende Trefferwürfel für Kurzrast
 
+  // Zuordnung zu globalem Spieler
+  final String? playerId;
+
   const PlayerCharacter({
     required this.id,
     required this.campaignId,
@@ -122,6 +125,7 @@ class PlayerCharacter {
     this.hitDice = 'd8',
     this.hitDiceCount = 1,
     this.hitDiceRemaining = 1,
+    this.playerId,
   });
 
   /// Factory für neuen Player Character
@@ -170,6 +174,7 @@ class PlayerCharacter {
     String? hitDice,
     int? hitDiceCount,
     int? hitDiceRemaining,
+    String? playerId,
   }) {
     // Bestimme Trefferwürfel basierend auf Klasse, falls nicht angegeben
     final determinedHitDice = hitDice ?? PlayerCharacter.getHitDiceForClass(className);
@@ -220,6 +225,7 @@ class PlayerCharacter {
       hitDice: determinedHitDice,
       hitDiceCount: hitDiceCount ?? level,
       hitDiceRemaining: hitDiceRemaining ?? level,
+      playerId: playerId,
     );
   }
 
@@ -323,7 +329,10 @@ class PlayerCharacter {
       'hit_dice': hitDice,
       'hit_dice_count': hitDiceCount,
       'hit_dice_remaining': hitDiceRemaining,
-      
+
+      // Spieler-Zuordnung
+      'player_id': playerId,
+
       // Timestamps
       'created_at': DateTime.now().toIso8601String(),
       'updated_at': DateTime.now().toIso8601String(),
@@ -393,6 +402,9 @@ class PlayerCharacter {
       hitDice: ModelParsingHelper.safeString(map, 'hit_dice', 'd8'),
       hitDiceCount: ModelParsingHelper.safeInt(map, 'hit_dice_count', 1),
       hitDiceRemaining: ModelParsingHelper.safeInt(map, 'hit_dice_remaining', 1),
+
+      // Spieler-Zuordnung
+      playerId: ModelParsingHelper.safeStringOrNull(map, 'player_id', null),
     );
   }
 
@@ -575,6 +587,7 @@ class PlayerCharacter {
     String? hitDice,
     int? hitDiceCount,
     int? hitDiceRemaining,
+    String? playerId,
   }) {
     return PlayerCharacter(
       id: id ?? this.id,
@@ -616,6 +629,7 @@ class PlayerCharacter {
       hitDice: hitDice ?? this.hitDice,
       hitDiceCount: hitDiceCount ?? this.hitDiceCount,
       hitDiceRemaining: hitDiceRemaining ?? this.hitDiceRemaining,
+      playerId: playerId ?? this.playerId,
     );
   }
 
