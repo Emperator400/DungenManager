@@ -153,24 +153,37 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Helden erstellen Button
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 12.0),
-            child: ElevatedButton.icon(
-              onPressed: () => _createNewCharacter(context),
-              icon: const Icon(Icons.person_add, size: 20),
-              label: const Text(
-                'Neuen Held erstellen',
-                style: TextStyle(fontSize: 16),
+          // Buttons: Neuer Held + Ausleihen
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _createNewCharacter(context),
+                  icon: const Icon(Icons.person_add, size: 18),
+                  label: const Text('Neuer Held'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: C.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
               ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: C.green,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _showLendHeroDialog(context),
+                  icon: const Icon(Icons.link, size: 18),
+                  label: const Text('Ausleihen'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: C.accent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
+          const SizedBox(height: 12),
 
           // Suchleiste
           TextField(
@@ -478,6 +491,17 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
               },
             ),
             ListTile(
+              leading: Icon(Icons.link_off, color: C.amber),
+              title: Text(
+                'Aus Kampagne abziehen',
+                style: TextStyle(fontSize: 14, color: C.amber),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _removeFromCampaign(pc);
+              },
+            ),
+            ListTile(
               leading: Icon(Icons.delete, color: C.red),
               title: Text(
                 'Löschen',
@@ -544,6 +568,204 @@ class CampaignHeroesTabState extends State<CampaignHeroesTab> {
             child: const Text('Löschen'),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _removeFromCampaign(PlayerCharacter pc) async {
+    try {
+      await _pcRepository.removeFromCampaign(pc.id);
+      _refreshPcList();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${pc.name} aus der Kampagne abgezogen'),
+            backgroundColor: context.appColors.amber,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Fehler: $e'),
+            backgroundColor: context.appColors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showLendHeroDialog(BuildContext context) async {
+    final C = context.appColors;
+
+    // Alle Helden laden die noch nicht in dieser Kampagne sind
+    final all = await _pcRepository.findAll();
+    final available = all
+        .where((pc) =>
+            pc.campaignId == null ||
+            pc.campaignId!.isEmpty ||
+            pc.campaignId != widget.campaign.id)
+        .toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
+
+    if (!mounted) return;
+
+    if (available.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Keine verfügbaren Helden — zuerst im Spieler-Profil anlegen'),
+          backgroundColor: C.textMid,
+        ),
+      );
+      return;
+    }
+
+    final selected = await showDialog<List<String>>(
+      context: context,
+      builder: (ctx) => _LendHeroDialog(
+        available: available,
+        campaignTitle: widget.campaign.title,
+      ),
+    );
+
+    if (selected == null || selected.isEmpty || !mounted) return;
+
+    int count = 0;
+    for (final id in selected) {
+      try {
+        await _pcRepository.assignToCampaign(id, widget.campaign.id);
+        count++;
+      } catch (_) {}
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$count Held${count == 1 ? '' : 'en'} ausgeliehen'),
+          backgroundColor: context.appColors.green,
+        ),
+      );
+      _refreshPcList();
+    }
+  }
+}
+
+// ── DIALOG ────────────────────────────────────────────────────────────────────
+
+class _LendHeroDialog extends StatefulWidget {
+  const _LendHeroDialog({
+    required this.available,
+    required this.campaignTitle,
+  });
+  final List<PlayerCharacter> available;
+  final String campaignTitle;
+
+  @override
+  State<_LendHeroDialog> createState() => _LendHeroDialogState();
+}
+
+class _LendHeroDialogState extends State<_LendHeroDialog> {
+  final Set<String> _selected = {};
+
+  @override
+  Widget build(BuildContext context) {
+    final C = context.appColors;
+    return Dialog(
+      backgroundColor: C.bgPanel,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: C.border),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480, maxHeight: 560),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Held ausleihen',
+                      style: TextStyle(color: C.text, fontSize: 16, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text('Für: ${widget.campaignTitle}',
+                      style: TextStyle(color: C.textSoft, fontSize: 12)),
+                ],
+              ),
+            ),
+            Divider(color: C.border, height: 1),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: widget.available.length,
+                itemBuilder: (ctx, i) {
+                  final pc = widget.available[i];
+                  final isSelected = _selected.contains(pc.id);
+                  final hasCampaign = pc.campaignId != null && pc.campaignId!.isNotEmpty;
+                  return CheckboxListTile(
+                    value: isSelected,
+                    activeColor: C.accent,
+                    onChanged: (v) => setState(() {
+                      if (v == true) {
+                        _selected.add(pc.id);
+                      } else {
+                        _selected.remove(pc.id);
+                      }
+                    }),
+                    title: Text(pc.name,
+                        style: TextStyle(color: C.text, fontWeight: FontWeight.w600, fontSize: 14)),
+                    subtitle: Text(
+                      'Lvl ${pc.level} ${pc.className} · ${pc.playerName}'
+                      '${hasCampaign ? ' · aktuell anderswo' : ''}',
+                      style: TextStyle(color: C.textSoft, fontSize: 11),
+                    ),
+                    secondary: CircleAvatar(
+                      backgroundColor: C.accentSoft,
+                      radius: 18,
+                      child: Text(
+                        pc.name.isNotEmpty ? pc.name[0].toUpperCase() : '?',
+                        style: TextStyle(color: C.accent, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Divider(color: C.border, height: 1),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text('Abbrechen', style: TextStyle(color: C.textMid)),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _selected.isEmpty
+                        ? null
+                        : () => Navigator.pop(context, _selected.toList()),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: C.accent,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: C.border,
+                    ),
+                    child: Text(
+                      _selected.isEmpty
+                          ? 'Auswählen'
+                          : '${_selected.length} ausleihen',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
