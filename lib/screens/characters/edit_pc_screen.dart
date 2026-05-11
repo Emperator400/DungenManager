@@ -58,10 +58,12 @@ class EditPCScreen extends StatefulWidget {
     required this.campaignId,
     super.key,
     this.pcToEdit,
+    this.initialPlayerId,
   });
 
   final String campaignId;
   final PlayerCharacter? pcToEdit;
+  final String? initialPlayerId;
 
   @override
   State<EditPCScreen> createState() => _EditPCScreenState();
@@ -92,7 +94,8 @@ class _EditPCScreenState extends State<EditPCScreen>
 
   Future<void> _initializeViewModel() async {
     try {
-      await _viewModel.initialize(widget.campaignId, widget.pcToEdit);
+      await _viewModel.initialize(widget.campaignId, widget.pcToEdit,
+          initialPlayerId: widget.initialPlayerId);
       if (mounted) setState(() => _isInitialized = true);
     } catch (e) {
       if (mounted) SnackBarHelper.showError(context, 'Fehler beim Initialisieren: $e');

@@ -265,7 +265,8 @@ class EditPCViewModel extends ChangeNotifier {
   // ============================================================================
 
   /// Initialisiert den ViewModel mit PC-Daten
-  Future<void> initialize(String campaignId, PlayerCharacter? pc) async {
+  Future<void> initialize(String campaignId, PlayerCharacter? pc,
+      {String? initialPlayerId}) async {
     try {
       _error = null;
       notifyListeners();
@@ -319,8 +320,13 @@ class EditPCViewModel extends ChangeNotifier {
       } else {
         // Create mode - setze Standardwerte
         _name = '';
-        _playerName = '';
-        _playerId = null;
+        _playerId = initialPlayerId;
+        if (initialPlayerId != null) {
+          final player = _availablePlayers.where((p) => p.id == initialPlayerId).firstOrNull;
+          _playerName = player?.name ?? '';
+        } else {
+          _playerName = '';
+        }
         _level = 1;
         _maxHp = 10;
         _armorClass = 10;
