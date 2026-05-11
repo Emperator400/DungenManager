@@ -33,7 +33,7 @@ class EditPCViewModel extends ChangeNotifier {
 
   // Character Daten
   PlayerCharacter? _pcToEdit;
-  String _campaignId = '';
+  String? _campaignId;
   String _name = '';
   String _playerName = '';
   int _level = 1;
@@ -89,7 +89,7 @@ class EditPCViewModel extends ChangeNotifier {
   // ============================================================================
 
   PlayerCharacter? get pcToEdit => _pcToEdit;
-  String get campaignId => _campaignId;
+  String? get campaignId => _campaignId;
   String get name => _name;
   String get playerName => _playerName;
   int get level => _level;
@@ -265,7 +265,7 @@ class EditPCViewModel extends ChangeNotifier {
   // ============================================================================
 
   /// Initialisiert den ViewModel mit PC-Daten
-  Future<void> initialize(String campaignId, PlayerCharacter? pc,
+  Future<void> initialize(String? campaignId, PlayerCharacter? pc,
       {String? initialPlayerId}) async {
     try {
       _error = null;

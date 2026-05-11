@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../database/core/database_connection.dart';
-import '../../database/repositories/campaign_model_repository.dart';
-import '../../models/campaign.dart';
 import '../../models/player.dart';
 import '../../models/player_character.dart';
 import '../../theme/app_theme.dart';
@@ -48,66 +45,13 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   }
 
   Future<void> _createCharacter() async {
-    final repo = CampaignModelRepository(DatabaseConnection.instance);
-    final campaigns = await repo.findAll();
-    if (!mounted) return;
-
-    if (campaigns.isEmpty) {
-      SnackBarHelper.showError(context, 'Zuerst eine Kampagne anlegen');
-      return;
-    }
-
-    Campaign? picked;
-    if (campaigns.length == 1) {
-      picked = campaigns.first;
-    } else {
-      picked = await _showCampaignPicker(campaigns);
-    }
-    if (picked == null || !mounted) return;
-
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => EditPCScreen(
-          campaignId: picked!.id,
-          initialPlayerId: _player.id,
-        ),
+        builder: (_) => EditPCScreen(initialPlayerId: _player.id),
       ),
     );
     if (mounted) _loadCharacters();
-  }
-
-  Future<Campaign?> _showCampaignPicker(List<Campaign> campaigns) async {
-    return showDialog<Campaign>(
-      context: context,
-      builder: (ctx) {
-        final C = ctx.appColors;
-        return Dialog(
-          backgroundColor: C.bgPanel,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-            side: BorderSide(color: C.border),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Kampagne wählen',
-                    style: TextStyle(color: C.text, fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 16),
-                ...campaigns.map((c) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(c.title, style: TextStyle(color: C.text)),
-                      onTap: () => Navigator.pop(ctx, c),
-                    )),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
   Future<void> _openEdit() async {

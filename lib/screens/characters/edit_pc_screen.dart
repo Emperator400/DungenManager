@@ -55,13 +55,13 @@ String _abilityAbbr(Ability ability) => switch (ability) {
 
 class EditPCScreen extends StatefulWidget {
   const EditPCScreen({
-    required this.campaignId,
     super.key,
+    this.campaignId,
     this.pcToEdit,
     this.initialPlayerId,
   });
 
-  final String campaignId;
+  final String? campaignId;
   final PlayerCharacter? pcToEdit;
   final String? initialPlayerId;
 

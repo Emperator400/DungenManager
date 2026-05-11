@@ -6,10 +6,12 @@ import 'inventory_item.dart';
 import 'attack.dart';
 import '../utils/model_parsing_helper.dart';
 
+const _sentinel = Object();
+
 /// Reines Datenmodell für Player Characters
 class PlayerCharacter {
   final String id;
-  final String campaignId;
+  final String? campaignId;
   final String name;
   final String playerName;
   final String className;
@@ -81,7 +83,7 @@ class PlayerCharacter {
 
   const PlayerCharacter({
     required this.id,
-    required this.campaignId,
+    this.campaignId,
     required this.name,
     required this.playerName,
     required this.className,
@@ -130,7 +132,7 @@ class PlayerCharacter {
 
   /// Factory für neuen Player Character
   factory PlayerCharacter.create({
-    required String campaignId,
+    String? campaignId,
     required String name,
     required String playerName,
     required String className,
@@ -270,7 +272,7 @@ class PlayerCharacter {
   Map<String, dynamic> toDatabaseMap() {
     return {
       'id': id,
-      'campaign_id': campaignId,
+      'campaign_id': campaignId ?? '',
       'name': name,
       'player_name': playerName,
       'class_name': className,
@@ -344,7 +346,7 @@ class PlayerCharacter {
   factory PlayerCharacter.fromDatabaseMap(Map<String, dynamic> map) {
     return PlayerCharacter(
       id: ModelParsingHelper.safeId(map, 'id'),
-      campaignId: ModelParsingHelper.safeString(map, 'campaign_id', ''),
+      campaignId: ModelParsingHelper.safeStringOrNull(map, 'campaign_id', null),
       name: ModelParsingHelper.safeString(map, 'name', 'Unbenannt'),
       playerName: ModelParsingHelper.safeString(map, 'player_name', 'Unbekannt'),
       className: ModelParsingHelper.safeString(map, 'class_name', 'Unbekannt'),
@@ -499,7 +501,7 @@ class PlayerCharacter {
   factory PlayerCharacter.fromMap(Map<String, dynamic> map) {
     return PlayerCharacter(
       id: ModelParsingHelper.safeId(map, 'id'),
-      campaignId: map['campaignId']?.toString() ?? ModelParsingHelper.safeString(map, 'campaign_id', ''),
+      campaignId: map['campaignId']?.toString() ?? ModelParsingHelper.safeStringOrNull(map, 'campaign_id', null),
       name: ModelParsingHelper.safeString(map, 'name', 'Unbenannt'),
       playerName: map['playerName']?.toString() ?? ModelParsingHelper.safeString(map, 'player_name', 'Unbekannt'),
       className: map['className']?.toString() ?? ModelParsingHelper.safeString(map, 'class_name', 'Unbekannt'),
@@ -549,7 +551,7 @@ class PlayerCharacter {
   /// Erstellt eine Kopie mit aktualisierten Werten
   PlayerCharacter copyWith({
     String? id,
-    String? campaignId,
+    Object? campaignId = _sentinel,
     String? name,
     String? playerName,
     String? className,
@@ -591,7 +593,7 @@ class PlayerCharacter {
   }) {
     return PlayerCharacter(
       id: id ?? this.id,
-      campaignId: campaignId ?? this.campaignId,
+      campaignId: campaignId == _sentinel ? this.campaignId : campaignId as String?,
       name: name ?? this.name,
       playerName: playerName ?? this.playerName,
       className: className ?? this.className,
