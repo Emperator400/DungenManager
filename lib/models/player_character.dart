@@ -272,7 +272,7 @@ class PlayerCharacter {
   Map<String, dynamic> toDatabaseMap() {
     return {
       'id': id,
-      'campaign_id': campaignId ?? '',
+      'campaign_id': campaignId?.isEmpty == true ? null : campaignId,
       'name': name,
       'player_name': playerName,
       'class_name': className,
