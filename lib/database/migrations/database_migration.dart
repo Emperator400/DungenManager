@@ -97,6 +97,9 @@ class DatabaseMigration {
   await _createOrteTable(db);
   await _addOrtIdToScenes(db);
 
+  // map_x/map_y für Ort-Positionen (nicht in initialer CREATE TABLE)
+  await _addMapColumnsToOrte(db);
+
   // Füge verlaufs_karte_image_path zur campaigns Tabelle hinzu
   await _addVerlaufsKarteImagePathColumn(db);
 
@@ -104,7 +107,35 @@ class DatabaseMigration {
   await _createPlayersTable(db);
   await _addPlayerIdToPlayerCharacters(db);
 
+  // campaign_id NOT NULL → nullable (Held gehört Spieler, nicht Kampagne)
+  await _makePlayerCharacterCampaignIdNullable(db);
+
+  // Karte-Tab Hintergrundbild (getrennt von Verlauf-Karte)
+  await _addKarteImagePathColumn(db);
+
   debugPrint('Database migration completed successfully');
+  }
+
+  Future<void> _addMapColumnsToOrte(Database db) async {
+    final cols = await db.rawQuery("PRAGMA table_info('orte')");
+    final names = cols.map((c) => c['name'] as String).toSet();
+    if (!names.contains('map_x')) {
+      await db.execute('ALTER TABLE orte ADD COLUMN map_x REAL');
+      debugPrint('Added map_x column to orte');
+    }
+    if (!names.contains('map_y')) {
+      await db.execute('ALTER TABLE orte ADD COLUMN map_y REAL');
+      debugPrint('Added map_y column to orte');
+    }
+  }
+
+  Future<void> _addKarteImagePathColumn(Database db) async {
+    final cols = await db.rawQuery("PRAGMA table_info('campaigns')");
+    final names = cols.map((c) => c['name'] as String).toSet();
+    if (!names.contains('karte_image_path')) {
+      await db.execute('ALTER TABLE campaigns ADD COLUMN karte_image_path TEXT');
+      debugPrint('Added karte_image_path column to campaigns');
+    }
   }
 
   Future<void> _addVerlaufsKarteImagePathColumn(Database db) async {
@@ -1392,6 +1423,127 @@ class DatabaseMigration {
     } catch (e) {
       debugPrint('Error adding accent_color/system columns: $e');
     }
+  }
+
+  Future<void> _makePlayerCharacterCampaignIdNullable(Database db) async {
+    // Prüfe ob campaign_id bereits nullable ist
+    final info = await db.rawQuery("PRAGMA table_info('player_characters')");
+    final col = info.where((c) => c['name'] == 'campaign_id').firstOrNull;
+    if (col == null) return; // Spalte existiert nicht
+    final notNull = (col['notnull'] as int?) ?? 0;
+    if (notNull == 0) return; // Bereits nullable
+
+    debugPrint('Migrating player_characters: making campaign_id nullable...');
+
+    await db.execute('PRAGMA foreign_keys = OFF');
+    await db.transaction((txn) async {
+      await txn.execute('''
+        CREATE TABLE player_characters_nullable_migration (
+          id TEXT PRIMARY KEY,
+          campaign_id TEXT,
+          name TEXT NOT NULL,
+          player_name TEXT NOT NULL,
+          class_name TEXT NOT NULL,
+          race_name TEXT NOT NULL,
+          level INTEGER NOT NULL,
+          max_hp INTEGER NOT NULL,
+          current_hp INTEGER,
+          armor_class INTEGER NOT NULL,
+          initiative_bonus INTEGER NOT NULL,
+          image_path TEXT,
+          strength INTEGER NOT NULL,
+          dexterity INTEGER NOT NULL,
+          constitution INTEGER NOT NULL,
+          intelligence INTEGER NOT NULL,
+          wisdom INTEGER NOT NULL,
+          charisma INTEGER NOT NULL,
+          proficient_skills TEXT,
+          saving_throw_proficiencies TEXT,
+          size TEXT,
+          type TEXT,
+          subtype TEXT,
+          alignment TEXT,
+          description TEXT,
+          special_abilities TEXT,
+          attacks TEXT,
+          attack_list TEXT,
+          inventory TEXT,
+          equipment TEXT,
+          gold REAL DEFAULT 0.0,
+          silver REAL DEFAULT 0.0,
+          copper REAL DEFAULT 0.0,
+          source_type TEXT DEFAULT 'custom',
+          source_id TEXT,
+          is_favorite INTEGER DEFAULT 0,
+          version TEXT DEFAULT '1.0',
+          proficiency_bonus INTEGER DEFAULT 2,
+          speed INTEGER DEFAULT 30,
+          passive_perception INTEGER DEFAULT 10,
+          spell_slots TEXT,
+          spell_save_dc INTEGER DEFAULT 8,
+          spell_attack_bonus INTEGER DEFAULT 0,
+          hit_dice TEXT DEFAULT 'd8',
+          hit_dice_count INTEGER DEFAULT 1,
+          hit_dice_remaining INTEGER DEFAULT 1,
+          player_id TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (campaign_id) REFERENCES campaigns (id) ON DELETE SET NULL,
+          FOREIGN KEY (player_id) REFERENCES players (id) ON DELETE SET NULL
+        )
+      ''');
+
+      // Spalten die sicher existieren kopieren; optionale mit COALESCE
+      final existingCols = (await txn.rawQuery("PRAGMA table_info('player_characters')"))
+          .map((c) => c['name'] as String)
+          .toSet();
+
+      String colExpr(String col, String? defaultVal) {
+        if (existingCols.contains(col)) return col;
+        return defaultVal != null ? '$defaultVal AS $col' : 'NULL AS $col';
+      }
+
+      await txn.execute('''
+        INSERT INTO player_characters_nullable_migration
+        SELECT
+          id,
+          NULLIF(campaign_id, '') AS campaign_id,
+          name, player_name, class_name, race_name, level,
+          max_hp,
+          ${colExpr('current_hp', 'max_hp')},
+          armor_class, initiative_bonus, image_path,
+          strength, dexterity, constitution, intelligence, wisdom, charisma,
+          proficient_skills,
+          ${colExpr('saving_throw_proficiencies', "'[]'")},
+          size, type, subtype, alignment, description, special_abilities,
+          attacks, attack_list, inventory,
+          ${colExpr('equipment', "'{}'")},
+          gold, silver, copper, source_type, source_id, is_favorite, version,
+          proficiency_bonus, speed, passive_perception, spell_slots,
+          spell_save_dc, spell_attack_bonus,
+          ${colExpr('hit_dice', "'d8'")},
+          ${colExpr('hit_dice_count', '1')},
+          ${colExpr('hit_dice_remaining', '1')},
+          ${colExpr('player_id', 'NULL')},
+          created_at, updated_at
+        FROM player_characters
+      ''');
+
+      await txn.execute('DROP TABLE player_characters');
+      await txn.execute(
+        'ALTER TABLE player_characters_nullable_migration RENAME TO player_characters',
+      );
+    });
+    await db.execute('PRAGMA foreign_keys = ON');
+
+    // Indizes neu anlegen
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_player_characters_campaign ON player_characters(campaign_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_player_characters_player_id ON player_characters(player_id)',
+    );
+    debugPrint('player_characters.campaign_id is now nullable');
   }
 
   Future<void> _createPlayersTable(Database db) async {

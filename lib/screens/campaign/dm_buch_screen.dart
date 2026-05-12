@@ -8,14 +8,17 @@ import 'package:provider/provider.dart';
 
 import '../../models/campaign.dart';
 import '../../models/ort.dart';
+import '../../models/player.dart';
 import '../../models/player_character.dart';
 import '../../models/quest.dart';
 import '../../models/session.dart';
 import '../../models/verlaufs_eintrag.dart';
 import '../../models/wiki_entry.dart';
+import '../../database/core/database_connection.dart';
+import '../../database/repositories/player_character_model_repository.dart';
+import '../../database/repositories/player_model_repository.dart';
 import '../../widgets/dm_buch/lore_keeper_picker_dialog.dart';
 import '../../widgets/dm_buch/quest_picker_dialog.dart';
-import '../../widgets/dm_buch/ort_graph_view.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/theme_notifier.dart';
 import '../../viewmodels/dm_buch_viewmodel.dart';
@@ -1440,34 +1443,32 @@ class _RightPane extends StatelessWidget {
     final C = context.appColors;
     final ort = vm.selectedOrt;
 
-    // Karte-Tab: Graph + optionales Detail-Panel
+    // Karte-Tab: Graph nimmt immer die volle Breite, Detail-Panel liegt darüber
     if (vm.leftTab == DmBuchLeftTab.karte) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      return Stack(
         children: [
-          // Graph (nimmt gesamten Platz, außer wenn Detail offen)
-          Expanded(
-            child: OrtGraphView(
-              orte: vm.orte,
-              selectedOrt: ort,
-              onSelect: vm.selectOrt,
-            ),
-          ),
-          // Detail-Panel — nur wenn ein Ort ausgewählt
-          if (ort != null) ...[
-            VerticalDivider(width: 1, thickness: 1, color: C.border),
-            SizedBox(
-              width: 340,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _OrtHeader(ort: ort, vm: vm),
-                  if (ort.hasBeenVisited) _MemoryBanner(ort: ort, vm: vm, C: C),
-                  Expanded(child: _OrtDetail(ort: ort, vm: vm)),
-                ],
+          Positioned.fill(child: _KarteGraphView(vm: vm)),
+          if (ort != null)
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: 341,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: C.bgPanel,
+                  border: Border(left: BorderSide(color: C.border)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _OrtHeader(ort: ort, vm: vm),
+                    if (ort.hasBeenVisited) _MemoryBanner(ort: ort, vm: vm, C: C),
+                    Expanded(child: _OrtDetail(ort: ort, vm: vm)),
+                  ],
+                ),
               ),
             ),
-          ],
         ],
       );
     }
@@ -1587,6 +1588,11 @@ class _OrtHeader extends StatelessWidget {
               context: context,
               builder: (ctx) => _EditOrtDialog(ort: ort, vm: vm),
             ),
+          ),
+          _TopBarIconBtn(
+            icon: AppIconName.close,
+            C: C,
+            onTap: vm.deselectOrt,
           ),
         ],
       ),
@@ -2941,15 +2947,173 @@ class _SyncBtn extends StatelessWidget {
 
 // ── SPIELER TAB ───────────────────────────────────────────────────────────────
 
-class _SpielerTab extends StatelessWidget {
+class _SpielerTab extends StatefulWidget {
   const _SpielerTab({required this.vm});
-
   final DmBuchViewModel vm;
+
+  @override
+  State<_SpielerTab> createState() => _SpielerTabState();
+}
+
+class _SpielerTabState extends State<_SpielerTab> {
+  late final PlayerCharacterModelRepository _pcRepo;
+  late final PlayerModelRepository _playerRepo;
+
+  @override
+  void initState() {
+    super.initState();
+    _pcRepo = PlayerCharacterModelRepository(DatabaseConnection.instance);
+    _playerRepo = PlayerModelRepository(DatabaseConnection.instance);
+  }
+
+  Future<void> _createNewHero(BuildContext context) async {
+    final C = context.appColors;
+    final players = await _playerRepo.findAllSorted();
+    if (!mounted) return;
+
+    if (players.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Text(
+            'Erst Spieler anlegen (Heimatbildschirm → Spieler)'),
+        backgroundColor: C.red,
+      ));
+      return;
+    }
+
+    final picked = await _showPlayerPickerSheet(context, players);
+    if (!mounted) return;
+    if (picked == null) return; // dismissed
+
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => EditPCScreen(
+        campaignId: widget.vm.campaign.id,
+        initialPlayerId: picked,
+      ),
+    ));
+    if (mounted) widget.vm.reloadCharacters();
+  }
+
+  Future<String?> _showPlayerPickerSheet(
+      BuildContext context, List<Player> players) {
+    final C = context.appColors;
+    return showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: C.bgPanel,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Für welchen Spieler?',
+                      style: TextStyle(
+                          color: C.text,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text('Pflichtfeld — jeder Held braucht einen Spieler.',
+                      style: TextStyle(color: C.textSoft, fontSize: 12)),
+                ],
+              ),
+            ),
+            Divider(color: C.border, height: 1),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  ...players.map((p) {
+                    final color = _hexColor(p.color);
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: color.withValues(alpha: 0.15),
+                        child: Text(
+                          p.name.isNotEmpty ? p.name[0].toUpperCase() : '?',
+                          style: TextStyle(
+                              color: color,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14),
+                        ),
+                      ),
+                      title: Text(p.name,
+                          style: TextStyle(
+                              color: C.text, fontWeight: FontWeight.w600)),
+                      onTap: () => Navigator.pop(ctx, p.id),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _lendHero(BuildContext context) async {
+    final C = context.appColors;
+    final all = await _pcRepo.findAll();
+    final available = all
+        .where((pc) =>
+            pc.campaignId == null ||
+            pc.campaignId!.isEmpty ||
+            pc.campaignId != widget.vm.campaign.id)
+        .toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
+
+    if (!mounted) return;
+
+    if (available.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Text(
+            'Keine verfügbaren Helden — zuerst im Spieler-Profil anlegen'),
+        backgroundColor: C.textMid,
+      ));
+      return;
+    }
+
+    final players = await _playerRepo.findAllSorted();
+    if (!mounted) return;
+    final playerById = {for (final p in players) p.id: p};
+
+    final selected = await showDialog<List<String>>(
+      context: context,
+      builder: (ctx) => _LendHeroDialog(
+        available: available,
+        playerById: playerById,
+        campaignTitle: widget.vm.campaign.title,
+      ),
+    );
+
+    if (selected == null || selected.isEmpty || !mounted) return;
+
+    for (final id in selected) {
+      try {
+        await _pcRepo.assignToCampaign(id, widget.vm.campaign.id);
+      } catch (_) {}
+    }
+
+    widget.vm.reloadCharacters();
+  }
+
+  Color _hexColor(String hex) {
+    try {
+      return Color(int.parse('FF${hex.replaceAll('#', '')}', radix: 16));
+    } catch (_) {
+      return const Color(0xFF6B6B66);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final C = context.appColors;
-    final characters = vm.characters;
+    final characters = widget.vm.characters;
 
     return Column(
       children: [
@@ -2962,12 +3126,21 @@ class _SpielerTab extends StatelessWidget {
                 style: TextStyle(fontSize: 11, color: C.textSoft),
               ),
               const Spacer(),
+              // Held ausleihen
               _AddHeldChip(
-                onTap: () => Navigator.of(context)
-                    .push(MaterialPageRoute<void>(
-                      builder: (_) => EditPCScreen(campaignId: vm.campaign.id),
-                    ))
-                    .then((_) => vm.reloadCharacters()),
+                label: 'Ausleihen',
+                icon: Icons.link,
+                color: C.accent,
+                onTap: () => _lendHero(context),
+                C: C,
+              ),
+              const SizedBox(width: 6),
+              // Neuer Held (mit Spieler-Auswahl)
+              _AddHeldChip(
+                label: 'Neu',
+                icon: Icons.add,
+                color: C.green,
+                onTap: () => _createNewHero(context),
                 C: C,
               ),
             ],
@@ -2988,8 +3161,9 @@ class _SpielerTab extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 6),
                     child: _HeldCard(
                       character: characters[i],
-                      selected: vm.selectedCharacter?.id == characters[i].id,
-                      onTap: () => vm.selectCharacter(characters[i]),
+                      selected:
+                          widget.vm.selectedCharacter?.id == characters[i].id,
+                      onTap: () => widget.vm.selectCharacter(characters[i]),
                     ),
                   ),
                 ),
@@ -3089,10 +3263,19 @@ class _HeldCardState extends State<_HeldCard> {
 }
 
 class _AddHeldChip extends StatefulWidget {
-  const _AddHeldChip({required this.onTap, required this.C});
+  const _AddHeldChip({
+    required this.onTap,
+    required this.C,
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
 
   final VoidCallback onTap;
   final AppColorsExtension C;
+  final String label;
+  final IconData icon;
+  final Color color;
 
   @override
   State<_AddHeldChip> createState() => _AddHeldChipState();
@@ -3103,27 +3286,39 @@ class _AddHeldChipState extends State<_AddHeldChip> {
 
   @override
   Widget build(BuildContext context) {
-    final C = widget.C;
-    return Tooltip(
-      message: 'Held hinzufügen',
-      waitDuration: const Duration(milliseconds: 400),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 100),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: _hovered ? C.accent.withValues(alpha: 0.1) : Colors.transparent,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: _hovered ? C.accent.withValues(alpha: 0.5) : C.border,
-              ),
+    final color = widget.color;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 100),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: _hovered
+                ? color.withValues(alpha: 0.12)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: _hovered
+                  ? color.withValues(alpha: 0.5)
+                  : widget.C.border,
             ),
-            child: Icon(Icons.add, size: 13, color: _hovered ? C.accent : C.textSoft),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(widget.icon, size: 12,
+                  color: _hovered ? color : widget.C.textSoft),
+              const SizedBox(width: 4),
+              Text(widget.label,
+                  style: TextStyle(
+                      fontSize: 10,
+                      color: _hovered ? color : widget.C.textSoft,
+                      fontWeight: FontWeight.w500)),
+            ],
           ),
         ),
       ),
@@ -4554,4 +4749,899 @@ class _TopBarIconBtnState extends State<_TopBarIconBtn> {
           ),
         ),
       );
+}
+
+// ── LEND HERO DIALOG (DM-Buch) ────────────────────────────────────────────────
+
+class _LendHeroDialog extends StatefulWidget {
+  const _LendHeroDialog({
+    required this.available,
+    required this.playerById,
+    required this.campaignTitle,
+  });
+  final List<PlayerCharacter> available;
+  final Map<String, Player> playerById;
+  final String campaignTitle;
+
+  @override
+  State<_LendHeroDialog> createState() => _LendHeroDialogState();
+}
+
+class _LendHeroDialogState extends State<_LendHeroDialog> {
+  final Set<String> _selected = {};
+
+  Color _hexColor(String hex) {
+    try {
+      final h = hex.replaceAll('#', '');
+      return Color(int.parse('FF$h', radix: 16));
+    } catch (_) {
+      return const Color(0xFF6B6B66);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final C = context.appColors;
+    return Dialog(
+      backgroundColor: C.bgPanel,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: C.border),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480, maxHeight: 560),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Held ausleihen',
+                      style: TextStyle(
+                          color: C.text,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text('Für: ${widget.campaignTitle}',
+                      style: TextStyle(color: C.textSoft, fontSize: 12)),
+                ],
+              ),
+            ),
+            Divider(color: C.border, height: 1),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: widget.available.length,
+                itemBuilder: (ctx, i) {
+                  final pc = widget.available[i];
+                  final isSelected = _selected.contains(pc.id);
+                  final player = pc.playerId != null
+                      ? widget.playerById[pc.playerId]
+                      : null;
+                  final playerColor = player != null
+                      ? _hexColor(player.color)
+                      : const Color(0xFF6B6B66);
+                  final ownerName = player?.name ??
+                      (pc.playerName.isNotEmpty ? pc.playerName : null);
+                  final hasCampaign =
+                      pc.campaignId != null && pc.campaignId!.isNotEmpty;
+
+                  return CheckboxListTile(
+                    value: isSelected,
+                    activeColor: C.accent,
+                    onChanged: (v) => setState(() {
+                      if (v == true) {
+                        _selected.add(pc.id);
+                      } else {
+                        _selected.remove(pc.id);
+                      }
+                    }),
+                    secondary: CircleAvatar(
+                      backgroundColor: playerColor.withValues(alpha: 0.15),
+                      radius: 18,
+                      child: Text(
+                        pc.name.isNotEmpty ? pc.name[0].toUpperCase() : '?',
+                        style: TextStyle(
+                            color: playerColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13),
+                      ),
+                    ),
+                    title: Text(pc.name,
+                        style: TextStyle(
+                            color: C.text,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14)),
+                    subtitle: Text(
+                      [
+                        'Lvl ${pc.level} ${pc.className}',
+                        if (ownerName != null) ownerName,
+                        if (hasCampaign) 'aktuell anderswo',
+                      ].join(' · '),
+                      style: TextStyle(color: C.textSoft, fontSize: 11),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Divider(color: C.border, height: 1),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text('Abbrechen',
+                        style: TextStyle(color: C.textMid)),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _selected.isEmpty
+                        ? null
+                        : () => Navigator.pop(context, _selected.toList()),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: C.accent,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: Text(_selected.isEmpty
+                        ? 'Auswählen'
+                        : '${_selected.length} hinzufügen'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── KARTE GRAPH VIEW ─────────────────────────────────────────────────────────
+
+class _KarteGraphView extends StatefulWidget {
+  const _KarteGraphView({required this.vm});
+
+  final DmBuchViewModel vm;
+
+  @override
+  State<_KarteGraphView> createState() => _KarteGraphViewState();
+}
+
+class _KarteGraphViewState extends State<_KarteGraphView>
+    with TickerProviderStateMixin {
+  static const double _cW = 4000;
+  static const double _cH = 2500;
+  static const double _nodeW = 130;
+  static const double _nodeH = 46;
+
+  final TransformationController _tc = TransformationController();
+  final Map<String, Offset> _positions = {};
+  final Map<String, Offset> _dragPos = {};
+
+  bool _connectMode = false;
+  String? _connectSource;
+
+  // Fly-to animation when an Ort is selected
+  String? _lastSelectedOrtId;
+  BoxConstraints? _constraints;
+  late final AnimationController _flyAnim;
+  late Animation<Offset> _flyAnimation;
+  double _flyScale = 1.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _initPositions(widget.vm.orte);
+    _flyAnim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 320),
+    )..addListener(_onFlyTick);
+  }
+
+  @override
+  void didUpdateWidget(_KarteGraphView old) {
+    super.didUpdateWidget(old);
+    final orte = widget.vm.orte;
+    final n = orte.length;
+    for (int i = 0; i < n; i++) {
+      final ort = orte[i];
+      if (_dragPos.containsKey(ort.id)) continue;
+      if (_isFractional(ort)) {
+        _positions[ort.id] = Offset(ort.mapX! * _cW, ort.mapY! * _cH);
+      } else if (!_positions.containsKey(ort.id)) {
+        _positions[ort.id] = _autoPos(i, n);
+      }
+    }
+    _positions.removeWhere((id, _) => !orte.any((o) => o.id == id));
+
+    final sel = widget.vm.selectedOrt;
+    if (sel != null && sel.id != _lastSelectedOrtId) {
+      _lastSelectedOrtId = sel.id;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _flyTo(sel);
+      });
+    } else if (sel == null) {
+      _lastSelectedOrtId = null;
+    }
+  }
+
+  void _initPositions(List<Ort> orte) {
+    _positions.clear();
+    for (int i = 0; i < orte.length; i++) {
+      final ort = orte[i];
+      if (_isFractional(ort)) {
+        _positions[ort.id] = Offset(ort.mapX! * _cW, ort.mapY! * _cH);
+      } else {
+        _positions[ort.id] = _autoPos(i, orte.length);
+      }
+    }
+  }
+
+  // Returns true only for fractional [0,1] values written by _KarteGraphView.
+  // OrtGraphView used absolute canvas coords (e.g. -260..260) which are outside this range.
+  bool _isFractional(Ort ort) =>
+      ort.mapX != null &&
+      ort.mapY != null &&
+      ort.mapX! >= 0.0 &&
+      ort.mapX! <= 1.0 &&
+      ort.mapY! >= 0.0 &&
+      ort.mapY! <= 1.0;
+
+  Offset _autoPos(int i, int n) {
+    if (n <= 1) return const Offset(_cW / 2, _cH / 2);
+    final radius = min(120.0 + n * 50.0, 700.0);
+    final angle = (2 * pi * i) / n - pi / 2;
+    return Offset(_cW / 2 + radius * cos(angle), _cH / 2 + radius * sin(angle));
+  }
+
+  @override
+  void dispose() {
+    _flyAnim.dispose();
+    _tc.dispose();
+    super.dispose();
+  }
+
+  void _onFlyTick() {
+    final t = _flyAnimation.value;
+    final m = Matrix4.identity()
+      ..translate(t.dx, t.dy)
+      ..scale(_flyScale, _flyScale, 1.0);
+    _tc.value = m;
+  }
+
+  void _flyTo(Ort ort) {
+    final constraints = _constraints;
+    if (constraints == null) return;
+    final pos = _positions[ort.id];
+    if (pos == null) return;
+
+    final vpW = constraints.maxWidth;
+    final vpH = constraints.maxHeight;
+    _flyScale = _tc.value.getMaxScaleOnAxis();
+    final from = MatrixUtils.transformPoint(_tc.value, Offset.zero);
+    final to = Offset(vpW / 2 - pos.dx * _flyScale, vpH / 2 - pos.dy * _flyScale);
+
+    _flyAnimation = Tween<Offset>(begin: from, end: to).animate(
+      CurvedAnimation(parent: _flyAnim, curve: Curves.easeInOut),
+    );
+    _flyAnim.forward(from: 0);
+  }
+
+  Future<void> _pickMap(BuildContext ctx) async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
+    if (result != null && result.files.single.path != null && ctx.mounted) {
+      await widget.vm.setKarteImage(result.files.single.path);
+    }
+  }
+
+  Offset _nodePos(Ort ort) =>
+      _dragPos[ort.id] ?? _positions[ort.id] ?? const Offset(_cW / 2, _cH / 2);
+
+  void _onPanUpdate(Ort ort, DragUpdateDetails d) {
+    final scale = _tc.value.getMaxScaleOnAxis();
+    final cur = _nodePos(ort);
+    final next = Offset(
+      (cur.dx + d.delta.dx / scale).clamp(0.0, _cW),
+      (cur.dy + d.delta.dy / scale).clamp(0.0, _cH),
+    );
+    setState(() {
+      _dragPos[ort.id] = next;
+      _positions[ort.id] = next;
+    });
+  }
+
+  Future<void> _onPanEnd(Ort ort) async {
+    final pos = _dragPos.remove(ort.id);
+    if (pos == null) return;
+    setState(() {});
+    await widget.vm.updateOrt(ort.copyWith(
+      mapX: (pos.dx / _cW).clamp(0.0, 1.0),
+      mapY: (pos.dy / _cH).clamp(0.0, 1.0),
+    ));
+  }
+
+  Future<void> _onCanvasDoubleTap(BuildContext ctx, Offset localPos) async {
+    final inv = Matrix4.inverted(_tc.value);
+    final canvas = MatrixUtils.transformPoint(inv, localPos);
+    final fracX = (canvas.dx / _cW).clamp(0.0, 1.0);
+    final fracY = (canvas.dy / _cH).clamp(0.0, 1.0);
+
+    final ort = await showDialog<Ort>(
+      context: ctx,
+      builder: (_) => _KarteOrtPickerDialog(orte: widget.vm.orte),
+    );
+    if (ort == null || !ctx.mounted) return;
+
+    setState(() => _positions[ort.id] = Offset(fracX * _cW, fracY * _cH));
+    await widget.vm.updateOrt(ort.copyWith(mapX: fracX, mapY: fracY));
+  }
+
+  Future<void> _onNodeTap(Ort ort) async {
+    final vm = widget.vm;
+    if (_connectMode) {
+      if (_connectSource == null) {
+        setState(() => _connectSource = ort.id);
+      } else if (_connectSource == ort.id) {
+        setState(() => _connectSource = null);
+      } else {
+        final srcId = _connectSource!;
+        setState(() => _connectSource = null);
+        final src = vm.orte.where((o) => o.id == srcId).firstOrNull;
+        if (src != null) {
+          if (src.connectedOrtIds.contains(ort.id)) {
+            await vm.disconnectOrte(src, ort);
+          } else {
+            await vm.connectOrte(src, ort);
+          }
+        }
+      }
+    } else {
+      await vm.selectOrt(ort);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = widget.vm;
+    final C = context.appColors;
+    final isVorbereitung = vm.mode == DmBuchMode.vorbereitung;
+    final orte = vm.orte;
+
+    // Build display positions: drag override → stored position → fallback center
+    final positions = <String, Offset>{
+      for (final ort in orte)
+        ort.id: _dragPos[ort.id] ?? _positions[ort.id] ?? const Offset(_cW / 2, _cH / 2),
+    };
+
+    return LayoutBuilder(builder: (context, constraints) {
+      _constraints = constraints;
+      return Stack(
+        children: [
+          // ── Ebene 1+2: Hintergrund + Orte zoomen/panen gemeinsam ────────
+          GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onDoubleTapDown: (isVorbereitung && !_connectMode)
+                ? (d) => _onCanvasDoubleTap(context, d.localPosition)
+                : null,
+            child: InteractiveViewer(
+            transformationController: _tc,
+            boundaryMargin: const EdgeInsets.all(double.infinity),
+            minScale: 0.03,
+            maxScale: 5.0,
+            child: SizedBox(
+              width: _cW,
+              height: _cH,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // Ebene 1: Hintergrund (Karte oder Dot-Grid)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: vm.karteImagePath != null
+                          ? Image.file(
+                              File(vm.karteImagePath!),
+                              fit: BoxFit.fill,
+                              errorBuilder: (_, __, ___) => ColoredBox(color: C.bgPanel),
+                            )
+                          : CustomPaint(painter: _GraphGridPainter(C)),
+                    ),
+                  ),
+
+                  // Ebene 2: Kanten
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _KarteEdgePainter(
+                        orte: orte,
+                        positions: positions,
+                        connectSource: _connectSource,
+                        lineColor: C.accent.withValues(alpha: 0.75),
+                        sourceColor: C.amber,
+                      ),
+                      isComplex: true,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          ), // GestureDetector
+
+          // Ebene 3: Knoten – außerhalb des InteractiveViewers, konstante Bildschirmgröße
+          AnimatedBuilder(
+            animation: _tc,
+            builder: (context, _) {
+              return Stack(
+                children: [
+                  for (final ort in orte)
+                    Builder(builder: (_) {
+                      final canvasPos = positions[ort.id]!;
+                      final screenPos =
+                          MatrixUtils.transformPoint(_tc.value, canvasPos);
+
+                      Widget node = _KarteMapNode(
+                        ort: ort,
+                        selected: vm.selectedOrt?.id == ort.id,
+                        isConnectSource: _connectSource == ort.id,
+                        C: C,
+                      );
+
+                      return Positioned(
+                        left: screenPos.dx - _nodeW / 2,
+                        top: screenPos.dy - _nodeH / 2,
+                        width: _nodeW,
+                        height: _nodeH,
+                        child: GestureDetector(
+                          onTap: () => _onNodeTap(ort),
+                          onDoubleTap: () {},
+                          onPanUpdate: (isVorbereitung && !_connectMode)
+                              ? (d) => _onPanUpdate(ort, d)
+                              : null,
+                          onPanEnd: (isVorbereitung && !_connectMode)
+                              ? (_) => _onPanEnd(ort)
+                              : null,
+                          child: node,
+                        ),
+                      );
+                    }),
+                ],
+              );
+            },
+          ),
+
+          // Hint: Doppelklick zum Platzieren
+          if (isVorbereitung && !_connectMode)
+            Positioned(
+              right: 12,
+              bottom: 10,
+              child: Text(
+                'Doppelklick → Ort platzieren',
+                style: TextStyle(fontSize: 10, color: C.textSoft.withValues(alpha: 0.5)),
+              ),
+            ),
+
+          // Toolbar
+          Positioned(
+            right: 10,
+            top: 8,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _GraphMapBtn(
+                  icon: Icons.map_outlined,
+                  label: vm.karteImagePath == null ? 'Karte laden' : 'Karte wechseln',
+                  onTap: () => _pickMap(context),
+                  C: C,
+                ),
+                if (vm.karteImagePath != null) ...[
+                  const SizedBox(height: 4),
+                  _GraphMapBtn(
+                    icon: Icons.close,
+                    label: 'Karte entfernen',
+                    onTap: () => vm.setKarteImage(null),
+                    C: C,
+                  ),
+                ],
+                if (isVorbereitung) ...[
+                  const SizedBox(height: 8),
+                  _GraphMapBtn(
+                    icon: _connectMode ? Icons.link_off : Icons.link,
+                    label: _connectMode
+                        ? 'Verbindungs-Modus beenden'
+                        : 'Verbindungen bearbeiten',
+                    active: _connectMode,
+                    onTap: () => setState(() {
+                      _connectMode = !_connectMode;
+                      _connectSource = null;
+                    }),
+                    C: C,
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          // Verbindungs-Modus Hinweis
+          if (_connectMode)
+            Positioned(
+              bottom: 12,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: C.amber.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: C.amber.withValues(alpha: 0.4)),
+                  ),
+                  child: Text(
+                    _connectSource == null
+                        ? 'Tippe auf einen Ort als Ausgangspunkt'
+                        : 'Tippe auf den Ziel-Ort  •  Nochmals tippen zum Abbrechen',
+                    style: TextStyle(fontSize: 11, color: C.amber),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      );
+    });
+  }
+}
+
+// ── KARTE EDGE PAINTER ────────────────────────────────────────────────────────
+
+class _KarteEdgePainter extends CustomPainter {
+  const _KarteEdgePainter({
+    required this.orte,
+    required this.positions,
+    required this.connectSource,
+    required this.lineColor,
+    required this.sourceColor,
+  });
+
+  final List<Ort> orte;
+  final Map<String, Offset> positions;
+  final String? connectSource;
+  final Color lineColor;
+  final Color sourceColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final seen = <String>{};
+    for (final ort in orte) {
+      final from = positions[ort.id];
+      if (from == null || ort.connectedOrtIds.isEmpty) continue;
+
+      for (final toId in ort.connectedOrtIds) {
+        final edgeKey = ([ort.id, toId]..sort()).join('-');
+        if (seen.contains(edgeKey)) continue;
+        seen.add(edgeKey);
+
+        final to = positions[toId];
+        if (to == null) continue;
+
+        final isHighlighted = connectSource == ort.id || connectSource == toId;
+        final paint = Paint()
+          ..color = isHighlighted ? sourceColor.withValues(alpha: 0.85) : lineColor
+          ..strokeWidth = isHighlighted ? 2.5 : 1.8
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round;
+
+        _drawLine(canvas, from, to, paint);
+      }
+    }
+  }
+
+  static void _drawLine(Canvas canvas, Offset from, Offset to, Paint paint) {
+    final dir = to - from;
+    if (dir.distance < 2) return;
+    const nodeR = 28.0;
+    final unit = dir / dir.distance;
+    final start = from + unit * nodeR;
+    final end = to - unit * nodeR;
+    if ((end - start).distance < nodeR) return;
+    canvas.drawLine(start, end, paint);
+  }
+
+  @override
+  bool shouldRepaint(_KarteEdgePainter old) =>
+      old.orte != orte ||
+      old.positions != positions ||
+      old.connectSource != connectSource;
+}
+
+// ── KARTE MAP NODE ────────────────────────────────────────────────────────────
+
+class _KarteMapNode extends StatefulWidget {
+  const _KarteMapNode({
+    required this.ort,
+    required this.selected,
+    required this.isConnectSource,
+    required this.C,
+  });
+
+  final Ort ort;
+  final bool selected;
+  final bool isConnectSource;
+  final AppColorsExtension C;
+
+  @override
+  State<_KarteMapNode> createState() => _KarteMapNodeState();
+}
+
+class _KarteMapNodeState extends State<_KarteMapNode> {
+  bool _hovered = false;
+
+  Color _typeColor(AppColorsExtension C) {
+    switch (widget.ort.type) {
+      case OrtType.dungeon:    return C.red;
+      case OrtType.city:       return C.green;
+      case OrtType.building:   return C.accent;
+      case OrtType.wilderness: return C.amber;
+      case OrtType.other:      return C.textSoft;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final C = widget.C;
+    final ort = widget.ort;
+    final accentColor = widget.isConnectSource ? C.amber : _typeColor(C);
+    final isActive = widget.selected || widget.isConnectSource;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: _hovered ? C.bgHover : C.bgPanel,
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(
+            color: isActive ? accentColor : C.border,
+            width: isActive ? 2.0 : 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isActive ? 0.35 : 0.22),
+              blurRadius: isActive ? 16 : 8,
+              spreadRadius: 0.5,
+              offset: const Offset(0, 3),
+            ),
+            if (isActive)
+              BoxShadow(
+                color: accentColor.withValues(alpha: 0.28),
+                blurRadius: 10,
+                spreadRadius: 0,
+              ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 4,
+              decoration: BoxDecoration(
+                color: ort.hasBeenVisited
+                    ? accentColor.withValues(alpha: 0.4)
+                    : accentColor,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(9),
+                  bottomLeft: Radius.circular(9),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    ort.name,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: isActive ? accentColor : C.text,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 5,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: accentColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        ort.type.label,
+                        style: TextStyle(fontSize: 9, color: C.textSoft),
+                      ),
+                      if (ort.hasBeenVisited) ...[
+                        const SizedBox(width: 4),
+                        Icon(Icons.check_circle, size: 9, color: C.amber),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 4),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── KARTE ORT PICKER DIALOG ───────────────────────────────────────────────────
+
+class _KarteOrtPickerDialog extends StatefulWidget {
+  const _KarteOrtPickerDialog({required this.orte});
+
+  final List<Ort> orte;
+
+  @override
+  State<_KarteOrtPickerDialog> createState() => _KarteOrtPickerDialogState();
+}
+
+class _KarteOrtPickerDialogState extends State<_KarteOrtPickerDialog> {
+  String _search = '';
+
+  Color _typeColor(OrtType type, AppColorsExtension C) {
+    switch (type) {
+      case OrtType.dungeon:    return C.red;
+      case OrtType.city:       return C.green;
+      case OrtType.building:   return C.accent;
+      case OrtType.wilderness: return C.amber;
+      case OrtType.other:      return C.textSoft;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final C = context.appColors;
+
+    // Unpositioned first, then sorted by name
+    final sorted = [...widget.orte]..sort((a, b) {
+        final aPos = a.mapX != null && a.mapX! >= 0 && a.mapX! <= 1;
+        final bPos = b.mapX != null && b.mapX! >= 0 && b.mapX! <= 1;
+        if (aPos != bPos) return aPos ? 1 : -1;
+        return a.name.compareTo(b.name);
+      });
+
+    final filtered = _search.isEmpty
+        ? sorted
+        : sorted.where((o) => o.name.toLowerCase().contains(_search.toLowerCase())).toList();
+
+    return Dialog(
+      backgroundColor: C.bgPanel,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: C.border),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360, maxHeight: 480),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.add_location_alt_outlined, size: 16, color: C.accent),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Ort hier platzieren',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.text),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Suchen…',
+                  hintStyle: TextStyle(fontSize: 12, color: C.textSoft),
+                  prefixIcon: Icon(Icons.search, size: 16, color: C.textSoft),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: C.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: C.accent),
+                  ),
+                  filled: true,
+                  fillColor: C.bgHover,
+                ),
+                style: TextStyle(fontSize: 12, color: C.text),
+                onChanged: (v) => setState(() => _search = v),
+              ),
+              const SizedBox(height: 10),
+              if (filtered.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: Text('Keine Orte gefunden', style: TextStyle(fontSize: 12, color: C.textSoft)),
+                  ),
+                )
+              else
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, __) => Divider(height: 1, color: C.border.withValues(alpha: 0.5)),
+                    itemBuilder: (_, i) {
+                      final ort = filtered[i];
+                      final color = _typeColor(ort.type, C);
+                      final isPositioned = ort.mapX != null && ort.mapX! >= 0 && ort.mapX! <= 1;
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(6),
+                        onTap: () => Navigator.pop(context, ort),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 3,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      ort.name,
+                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: C.text),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      ort.type.label,
+                                      style: TextStyle(fontSize: 10, color: C.textSoft),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (isPositioned)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 4),
+                                  child: Icon(Icons.location_on, size: 13, color: C.textSoft),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

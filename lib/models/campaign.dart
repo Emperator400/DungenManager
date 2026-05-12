@@ -403,6 +403,7 @@ class Campaign {
   final String? templateId;
   final List<VerlaufsEintrag> verlaufsplan;
   final String? verlaufsKarteImagePath;
+  final String? karteImagePath;
 
   /// Tabellenname für die Datenbank
   static const String tableName = 'campaigns';
@@ -432,6 +433,7 @@ class Campaign {
     this.templateId,
     this.verlaufsplan = const [],
     this.verlaufsKarteImagePath,
+    this.karteImagePath,
   });
 
   /// Factory für neue Kampagnen mit automatisch generierter ID
@@ -591,6 +593,7 @@ class Campaign {
         templateId: map['template_id'] as String?,
         verlaufsplan: VerlaufsEintrag.listFromJson(map['verlaufsplan'] as String?),
         verlaufsKarteImagePath: map['verlaufs_karte_image_path'] as String?,
+        karteImagePath: map['karte_image_path'] as String?,
       );
     } catch (e) {
       debugPrint('Fehler beim Parsen der Kampagne: $e');
@@ -707,6 +710,7 @@ class Campaign {
       'template_id': templateId,
       'verlaufsplan': verlaufsplan.isEmpty ? null : VerlaufsEintrag.listToJson(verlaufsplan),
       'verlaufs_karte_image_path': verlaufsKarteImagePath,
+      'karte_image_path': karteImagePath,
     };
   }
 
@@ -736,6 +740,7 @@ class Campaign {
     Object? templateId = _sentinel,
     List<VerlaufsEintrag>? verlaufsplan,
     Object? verlaufsKarteImagePath = _sentinel,
+    Object? karteImagePath = _sentinel,
   }) {
     return Campaign(
       id: id ?? this.id,
@@ -764,6 +769,9 @@ class Campaign {
       verlaufsKarteImagePath: verlaufsKarteImagePath == _sentinel
           ? this.verlaufsKarteImagePath
           : verlaufsKarteImagePath as String?,
+      karteImagePath: karteImagePath == _sentinel
+          ? this.karteImagePath
+          : karteImagePath as String?,
     );
   }
 

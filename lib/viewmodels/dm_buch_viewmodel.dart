@@ -215,9 +215,11 @@ class DmBuchViewModel extends ChangeNotifier {
     OrtType type = OrtType.other,
     String description = '',
     List<String> linkedWikiEntryIds = const [],
+    double? mapX,
+    double? mapY,
   }) async {
     try {
-      final ort = Ort.create(
+      final base = Ort.create(
         campaignId: campaign.id,
         name: name,
         type: type,
@@ -225,6 +227,9 @@ class DmBuchViewModel extends ChangeNotifier {
         sortOrder: _orte.length,
         linkedWikiEntryIds: linkedWikiEntryIds,
       );
+      final ort = (mapX != null && mapY != null)
+          ? base.copyWith(mapX: mapX, mapY: mapY)
+          : base;
       final saved = await _ortService.createOrt(ort);
       _orte.add(saved);
       notifyListeners();
@@ -244,6 +249,20 @@ class DmBuchViewModel extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('[DmBuchViewModel] updateOrt error: $e');
+    }
+  }
+
+  /// Persists a node's canvas position after the user drags it.
+  /// Does NOT call notifyListeners to avoid rebuilding the graph view mid-drag.
+  Future<void> updateOrtPosition(String ortId, double x, double y) async {
+    final idx = _orte.indexWhere((o) => o.id == ortId);
+    if (idx == -1) return;
+    final updated = _orte[idx].copyWith(mapX: x, mapY: y);
+    _orte[idx] = updated;
+    try {
+      await _ortRepo.update(updated);
+    } catch (e) {
+      debugPrint('[DmBuchViewModel] updateOrtPosition error: $e');
     }
   }
 
@@ -488,6 +507,16 @@ class DmBuchViewModel extends ChangeNotifier {
   Future<void> setVerlaufsKarteImage(String? path) async {
     final updated = _campaign.copyWith(
       verlaufsKarteImagePath: path,
+      updatedAt: DateTime.now(),
+    );
+    await _saveCampaign(updated);
+  }
+
+  String? get karteImagePath => _campaign.karteImagePath;
+
+  Future<void> setKarteImage(String? path) async {
+    final updated = _campaign.copyWith(
+      karteImagePath: path,
       updatedAt: DateTime.now(),
     );
     await _saveCampaign(updated);
