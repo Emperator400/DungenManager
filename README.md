@@ -1,83 +1,136 @@
-# DM-Cockpit: Dein All-in-One D&D Management Tool
+# DungenManager — D&D 5e Session-Management für Dungeon Master
 
-Eine mit Flutter entwickelte Desktop- und Tablet-Anwendung, die Dungeon Mastern dabei hilft, ihre Dungeons & Dragons Kampagnen zu planen, zu verwalten und live am Spieltisch zu leiten.
+> Eine Flutter-App für Windows, macOS und iOS, die Dungeon Mastern ein vollständiges digitales Werkzeugset an die Hand gibt — von der Kampagnenplanung bis zum Live-Spielbetrieb am Tisch.
 
-![Status](https://img.shields.io/badge/status-in_development-orange)
-
----
-
-### 📖 Projekt-Vision
-
-Das Ziel dieses Projekts ist es, die Zettelwirtschaft und das Springen zwischen unzähligen Apps während einer D&D-Sitzung zu beenden. Das DM-Cockpit soll eine zentrale, intuitive Anwendung sein, die alle wichtigen Werkzeuge eines Spielleiters vereint – von der grossen Kampagnen-Architektur bis hin zum detaillierten Kampf-Management in Echtzeit.
-
-Die App ist modular aufgebaut und wurde mit Fokus auf eine saubere, erweiterbare Architektur entwickelt.
-
-**(Tipp: Füge hier ein oder zwei Screenshots deiner App ein, z.B. vom Kampagnen-Dashboard und dem Kampf-Tracker!)**
-`[SCREENSHOT VOM KAMPAGNEN-DASHBOARD HIER EINFÜGEN]`
-
-### ✨ Features
-
-Die Anwendung ist in mehrere, miteinander verknüpfte Module unterteilt:
-
-**🏛️ Kampagnen-Architektur ("Das Bücherregal")**
-* **Kampagnen-Verwaltung:** Erstelle mehrere Kampagnen ("Bücher"), um verschiedene Abenteuer sauber voneinander zu trennen.
-* **Kampagnen-Dashboard:** Eine zentrale Übersicht für jede Kampagne mit Zugriff auf alle zugehörigen Module.
-
-**👤 Charakter-Management**
-* **Detaillierter Charakterbogen:** Erstelle und verwalte Spielercharaktere mit allen wichtigen Werten (Attribute, HP, AC, Level etc.).
-* **Intelligente Regel-Logik:** Wähle Klassen und Rassen aus vordefinierten Listen. Boni für Attribute und Fähigkeiten werden automatisch berechnet.
-* **Inventar-System:** Rüste Helden mit Gegenständen aus einer zentralen Bibliothek aus und verwalte deren Menge.
-* **Charakter-Porträts:** Lade Bilder für jeden Helden hoch.
-
-**🗺️ Story & Weltenbau**
-* **Szenen-Planer:** Plane deine Sitzungen nicht als Textwand, sondern als sortierbare Liste von "Szenen-Karteikarten" – ein flexibles Flussdiagramm für deine Story.
-* **Intelligente Verknüpfungen:** Verknüpfe NPCs, Orte und Quests direkt mit den Szenen, in denen sie vorkommen.
-* **Dialog-Hervorhebung:** Nutze Markdown-Syntax (`>`), um NSC-Dialoge in deinen Notizen hervorzuheben, die im Live-Modus speziell formatiert werden.
-* **Globale Bibliotheken:**
-    * **Lore Keeper:** Eine zentrale Wiki für alle deine NPCs, Orte und Hintergrundgeschichten.
-    * **Bestiarium:** Eine Bibliothek für alle Monster und ihre Kampfwerte.
-    * **Ausrüstungskammer:** Eine Bibliothek für alle wiederverwendbaren Gegenstände (Waffen, Rüstungen etc.).
-    * **Quest-Bibliothek:** Eine Sammlung von Quest-Ideen und -Schablonen.
-
-**⚔️ Live-Spiel-Cockpit**
-* **`ActiveSessionScreen`:** Ein 4-Quadranten-Dashboard für den Live-Spielbetrieb, das dir auf einen Blick den Szenen-Ablauf, das Quest-Log, den Zeit-Tracker und das Soundboard anzeigt.
-* **Interaktiver Initiative-Tracker:**
-    * **Turn-Management:** Zählt die Runden und hebt den aktiven Kämpfer visuell hervor.
-    * **"Spickzettel":** Aufklappbare Karten zeigen per Klick alle relevanten Werte eines Helden (Attribute, Boni) oder Monsters (AC, Angriffe).
-    * **Zustands-Verwaltung:** Füge per Klick Conditions (z.B. "Vergiftet") hinzu und entferne sie.
-    * **Schnell-Aktionen:** Ein Kontextmenü (langer Klick/Rechtsklick) auf jeden Teilnehmer ermöglicht die blitzschnelle Eingabe von Schaden und Heilung.
-
-**🔊 Atmosphäre**
-* **Sound-System:** Importiere eigene Audio-Dateien (Musik & Effekte), komponiere sie zu Klanglandschaften ("Szenen") und spiele sie im Live-Cockpit per Knopfdruck ab.
-
-### 🛠️ Tech Stack
-
-* **Framework:** Flutter
-* **Sprache:** Dart
-* **Datenbank:** `sqflite` (lokale SQL-Datenbank)
-* **Wichtige Pakete:**
-    * `file_picker` & `image_picker` (für den Import von Dateien)
-    * `audioplayers` (für das Sound-System)
-    * `flutter_markdown` (für die Formatierung von Notizen)
-    * `path` & `path_provider` (für das Dateimanagement)
-
-### 🚀 Getting Started
-
-Dieses Projekt wurde mit Flutter entwickelt.
-
-1.  **Flutter installieren:** Stelle sicher, dass du eine aktuelle Version des [Flutter SDK](https://flutter.dev/docs/get-started/install) installiert hast.
-2.  **Abhängigkeiten laden:** Navigiere ins Projektverzeichnis und führe `flutter pub get` aus.
-3.  **App starten:** Führe `flutter run -d windows` (oder `macos`/`linux`) aus, um die App auf dem Desktop zu starten.
-
-**Hinweis:** Da sich die Datenbank-Struktur in der Entwicklung befindet, ist der einfachste Weg bei `SqfliteFfiException`-Fehlern, die App komplett zu deinstallieren (bei mobilen Builds) oder die `.db`-Datei im Build-Verzeichnis zu löschen, um eine Neuerstellung der Datenbank zu erzwingen.
-
-### 🛣️ Zukünftige Ideen (Roadmap)
-
-* [ ] **Karten-Manager:** Eine interaktive Kartenansicht mit Zoom, Pan und "Fog of War".
-* [ ] **Spieler-Bildschirm:** Eine separate Ausgabe-Ansicht nur für Spieler (z.B. für einen zweiten Monitor).
-* [ ] **Token-Management:** Platzieren und Bewegen von Tokens auf den Karten.
-* [ ] **Zufalls-Generatoren:** Für Namen, Orte, Quests und Schätze.
+![Version](https://img.shields.io/badge/version-1.0.9-blue)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20iOS-lightgrey)
+![Status](https://img.shields.io/badge/status-aktiv%20entwickelt-green)
+![License](https://img.shields.io/badge/license-proprietary-red)
 
 ---
 
-Erstellt mit viel Geduld und Freude am Entwerfen.
+## Screenshots
+
+> *Screenshots folgen — Bilder können unter `docs/screenshots/` abgelegt werden.*
+
+| DM-Buch & Karte | Heldenverwaltung | Live-Session |
+|:---:|:---:|:---:|
+| *(coming soon)* | *(coming soon)* | *(coming soon)* |
+
+---
+
+## Features
+
+### 📖 DM-Buch (Kampagnen-Zentrale)
+- Mehrere Kampagnen verwalten, jede mit eigenem DM-Buch
+- **Interaktive Karte** mit platzierbaren Markern (Dungeon, Stadt, Gebäude, Wildnis, Region …)
+- Marker verbinden, auf Subkarten bohren, Positionen sperren
+- **Verlaufsplan** — visueller Plot-Graph mit Marker- und Quest-Referenzen
+- **LoreKeeper** — Wiki für NPCs, Orte und Weltenbau-Artikel, aus dem Marker direkt erstellt werden können
+- **Kampagnen-Templates** — Kampagnen als Vorlagen speichern und mit einem Klick synchronisieren
+
+### 🧙 Spieler & Helden
+- **Spieler-Profile** mit eigener Farbe und Hero-Roster
+- Helden einer Kampagne ausleihen oder direkt dort erstellen
+- Helden-Übersicht mit farbigen Spieler-Badges, Gruppierung nach Spieler
+- Rechtsklick auf einen Helden → aus Kampagne abziehen
+
+### 📋 Detaillierter Charakterbogen
+- Alle D&D-5e-Werte: Attribute, HP, RK, Initiative, Speed, Proficiencies
+- **Automatische Rüstungsklassen-Berechnung** (je nach ausgerüsteter Rüstung)
+- **Inventar-System** mit ausrüstbaren Gegenständen aus zentraler Bibliothek
+- Charakter-Porträt, Gold/Silber/Kupfer, Beschreibung, Ausrichtung
+
+### ⚔️ Session & Encounter (Live am Tisch)
+- **Aktive-Session-Dashboard** mit Szenen-Log, Quest-Status und Zeittracker
+- **Encounter-Tracker** mit Initiativ-Reihenfolge, Rundzähler und Runden-Highlighting
+- HP-Änderungen, Schaden und Heilung direkt im Tracker
+- Zustands-Verwaltung (Conditions: Vergiftet, Betäubt, …)
+- „Spickzettel"-Karten für Helden und Monster im Kampf
+
+### 🌍 Weltenbau & Bibliotheken
+- **Bestiarium** — Monster- und NPC-Bibliothek
+- **Ausrüstungskammer** — wiederverwendbare Items
+- **Quest-Bibliothek** — Quest-Ideen und -Vorlagen
+- **Szenen-Planer** — sortierbare Szenen-Karteikarten mit Markdown-Notizen und NSC-Dialog-Hervorhebung
+
+### 🔊 Atmosphäre
+- Audio-Import (MP3/WAV) und Wiedergabe
+- Klanglandschaften pro Szene zusammenstellen
+
+---
+
+## Tech Stack
+
+| Bereich | Technologie |
+|---------|-------------|
+| Framework | Flutter (Dart) |
+| State Management | Provider / ChangeNotifier (MVVM) |
+| Datenbank | SQLite via `sqflite` + `sqflite_common_ffi` |
+| Audio | `audioplayers` |
+| Datei-Import | `file_picker`, `image_picker` |
+| Markdown | `flutter_markdown` |
+| IDs | `uuid` |
+
+---
+
+## Setup & Installation
+
+### Voraussetzungen
+
+- [Flutter SDK](https://flutter.dev/docs/get-started/install) ≥ 3.x
+- Dart ≥ 3.x
+- Für Windows: Visual Studio mit C++-Desktop-Workload
+- Für macOS/iOS: Xcode
+
+### Schritte
+
+```bash
+# 1. Repository klonen
+git clone https://github.com/Emperator400/DungenManager.git
+cd DungenManager
+
+# 2. Abhängigkeiten laden
+flutter pub get
+
+# 3. App starten
+flutter run -d windows   # Windows
+flutter run -d macos     # macOS
+flutter run -d ios       # iOS Simulator
+```
+
+### Datenbankprobleme beheben
+
+Falls beim Start ein `SqfliteFfiException`-Fehler auftritt (z. B. nach einem Schema-Update):
+
+**Windows:** Die Datenbankdatei befindet sich unter:
+```
+%APPDATA%\com.example.dungenManager\dungen_manager.db
+```
+Diese Datei löschen — die App legt beim nächsten Start eine neue an.
+
+**iOS/Android:** App deinstallieren und neu installieren.
+
+---
+
+## Projektstruktur
+
+```
+lib/
+├── models/          # Dart-Domain-Modelle (Ort, PlayerCharacter, Session …)
+├── database/        # SQLite-Repositories und Migrationen
+├── services/        # Business-Logic
+├── viewmodels/      # ChangeNotifier-ViewModels
+├── screens/         # Feature-Screens
+├── widgets/         # Wiederverwendbare UI-Komponenten
+├── theme/           # AppColors, DnDTheme
+└── game_data/       # D&D-5e-SRD-Daten und Demo-Content
+```
+
+---
+
+## Lizenz
+
+© 2024–2025 Emperator400. Alle Rechte vorbehalten.
+
+Dieser Quellcode ist öffentlich einsehbar, aber **nicht zur Nutzung, Kopie, Modifikation oder Weiterverbreitung freigegeben** ohne ausdrückliche schriftliche Genehmigung des Autors.
