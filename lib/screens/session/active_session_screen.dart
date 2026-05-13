@@ -250,14 +250,10 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
       color: C.bg,
       child: Column(
         children: [
-          // Helden
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 280),
-            child: SingleChildScrollView(
-              child: HeroListSection(
-                campaignId: viewModel.campaign.id,
-              ),
-            ),
+          // Helden — Header gepinnt, Liste scrollt intern
+          HeroListSection(
+            campaignId: viewModel.campaign.id,
+            maxContentHeight: 220,
           ),
           Container(height: 1, color: C.border),
           // Szenen Header

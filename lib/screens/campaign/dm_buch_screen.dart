@@ -22,6 +22,7 @@ import '../../widgets/dm_buch/quest_picker_dialog.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/theme_notifier.dart';
 import '../../viewmodels/dm_buch_viewmodel.dart';
+import '../../viewmodels/wiki_viewmodel.dart';
 import '../../widgets/active_session/atmosphere_quadrant.dart';
 import '../../widgets/ui_components/shared/app_icon.dart';
 import '../../widgets/ui_components/shared/app_logo.dart';
@@ -411,53 +412,61 @@ class _KarteTabState extends State<_KarteTab> {
   Widget build(BuildContext context) {
     final C = context.appColors;
     final vm = widget.vm;
-    final orte = vm.orte;
+    final orte = vm.currentLevelOrte;
+    final onSubMap = vm.currentMapParentId != null;
 
     return Column(
       children: [
+        // Breadcrumb wenn auf Subkarte
+        if (onSubMap)
+          _MapBreadcrumb(vm: vm, C: C),
+
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
           child: Row(
             children: [
               Text(
-                '${orte.length} Ort${orte.length != 1 ? "e" : ""}',
+                '${orte.length} Marker',
                 style: TextStyle(fontSize: 11, color: C.textSoft),
               ),
               const SizedBox(width: 8),
-              // Verlauf-Sort Toggle
-              GestureDetector(
-                onTap: () => setState(() => _verlaufsSort = !_verlaufsSort),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 120),
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: _verlaufsSort ? C.accent.withValues(alpha: 0.12) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(5),
-                    border: Border.all(
-                      color: _verlaufsSort ? C.accent.withValues(alpha: 0.4) : C.border,
+              // Verlauf-Sort nur auf Weltkarte sinnvoll
+              if (!onSubMap)
+                GestureDetector(
+                  onTap: () => setState(() => _verlaufsSort = !_verlaufsSort),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 120),
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: _verlaufsSort ? C.accent.withValues(alpha: 0.12) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(5),
+                      border: Border.all(
+                        color: _verlaufsSort ? C.accent.withValues(alpha: 0.4) : C.border,
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    'Verlauf',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: _verlaufsSort ? C.accent : C.textMid,
-                      fontWeight: _verlaufsSort ? FontWeight.w600 : FontWeight.w400,
+                    child: Text(
+                      'Verlauf',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: _verlaufsSort ? C.accent : C.textMid,
+                        fontWeight: _verlaufsSort ? FontWeight.w600 : FontWeight.w400,
+                      ),
                     ),
                   ),
                 ),
-              ),
               const Spacer(),
               _LoreKeeperBtn(
                 onTap: () async {
+                  final wikiVm = context.read<WikiViewModel>();
+                  if (wikiVm.allEntries.isEmpty) await wikiVm.loadEntries();
+                  if (!context.mounted) return;
                   final entry = await LoreKeeperPickerDialog.show(
                     context,
-                    entries: vm.wikiEntries,
-                    typeFilter: const [WikiEntryType.Place],
-                    title: 'Ort aus LoreKeeper',
+                    entries: wikiVm.allEntries,
+                    title: 'Marker aus LoreKeeper',
                   );
                   if (entry != null && context.mounted) {
-                    await vm.createOrtFromWikiEntry(entry);
+                    await vm.createOrtFromWikiEntry(entry, parentOrtId: vm.currentMapParentId);
                   }
                 },
                 C: C,
@@ -477,11 +486,11 @@ class _KarteTabState extends State<_KarteTab> {
           child: orte.isEmpty
               ? Center(
                   child: Text(
-                    'Noch keine Orte',
+                    onSubMap ? 'Noch keine Marker auf dieser Subkarte' : 'Noch keine Marker',
                     style: TextStyle(fontSize: 13, color: C.textSoft),
                   ),
                 )
-              : _verlaufsSort
+              : (!onSubMap && _verlaufsSort)
                   ? _VerlaufsSortedList(items: _verlaufsSorted(), vm: vm)
                   : ReorderableListView.builder(
                       padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
@@ -505,6 +514,49 @@ class _KarteTabState extends State<_KarteTab> {
                     ),
         ),
       ],
+    );
+  }
+}
+
+// ── KARTE BREADCRUMB ──────────────────────────────────────────────────────────
+
+class _MapBreadcrumb extends StatelessWidget {
+  const _MapBreadcrumb({required this.vm, required this.C});
+
+  final DmBuchViewModel vm;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) {
+    final crumbs = vm.mapBreadcrumb;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+      decoration: BoxDecoration(
+        color: C.bgHover,
+        border: Border(bottom: BorderSide(color: C.border)),
+      ),
+      child: Row(
+        children: [
+          for (int i = 0; i < crumbs.length; i++) ...[
+            if (i > 0)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Icon(Icons.chevron_right, size: 12, color: C.textSoft),
+              ),
+            GestureDetector(
+              onTap: i < crumbs.length - 1 ? () => vm.drillTo(i) : null,
+              child: Text(
+                crumbs[i].name,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: i < crumbs.length - 1 ? C.accent : C.text,
+                  fontWeight: i == crumbs.length - 1 ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -618,6 +670,7 @@ class _OrtCardState extends State<_OrtCard> {
       case OrtType.city:       return C.green;
       case OrtType.building:   return C.accent;
       case OrtType.wilderness: return C.amber;
+      case OrtType.region:     return AppColors.typGeschichte;
       case OrtType.other:      return C.textSoft;
     }
   }
@@ -1189,7 +1242,7 @@ class _VerlaufsDetailPane extends StatelessWidget {
                 const SizedBox(height: 20),
               ],
               if (referencedOrt != null) ...[
-                Text('Verknüpfter Ort', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.textSoft, letterSpacing: 0.5)),
+                Text('Verknüpfter Marker', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.textSoft, letterSpacing: 0.5)),
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -1511,7 +1564,7 @@ class _RightPane extends StatelessWidget {
 
     // Karte-Tab ohne Auswahl / Fallback
     if (ort == null) {
-      return _EmptyFocus(message: 'Wähle einen Ort aus der Karte', C: C);
+      return _EmptyFocus(message: 'Wähle einen Marker aus der Karte', C: C);
     }
 
     return Column(
@@ -1612,6 +1665,7 @@ class _TypeTag extends StatelessWidget {
       case OrtType.city:       return C.green;
       case OrtType.building:   return C.accent;
       case OrtType.wilderness: return C.amber;
+      case OrtType.region:     return AppColors.typGeschichte;
       case OrtType.other:      return C.textSoft;
     }
   }
@@ -1674,7 +1728,7 @@ class _MemoryBanner extends StatelessWidget {
               child: Text(
                 ort.hasMemory
                     ? ort.memory!
-                    : 'Dieser Ort wurde bereits besucht.',
+                    : 'Dieser Marker wurde bereits besucht.',
                 style: TextStyle(fontSize: 12, color: C.amber),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -1697,9 +1751,29 @@ class _OrtDetail extends StatelessWidget {
   Widget build(BuildContext context) {
     final C = context.appColors;
 
+    final hasChildren = vm.hasChildren(ort.id);
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
       children: [
+        // Subkarte
+        _LiveActionBtn(
+          label: hasChildren ? 'Subkarte öffnen' : 'Subkarte erstellen',
+          icon: Icons.map_outlined,
+          color: C.accent,
+          C: C,
+          onTap: () => vm.drillInto(ort),
+        ),
+        const SizedBox(height: 6),
+        _LiveActionBtn(
+          label: ort.mapPositionLocked ? 'Position entsperren' : 'Position sperren',
+          icon: ort.mapPositionLocked ? Icons.lock_open_outlined : Icons.lock_outline,
+          color: ort.mapPositionLocked ? C.amber : C.textSoft,
+          C: C,
+          onTap: () => vm.toggleOrtPositionLock(ort),
+        ),
+        const SizedBox(height: 16),
+
         // Sessions
         _SectionHeader(
           title: 'Sessions',
@@ -1712,7 +1786,7 @@ class _OrtDetail extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         if (vm.selectedOrtSessions.isEmpty)
-          _EmptyHint('Noch keine Sessions für diesen Ort.', C)
+          _EmptyHint('Noch keine Sessions für diesen Marker.', C)
         else
           ...vm.selectedOrtSessions.map((session) => Padding(
                 key: ValueKey(session.id),
@@ -1749,7 +1823,7 @@ class _OrtDetail extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         if (ort.connectedOrtIds.isEmpty)
-          _EmptyHint('Noch keine Verbindungen zu anderen Orten.', C)
+          _EmptyHint('Noch keine Verbindungen zu anderen Markern.', C)
         else
           ...ort.connectedOrtIds.map((targetId) {
             final target = vm.orte.where((o) => o.id == targetId).firstOrNull;
@@ -1784,7 +1858,7 @@ class _OrtDetail extends StatelessWidget {
               .entries
               .where((e) => e.value.type == VerlaufsEintragType.ort && e.value.refId == ort.id)
               .toList();
-          if (steps.isEmpty) return _EmptyHint('Dieser Ort ist noch nicht im Verlaufsplan.', C);
+          if (steps.isEmpty) return _EmptyHint('Dieser Marker ist noch nicht im Verlaufsplan.', C);
           return Column(
             children: steps.map((e) => _OrtVerlaufsRow(
               index: e.key,
@@ -1979,13 +2053,13 @@ class _OrtDetail extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Ort verbinden',
+                Text('Marker verbinden',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.text)),
                 const SizedBox(height: 12),
                 if (available.isEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 20),
-                    child: Text('Keine weiteren Orte verfügbar.',
+                    child: Text('Keine weiteren Marker verfügbar.',
                         style: TextStyle(fontSize: 12, color: C.textSoft)),
                   )
                 else
@@ -2036,6 +2110,7 @@ class _OrtDetail extends StatelessWidget {
       case OrtType.city:       return C.green;
       case OrtType.building:   return C.accent;
       case OrtType.wilderness: return C.amber;
+      case OrtType.region:     return AppColors.typGeschichte;
       case OrtType.other:      return C.textSoft;
     }
   }
@@ -2141,6 +2216,7 @@ class _ConnectedOrtRow extends StatelessWidget {
       case OrtType.city:       return C.green;
       case OrtType.building:   return C.accent;
       case OrtType.wilderness: return C.amber;
+      case OrtType.region:     return AppColors.typGeschichte;
       case OrtType.other:      return C.textSoft;
     }
   }
@@ -2509,10 +2585,10 @@ class _CreateOrtDialogState extends State<_CreateOrtDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Neuer Ort',
+            Text('Neuer Marker',
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: C.text)),
             const SizedBox(height: 16),
-            _field(context, C, controller: _nameCtrl, hint: 'Name des Ortes', autofocus: true),
+            _field(context, C, controller: _nameCtrl, hint: 'Name des Markers', autofocus: true),
             const SizedBox(height: 10),
             _TypeDropdown(
               value: _type,
@@ -2534,12 +2610,13 @@ class _CreateOrtDialogState extends State<_CreateOrtDialog> {
                   onPressed: () async {
                     final name = _nameCtrl.text.trim();
                     if (name.isEmpty) return;
-                    await widget.vm.createOrt(
+                    final ort = await widget.vm.createOrt(
                       name: name,
                       type: _type,
                       description: _descCtrl.text.trim(),
+                      parentOrtId: widget.vm.currentMapParentId,
                     );
-                    if (context.mounted) Navigator.of(context).pop();
+                    if (context.mounted) Navigator.of(context).pop(ort);
                   },
                   style: FilledButton.styleFrom(backgroundColor: C.accent),
                   child: const Text('Erstellen'),
@@ -2638,13 +2715,13 @@ class _EditOrtDialogState extends State<_EditOrtDialog> {
             Row(
               children: [
                 Expanded(
-                  child: Text('Ort bearbeiten',
+                  child: Text('Marker bearbeiten',
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: C.text)),
                 ),
                 GestureDetector(
                   onTap: () => _confirmDelete(context, C),
                   child: Tooltip(
-                    message: 'Ort löschen',
+                    message: 'Marker löschen',
                     child: AppIcon(AppIconName.trash, size: 15, color: C.red),
                   ),
                 ),
@@ -2730,7 +2807,7 @@ class _EditOrtDialogState extends State<_EditOrtDialog> {
           borderRadius: BorderRadius.circular(10),
           side: BorderSide(color: C.border),
         ),
-        title: Text('Ort löschen?',
+        title: Text('Marker löschen?',
             style: TextStyle(fontSize: 15, color: C.text)),
         content: Text(
           '"${widget.ort.name}" und alle zugeordneten Szenen werden unwiderruflich gelöscht.',
@@ -2931,7 +3008,7 @@ class _SyncBtn extends StatelessWidget {
               ? 'Sync fehlgeschlagen'
               : count == 0
                   ? 'Alles aktuell – keine Änderungen'
-                  : '$count Ort${count == 1 ? '' : 'e'} aktualisiert';
+                  : '$count Marker aktualisiert';
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(msg),
@@ -3102,6 +3179,57 @@ class _SpielerTabState extends State<_SpielerTab> {
     widget.vm.reloadCharacters();
   }
 
+  Future<void> _removeFromCampaign(BuildContext context, PlayerCharacter pc) async {
+    final C = context.appColors;
+    try {
+      await _pcRepo.removeFromCampaign(pc.id);
+      widget.vm.reloadCharacters();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('${pc.name} aus der Kampagne abgezogen'),
+          backgroundColor: C.amber,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Fehler: $e'),
+          backgroundColor: C.red,
+        ));
+      }
+    }
+  }
+
+  Future<void> _showHeroContextMenu(
+      BuildContext context, PlayerCharacter pc, Offset globalPosition) async {
+    final C = context.appColors;
+    final result = await showMenu<String>(
+      context: context,
+      color: C.bgPanel,
+      position: RelativeRect.fromLTRB(
+        globalPosition.dx,
+        globalPosition.dy,
+        globalPosition.dx + 1,
+        globalPosition.dy + 1,
+      ),
+      items: [
+        PopupMenuItem<String>(
+          value: 'remove',
+          child: Row(
+            children: [
+              Icon(Icons.link_off, color: C.amber, size: 18),
+              const SizedBox(width: 8),
+              Text('Aus Kampagne abziehen', style: TextStyle(color: C.amber)),
+            ],
+          ),
+        ),
+      ],
+    );
+    if (result == 'remove' && mounted) {
+      await _removeFromCampaign(context, pc);
+    }
+  }
+
   Color _hexColor(String hex) {
     try {
       return Color(int.parse('FF${hex.replaceAll('#', '')}', radix: 16));
@@ -3159,11 +3287,15 @@ class _SpielerTabState extends State<_SpielerTab> {
                   itemCount: characters.length,
                   itemBuilder: (ctx, i) => Padding(
                     padding: const EdgeInsets.only(bottom: 6),
-                    child: _HeldCard(
-                      character: characters[i],
-                      selected:
-                          widget.vm.selectedCharacter?.id == characters[i].id,
-                      onTap: () => widget.vm.selectCharacter(characters[i]),
+                    child: GestureDetector(
+                      onSecondaryTapUp: (details) => _showHeroContextMenu(
+                          context, characters[i], details.globalPosition),
+                      child: _HeldCard(
+                        character: characters[i],
+                        selected:
+                            widget.vm.selectedCharacter?.id == characters[i].id,
+                        onTap: () => widget.vm.selectCharacter(characters[i]),
+                      ),
                     ),
                   ),
                 ),
@@ -3801,7 +3933,7 @@ class _AddVerlaufsEintragDialogState extends State<_AddVerlaufsEintragDialog> {
                   selectedId: _selectedRefId,
                   labelOf: (o) => o.name,
                   idOf: (o) => o.id,
-                  hint: 'Ort auswählen',
+                  hint: 'Marker auswählen',
                   C: C,
                   onChanged: (o) => setState(() {
                     _selectedRefId = o.id;
@@ -4160,7 +4292,7 @@ class _VerlaufsGraphViewState extends State<_VerlaufsGraphView> {
                     Positioned.fill(
                       child: Image.file(
                         File(vm.verlaufsKarteImagePath!),
-                        fit: BoxFit.fill,
+                        fit: BoxFit.contain,
                         errorBuilder: (_, __, ___) =>
                             ColoredBox(color: C.bgPanel),
                       ),
@@ -4418,6 +4550,7 @@ class _VerlaufsMapNodeState extends State<_VerlaufsMapNode> {
       case OrtType.city:       return C.green;
       case OrtType.building:   return C.accent;
       case OrtType.wilderness: return C.amber;
+      case OrtType.region:     return AppColors.typGeschichte;
       case OrtType.other:      return C.textSoft;
     }
   }
@@ -4643,7 +4776,7 @@ class _GraphMapBtn extends StatefulWidget {
 
   final IconData icon;
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final AppColorsExtension C;
   final bool active;
 
@@ -4660,7 +4793,7 @@ class _GraphMapBtnState extends State<_GraphMapBtn> {
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      cursor: SystemMouseCursors.click,
+      cursor: widget.onTap != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
@@ -4669,7 +4802,7 @@ class _GraphMapBtnState extends State<_GraphMapBtn> {
           decoration: BoxDecoration(
             color: widget.active
                 ? C.amber.withValues(alpha: 0.15)
-                : _hovered
+                : (_hovered && widget.onTap != null)
                     ? C.bgHover
                     : C.bgPanel.withValues(alpha: 0.96),
             borderRadius: BorderRadius.circular(7),
@@ -4915,8 +5048,9 @@ class _KarteGraphView extends StatefulWidget {
 
 class _KarteGraphViewState extends State<_KarteGraphView>
     with TickerProviderStateMixin {
-  static const double _cW = 4000;
-  static const double _cH = 2500;
+  // Canvas = Viewport-Größe (wird in LayoutBuilder gesetzt)
+  double _cW = 800;
+  double _cH = 600;
   static const double _nodeW = 110;
   static const double _nodeH = 28;
   static const double _detailPanelW = 341.0;
@@ -4934,10 +5068,14 @@ class _KarteGraphViewState extends State<_KarteGraphView>
   late Animation<Offset> _flyAnimation;
   double _flyScale = 1.0;
 
+  int _lastMapDepth = 1;
+  double _pinScale = 1.0;
+
   @override
   void initState() {
     super.initState();
-    _initPositions(widget.vm.orte);
+    _lastMapDepth = widget.vm.mapStackDepth;
+    _initPositions(widget.vm.currentLevelOrte);
     _flyAnim = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 320),
@@ -4947,13 +5085,23 @@ class _KarteGraphViewState extends State<_KarteGraphView>
   @override
   void didUpdateWidget(_KarteGraphView old) {
     super.didUpdateWidget(old);
-    final orte = widget.vm.orte;
+
+    // Wenn die Kartenebene gewechselt hat, Positionen neu initialisieren
+    if (widget.vm.mapStackDepth != _lastMapDepth) {
+      _lastMapDepth = widget.vm.mapStackDepth;
+      _lastSelectedOrtId = null;
+      _dragPos.clear();
+      _initPositions(widget.vm.currentLevelOrte);
+      return;
+    }
+
+    final orte = widget.vm.currentLevelOrte;
     final n = orte.length;
     for (int i = 0; i < n; i++) {
       final ort = orte[i];
       if (_dragPos.containsKey(ort.id)) continue;
-      if (_isFractional(ort)) {
-        _positions[ort.id] = Offset(ort.mapX! * _cW, ort.mapY! * _cH);
+      if (ort.mapX != null && ort.mapY != null) {
+        _positions[ort.id] = Offset(ort.mapX!, ort.mapY!);
       } else if (!_positions.containsKey(ort.id)) {
         _positions[ort.id] = _autoPos(i, n);
       }
@@ -4975,29 +5123,24 @@ class _KarteGraphViewState extends State<_KarteGraphView>
     _positions.clear();
     for (int i = 0; i < orte.length; i++) {
       final ort = orte[i];
-      if (_isFractional(ort)) {
-        _positions[ort.id] = Offset(ort.mapX! * _cW, ort.mapY! * _cH);
+      if (ort.mapX != null && ort.mapY != null) {
+        _positions[ort.id] = Offset(ort.mapX!, ort.mapY!);
       } else {
         _positions[ort.id] = _autoPos(i, orte.length);
       }
     }
   }
 
-  // Returns true only for fractional [0,1] values written by _KarteGraphView.
-  // OrtGraphView used absolute canvas coords (e.g. -260..260) which are outside this range.
-  bool _isFractional(Ort ort) =>
-      ort.mapX != null &&
-      ort.mapY != null &&
-      ort.mapX! >= 0.0 &&
-      ort.mapX! <= 1.0 &&
-      ort.mapY! >= 0.0 &&
-      ort.mapY! <= 1.0;
-
+  // _positions stores fractions [0,1] relative to canvas (= viewport)
   Offset _autoPos(int i, int n) {
-    if (n <= 1) return const Offset(_cW / 2, _cH / 2);
-    final radius = min(120.0 + n * 50.0, 700.0);
+    if (n <= 1) return const Offset(0.5, 0.5);
+    const radiusX = 0.28;
+    const radiusY = 0.28;
     final angle = (2 * pi * i) / n - pi / 2;
-    return Offset(_cW / 2 + radius * cos(angle), _cH / 2 + radius * sin(angle));
+    return Offset(
+      (0.5 + radiusX * cos(angle)).clamp(0.0, 1.0),
+      (0.5 + radiusY * sin(angle)).clamp(0.0, 1.0),
+    );
   }
 
   @override
@@ -5018,16 +5161,19 @@ class _KarteGraphViewState extends State<_KarteGraphView>
   void _flyTo(Ort ort) {
     final constraints = _constraints;
     if (constraints == null) return;
-    final pos = _positions[ort.id];
-    if (pos == null) return;
+    final frac = _positions[ort.id];
+    if (frac == null) return;
 
     final vpW = constraints.maxWidth;
     final vpH = constraints.maxHeight;
+    // Convert fraction to canvas pixel
+    final canvasX = frac.dx * _cW;
+    final canvasY = frac.dy * _cH;
     _flyScale = _tc.value.getMaxScaleOnAxis();
     final from = MatrixUtils.transformPoint(_tc.value, Offset.zero);
     // Center in the visible area left of the detail panel overlay.
     final visibleCenterX = (vpW - _detailPanelW) / 2;
-    final to = Offset(visibleCenterX - pos.dx * _flyScale, vpH / 2 - pos.dy * _flyScale);
+    final to = Offset(visibleCenterX - canvasX * _flyScale, vpH / 2 - canvasY * _flyScale);
 
     _flyAnimation = Tween<Offset>(begin: from, end: to).animate(
       CurvedAnimation(parent: _flyAnim, curve: Curves.easeInOut),
@@ -5041,19 +5187,20 @@ class _KarteGraphViewState extends State<_KarteGraphView>
       allowMultiple: false,
     );
     if (result != null && result.files.single.path != null && ctx.mounted) {
-      await widget.vm.setKarteImage(result.files.single.path);
+      await widget.vm.setCurrentLevelMapImage(result.files.single.path);
     }
   }
 
+  // Returns fraction [0,1]
   Offset _nodePos(Ort ort) =>
-      _dragPos[ort.id] ?? _positions[ort.id] ?? const Offset(_cW / 2, _cH / 2);
+      _dragPos[ort.id] ?? _positions[ort.id] ?? const Offset(0.5, 0.5);
 
   void _onPanUpdate(Ort ort, DragUpdateDetails d) {
     final scale = _tc.value.getMaxScaleOnAxis();
     final cur = _nodePos(ort);
     final next = Offset(
-      (cur.dx + d.delta.dx / scale).clamp(0.0, _cW),
-      (cur.dy + d.delta.dy / scale).clamp(0.0, _cH),
+      (cur.dx + d.delta.dx / scale / _cW).clamp(0.0, 1.0),
+      (cur.dy + d.delta.dy / scale / _cH).clamp(0.0, 1.0),
     );
     setState(() {
       _dragPos[ort.id] = next;
@@ -5065,26 +5212,36 @@ class _KarteGraphViewState extends State<_KarteGraphView>
     final pos = _dragPos.remove(ort.id);
     if (pos == null) return;
     setState(() {});
-    await widget.vm.updateOrt(ort.copyWith(
-      mapX: (pos.dx / _cW).clamp(0.0, 1.0),
-      mapY: (pos.dy / _cH).clamp(0.0, 1.0),
-    ));
+    // pos is already a fraction [0,1]
+    await widget.vm.updateOrt(ort.copyWith(mapX: pos.dx, mapY: pos.dy));
   }
 
   Future<void> _onCanvasDoubleTap(BuildContext ctx, Offset localPos) async {
+    final vm = widget.vm;
     final inv = Matrix4.inverted(_tc.value);
     final canvas = MatrixUtils.transformPoint(inv, localPos);
     final fracX = (canvas.dx / _cW).clamp(0.0, 1.0);
     final fracY = (canvas.dy / _cH).clamp(0.0, 1.0);
 
-    final ort = await showDialog<Ort>(
-      context: ctx,
-      builder: (_) => _KarteOrtPickerDialog(orte: widget.vm.orte),
-    );
-    if (ort == null || !ctx.mounted) return;
-
-    setState(() => _positions[ort.id] = Offset(fracX * _cW, fracY * _cH));
-    await widget.vm.updateOrt(ort.copyWith(mapX: fracX, mapY: fracY));
+    if (vm.currentMapParentId != null) {
+      // Auf Subkarte: neuen Ort direkt erstellen
+      final ort = await showDialog<Ort>(
+        context: ctx,
+        builder: (_) => _CreateOrtDialog(vm: vm),
+      );
+      if (ort == null || !ctx.mounted) return;
+      setState(() => _positions[ort.id] = Offset(fracX, fracY));
+      await vm.updateOrt(ort.copyWith(mapX: fracX, mapY: fracY));
+    } else {
+      // Auf Weltkarte: vorhandenen Ort platzieren
+      final ort = await showDialog<Ort>(
+        context: ctx,
+        builder: (_) => _KarteOrtPickerDialog(orte: vm.currentLevelOrte),
+      );
+      if (ort == null || !ctx.mounted) return;
+      setState(() => _positions[ort.id] = Offset(fracX, fracY));
+      await vm.updateOrt(ort.copyWith(mapX: fracX, mapY: fracY));
+    }
   }
 
   Future<void> _onNodeTap(Ort ort) async {
@@ -5116,110 +5273,119 @@ class _KarteGraphViewState extends State<_KarteGraphView>
     final vm = widget.vm;
     final C = context.appColors;
     final isVorbereitung = vm.mode == DmBuchMode.vorbereitung;
-    final orte = vm.orte;
-
-    // Build display positions: drag override → stored position → fallback center
-    final positions = <String, Offset>{
-      for (final ort in orte)
-        ort.id: _dragPos[ort.id] ?? _positions[ort.id] ?? const Offset(_cW / 2, _cH / 2),
-    };
+    final orte = vm.currentLevelOrte;
+    final onSubMap = vm.currentMapParentId != null;
 
     return LayoutBuilder(builder: (context, constraints) {
       _constraints = constraints;
+      // Canvas = Viewport: proportional wie BoxFit.contain beim Kartenbild
+      _cW = constraints.maxWidth;
+      _cH = constraints.maxHeight;
+
+      // Bruchteile → Canvas-Pixel für Anzeige
+      final positions = <String, Offset>{
+        for (final ort in orte) ort.id: (() {
+          final frac = _dragPos[ort.id] ?? _positions[ort.id] ?? const Offset(0.5, 0.5);
+          return Offset(frac.dx * _cW, frac.dy * _cH);
+        })(),
+      };
+
       return Stack(
         children: [
-          // ── Ebene 1+2: Hintergrund + Orte zoomen/panen gemeinsam ────────
+          // Gesamter Canvas (Hintergrund + Kanten + Pins) im InteractiveViewer
           GestureDetector(
             behavior: HitTestBehavior.translucent,
             onDoubleTapDown: (isVorbereitung && !_connectMode)
                 ? (d) => _onCanvasDoubleTap(context, d.localPosition)
                 : null,
             child: InteractiveViewer(
-            transformationController: _tc,
-            boundaryMargin: const EdgeInsets.all(double.infinity),
-            minScale: 0.03,
-            maxScale: 5.0,
-            child: SizedBox(
-              width: _cW,
-              height: _cH,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  // Ebene 1: Hintergrund (Karte oder Dot-Grid)
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: vm.karteImagePath != null
-                          ? Image.file(
-                              File(vm.karteImagePath!),
-                              fit: BoxFit.fill,
-                              errorBuilder: (_, __, ___) => ColoredBox(color: C.bgPanel),
-                            )
-                          : CustomPaint(painter: _GraphGridPainter(C)),
-                    ),
-                  ),
-
-                  // Ebene 2: Kanten
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: _KarteEdgePainter(
-                        orte: orte,
-                        positions: positions,
-                        connectSource: _connectSource,
-                        lineColor: C.accent.withValues(alpha: 0.75),
-                        sourceColor: C.amber,
+              transformationController: _tc,
+              boundaryMargin: const EdgeInsets.all(double.infinity),
+              minScale: 0.1,
+              maxScale: 8.0,
+              child: SizedBox(
+                width: _cW,
+                height: _cH,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    // Hintergrund (Karte oder Dot-Grid)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: vm.currentMapImagePath != null
+                            ? Image.file(
+                                File(vm.currentMapImagePath!),
+                                fit: BoxFit.contain,
+                                frameBuilder: (ctx, child, frame, sync) =>
+                                    (sync || frame != null) ? child : CustomPaint(painter: _GraphGridPainter(C)),
+                                errorBuilder: (_, __, ___) => ColoredBox(color: C.bgPanel),
+                              )
+                            : CustomPaint(painter: _GraphGridPainter(C)),
                       ),
-                      isComplex: true,
                     ),
-                  ),
-                ],
+
+                    // Kanten
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: CustomPaint(
+                          painter: _KarteEdgePainter(
+                            orte: orte,
+                            positions: positions,
+                            connectSource: _connectSource,
+                            lineColor: C.accent.withValues(alpha: 0.75),
+                            sourceColor: C.amber,
+                          ),
+                          isComplex: true,
+                        ),
+                      ),
+                    ),
+
+                    // Pins — im selben Koordinatensystem wie der Canvas
+                    for (final ort in orte)
+                      Positioned(
+                        left: positions[ort.id]!.dx - _nodeW * _pinScale / 2,
+                        top: positions[ort.id]!.dy - _nodeH * _pinScale / 2,
+                        width: _nodeW * _pinScale,
+                        height: _nodeH * _pinScale,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => _onNodeTap(ort),
+                          onPanUpdate: (isVorbereitung && !_connectMode && !ort.mapPositionLocked)
+                              ? (d) => _onPanUpdate(ort, d)
+                              : null,
+                          onPanEnd: (isVorbereitung && !_connectMode && !ort.mapPositionLocked)
+                              ? (_) => _onPanEnd(ort)
+                              : null,
+                          child: FittedBox(
+                            fit: BoxFit.fill,
+                            child: SizedBox(
+                              width: _nodeW,
+                              height: _nodeH,
+                              child: _KarteMapNode(
+                                ort: ort,
+                                selected: vm.selectedOrt?.id == ort.id,
+                                isConnectSource: _connectSource == ort.id,
+                                hasChildren: vm.hasChildren(ort.id),
+                                C: C,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
-          ), // GestureDetector
 
-          // Ebene 3: Knoten – außerhalb des InteractiveViewers, konstante Bildschirmgröße
-          AnimatedBuilder(
-            animation: _tc,
-            builder: (context, _) {
-              return Stack(
-                children: [
-                  for (final ort in orte)
-                    Builder(builder: (_) {
-                      final canvasPos = positions[ort.id]!;
-                      final screenPos =
-                          MatrixUtils.transformPoint(_tc.value, canvasPos);
+          // UI-Overlays (Bildschirmkoordinaten, außerhalb des Viewers)
+          if (onSubMap)
+            Positioned(
+              left: 10,
+              top: 8,
+              child: _MapBreadcrumb(vm: vm, C: C),
+            ),
 
-                      Widget node = _KarteMapNode(
-                        ort: ort,
-                        selected: vm.selectedOrt?.id == ort.id,
-                        isConnectSource: _connectSource == ort.id,
-                        C: C,
-                      );
-
-                      return Positioned(
-                        left: screenPos.dx - _nodeW / 2,
-                        top: screenPos.dy - _nodeH / 2,
-                        width: _nodeW,
-                        height: _nodeH,
-                        child: GestureDetector(
-                          onTap: () => _onNodeTap(ort),
-                          onDoubleTap: () {},
-                          onPanUpdate: (isVorbereitung && !_connectMode)
-                              ? (d) => _onPanUpdate(ort, d)
-                              : null,
-                          onPanEnd: (isVorbereitung && !_connectMode)
-                              ? (_) => _onPanEnd(ort)
-                              : null,
-                          child: node,
-                        ),
-                      );
-                    }),
-                ],
-              );
-            },
-          ),
-
-          // Hint: Doppelklick zum Platzieren
           if (isVorbereitung && !_connectMode)
             Positioned(
               right: 12,
@@ -5230,7 +5396,6 @@ class _KarteGraphViewState extends State<_KarteGraphView>
               ),
             ),
 
-          // Toolbar
           Positioned(
             right: 10,
             top: 8,
@@ -5239,19 +5404,37 @@ class _KarteGraphViewState extends State<_KarteGraphView>
               children: [
                 _GraphMapBtn(
                   icon: Icons.map_outlined,
-                  label: vm.karteImagePath == null ? 'Karte laden' : 'Karte wechseln',
+                  label: vm.currentMapImagePath == null ? 'Karte laden' : 'Karte wechseln',
                   onTap: () => _pickMap(context),
                   C: C,
                 ),
-                if (vm.karteImagePath != null) ...[
+                if (vm.currentMapImagePath != null) ...[
                   const SizedBox(height: 4),
                   _GraphMapBtn(
                     icon: Icons.close,
                     label: 'Karte entfernen',
-                    onTap: () => vm.setKarteImage(null),
+                    onTap: () => vm.setCurrentLevelMapImage(null),
                     C: C,
                   ),
                 ],
+                const SizedBox(height: 8),
+                _GraphMapBtn(
+                  icon: Icons.add,
+                  label: 'Pins größer',
+                  onTap: _pinScale < 3.0
+                      ? () => setState(() => _pinScale = (_pinScale + 0.25).clamp(0.5, 3.0))
+                      : null,
+                  C: C,
+                ),
+                const SizedBox(height: 4),
+                _GraphMapBtn(
+                  icon: Icons.remove,
+                  label: 'Pins kleiner',
+                  onTap: _pinScale > 0.5
+                      ? () => setState(() => _pinScale = (_pinScale - 0.25).clamp(0.5, 3.0))
+                      : null,
+                  C: C,
+                ),
                 if (isVorbereitung) ...[
                   const SizedBox(height: 8),
                   _GraphMapBtn(
@@ -5271,7 +5454,6 @@ class _KarteGraphViewState extends State<_KarteGraphView>
             ),
           ),
 
-          // Verbindungs-Modus Hinweis
           if (_connectMode)
             Positioned(
               bottom: 12,
@@ -5369,12 +5551,14 @@ class _KarteMapNode extends StatefulWidget {
     required this.ort,
     required this.selected,
     required this.isConnectSource,
+    required this.hasChildren,
     required this.C,
   });
 
   final Ort ort;
   final bool selected;
   final bool isConnectSource;
+  final bool hasChildren;
   final AppColorsExtension C;
 
   @override
@@ -5390,6 +5574,7 @@ class _KarteMapNodeState extends State<_KarteMapNode> {
       case OrtType.city:       return C.green;
       case OrtType.building:   return C.accent;
       case OrtType.wilderness: return C.amber;
+      case OrtType.region:     return AppColors.typGeschichte;
       case OrtType.other:      return C.textSoft;
     }
   }
@@ -5411,7 +5596,7 @@ class _KarteMapNodeState extends State<_KarteMapNode> {
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         decoration: BoxDecoration(
           color: isActive
-              ? dotColor.withValues(alpha: 0.12)
+              ? Color.alphaBlend(dotColor.withValues(alpha: 0.22), C.bgPanel)
               : _hovered
                   ? C.bgPanel.withValues(alpha: 0.92)
                   : C.bgPanel.withValues(alpha: 0.82),
@@ -5460,6 +5645,14 @@ class _KarteMapNodeState extends State<_KarteMapNode> {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+            if (widget.hasChildren) ...[
+              const SizedBox(width: 3),
+              Icon(Icons.map_outlined, size: 9, color: dotColor.withValues(alpha: 0.8)),
+            ],
+            if (widget.ort.mapPositionLocked) ...[
+              const SizedBox(width: 3),
+              Icon(Icons.lock_outline, size: 9, color: C.textSoft.withValues(alpha: 0.7)),
+            ],
           ],
         ),
       ),
@@ -5487,6 +5680,7 @@ class _KarteOrtPickerDialogState extends State<_KarteOrtPickerDialog> {
       case OrtType.city:       return C.green;
       case OrtType.building:   return C.accent;
       case OrtType.wilderness: return C.amber;
+      case OrtType.region:     return AppColors.typGeschichte;
       case OrtType.other:      return C.textSoft;
     }
   }

@@ -189,11 +189,12 @@ class _EditPCScreenState extends State<EditPCScreen>
         _EditorCard(title: 'Charakter', C: C, children: [
           FormFieldWidget(label: 'Name des Charakters', value: vm.name, onChanged: vm.updateName, icon: Icons.person),
           const SizedBox(height: 12),
-          if (vm.availablePlayers.isNotEmpty) ...[
-            _PlayerPickerField(vm: vm, C: C),
+          _PlayerPickerField(vm: vm, C: C),
+          // Freitext-Namensfeld nur zeigen wenn kein Spieler verknüpft
+          if (vm.playerId == null) ...[
             const SizedBox(height: 12),
+            FormFieldWidget(label: 'Name des Spielers', value: vm.playerName, onChanged: vm.updatePlayerName, icon: Icons.person_outline),
           ],
-          FormFieldWidget(label: 'Name des Spielers', value: vm.playerName, onChanged: vm.updatePlayerName, icon: Icons.person_outline),
         ]),
         const SizedBox(height: 12),
         _EditorCard(title: 'Klasse & Rasse', C: C, children: [
@@ -981,44 +982,72 @@ class _PlayerPickerField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasPlayers = vm.availablePlayers.isNotEmpty;
+    final missing = vm.playerId == null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(Icons.group_outlined, size: 16, color: C.textMid),
+            Icon(Icons.group_outlined, size: 16,
+                color: missing ? C.red : C.textMid),
             const SizedBox(width: 6),
-            Text('Spieler zuordnen', style: TextStyle(color: C.textMid, fontSize: 13)),
+            Text('Spieler *',
+                style: TextStyle(
+                    color: missing ? C.red : C.textMid, fontSize: 13)),
           ],
         ),
         const SizedBox(height: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: C.bgHover,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: C.border),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String?>(
-              value: vm.playerId,
-              isExpanded: true,
-              dropdownColor: C.bgPanel,
-              style: TextStyle(color: C.text, fontSize: 14),
-              items: [
-                DropdownMenuItem<String?>(
-                  value: null,
-                  child: Text('Kein Spieler', style: TextStyle(color: C.textSoft)),
+        if (!hasPlayers)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: C.bgHover,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: C.red.withValues(alpha: 0.5)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.warning_amber_outlined, size: 14, color: C.red),
+                const SizedBox(width: 8),
+                Text(
+                  'Erst Spieler anlegen (Heimatbildschirm → Spieler)',
+                  style: TextStyle(color: C.red, fontSize: 12),
                 ),
-                ...vm.availablePlayers.map((p) => DropdownMenuItem<String?>(
-                      value: p.id,
-                      child: Text(p.name, style: TextStyle(color: C.text)),
-                    )),
               ],
-              onChanged: vm.updatePlayerId,
+            ),
+          )
+        else
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: C.bgHover,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                  color: missing
+                      ? C.red.withValues(alpha: 0.6)
+                      : C.border),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String?>(
+                value: vm.playerId,
+                isExpanded: true,
+                dropdownColor: C.bgPanel,
+                style: TextStyle(color: C.text, fontSize: 14),
+                hint: Text('Spieler auswählen *',
+                    style: TextStyle(color: C.red, fontSize: 14)),
+                items: vm.availablePlayers
+                    .map((p) => DropdownMenuItem<String?>(
+                          value: p.id,
+                          child: Text(p.name,
+                              style: TextStyle(color: C.text)),
+                        ))
+                    .toList(),
+                onChanged: vm.updatePlayerId,
+              ),
             ),
           ),
-        ),
       ],
     );
   }

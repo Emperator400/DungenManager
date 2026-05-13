@@ -113,6 +113,9 @@ class DatabaseMigration {
   // Karte-Tab Hintergrundbild (getrennt von Verlauf-Karte)
   await _addKarteImagePathColumn(db);
 
+  // Subkarten-Hierarchie
+  await _addParentOrtIdColumn(db);
+
   debugPrint('Database migration completed successfully');
   }
 
@@ -135,6 +138,23 @@ class DatabaseMigration {
     if (!names.contains('karte_image_path')) {
       await db.execute('ALTER TABLE campaigns ADD COLUMN karte_image_path TEXT');
       debugPrint('Added karte_image_path column to campaigns');
+    }
+  }
+
+  Future<void> _addParentOrtIdColumn(Database db) async {
+    final cols = await db.rawQuery("PRAGMA table_info('orte')");
+    final names = cols.map((c) => c['name'] as String).toSet();
+    if (!names.contains('parent_ort_id')) {
+      await db.execute('ALTER TABLE orte ADD COLUMN parent_ort_id TEXT');
+      debugPrint('Added parent_ort_id column to orte');
+    }
+    if (!names.contains('map_image_path')) {
+      await db.execute('ALTER TABLE orte ADD COLUMN map_image_path TEXT');
+      debugPrint('Added map_image_path column to orte');
+    }
+    if (!names.contains('map_position_locked')) {
+      await db.execute('ALTER TABLE orte ADD COLUMN map_position_locked INTEGER DEFAULT 0');
+      debugPrint('Added map_position_locked column to orte');
     }
   }
 

@@ -333,7 +333,7 @@ class PlayerCharacter {
       'hit_dice_remaining': hitDiceRemaining,
 
       // Spieler-Zuordnung
-      'player_id': playerId,
+      'player_id': playerId?.isEmpty == true ? null : playerId,
 
       // Timestamps
       'created_at': DateTime.now().toIso8601String(),
@@ -589,7 +589,7 @@ class PlayerCharacter {
     String? hitDice,
     int? hitDiceCount,
     int? hitDiceRemaining,
-    String? playerId,
+    Object? playerId = _sentinel,
   }) {
     return PlayerCharacter(
       id: id ?? this.id,
@@ -631,7 +631,7 @@ class PlayerCharacter {
       hitDice: hitDice ?? this.hitDice,
       hitDiceCount: hitDiceCount ?? this.hitDiceCount,
       hitDiceRemaining: hitDiceRemaining ?? this.hitDiceRemaining,
-      playerId: playerId ?? this.playerId,
+      playerId: playerId == _sentinel ? this.playerId : playerId as String?,
     );
   }
 

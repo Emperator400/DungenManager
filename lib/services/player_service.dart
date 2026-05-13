@@ -40,7 +40,7 @@ class PlayerService {
           whereArgs: [playerId],
         );
         for (final c in chars) {
-          await _characterRepository.update(c.copyWith(playerId: ''));
+          await _characterRepository.update(c.copyWith(playerId: null));
         }
         await _playerRepository.delete(playerId);
       });
@@ -74,7 +74,7 @@ class PlayerService {
       performServiceOperation('unassignCharacterFromPlayer', () async {
         final char = await _characterRepository.findById(characterId);
         if (char == null) return;
-        await _characterRepository.update(char.copyWith(playerId: ''));
+        await _characterRepository.update(char.copyWith(playerId: null));
       });
 
   Future<ServiceResult<List<PlayerWithCharacters>>> getPlayersWithCharacters() =>

@@ -607,8 +607,14 @@ class EditPCViewModel extends ChangeNotifier {
         throw Exception(errorMsg);
       }
 
-      if (_name.isEmpty || _playerName.isEmpty) {
-        final errorMsg = 'Name und Spielername müssen ausgefüllt werden';
+      if (_playerId == null || _playerId!.isEmpty) {
+        final errorMsg = 'Einem Helden muss ein Spieler zugewiesen sein';
+        debugPrint('FEHLER: $errorMsg');
+        throw Exception(errorMsg);
+      }
+
+      if (_name.isEmpty) {
+        final errorMsg = 'Name des Charakters muss ausgefüllt werden';
         debugPrint('FEHLER: $errorMsg');
         throw Exception(errorMsg);
       }

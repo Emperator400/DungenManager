@@ -7,7 +7,7 @@ enum VerlaufsEintragType { ort, quest, ereignis }
 extension VerlaufsEintragTypeLabel on VerlaufsEintragType {
   String get label {
     switch (this) {
-      case VerlaufsEintragType.ort:       return 'Ort';
+      case VerlaufsEintragType.ort:       return 'Marker';
       case VerlaufsEintragType.quest:     return 'Quest';
       case VerlaufsEintragType.ereignis:  return 'Ereignis';
     }

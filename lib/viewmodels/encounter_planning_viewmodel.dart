@@ -4,9 +4,11 @@ import '../database/core/database_connection.dart';
 import '../database/repositories/encounter_model_repository.dart';
 import '../database/repositories/encounter_participant_model_repository.dart';
 import '../database/repositories/player_character_model_repository.dart';
+import '../database/repositories/player_model_repository.dart';
 import '../database/repositories/creature_model_repository.dart';
 import '../models/encounter.dart';
 import '../models/encounter_participant.dart';
+import '../models/player.dart';
 import '../models/player_character.dart';
 import '../models/creature.dart';
 
@@ -30,6 +32,7 @@ class EncounterPlanningViewModel extends ChangeNotifier {
   late final EncounterModelRepository _encounterRepo;
   late final EncounterParticipantModelRepository _participantRepo;
   late final PlayerCharacterModelRepository _characterRepo;
+  late final PlayerModelRepository _playerRepo;
   late final CreatureModelRepository _creatureRepo;
 
   // Campaign ID
@@ -39,6 +42,7 @@ class EncounterPlanningViewModel extends ChangeNotifier {
   // Zustand
   List<PlayerCharacter> _availableCharacters = [];
   List<Creature> _availableMonsters = [];
+  Map<String, Player> _playerById = {};
   List<String> _selectedCharacterIds = [];
   List<MonsterInstance> _monsterInstances = [];
   final Map<String, int> _monsterNumberTracker = {};
@@ -71,12 +75,14 @@ class EncounterPlanningViewModel extends ChangeNotifier {
     _encounterRepo = EncounterModelRepository(connection);
     _participantRepo = EncounterParticipantModelRepository(connection);
     _characterRepo = PlayerCharacterModelRepository(connection);
+    _playerRepo = PlayerModelRepository(connection);
     _creatureRepo = CreatureModelRepository(connection);
   }
 
   // ===== GETTERS =====
 
   List<PlayerCharacter> get availableCharacters => _availableCharacters;
+  Map<String, Player> get playerById => _playerById;
   List<Creature> get availableMonsters => _availableMonsters;
   List<PlayerCharacter> get selectedCharacters => _availableCharacters
       .where((c) => _selectedCharacterIds.contains(c.id))
@@ -122,11 +128,17 @@ class EncounterPlanningViewModel extends ChangeNotifier {
     _clearError();
 
     try {
-      // Helden der Kampagne laden
+      // Helden und Spieler parallel laden
       debugPrint('🎯 [EncounterPlanningViewModel] Lade Helden für Kampagne...');
-      final characters = await _characterRepo.findByCampaign(campaignId);
+      final results = await Future.wait([
+        _characterRepo.findByCampaign(campaignId),
+        _playerRepo.findAll(),
+      ]);
+      final characters = results[0] as List<PlayerCharacter>;
+      final players = results[1] as List<Player>;
       debugPrint('🎯 [EncounterPlanningViewModel] ${characters.length} Helden geladen');
       _availableCharacters = characters;
+      _playerById = {for (final p in players) p.id: p};
 
       // Monster aus Bestiarium laden (custom und official)
       debugPrint('🎯 [EncounterPlanningViewModel] Lade alle Kreaturen aus Datenbank...');

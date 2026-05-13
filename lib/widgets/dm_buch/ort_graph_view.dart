@@ -398,6 +398,7 @@ class _OrtNodeState extends State<_OrtNode> {
       case OrtType.city:       return C.green;
       case OrtType.building:   return C.accent;
       case OrtType.wilderness: return C.amber;
+      case OrtType.region:     return AppColors.typGeschichte;
       case OrtType.other:      return C.textSoft;
     }
   }

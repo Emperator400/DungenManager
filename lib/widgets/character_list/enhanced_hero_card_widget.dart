@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../models/player.dart';
 import '../../models/player_character.dart';
 import '../../theme/app_theme.dart';
 import '../../services/armor_calculation_service.dart';
@@ -6,9 +7,18 @@ import 'character_list_helpers.dart';
 import 'hero_avatar_widget.dart';
 import 'pc_info_chip.dart';
 
+Color _parseHexColor(String hex) {
+  try {
+    return Color(int.parse('FF${hex.replaceAll('#', '')}', radix: 16));
+  } catch (_) {
+    return const Color(0xFF6B6B66);
+  }
+}
+
 /// Moderne Heldenkarte mit UI-Chips für alle relevanten Informationen
 class EnhancedHeroCardWidget extends StatefulWidget {
   final PlayerCharacter character;
+  final Player? player;
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
   final VoidCallback? onFavoriteToggle;
@@ -18,6 +28,7 @@ class EnhancedHeroCardWidget extends StatefulWidget {
   const EnhancedHeroCardWidget({
     super.key,
     required this.character,
+    this.player,
     this.onTap,
     this.onEdit,
     this.onFavoriteToggle,
@@ -84,13 +95,18 @@ class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
     final C = context.appColors;
     final classColor = CharacterListHelpers.getClassColor(widget.character.className);
 
+    final playerColor = widget.player != null
+        ? _parseHexColor(widget.player!.color)
+        : null;
+    final borderColor = widget.isSelected
+        ? C.amber
+        : (playerColor ?? classColor);
+
     return Container(
       decoration: BoxDecoration(
         color: C.bgPanel,
         borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(
-          color: widget.isSelected ? C.amber : classColor,
-        ),
+        border: Border.all(color: borderColor),
       ),
       child: Material(
         color: Colors.transparent,
@@ -211,29 +227,56 @@ class _EnhancedHeroCardWidgetState extends State<EnhancedHeroCardWidget> {
                 ),
               ),
 
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
 
-              // Spielername
-              Row(
-                children: [
-                  Icon(
-                    Icons.person_outline,
-                    size: 14,
-                    color: C.textSoft,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    widget.character.playerName,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: C.textSoft,
-                    ),
-                  ),
-                ],
-              ),
+              // Spieler-Badge mit Farbe (falls globaler Spieler verknüpft)
+              _buildPlayerRow(C),
             ],
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildPlayerRow(AppColorsExtension C) {
+    final player = widget.player;
+    if (player != null) {
+      final color = _parseHexColor(player.color);
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: color.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              player.name,
+              style: TextStyle(
+                fontSize: 13,
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    final name = widget.character.playerName;
+    if (name.isEmpty) return const SizedBox.shrink();
+    return Row(
+      children: [
+        Icon(Icons.person_outline, size: 14, color: C.textSoft),
+        const SizedBox(width: 4),
+        Text(name, style: TextStyle(fontSize: 12, color: C.textSoft)),
       ],
     );
   }

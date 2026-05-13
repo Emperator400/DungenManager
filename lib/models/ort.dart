@@ -6,6 +6,7 @@ enum OrtType {
   city,
   building,
   wilderness,
+  region,
   other,
 }
 
@@ -16,6 +17,7 @@ extension OrtTypeLabel on OrtType {
       case OrtType.city:       return 'Stadt';
       case OrtType.building:   return 'Gebäude';
       case OrtType.wilderness: return 'Wildnis';
+      case OrtType.region:     return 'Region';
       case OrtType.other:      return 'Sonstiges';
     }
   }
@@ -48,6 +50,15 @@ class Ort {
   final double? mapX;
   final double? mapY;
 
+  // Subkarten-Hierarchie: null = Weltkarte, gesetzt = Subkarte dieses Eltern-Ortes
+  final String? parentOrtId;
+
+  // Hintergrundbild für die Subkarte dieses Ortes
+  final String? mapImagePath;
+
+  // Pin-Position auf der Karte gesperrt (kein Drag möglich)
+  final bool mapPositionLocked;
+
   static const String tableName = 'orte';
 
   const Ort({
@@ -66,6 +77,9 @@ class Ort {
     this.templateOrtId,
     this.mapX,
     this.mapY,
+    this.parentOrtId,
+    this.mapImagePath,
+    this.mapPositionLocked = false,
   });
 
   factory Ort.create({
@@ -75,6 +89,7 @@ class Ort {
     String description = '',
     int sortOrder = 0,
     String? templateOrtId,
+    String? parentOrtId,
     List<String> linkedWikiEntryIds = const [],
   }) {
     final now = DateTime.now();
@@ -90,6 +105,7 @@ class Ort {
       linkedWikiEntryIds: linkedWikiEntryIds,
       connectedOrtIds: const [],
       templateOrtId: templateOrtId,
+      parentOrtId: parentOrtId,
     );
   }
 
@@ -115,6 +131,9 @@ class Ort {
       templateOrtId: map['template_ort_id'] as String?,
       mapX: (map['map_x'] as num?)?.toDouble(),
       mapY: (map['map_y'] as num?)?.toDouble(),
+      parentOrtId: map['parent_ort_id'] as String?,
+      mapImagePath: map['map_image_path'] as String?,
+      mapPositionLocked: (map['map_position_locked'] as int? ?? 0) == 1,
     );
   }
 
@@ -134,6 +153,9 @@ class Ort {
         'template_ort_id': templateOrtId,
         'map_x': mapX,
         'map_y': mapY,
+        'parent_ort_id': parentOrtId,
+        'map_image_path': mapImagePath,
+        'map_position_locked': mapPositionLocked ? 1 : 0,
       };
 
   Ort copyWith({
@@ -152,6 +174,9 @@ class Ort {
     Object? templateOrtId = _sentinel,
     Object? mapX = _sentinel,
     Object? mapY = _sentinel,
+    Object? parentOrtId = _sentinel,
+    Object? mapImagePath = _sentinel,
+    bool? mapPositionLocked,
   }) =>
       Ort(
         id: id ?? this.id,
@@ -173,6 +198,9 @@ class Ort {
             : templateOrtId as String?,
         mapX: mapX == _sentinel ? this.mapX : mapX as double?,
         mapY: mapY == _sentinel ? this.mapY : mapY as double?,
+        parentOrtId: parentOrtId == _sentinel ? this.parentOrtId : parentOrtId as String?,
+        mapImagePath: mapImagePath == _sentinel ? this.mapImagePath : mapImagePath as String?,
+        mapPositionLocked: mapPositionLocked ?? this.mapPositionLocked,
       );
 
   static const Object _sentinel = Object();
@@ -181,6 +209,7 @@ class Ort {
   bool get hasMemory => memory != null && memory!.isNotEmpty;
   bool get isCopy => templateOrtId != null;
   bool get isOnMap => mapX != null && mapY != null;
+  bool get isOnSubMap => parentOrtId != null;
 
   @override
   bool operator ==(Object other) =>

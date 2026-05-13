@@ -504,13 +504,28 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
 
   Widget _buildCharacterTile(PlayerCharacter character, {bool isDragging = false}) {
     final C = context.appColors;
+    final player = character.playerId != null
+        ? _viewModel.playerById[character.playerId]
+        : null;
+    final playerColor = player != null ? _parseHexColor(player.color) : null;
     return Card(
         color: C.accent,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              const Icon(Icons.account_circle, color: Colors.white),
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: (playerColor ?? Colors.white).withValues(alpha: 0.2),
+                child: Text(
+                  character.name.isNotEmpty ? character.name[0].toUpperCase() : '?',
+                  style: TextStyle(
+                    color: playerColor ?? Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -524,8 +539,16 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
                       ),
                     ),
                     Text(
-                      '${character.className} Lvl ${character.level}',
-                      style: const TextStyle(color: Colors.white70),
+                      [
+                        '${character.className} Lvl ${character.level}',
+                        if (player != null) player.name,
+                      ].join(' · '),
+                      style: TextStyle(
+                        color: playerColor != null
+                            ? playerColor.withValues(alpha: 0.9)
+                            : Colors.white70,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -535,6 +558,14 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
           ),
         ),
       );
+  }
+
+  static Color _parseHexColor(String hex) {
+    try {
+      return Color(int.parse('FF${hex.replaceAll('#', '')}', radix: 16));
+    } catch (_) {
+      return const Color(0xFF6B6B66);
+    }
   }
 
   Widget _buildMonsterList() {

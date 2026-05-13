@@ -1,9 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../database/core/database_connection.dart';
 import '../../database/repositories/creature_model_repository.dart';
 import '../../database/repositories/player_character_model_repository.dart';
+import '../../database/repositories/player_model_repository.dart';
 import '../../models/creature.dart';
+import '../../models/player.dart';
 import '../../theme/app_theme.dart';
+
+Color _parseHexColor(String hex) {
+  try {
+    return Color(int.parse('FF${hex.replaceAll('#', '')}', radix: 16));
+  } catch (_) {
+    return const Color(0xFF6B6B66);
+  }
+}
 
 class SelectCharacterForSceneScreen extends StatefulWidget {
   const SelectCharacterForSceneScreen({
@@ -25,6 +36,7 @@ class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneS
 
   List<Creature> _creatures = [];
   List<Map<String, dynamic>> _playerCharacters = [];
+  Map<String, Player> _playerById = {};
   List<String> _selectedIds = [];
   bool _isLoading = true;
   String _searchQuery = '';
@@ -49,13 +61,27 @@ class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneS
     try {
       final creatureRepo = context.read<CreatureModelRepository>();
       final pcRepo = context.read<PlayerCharacterModelRepository>();
-      final creatures = await creatureRepo.findAll();
-      final pcs = await pcRepo.findAll();
+      final playerRepo = PlayerModelRepository(DatabaseConnection.instance);
+      final results = await Future.wait([
+        creatureRepo.findAll(),
+        pcRepo.findAll(),
+        playerRepo.findAll(),
+      ]);
+      final creatures = results[0] as List<Creature>;
+      final pcs = results[1] as List;
+      final players = results[2] as List<Player>;
+      if (!mounted) return;
       setState(() {
         _creatures = creatures;
         _playerCharacters = pcs
-            .map((pc) => {'id': pc.id, 'name': pc.name, 'level': pc.level})
+            .map((pc) => {
+                  'id': pc.id as String,
+                  'name': pc.name as String,
+                  'level': pc.level as int,
+                  'playerId': pc.playerId as String?,
+                })
             .toList();
+        _playerById = {for (final p in players) p.id: p};
         _isLoading = false;
       });
     } catch (e) {
@@ -171,13 +197,21 @@ class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneS
       itemBuilder: (context, index) {
         final pc = _filteredPCs[index];
         final id = pc['id'].toString();
+        final playerId = pc['playerId'] as String?;
+        final player = playerId != null ? _playerById[playerId] : null;
+        final playerColor = player != null ? _parseHexColor(player.color) : null;
+        final subtitle = [
+          'Level ${pc['level']}',
+          if (player != null) player.name,
+        ].join(' · ');
         return _buildCharacterTile(
           id: id,
           name: pc['name'].toString(),
-          subtitle: 'Level ${pc['level']}',
+          subtitle: subtitle,
           type: 'PC',
           isSelected: _isSelected(id),
           onTap: () => _toggleSelection(id),
+          playerColor: playerColor,
         );
       },
     );
@@ -252,10 +286,11 @@ class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneS
     required String type,
     required bool isSelected,
     required VoidCallback onTap,
+    Color? playerColor,
   }) {
     final C = context.appColors;
     final typeColor = switch (type) {
-      'PC' => C.green,
+      'PC' => playerColor ?? C.green,
       'NPC' => C.accent,
       _ => C.red,
     };
@@ -263,10 +298,13 @@ class _SelectCharacterForSceneScreenState extends State<SelectCharacterForSceneS
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: typeColor,
-          child: Icon(
-            type == 'PC' ? Icons.person : Icons.person_outline,
-            color: Colors.white,
+          backgroundColor: typeColor.withValues(alpha: type == 'PC' && playerColor != null ? 0.2 : 1.0),
+          child: Text(
+            name.isNotEmpty ? name[0].toUpperCase() : '?',
+            style: TextStyle(
+              color: type == 'PC' && playerColor != null ? playerColor : Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         title: Text(

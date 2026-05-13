@@ -63,6 +63,43 @@ class DmBuchViewModel extends ChangeNotifier {
   List<Ort> _orte = [];
   List<Ort> get orte => _orte;
 
+  // Subkarten-Navigation: null = Weltkarte, String = ID des Eltern-Ortes
+  final List<String?> _mapStack = [null];
+  String? get currentMapParentId => _mapStack.last;
+  int get mapStackDepth => _mapStack.length;
+
+  List<Ort> get currentLevelOrte =>
+      _orte.where((o) => o.parentOrtId == currentMapParentId).toList();
+
+  bool hasChildren(String ortId) =>
+      _orte.any((o) => o.parentOrtId == ortId);
+
+  List<({String? id, String name})> get mapBreadcrumb {
+    final result = <({String? id, String name})>[(id: null, name: 'Welt')];
+    for (int i = 1; i < _mapStack.length; i++) {
+      final ort = _orte.where((o) => o.id == _mapStack[i]).firstOrNull;
+      if (ort != null) result.add((id: ort.id, name: ort.name));
+    }
+    return result;
+  }
+
+  void drillInto(Ort ort) {
+    _mapStack.add(ort.id);
+    _selectedOrt = null;
+    _selectedOrtSessions = [];
+    notifyListeners();
+  }
+
+  void drillTo(int depth) {
+    if (depth < 0 || depth >= _mapStack.length) return;
+    while (_mapStack.length > depth + 1) {
+      _mapStack.removeLast();
+    }
+    _selectedOrt = null;
+    _selectedOrtSessions = [];
+    notifyListeners();
+  }
+
   Ort? _selectedOrt;
   Ort? get selectedOrt => _selectedOrt;
 
@@ -204,10 +241,11 @@ class DmBuchViewModel extends ChangeNotifier {
 
   // ── ORT CRUD ──────────────────────────────────────────────────────────────
 
-  Future<Ort?> createOrtFromWikiEntry(WikiEntry entry) => createOrt(
+  Future<Ort?> createOrtFromWikiEntry(WikiEntry entry, {String? parentOrtId}) => createOrt(
         name: entry.title,
         description: entry.content,
         linkedWikiEntryIds: [entry.id],
+        parentOrtId: parentOrtId,
       );
 
   Future<Ort?> createOrt({
@@ -217,6 +255,7 @@ class DmBuchViewModel extends ChangeNotifier {
     List<String> linkedWikiEntryIds = const [],
     double? mapX,
     double? mapY,
+    String? parentOrtId,
   }) async {
     try {
       final base = Ort.create(
@@ -226,6 +265,7 @@ class DmBuchViewModel extends ChangeNotifier {
         description: description,
         sortOrder: _orte.length,
         linkedWikiEntryIds: linkedWikiEntryIds,
+        parentOrtId: parentOrtId,
       );
       final ort = (mapX != null && mapY != null)
           ? base.copyWith(mapX: mapX, mapY: mapY)
@@ -250,6 +290,11 @@ class DmBuchViewModel extends ChangeNotifier {
     } catch (e) {
       debugPrint('[DmBuchViewModel] updateOrt error: $e');
     }
+  }
+
+  Future<void> toggleOrtPositionLock(Ort ort) async {
+    final updated = ort.copyWith(mapPositionLocked: !ort.mapPositionLocked);
+    await updateOrt(updated);
   }
 
   /// Persists a node's canvas position after the user drags it.
@@ -520,6 +565,27 @@ class DmBuchViewModel extends ChangeNotifier {
       updatedAt: DateTime.now(),
     );
     await _saveCampaign(updated);
+  }
+
+  // Liefert das Hintergrundbild für die aktuell angezeigte Kartenebene
+  String? get currentMapImagePath {
+    if (currentMapParentId == null) return _campaign.karteImagePath;
+    final parent = _orte.where((o) => o.id == currentMapParentId).firstOrNull;
+    return parent?.mapImagePath;
+  }
+
+  // Setzt das Hintergrundbild für die aktuelle Ebene (Weltkarte oder Subkarte)
+  Future<void> setCurrentLevelMapImage(String? path) async {
+    if (currentMapParentId == null) {
+      await setKarteImage(path);
+    } else {
+      final idx = _orte.indexWhere((o) => o.id == currentMapParentId);
+      if (idx == -1) return;
+      final updated = _orte[idx].copyWith(mapImagePath: path);
+      _orte[idx] = updated;
+      await _ortRepo.update(updated);
+      notifyListeners();
+    }
   }
 
   Future<void> addVerlaufsConnection(String fromId, String toId) async {
