@@ -1,7 +1,7 @@
 name: dungen_manager
 description: Dungeon Manager – D&D 5e Session-Management App
 publish_to: 'none'
-version: 1.0.9+9
+version: 1.1.0+10
 
 environment:
   # KORREKTUR: Wir erlauben jede Dart-Version ab 3.0.0. Deine Version 3.9.2 passt da perfekt rein.
