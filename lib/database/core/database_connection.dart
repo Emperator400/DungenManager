@@ -93,7 +93,7 @@ class DatabaseConnection {
 
     final db = await openDatabase(
       path,
-      version: 22,
+      version: 24,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       onOpen: (db) async => db.execute('PRAGMA foreign_keys = ON'),
@@ -182,13 +182,20 @@ class DatabaseConnection {
         completed_at TEXT,
         dungeon_master_id TEXT,
         is_favorite INTEGER NOT NULL DEFAULT 0,
+        last_opened_at TEXT,
         player_character_ids TEXT,
         quest_ids TEXT,
         wiki_entry_ids TEXT,
         session_ids TEXT,
         settings TEXT,
         stats TEXT,
-        verlaufsplan TEXT
+        accent_color TEXT DEFAULT '#7c3aed',
+        system TEXT,
+        is_template INTEGER NOT NULL DEFAULT 0,
+        template_id TEXT,
+        verlaufsplan TEXT,
+        verlaufs_karte_image_path TEXT,
+        karte_image_path TEXT
       )
     ''');
     
@@ -204,7 +211,7 @@ class DatabaseConnection {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS player_characters (
         id TEXT PRIMARY KEY,
-        campaign_id TEXT NOT NULL,
+        campaign_id TEXT,
         name TEXT NOT NULL,
         player_name TEXT NOT NULL,
         class_name TEXT NOT NULL,
@@ -249,9 +256,9 @@ class DatabaseConnection {
         hit_dice TEXT NOT NULL DEFAULT 'd8',
         hit_dice_count INTEGER NOT NULL DEFAULT 1,
         hit_dice_remaining INTEGER NOT NULL DEFAULT 1,
+        player_id TEXT,
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        FOREIGN KEY (campaign_id) REFERENCES campaigns (id) ON DELETE CASCADE
+        updated_at TEXT NOT NULL
       )
     ''');
     
@@ -1146,6 +1153,134 @@ class DatabaseConnection {
         debugPrint('✅ campaigns Tabelle aktualisiert (Version 22)');
       } catch (e) {
         debugPrint('⚠️ Konnte verlaufsplan zu campaigns nicht hinzufügen: $e');
+      }
+    }
+
+    if (oldVersion < 23 && newVersion >= 23) {
+      debugPrint('🔄 Füge fehlende Spalten zu campaigns hinzu (v22 → v23)...');
+      try {
+        final tableInfo = await db.rawQuery('PRAGMA table_info(campaigns)');
+        final existingColumns = tableInfo.map((c) => c['name'] as String).toSet();
+        if (!existingColumns.contains('last_opened_at')) {
+          await db.execute('ALTER TABLE campaigns ADD COLUMN last_opened_at TEXT');
+        }
+        if (!existingColumns.contains('accent_color')) {
+          await db.execute("ALTER TABLE campaigns ADD COLUMN accent_color TEXT DEFAULT '#7c3aed'");
+        }
+        if (!existingColumns.contains('system')) {
+          await db.execute('ALTER TABLE campaigns ADD COLUMN system TEXT');
+        }
+        if (!existingColumns.contains('is_template')) {
+          await db.execute('ALTER TABLE campaigns ADD COLUMN is_template INTEGER NOT NULL DEFAULT 0');
+        }
+        if (!existingColumns.contains('template_id')) {
+          await db.execute('ALTER TABLE campaigns ADD COLUMN template_id TEXT');
+        }
+        if (!existingColumns.contains('verlaufs_karte_image_path')) {
+          await db.execute('ALTER TABLE campaigns ADD COLUMN verlaufs_karte_image_path TEXT');
+        }
+        if (!existingColumns.contains('karte_image_path')) {
+          await db.execute('ALTER TABLE campaigns ADD COLUMN karte_image_path TEXT');
+        }
+        debugPrint('✅ campaigns Tabelle aktualisiert (Version 23)');
+      } catch (e) {
+        debugPrint('⚠️ Konnte campaigns Spalten nicht hinzufügen: $e');
+      }
+    }
+
+    if (oldVersion < 24 && newVersion >= 24) {
+      debugPrint('🔄 Mache campaign_id in player_characters nullable (v23 → v24)...');
+      try {
+        // SQLite kann NOT NULL nicht direkt entfernen → Tabelle neu erstellen
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS player_characters_new (
+            id TEXT PRIMARY KEY,
+            campaign_id TEXT,
+            name TEXT NOT NULL,
+            player_name TEXT NOT NULL,
+            class_name TEXT NOT NULL,
+            race_name TEXT NOT NULL,
+            level INTEGER NOT NULL DEFAULT 1,
+            max_hp INTEGER NOT NULL DEFAULT 10,
+            current_hp INTEGER NOT NULL DEFAULT 10,
+            armor_class INTEGER NOT NULL DEFAULT 10,
+            initiative_bonus INTEGER NOT NULL DEFAULT 0,
+            image_path TEXT,
+            strength INTEGER NOT NULL DEFAULT 10,
+            dexterity INTEGER NOT NULL DEFAULT 10,
+            constitution INTEGER NOT NULL DEFAULT 10,
+            intelligence INTEGER NOT NULL DEFAULT 10,
+            wisdom INTEGER NOT NULL DEFAULT 10,
+            charisma INTEGER NOT NULL DEFAULT 10,
+            proficient_skills TEXT,
+            special_abilities TEXT,
+            attacks TEXT,
+            attack_list TEXT,
+            inventory TEXT,
+            equipment TEXT,
+            size TEXT DEFAULT 'Medium',
+            type TEXT DEFAULT 'Humanoid',
+            subtype TEXT,
+            alignment TEXT DEFAULT 'Neutral',
+            description TEXT,
+            gold REAL NOT NULL DEFAULT 0.0,
+            silver REAL NOT NULL DEFAULT 0.0,
+            copper REAL NOT NULL DEFAULT 0.0,
+            source_type TEXT NOT NULL DEFAULT 'custom',
+            source_id TEXT,
+            is_favorite INTEGER NOT NULL DEFAULT 0,
+            version TEXT NOT NULL DEFAULT '1.0',
+            proficiency_bonus INTEGER NOT NULL DEFAULT 2,
+            speed INTEGER NOT NULL DEFAULT 30,
+            passive_perception INTEGER NOT NULL DEFAULT 10,
+            spell_slots TEXT,
+            spell_save_dc INTEGER NOT NULL DEFAULT 0,
+            spell_attack_bonus INTEGER NOT NULL DEFAULT 0,
+            saving_throw_proficiencies TEXT DEFAULT '[]',
+            hit_dice TEXT NOT NULL DEFAULT 'd8',
+            hit_dice_count INTEGER NOT NULL DEFAULT 1,
+            hit_dice_remaining INTEGER NOT NULL DEFAULT 1,
+            player_id TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+          )
+        ''');
+
+        // Prüfe welche Spalten in der alten Tabelle existieren
+        final oldCols = (await db.rawQuery('PRAGMA table_info(player_characters)'))
+            .map((c) => c['name'] as String)
+            .toSet();
+
+        final baseCols = 'id, campaign_id, name, player_name, class_name, race_name, level, '
+            'max_hp, current_hp, armor_class, initiative_bonus, image_path, strength, dexterity, '
+            'constitution, intelligence, wisdom, charisma, proficient_skills, special_abilities, '
+            'attacks, attack_list, inventory, equipment, size, type, subtype, alignment, description, '
+            'gold, silver, copper, source_type, source_id, is_favorite, version, proficiency_bonus, '
+            'speed, passive_perception, spell_slots, spell_save_dc, spell_attack_bonus, '
+            'saving_throw_proficiencies, hit_dice, hit_dice_count, hit_dice_remaining, created_at, updated_at';
+
+        if (oldCols.contains('player_id')) {
+          await db.execute(
+            'INSERT INTO player_characters_new ($baseCols, player_id) '
+            'SELECT $baseCols, player_id FROM player_characters',
+          );
+        } else {
+          await db.execute(
+            'INSERT INTO player_characters_new ($baseCols) '
+            'SELECT $baseCols FROM player_characters',
+          );
+        }
+
+        await db.execute('DROP TABLE player_characters');
+        await db.execute('ALTER TABLE player_characters_new RENAME TO player_characters');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_player_characters_campaign_id ON player_characters(campaign_id)');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_player_characters_name ON player_characters(name)');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_player_characters_level ON player_characters(level)');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_player_characters_class ON player_characters(class_name)');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_player_characters_race ON player_characters(race_name)');
+        debugPrint('✅ player_characters Tabelle aktualisiert (Version 24)');
+      } catch (e) {
+        debugPrint('⚠️ Konnte player_characters nicht migrieren: $e');
       }
     }
   }

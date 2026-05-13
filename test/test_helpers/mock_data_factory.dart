@@ -134,7 +134,7 @@ class MockCharacterFactory {
 class MockQuestFactory {
   /// Erstellt einen Standard-Mock Quest
   static Quest create({
-    int? id,
+    String? id,
     String? title,
     String? description,
     QuestStatus? status,
@@ -142,7 +142,7 @@ class MockQuestFactory {
     int? rewardGold,
   }) {
     return Quest(
-      id: id ?? DateTime.now().millisecondsSinceEpoch,
+      id: id ?? DateTime.now().millisecondsSinceEpoch.toString(),
       title: title ?? 'Test Quest',
       description: description ?? 'Test Description',
       status: status ?? QuestStatus.active,

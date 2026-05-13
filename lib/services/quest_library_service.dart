@@ -111,7 +111,7 @@ class QuestLibraryService {
       if (!exists) {
         throw ResourceNotFoundException.forId(
           'Quest',
-          quest.id.toString(),
+          quest.id,
           operation: 'updateQuest',
         );
       }

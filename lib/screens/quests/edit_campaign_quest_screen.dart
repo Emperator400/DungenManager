@@ -115,7 +115,7 @@ class _EditCampaignQuestScreenState extends State<EditCampaignQuestScreen> {
       setState(() => _isLoading = true);
 
       try {
-        await _questRepository.delete(widget.campaignQuest.quest.id.toString());
+        await _questRepository.delete(widget.campaignQuest.quest.id);
 
         debugPrint('✅ [EditCampaignQuestScreen] Quest erfolgreich gelöscht');
 

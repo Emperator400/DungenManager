@@ -117,7 +117,7 @@ class CampaignQuest {
   Map<String, dynamic> toMap() {
     return {
       'campaignId': campaignId,
-      'questId': quest.id.toString(),
+      'questId': quest.id,
       'status': status.name,
       'notes': notes,
     };
@@ -127,15 +127,7 @@ class CampaignQuest {
   factory CampaignQuest.fromDbMap(Map<String, dynamic> map) {
     // Wir benötigen auch die Quest-Daten, aber diese kommen separat
     // Für die Datenbank-CRUD Operationen verwenden wir eine placeholder Quest
-    final questIdValue = map['questId'];
-    final int questId;
-    if (questIdValue is String) {
-      questId = int.tryParse(questIdValue) ?? 0;
-    } else if (questIdValue is int) {
-      questId = questIdValue;
-    } else {
-      questId = 0;
-    }
+    final questId = map['questId']?.toString() ?? '';
 
     final placeholderQuest = Quest(
       id: questId,
@@ -171,5 +163,5 @@ class CampaignQuest {
   }
 
   /// Getter für questId für Kompatibilität
-  String get questId => quest.id.toString();
+  String get questId => quest.id;
 }

@@ -9,7 +9,7 @@ import 'quest_reward.dart';
 /// Repräsentiert eine einzelne Quest mit allen Metadaten und Belohnungen.
 /// Enthält keine Business-Logik - nur Datenstrukturen und Basis-Validierung.
 class Quest {
-  final int id;
+  final String id;
   final String title;
   final String description;
   final QuestStatus status;
@@ -67,11 +67,8 @@ class Quest {
     List<String> linkedWikiEntryIds = const [],
   }) {
     final now = DateTime.now();
-    // Generiere eine negative ID für neue Quests (damit Repository weiß, dass es ein neuer Eintrag ist)
-    final tempId = -(UuidService().generateId().hashCode.abs() + 1);
-    debugPrint('🆔 [Quest.create] Generierte temporäre ID: $tempId');
     return Quest(
-      id: tempId,
+      id: UuidService().generateId(),
       title: title,
       description: description,
       status: status,
@@ -95,7 +92,7 @@ class Quest {
   factory Quest.fromMap(Map<String, dynamic> map) {
     try {
       return Quest(
-        id: QuestDataService.safeInt(map['id'], 0),
+        id: map['id']?.toString() ?? UuidService().generateId(),
         title: QuestDataService.safeString(map['title'], ''),
         description: QuestDataService.safeString(map['description'], ''),
         status: QuestStatus.values.firstWhere(
@@ -134,7 +131,7 @@ class Quest {
     try {
       debugPrint('📋 [Quest.fromDatabaseMap] Map: $map');
       return Quest(
-        id: int.tryParse(map['id']?.toString() ?? '0') ?? 0,
+        id: map['id']?.toString() ?? UuidService().generateId(),
         title: map['title'] as String? ?? '',
         description: map['description'] as String? ?? '',
         status: QuestStatus.values.firstWhere(
@@ -329,7 +326,7 @@ class Quest {
 
   /// CopyWith-Methode für unveränderliche Updates
   Quest copyWith({
-    int? id,
+    String? id,
     String? title,
     String? description,
     QuestStatus? status,

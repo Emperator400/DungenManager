@@ -30,8 +30,8 @@ class QuestLibraryViewModel extends ChangeNotifier {
 
   // Kampagnen-Modus State
   String? _campaignId;
-  Set<int> _linkedQuestIds = {};
-  Set<int> _selectedQuestIds = {};
+  Set<String> _linkedQuestIds = {};
+  Set<String> _selectedQuestIds = {};
 
   ///
   /// HINWEIS: Verwendet jetzt das neue QuestModelRepository
@@ -55,8 +55,8 @@ class QuestLibraryViewModel extends ChangeNotifier {
   // Kampagnen-Modus Getters
   bool get isCampaignMode => _campaignId != null;
   String? get campaignId => _campaignId;
-  Set<int> get linkedQuestIds => Set.unmodifiable(_linkedQuestIds);
-  Set<int> get selectedQuestIds => Set.unmodifiable(_selectedQuestIds);
+  Set<String> get linkedQuestIds => Set.unmodifiable(_linkedQuestIds);
+  Set<String> get selectedQuestIds => Set.unmodifiable(_selectedQuestIds);
   int get selectedCount => _selectedQuestIds.length;
 
   bool isLinked(Quest quest) => _linkedQuestIds.contains(quest.id);
@@ -444,9 +444,7 @@ class QuestLibraryViewModel extends ChangeNotifier {
   Future<void> deleteQuest(Quest quest) async {
     await _performAsyncOperation(() async {
       if (_questRepository != null) {
-        // Konvertiere int zu String für Repository
-        final idString = quest.id.toString();
-        await _questRepository!.delete(idString);
+        await _questRepository!.delete(quest.id);
       }
       
       // Lokalen State aktualisieren

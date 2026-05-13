@@ -23,6 +23,7 @@ class EditQuestViewModel extends ChangeNotifier {
   
   // State variables
   Quest? _quest;
+  bool _isNewQuest = false;
   bool _isLoading = false;
   String? _errorMessage;
   bool _hasUnsavedChanges = false;
@@ -46,10 +47,11 @@ class EditQuestViewModel extends ChangeNotifier {
     _hasUnsavedChanges = false;
     _errorMessage = null;
     
-    if (quest != null && quest.id >= 0) {
+    if (quest != null) {
+      _isNewQuest = false;
       // Lade Quest aus der Datenbank wenn eine ID vorhanden ist
       debugPrint('📋 [EditQuestViewModel] Lade Quest aus Datenbank (ID: ${quest.id})');
-      _questRepository.findById(quest.id.toString()).then((loadedQuest) {
+      _questRepository.findById(quest.id).then((loadedQuest) {
         debugPrint('📋 [EditQuestViewModel] Geladener Quest: $loadedQuest');
         if (loadedQuest != null) {
           _quest = loadedQuest;
@@ -69,9 +71,10 @@ class EditQuestViewModel extends ChangeNotifier {
         notifyListeners();
       });
     } else {
+      _isNewQuest = true;
       // Erstelle neuen Quest
       debugPrint('📋 [EditQuestViewModel] Erstelle neuen Quest');
-      _quest = quest ?? Quest.create(
+      _quest = Quest.create(
         title: '',
         description: '',
         campaignId: campaignId,
@@ -235,14 +238,13 @@ class EditQuestViewModel extends ChangeNotifier {
           _quest = _quest!.copyWith(campaignId: _currentCampaignId);
         }
         
-        if (_quest!.id < 0) {
+        if (_isNewQuest) {
         debugPrint('💾 [EditQuestViewModel] Erstelle neuen Quest (ID: ${_quest!.id})');
-        // Create new quest
         _quest = await _questRepository.create(_quest!);
+        _isNewQuest = false;
         debugPrint('💾 [EditQuestViewModel] Neue Quest ID: ${_quest!.id}');
       } else {
         debugPrint('💾 [EditQuestViewModel] Aktualisiere Quest (ID: ${_quest!.id})');
-        // Update existing quest
         _quest = await _questRepository.update(_quest!);
       }
       
@@ -264,7 +266,7 @@ class EditQuestViewModel extends ChangeNotifier {
   /// 
   /// HINWEIS: Verwendet jetzt das neue QuestModelRepository
   Future<bool> deleteQuest() async {
-    if (_quest == null || _quest!.id < 0) {
+    if (_quest == null || _isNewQuest) {
       _errorMessage = 'Quest kann nicht gelöscht werden: Nicht gespeichert';
       notifyListeners();
       return false;
@@ -274,7 +276,7 @@ class EditQuestViewModel extends ChangeNotifier {
     _errorMessage = null;
 
     try {
-      await _questRepository.delete(_quest!.id.toString());
+      await _questRepository.delete(_quest!.id);
       _setLoading(false);
       return true;
     } catch (e) {
@@ -306,7 +308,7 @@ class EditQuestViewModel extends ChangeNotifier {
     if (_quest != null) {
       final now = DateTime.now();
       final duplicatedQuest = Quest(
-        id: _uuidService.generateId().hashCode.abs(),
+        id: _uuidService.generateId(),
         title: '${_quest!.title} (Kopie)',
         description: _quest!.description,
         status: QuestStatus.active,
@@ -325,6 +327,7 @@ class EditQuestViewModel extends ChangeNotifier {
         linkedWikiEntryIds: List<String>.from(_quest!.linkedWikiEntryIds),
       );
       _quest = duplicatedQuest;
+      _isNewQuest = true;
       _markAsChanged();
     }
   }

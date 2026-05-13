@@ -226,7 +226,7 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
                 itemCount: quests.length,
                 itemBuilder: (context, index) {
                   final quest = quests[index];
-                  final questIdString = quest.id.toString();
+                  final questIdString = quest.id;
                   final isSelected = _selectedIds.contains(questIdString);
                   return _buildQuestCard(quest, isSelected);
                 },
@@ -244,12 +244,11 @@ class _LinkQuestToSceneScreenState extends State<LinkQuestToSceneScreen> {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: InkWell(
         onTap: () {
-          final questIdString = quest.id.toString();
           setState(() {
             if (isSelected) {
-              _selectedIds.remove(questIdString);
+              _selectedIds.remove(quest.id);
             } else {
-              _selectedIds.add(questIdString);
+              _selectedIds.add(quest.id);
             }
           });
         },
