@@ -4917,8 +4917,8 @@ class _KarteGraphViewState extends State<_KarteGraphView>
     with TickerProviderStateMixin {
   static const double _cW = 4000;
   static const double _cH = 2500;
-  static const double _nodeW = 130;
-  static const double _nodeH = 46;
+  static const double _nodeW = 110;
+  static const double _nodeH = 28;
   static const double _detailPanelW = 341.0;
 
   final TransformationController _tc = TransformationController();
@@ -5398,8 +5398,9 @@ class _KarteMapNodeState extends State<_KarteMapNode> {
   Widget build(BuildContext context) {
     final C = widget.C;
     final ort = widget.ort;
-    final accentColor = widget.isConnectSource ? C.amber : _typeColor(C);
+    final dotColor = widget.isConnectSource ? C.amber : _typeColor(C);
     final isActive = widget.selected || widget.isConnectSource;
+    final dotSize = isActive ? 12.0 : 9.0;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -5407,84 +5408,58 @@ class _KarteMapNodeState extends State<_KarteMapNode> {
       cursor: SystemMouseCursors.click,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
-        clipBehavior: Clip.antiAlias,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         decoration: BoxDecoration(
-          color: _hovered ? C.bgHover : C.bgPanel,
-          borderRadius: BorderRadius.circular(9),
+          color: isActive
+              ? dotColor.withValues(alpha: 0.12)
+              : _hovered
+                  ? C.bgPanel.withValues(alpha: 0.92)
+                  : C.bgPanel.withValues(alpha: 0.82),
+          borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: isActive ? accentColor : C.border,
-            width: isActive ? 2.0 : 1.0,
+            color: isActive ? dotColor.withValues(alpha: 0.6) : C.border.withValues(alpha: 0.7),
+            width: isActive ? 1.5 : 1.0,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: isActive ? 0.35 : 0.22),
-              blurRadius: isActive ? 16 : 8,
-              spreadRadius: 0.5,
-              offset: const Offset(0, 3),
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
             ),
             if (isActive)
               BoxShadow(
-                color: accentColor.withValues(alpha: 0.28),
-                blurRadius: 10,
-                spreadRadius: 0,
+                color: dotColor.withValues(alpha: 0.25),
+                blurRadius: 8,
               ),
           ],
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 4,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              width: dotSize,
+              height: dotSize,
               decoration: BoxDecoration(
                 color: ort.hasBeenVisited
-                    ? accentColor.withValues(alpha: 0.4)
-                    : accentColor,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(9),
-                  bottomLeft: Radius.circular(9),
+                    ? dotColor.withValues(alpha: 0.5)
+                    : dotColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                ort.name,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                  color: isActive ? dotColor : C.text,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    ort.name,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isActive ? accentColor : C.text,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Row(
-                    children: [
-                      Container(
-                        width: 5,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: accentColor,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        ort.type.label,
-                        style: TextStyle(fontSize: 9, color: C.textSoft),
-                      ),
-                      if (ort.hasBeenVisited) ...[
-                        const SizedBox(width: 4),
-                        Icon(Icons.check_circle, size: 9, color: C.amber),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 4),
           ],
         ),
       ),
