@@ -299,6 +299,34 @@ class PlayerCharacterModelRepository extends ModelRepository<PlayerCharacter> {
     );
   }
 
+  /// Findet Charaktere nach Spieler-ID
+  Future<List<PlayerCharacter>> findByPlayer(String playerId) => findWhere(
+        where: 'player_id = ?',
+        whereArgs: [playerId],
+        orderBy: 'name ASC',
+      );
+
+  /// Findet Charaktere ohne Kampagnen-Zuweisung
+  Future<List<PlayerCharacter>> findWithoutCampaign() => findWhere(
+        where: 'campaign_id IS NULL OR campaign_id = ?',
+        whereArgs: [''],
+        orderBy: 'name ASC',
+      );
+
+  /// Weist einen Charakter einer Kampagne zu
+  Future<PlayerCharacter> assignToCampaign(String characterId, String campaignId) async {
+    final character = await findById(characterId);
+    if (character == null) throw Exception('Character not found: $characterId');
+    return update(character.copyWith(campaignId: campaignId));
+  }
+
+  /// Entfernt die Kampagnen-Zuweisung eines Charakters
+  Future<PlayerCharacter> removeFromCampaign(String characterId) async {
+    final character = await findById(characterId);
+    if (character == null) throw Exception('Character not found: $characterId');
+    return update(character.copyWith(campaignId: null));
+  }
+
   /// Charaktere nach Spieler-Namen suchen
   Future<List<PlayerCharacter>> findByPlayerName(String playerName) async {
     return await findWhere(

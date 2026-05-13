@@ -420,8 +420,8 @@ class WikiAutoLinkService {
       }
       
       // Verlinke mit Kampagne
-      if (character.campaignId.isNotEmpty) {
-        final campaign = await _campaignRepository.findById(character.campaignId);
+      if (character.campaignId != null && character.campaignId!.isNotEmpty) {
+        final campaign = await _campaignRepository.findById(character.campaignId!);
         if (campaign != null) {
           await _createLinkIfExists(entry, campaign.title, WikiLinkType.related);
         }

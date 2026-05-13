@@ -2,12 +2,14 @@ import 'package:flutter/foundation.dart';
 import '../database/repositories/player_character_model_repository.dart';
 import '../database/repositories/inventory_item_model_repository.dart';
 import '../database/repositories/item_model_repository.dart';
+import '../database/repositories/player_model_repository.dart';
 import '../database/core/database_connection.dart';
 import '../game_data/dnd_logic.dart';
 import '../game_data/dnd_models.dart';
 import '../game_data/game_data.dart';
 import '../models/inventory_item.dart';
 import '../models/item.dart';
+import '../models/player.dart';
 import '../models/player_character.dart';
 import '../models/equipment.dart';
 import '../models/equip_slot.dart';
@@ -23,6 +25,7 @@ class EditPCViewModel extends ChangeNotifier {
   final InventoryItemModelRepository _inventoryRepository;
   final ItemModelRepository _itemRepository;
   final InventoryService _inventoryService;
+  final PlayerModelRepository _playerRepository;
 
   // ============================================================================
   // STATE VARIABLES
@@ -30,7 +33,7 @@ class EditPCViewModel extends ChangeNotifier {
 
   // Character Daten
   PlayerCharacter? _pcToEdit;
-  String _campaignId = '';
+  String? _campaignId;
   String _name = '';
   String _playerName = '';
   int _level = 1;
@@ -77,12 +80,16 @@ class EditPCViewModel extends ChangeNotifier {
   int _hitDiceCount = 1;
   int _hitDiceRemaining = 1;
 
+  // Spieler-Zuordnung
+  String? _playerId;
+  List<Player> _availablePlayers = [];
+
   // ============================================================================
   // GETTERS
   // ============================================================================
 
   PlayerCharacter? get pcToEdit => _pcToEdit;
-  String get campaignId => _campaignId;
+  String? get campaignId => _campaignId;
   String get name => _name;
   String get playerName => _playerName;
   int get level => _level;
@@ -140,6 +147,8 @@ class EditPCViewModel extends ChangeNotifier {
   String get hitDice => _hitDice;
   int get hitDiceCount => _hitDiceCount;
   int get hitDiceRemaining => _hitDiceRemaining;
+  String? get playerId => _playerId;
+  List<Player> get availablePlayers => _availablePlayers;
 
   // Computed Properties
   int get initiativeBonus => getModifier(_dexterity);
@@ -244,28 +253,33 @@ class EditPCViewModel extends ChangeNotifier {
     InventoryItemModelRepository? inventoryRepository,
     ItemModelRepository? itemRepository,
     InventoryService? inventoryService,
+    PlayerModelRepository? playerRepository,
   }) : _pcRepository = pcRepository ?? PlayerCharacterModelRepository(DatabaseConnection.instance),
        _inventoryRepository = inventoryRepository ?? InventoryItemModelRepository(DatabaseConnection.instance),
        _itemRepository = itemRepository ?? ItemModelRepository(DatabaseConnection.instance),
-       _inventoryService = inventoryService ?? InventoryService();
+       _inventoryService = inventoryService ?? InventoryService(),
+       _playerRepository = playerRepository ?? PlayerModelRepository(DatabaseConnection.instance);
 
   // ============================================================================
   // INITIALIZATION
   // ============================================================================
 
   /// Initialisiert den ViewModel mit PC-Daten
-  Future<void> initialize(String campaignId, PlayerCharacter? pc) async {
+  Future<void> initialize(String? campaignId, PlayerCharacter? pc,
+      {String? initialPlayerId}) async {
     try {
       _error = null;
       notifyListeners();
       
       _campaignId = campaignId;
       _pcToEdit = pc;
+      _availablePlayers = await _playerRepository.findAllSorted();
 
       if (pc != null) {
         // Edit mode - lade bestehende Daten
         _name = pc.name;
         _playerName = pc.playerName;
+        _playerId = pc.playerId;
         _level = pc.level;
         _maxHp = pc.maxHp;
         _armorClass = pc.armorClass;
@@ -306,7 +320,13 @@ class EditPCViewModel extends ChangeNotifier {
       } else {
         // Create mode - setze Standardwerte
         _name = '';
-        _playerName = '';
+        _playerId = initialPlayerId;
+        if (initialPlayerId != null) {
+          final player = _availablePlayers.where((p) => p.id == initialPlayerId).firstOrNull;
+          _playerName = player?.name ?? '';
+        } else {
+          _playerName = '';
+        }
         _level = 1;
         _maxHp = 10;
         _armorClass = 10;
@@ -357,6 +377,15 @@ class EditPCViewModel extends ChangeNotifier {
   /// Aktualisiert den Namen des Spielers
   void updatePlayerName(String playerName) {
     _playerName = playerName;
+    notifyListeners();
+  }
+
+  void updatePlayerId(String? id) {
+    _playerId = id;
+    if (id != null) {
+      final player = _availablePlayers.where((p) => p.id == id).firstOrNull;
+      if (player != null) _playerName = player.name;
+    }
     notifyListeners();
   }
 
@@ -631,6 +660,9 @@ class EditPCViewModel extends ChangeNotifier {
         sourceId: null,
         isFavorite: false,
         version: '1.0',
+
+        // Spieler-Zuordnung
+        playerId: _playerId,
       );
       
       debugPrint('PlayerCharacter erstellt mit ID: ${pc.id}');

@@ -20,6 +20,7 @@ import '../items/item_library_screen.dart';
 import '../lore/lore_keeper_screen.dart';
 import '../campaign/dm_buch_screen.dart';
 import '../quests/quest_library_screen.dart';
+import '../players/player_list_screen.dart';
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
@@ -48,6 +49,7 @@ const _bereiche = [
   _Bereich(id: 'lore',         label: 'Lore Keeper',  icon: Icons.menu_book,      color: Color(0xFF7C3AED), beschreibung: 'Wiki & Weltenwissen'),
   _Bereich(id: 'quests',       label: 'Quest-Bibl.',  icon: Icons.assignment,     color: Color(0xFFC2410C), beschreibung: 'Quests & Missionen'),
   _Bereich(id: 'sounds',       label: 'Sounds',       icon: Icons.music_note,     color: Color(0xFF0891B2), beschreibung: 'Atmosphäre & Musik'),
+  _Bereich(id: 'spieler',      label: 'Spieler',       icon: Icons.group,          color: Color(0xFF065F46), beschreibung: 'Spieler & Charaktere'),
   _Bereich(id: 'profil',       label: 'DM-Profil',    icon: Icons.person,         color: Color(0xFF6B6B66), beschreibung: 'Dein Profil & Daten',   disabled: true),
   _Bereich(id: 'einstellungen',label: 'Einstellungen',icon: Icons.settings,       color: Color(0xFF6B6B66), beschreibung: 'App konfigurieren',     disabled: true),
 ];
@@ -130,6 +132,10 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'sounds':
         Navigator.of(context).push(
           MaterialPageRoute<void>(builder: (_) => const SoundLibraryScreen()),
+        );
+      case 'spieler':
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const PlayerListScreen()),
         );
     }
   }
