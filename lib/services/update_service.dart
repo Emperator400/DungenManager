@@ -384,15 +384,20 @@ class UpdateService {
       final script = r'''
 $logFile = "$env:TEMP\dungenmanager_update_log.txt"
 try {
-  Start-Sleep -Seconds 3
+  Start-Sleep -Seconds 5
 
   $sourceDir = ''' + sqSource + r'''
   $targetDir = ''' + sqTarget + r'''
   $exeName   = ''' + sqExe + r'''
 
-  # Falls das ZIP einen Unterordner hat, diesen als Quelle nehmen
-  $subDirs = Get-ChildItem -Path "$sourceDir" -Directory -ErrorAction SilentlyContinue
-  if ($subDirs.Count -eq 1) { $sourceDir = $subDirs[0].FullName }
+  # Nur in Unterordner wechseln wenn die oberste Ebene ausschließlich einen
+  # Ordner enthält (ZIP-Wrapper-Struktur). Bei gemischtem Inhalt (Dateien + Ordner
+  # auf oberster Ebene, z.B. Flutter-Build) bleibt sourceDir unverändert.
+  $topFiles = Get-ChildItem -Path "$sourceDir" -File -ErrorAction SilentlyContinue
+  $subDirs  = Get-ChildItem -Path "$sourceDir" -Directory -ErrorAction SilentlyContinue
+  if ($subDirs.Count -eq 1 -and $topFiles.Count -eq 0) {
+    $sourceDir = $subDirs[0].FullName
+  }
 
   Copy-Item -Path "$sourceDir\*" -Destination "$targetDir" -Recurse -Force
   Start-Process -FilePath "$targetDir\$exeName"
