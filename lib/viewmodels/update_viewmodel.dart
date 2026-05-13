@@ -42,6 +42,18 @@ class UpdateViewModel extends ChangeNotifier {
   /// Pfad zu den extrahierten Dateien
   String? get extractedPath => _updateService.extractedPath;
 
+  /// Heruntergeladene Bytes als formatierter MB-String
+  String get downloadedMb =>
+      '${(_updateService.downloadedBytes / 1048576).toStringAsFixed(1)} MB';
+
+  /// Gesamtgröße als formatierter MB-String, oder '...' wenn unbekannt
+  String get totalMb => _updateService.totalBytes > 0
+      ? '${(_updateService.totalBytes / 1048576).toStringAsFixed(1)} MB'
+      : '...';
+
+  /// Ob die Gesamtgröße des Downloads bekannt ist
+  bool get isTotalSizeKnown => _updateService.totalBytes > 0;
+
   /// Stream Subscriptions
   StreamSubscription<UpdateStatus>? _statusSubscription;
   StreamSubscription<double>? _progressSubscription;
@@ -205,6 +217,13 @@ class UpdateViewModel extends ChangeNotifier {
   /// Markiert dass der User benachrichtigt wurde
   void markUserNotified() {
     _userNotified = true;
+  }
+
+  /// Wiederholt den Download nach einem Fehler
+  Future<bool> retryDownload() async {
+    _errorMessage = null;
+    notifyListeners();
+    return downloadUpdate();
   }
 
   /// Setzt den State zurück

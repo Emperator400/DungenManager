@@ -78,9 +78,16 @@ class UpdateService {
 
   UpdateStatus _currentStatus = UpdateStatus.idle;
   UpdateStatus get currentStatus => _currentStatus;
-  
+
+  http.Client? _httpClient;
   String? _extractedPath;
   String? _lastError;
+
+  // Download-Fortschritt in Bytes
+  int _downloadedBytes = 0;
+  int _totalBytes = 0;
+  int get downloadedBytes => _downloadedBytes;
+  int get totalBytes => _totalBytes;
 
   /// Gibt die aktuelle App-Version zurück (nach erstem checkForUpdate() verfügbar)
   AppVersion get currentVersion => AppVersion(
@@ -222,9 +229,15 @@ class UpdateService {
 
     _setStatus(UpdateStatus.downloading);
     _setProgress(0.0);
+    _downloadedBytes = 0;
+    _totalBytes = 0;
 
+    // Alten Client abbrechen falls noch aktiv
+    _httpClient?.close();
+    _httpClient = http.Client();
+
+    IOSink? sink;
     try {
-      // Zielverzeichnis bestimmen
       final appDir = await getApplicationDocumentsDirectory();
       final updateDir = Directory(p.join(appDir.path, 'DungenManager', 'updates'));
       if (!await updateDir.exists()) {
@@ -235,32 +248,36 @@ class UpdateService {
       final filePath = p.join(updateDir.path, fileName);
       final file = File(filePath);
 
-      // Download mit Fortschritt
       final request = http.Request('GET', Uri.parse(version.downloadUrl));
-      final response = await http.Client().send(request);
+      final response = await _httpClient!
+          .send(request)
+          .timeout(const Duration(seconds: 30), onTimeout: () {
+        throw Exception('Verbindungs-Timeout — Server antwortet nicht');
+      });
 
       if (response.statusCode != 200) {
-        throw Exception('Download fehlgeschlagen: ${response.statusCode}');
+        throw Exception('Download fehlgeschlagen: HTTP ${response.statusCode}');
       }
 
-      final contentLength = response.contentLength;
-      var downloadedBytes = 0;
+      _totalBytes = response.contentLength ?? 0;
 
-      final sink = file.openWrite();
-      await response.stream.listen((chunk) {
+      sink = file.openWrite();
+
+      // await for propagiert Netzwerkfehler korrekt (listen().asFuture() tut das nicht)
+      await for (final chunk in response.stream) {
         sink.add(chunk);
-        downloadedBytes += chunk.length;
-        if (contentLength != null && contentLength > 0) {
-          _setProgress(downloadedBytes / contentLength);
+        _downloadedBytes += chunk.length;
+        if (_totalBytes > 0) {
+          _setProgress(_downloadedBytes / _totalBytes);
         }
-      }).asFuture();
+      }
 
       await sink.close();
+      sink = null;
 
       _setStatus(UpdateStatus.extracting);
       _setProgress(0.0);
 
-      // Entpacken
       final extractedPath = await _extractUpdate(file);
       if (extractedPath != null) {
         _extractedPath = extractedPath;
@@ -270,9 +287,13 @@ class UpdateService {
 
       return null;
     } catch (e) {
+      await sink?.close();
       _lastError = e.toString();
       _setStatus(UpdateStatus.error);
       return null;
+    } finally {
+      _httpClient?.close();
+      _httpClient = null;
     }
   }
 

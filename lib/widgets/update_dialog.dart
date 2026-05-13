@@ -179,12 +179,22 @@ class _UpdateDialogState extends State<UpdateDialog> {
           ClipRRect(
             borderRadius: BorderRadius.circular(3),
             child: LinearProgressIndicator(
-              value: vm.progress,
+              value: (vm.isDownloading && !vm.isTotalSizeKnown) ? null : vm.progress,
               backgroundColor: C.border,
               valueColor: AlwaysStoppedAnimation(C.accent),
               minHeight: 4,
             ),
           ),
+          if (vm.isDownloading) ...[
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '${vm.downloadedMb} / ${vm.totalMb}',
+                style: TextStyle(fontSize: 11, color: C.textSoft),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -335,6 +345,9 @@ class _UpdateDialogState extends State<UpdateDialog> {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           _btn(C, 'Schließen', C.textSoft, () => Navigator.of(context).pop(false), filled: false),
+          const SizedBox(width: 8),
+          _btn(C, 'Erneut versuchen', Colors.white, () => vm.retryDownload(),
+              icon: Icons.refresh, bgColor: C.amber),
           const SizedBox(width: 8),
           _btn(C, 'GitHub öffnen', Colors.white, () => vm.openReleasesPage(),
               icon: Icons.open_in_browser, bgColor: C.accent),
