@@ -4913,8 +4913,7 @@ class _KarteGraphView extends StatefulWidget {
   State<_KarteGraphView> createState() => _KarteGraphViewState();
 }
 
-class _KarteGraphViewState extends State<_KarteGraphView>
-    with TickerProviderStateMixin {
+class _KarteGraphViewState extends State<_KarteGraphView> {
   static const double _cW = 4000;
   static const double _cH = 2500;
   static const double _nodeW = 130;
@@ -4927,21 +4926,10 @@ class _KarteGraphViewState extends State<_KarteGraphView>
   bool _connectMode = false;
   String? _connectSource;
 
-  // Fly-to animation when an Ort is selected
-  String? _lastSelectedOrtId;
-  BoxConstraints? _constraints;
-  late final AnimationController _flyAnim;
-  late Animation<Offset> _flyAnimation;
-  double _flyScale = 1.0;
-
   @override
   void initState() {
     super.initState();
     _initPositions(widget.vm.orte);
-    _flyAnim = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 320),
-    )..addListener(_onFlyTick);
   }
 
   @override
@@ -4959,16 +4947,6 @@ class _KarteGraphViewState extends State<_KarteGraphView>
       }
     }
     _positions.removeWhere((id, _) => !orte.any((o) => o.id == id));
-
-    final sel = widget.vm.selectedOrt;
-    if (sel != null && sel.id != _lastSelectedOrtId) {
-      _lastSelectedOrtId = sel.id;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _flyTo(sel);
-      });
-    } else if (sel == null) {
-      _lastSelectedOrtId = null;
-    }
   }
 
   void _initPositions(List<Ort> orte) {
@@ -5002,35 +4980,8 @@ class _KarteGraphViewState extends State<_KarteGraphView>
 
   @override
   void dispose() {
-    _flyAnim.dispose();
     _tc.dispose();
     super.dispose();
-  }
-
-  void _onFlyTick() {
-    final t = _flyAnimation.value;
-    final m = Matrix4.identity()
-      ..translate(t.dx, t.dy)
-      ..scale(_flyScale, _flyScale, 1.0);
-    _tc.value = m;
-  }
-
-  void _flyTo(Ort ort) {
-    final constraints = _constraints;
-    if (constraints == null) return;
-    final pos = _positions[ort.id];
-    if (pos == null) return;
-
-    final vpW = constraints.maxWidth;
-    final vpH = constraints.maxHeight;
-    _flyScale = _tc.value.getMaxScaleOnAxis();
-    final from = MatrixUtils.transformPoint(_tc.value, Offset.zero);
-    final to = Offset(vpW / 2 - pos.dx * _flyScale, vpH / 2 - pos.dy * _flyScale);
-
-    _flyAnimation = Tween<Offset>(begin: from, end: to).animate(
-      CurvedAnimation(parent: _flyAnim, curve: Curves.easeInOut),
-    );
-    _flyAnim.forward(from: 0);
   }
 
   Future<void> _pickMap(BuildContext ctx) async {
@@ -5122,8 +5073,7 @@ class _KarteGraphViewState extends State<_KarteGraphView>
         ort.id: _dragPos[ort.id] ?? _positions[ort.id] ?? const Offset(_cW / 2, _cH / 2),
     };
 
-    return LayoutBuilder(builder: (context, constraints) {
-      _constraints = constraints;
+    return LayoutBuilder(builder: (context, _) {
       return Stack(
         children: [
           // ── Ebene 1+2: Hintergrund + Orte zoomen/panen gemeinsam ────────
