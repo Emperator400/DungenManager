@@ -16,6 +16,7 @@ class UnifiedCampaignCard extends UnifiedCardBase {
     super.onEdit,
     this.onDuplicate,
     this.onUseCopy,
+    this.onExport,
     super.onToggleFavorite,
     super.isSelected,
   });
@@ -25,6 +26,7 @@ class UnifiedCampaignCard extends UnifiedCardBase {
   final VoidCallback? onNavigate;
   final VoidCallback? onDuplicate;
   final VoidCallback? onUseCopy;
+  final VoidCallback? onExport;
 
   @override
   Widget buildCardContent(BuildContext context) =>
@@ -216,6 +218,8 @@ class _PopupBtn extends StatelessWidget {
             _item('use_copy', AppIconName.copy, 'Als Kopie verwenden', C)
           else
             _item('duplicate', AppIconName.copy, 'Duplizieren', C),
+          if (card.onExport != null)
+            _item('export', AppIconName.upload, 'Exportieren', C),
           _item('delete', AppIconName.trash, 'Löschen', C, color: C.red),
         ],
         child: Container(
@@ -258,6 +262,8 @@ class _PopupBtn extends StatelessWidget {
         card.onDuplicate?.call();
       case 'use_copy':
         card.onUseCopy?.call();
+      case 'export':
+        card.onExport?.call();
       case 'delete':
         _showDeleteDialog(context);
     }

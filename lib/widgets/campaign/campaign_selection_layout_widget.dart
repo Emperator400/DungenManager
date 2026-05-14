@@ -254,30 +254,78 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
   ) {
     final filtered = viewModel.filteredTemplates;
 
-    if (filtered.isEmpty) {
-      return EmptyStateWidget.withCreate(
-        title: 'Noch keine Vorlagen',
-        message: 'Erstelle eine Vorlage, um sie für mehrere Gruppen wiederzuverwenden.',
-        icon: Icons.copy_outlined,
-        iconColor: C.accent,
-        onCreate: () => _showCreateTemplateDialog(context),
-        buttonText: 'Erste Vorlage erstellen',
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: filtered.length,
-      itemBuilder: (ctx, i) => Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: UnifiedCampaignCard(
-          campaign: filtered[i],
-          viewModel: viewModel,
-          onNavigate: () => _navigateToCampaign(context, filtered[i]),
-          onEdit: () => _editCampaign(context, filtered[i]),
-          onUseCopy: () => _showUseCopyDialog(context, filtered[i], viewModel),
+    return Column(
+      children: [
+        // Header mit Zähler + Import-Button
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: Row(
+            children: [
+              Text(
+                '${filtered.length} Vorlage${filtered.length == 1 ? '' : 'n'}',
+                style: TextStyle(fontSize: 12, color: C.textSoft),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => _importTemplate(context, viewModel),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: C.accent.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(7),
+                    border: Border.all(color: C.accent.withValues(alpha: 0.25)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.download_outlined, size: 13, color: C.accent),
+                      const SizedBox(width: 5),
+                      Text(
+                        'Importieren',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: C.accent,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
+        const SizedBox(height: 8),
+        if (filtered.isEmpty)
+          Expanded(
+            child: EmptyStateWidget.withCreate(
+              title: 'Noch keine Vorlagen',
+              message: 'Erstelle eine Vorlage, um sie für mehrere Gruppen wiederzuverwenden.',
+              icon: Icons.copy_outlined,
+              iconColor: C.accent,
+              onCreate: () => _showCreateTemplateDialog(context),
+              buttonText: 'Erste Vorlage erstellen',
+            ),
+          )
+        else
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              itemCount: filtered.length,
+              itemBuilder: (ctx, i) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: UnifiedCampaignCard(
+                  campaign: filtered[i],
+                  viewModel: viewModel,
+                  onNavigate: () => _navigateToCampaign(context, filtered[i]),
+                  onEdit: () => _editCampaign(context, filtered[i]),
+                  onUseCopy: () => _showUseCopyDialog(context, filtered[i], viewModel),
+                  onExport: () => _exportTemplate(context, filtered[i], viewModel),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -452,6 +500,33 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
       SnackBarHelper.showSuccess(context, 'Kopie "${copy.title}" erstellt');
     } else if (context.mounted) {
       SnackBarHelper.showError(context, 'Fehler beim Erstellen der Kopie');
+    }
+  }
+
+  Future<void> _exportTemplate(
+    BuildContext context,
+    Campaign template,
+    CampaignViewModel viewModel,
+  ) async {
+    final filePath = await viewModel.exportTemplate(template.id);
+    if (!context.mounted) return;
+    if (filePath != null) {
+      SnackBarHelper.showSuccess(context, 'Exportiert: $filePath');
+    } else {
+      SnackBarHelper.showError(context, 'Export fehlgeschlagen');
+    }
+  }
+
+  Future<void> _importTemplate(
+    BuildContext context,
+    CampaignViewModel viewModel,
+  ) async {
+    final campaign = await viewModel.importTemplate();
+    if (!context.mounted) return;
+    if (campaign != null) {
+      SnackBarHelper.showSuccess(context, 'Vorlage "${campaign.title}" importiert');
+    } else {
+      SnackBarHelper.showError(context, 'Import fehlgeschlagen oder abgebrochen');
     }
   }
 
