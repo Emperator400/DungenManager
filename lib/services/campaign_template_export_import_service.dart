@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../models/campaign.dart';
@@ -260,4 +261,8 @@ class CampaignTemplateExportImportService {
 
   List<String> _remapIds(List<String> ids, Map<String, String> idMap) =>
       ids.map((id) => idMap[id] ?? id).toList();
+
+  @visibleForTesting
+  Future<Campaign> parseAndSaveForTesting(String jsonContent) =>
+      _parseAndSave(jsonContent);
 }
