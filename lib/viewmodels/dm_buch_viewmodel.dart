@@ -224,6 +224,36 @@ class DmBuchViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> selectVerlaufsEintragOnMap(VerlaufsEintrag eintrag) async {
+    _selectedVerlaufsEintrag = eintrag;
+    if (eintrag.type == VerlaufsEintragType.ort && eintrag.refId != null) {
+      final ort = _orte.where((o) => o.id == eintrag.refId).firstOrNull;
+      if (ort != null) {
+        await navigateToOrt(ort);
+        return;
+      }
+    }
+    notifyListeners();
+  }
+
+  Future<void> navigateToOrt(Ort ort) async {
+    if (ort.parentOrtId != null) {
+      final chain = <String>[];
+      var parentId = ort.parentOrtId;
+      while (parentId != null) {
+        chain.insert(0, parentId);
+        final parent = _orte.where((o) => o.id == parentId).firstOrNull;
+        parentId = parent?.parentOrtId;
+      }
+      _mapStack
+        ..clear()
+        ..add(null)
+        ..addAll(chain);
+    }
+    _leftTab = DmBuchLeftTab.karte;
+    await selectOrt(ort);
+  }
+
   void deselectVerlaufsEintrag() {
     _selectedVerlaufsEintrag = null;
     notifyListeners();
@@ -243,6 +273,7 @@ class DmBuchViewModel extends ChangeNotifier {
 
   Future<Ort?> createOrtFromWikiEntry(WikiEntry entry, {String? parentOrtId}) => createOrt(
         name: entry.title,
+        type: _ortTypeFromWikiEntryType(entry.entryType),
         description: entry.content,
         linkedWikiEntryIds: [entry.id],
         parentOrtId: parentOrtId,
@@ -441,10 +472,31 @@ class DmBuchViewModel extends ChangeNotifier {
 
   // ── WIKI-VERLINKUNG ───────────────────────────────────────────────────────
 
+  OrtType _ortTypeFromWikiEntryType(WikiEntryType entryType) {
+    switch (entryType) {
+      case WikiEntryType.Place:    return OrtType.region;
+      case WikiEntryType.Person:   return OrtType.city;
+      case WikiEntryType.Faction:  return OrtType.building;
+      case WikiEntryType.Magic:    return OrtType.building;
+      case WikiEntryType.Quest:    return OrtType.dungeon;
+      case WikiEntryType.Creature: return OrtType.wilderness;
+      case WikiEntryType.Lore:
+      case WikiEntryType.History:
+      case WikiEntryType.Item:     return OrtType.other;
+    }
+  }
+
   Future<void> linkWikiEntry(Ort ort, String wikiEntryId) async {
     if (ort.linkedWikiEntryIds.contains(wikiEntryId)) return;
+    var newType = ort.type;
+    if (ort.type == OrtType.other) {
+      final entry = _wikiEntries.where((w) => w.id == wikiEntryId).firstOrNull;
+      if (entry != null)
+        newType = _ortTypeFromWikiEntryType(entry.entryType);
+    }
     final updated = ort.copyWith(
       linkedWikiEntryIds: [...ort.linkedWikiEntryIds, wikiEntryId],
+      type: newType,
       updatedAt: DateTime.now(),
     );
     await _ortRepo.update(updated);

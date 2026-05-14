@@ -1,24 +1,27 @@
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'dart:async';
+import 'dart:io';
 
-import '../../models/campaign.dart';
-import '../../theme/app_theme.dart';
-import '../../viewmodels/campaign_viewmodel.dart';
-import '../../viewmodels/update_viewmodel.dart';
-import '../../widgets/update_dialog.dart';
-import '../../widgets/campaign/enhanced_campaign_filter_chips_widget.dart';
-import '../../widgets/ui_components/cards/unified_campaign_card.dart';
-import '../../widgets/ui_components/feedback/snackbar_helper.dart';
-import '../../widgets/ui_components/states/empty_state_widget.dart';
-import '../../widgets/ui_components/states/error_state_widget.dart';
-import '../../widgets/ui_components/states/loading_state_widget.dart';
-import '../../widgets/ui_components/shared/app_icon.dart';
-import '../../widgets/ui_components/shared/app_logo.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 import '../../database/core/database_connection.dart';
 import '../../database/repositories/campaign_model_repository.dart';
+import '../../models/campaign.dart';
 import '../../screens/campaign/dm_buch_screen.dart';
+import '../../theme/app_theme.dart';
+import '../../viewmodels/campaign_viewmodel.dart';
+import '../../viewmodels/update_viewmodel.dart';
 import '../../widgets/campaign/campaign_edit_modal_widget.dart';
+import '../../widgets/campaign/enhanced_campaign_filter_chips_widget.dart';
+import '../../widgets/ui_components/cards/unified_campaign_card.dart';
+import '../../widgets/ui_components/feedback/snackbar_helper.dart';
+import '../../widgets/ui_components/shared/app_icon.dart';
+import '../../widgets/ui_components/shared/app_logo.dart';
+import '../../widgets/ui_components/states/empty_state_widget.dart';
+import '../../widgets/ui_components/states/error_state_widget.dart';
+import '../../widgets/ui_components/states/loading_state_widget.dart';
+import '../../widgets/update_dialog.dart';
 
 class CampaignSelectionLayout extends StatefulWidget {
   const CampaignSelectionLayout({super.key});
@@ -54,8 +57,7 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
     );
   }
 
-  Widget _buildTabBar(AppColorsExtension C) {
-    return Container(
+  Widget _buildTabBar(AppColorsExtension C) => Container(
       color: C.bgPanel,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -84,10 +86,8 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
         ],
       ),
     );
-  }
 
-  PreferredSizeWidget _buildTopBar(BuildContext context, AppColorsExtension C) {
-    return PreferredSize(
+  PreferredSizeWidget _buildTopBar(BuildContext context, AppColorsExtension C) => PreferredSize(
       preferredSize: const Size.fromHeight(48),
       child: Container(
         height: 48,
@@ -132,7 +132,7 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
                       context,
                       C,
                       AppIconName.refresh,
-                      () => _checkForUpdatesManually(context),
+                      () => unawaited(_checkForUpdatesManually()),
                     ),
                     const SizedBox(width: 4),
                     // Suche
@@ -140,7 +140,7 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
                       context,
                       C,
                       AppIconName.search,
-                      () => _showSearchDialog(context),
+                      () => unawaited(_showSearchDialog()),
                     ),
                   ],
                 ),
@@ -151,7 +151,6 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
         ),
       ),
     );
-  }
 
   Widget _iconBtn(
     BuildContext context,
@@ -164,20 +163,19 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
     BuildContext context,
     CampaignViewModel viewModel,
     AppColorsExtension C,
-  ) {
-    return Container(
-      color: C.bgPanel,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-            child: EnhancedCampaignFilterChipsWidget(viewModel: viewModel),
-          ),
-          Divider(height: 1, thickness: 1, color: C.border),
-        ],
-      ),
-    );
-  }
+  ) =>
+      Container(
+        color: C.bgPanel,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+              child: EnhancedCampaignFilterChipsWidget(viewModel: viewModel),
+            ),
+            Divider(height: 1, thickness: 1, color: C.border),
+          ],
+        ),
+      );
 
   Widget _buildContent(
     BuildContext context,
@@ -238,10 +236,10 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
         child: UnifiedCampaignCard(
           campaign: filtered[i],
           viewModel: viewModel,
-          onNavigate: () => _navigateToCampaign(context, filtered[i]),
+          onNavigate: () => unawaited(_navigateToCampaign(filtered[i])),
           onEdit: () => _editCampaign(context, filtered[i]),
-          onDuplicate: () => _duplicateCampaign(context, filtered[i], viewModel),
-          onToggleFavorite: () => _toggleFavorite(context, filtered[i], viewModel),
+          onDuplicate: () => unawaited(_duplicateCampaign(filtered[i], viewModel)),
+          onToggleFavorite: () => unawaited(_toggleFavorite(filtered[i], viewModel)),
         ),
       ),
     );
@@ -267,7 +265,7 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
               ),
               const Spacer(),
               GestureDetector(
-                onTap: () => _importTemplate(context, viewModel),
+                onTap: () => unawaited(_importTemplate(viewModel)),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
@@ -317,10 +315,10 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
                 child: UnifiedCampaignCard(
                   campaign: filtered[i],
                   viewModel: viewModel,
-                  onNavigate: () => _navigateToCampaign(context, filtered[i]),
+                  onNavigate: () => unawaited(_navigateToCampaign(filtered[i])),
                   onEdit: () => _editCampaign(context, filtered[i]),
-                  onUseCopy: () => _showUseCopyDialog(context, filtered[i], viewModel),
-                  onExport: () => _exportTemplate(context, filtered[i], viewModel),
+                  onUseCopy: () => unawaited(_showUseCopyDialog(filtered[i], viewModel)),
+                  onExport: () => unawaited(_exportTemplate(filtered[i], viewModel)),
                 ),
               ),
             ),
@@ -329,54 +327,44 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
     );
   }
 
-  Widget _buildFab(BuildContext context, AppColorsExtension C) {
-    return FilledButton.icon(
-      onPressed: () => _activeTab == 0
-          ? _showCreateCampaignDialog(context)
-          : _showCreateTemplateDialog(context),
-      icon: AppIcon(AppIconName.plus, size: 14, color: Colors.white),
-      label: Text(_activeTab == 0 ? 'Neue Kampagne' : 'Neue Vorlage'),
-      style: FilledButton.styleFrom(
-        backgroundColor: C.accent,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
+  Widget _buildFab(BuildContext context, AppColorsExtension C) => FilledButton.icon(
+        onPressed: () => _activeTab == 0
+            ? _showCreateCampaignDialog(context)
+            : _showCreateTemplateDialog(context),
+        icon: const AppIcon(AppIconName.plus, size: 14, color: Colors.white),
+        label: Text(_activeTab == 0 ? 'Neue Kampagne' : 'Neue Vorlage'),
+        style: FilledButton.styleFrom(
+          backgroundColor: C.accent,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+      );
 
   void _editCampaign(BuildContext context, Campaign campaign) {
     CampaignEditModal.show(context, campaign: campaign);
   }
 
-  Future<void> _duplicateCampaign(
-    BuildContext context,
-    Campaign campaign,
-    CampaignViewModel viewModel,
-  ) async {
+  Future<void> _duplicateCampaign(Campaign campaign, CampaignViewModel viewModel) async {
     try {
       await viewModel.duplicateCampaign(campaign);
-      if (context.mounted) {
+      if (mounted) {
         SnackBarHelper.showSuccess(context, 'Kampagne dupliziert');
       }
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         SnackBarHelper.showError(context, 'Fehler beim Duplizieren: $e');
       }
     }
   }
 
-  Future<void> _toggleFavorite(
-    BuildContext context,
-    Campaign campaign,
-    CampaignViewModel viewModel,
-  ) async {
+  Future<void> _toggleFavorite(Campaign campaign, CampaignViewModel viewModel) async {
     try {
       await viewModel.updateCampaign(
         campaign.copyWith(isFavorite: !campaign.isFavorite),
       );
-      if (context.mounted) {
+      if (mounted) {
         SnackBarHelper.showInfo(
           context,
           campaign.isFavorite
@@ -385,20 +373,24 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
         );
       }
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         SnackBarHelper.showError(context, 'Fehler beim Aktualisieren: $e');
       }
     }
   }
 
-  void _navigateToCampaign(BuildContext context, Campaign campaign) async {
-    final viewModel = context.read<CampaignViewModel>();
-    await viewModel.selectCampaign(campaign);
+  Future<void> _navigateToCampaign(Campaign campaign) async {
+    final vm = context.read<CampaignViewModel>();
+    await vm.selectCampaign(campaign);
     await CampaignModelRepository(DatabaseConnection.instance).updateLastOpenedAt(campaign.id);
-    if (!context.mounted) return;
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (context) => DmBuchScreen(campaign: campaign),
+    if (!mounted) {
+      return;
+    }
+    unawaited(
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (ctx) => DmBuchScreen(campaign: campaign),
+        ),
       ),
     );
   }
@@ -412,117 +404,156 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
   }
 
   Future<void> _showUseCopyDialog(
-    BuildContext context,
     Campaign template,
     CampaignViewModel viewModel,
   ) async {
     final C = context.appColors;
     final controller = TextEditingController(text: '${template.title} — Gruppe 1');
+    Campaign? createdCopy;
+    var isCreating = false;
 
-    final confirmed = await showDialog<bool>(
+    await showDialog<void>(
       context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: C.bgPanel,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-          side: BorderSide(color: C.border),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Kopie von "${template.title}" erstellen',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: C.text),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Wähle einen Namen für die neue Kampagne.',
-                style: TextStyle(fontSize: 12, color: C.textMid),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                autofocus: true,
-                style: TextStyle(fontSize: 13, color: C.text),
-                decoration: InputDecoration(
-                  hintText: 'Name der Kampagne',
-                  hintStyle: TextStyle(color: C.textSoft),
-                  filled: true,
-                  fillColor: C.bgHover,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: C.border),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: C.border),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: C.accent),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          Future<void> create() async {
+            final title = controller.text.trim();
+            if (title.isEmpty) {
+              return;
+            }
+            setDialogState(() => isCreating = true);
+            createdCopy = await viewModel.createCopyFromTemplate(template, title: title);
+            if (ctx.mounted) {
+              Navigator.of(ctx).pop();
+            }
+          }
+
+          return Dialog(
+            backgroundColor: C.bgPanel,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+              side: BorderSide(color: C.border),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(false),
-                    child: Text('Abbrechen', style: TextStyle(color: C.textMid)),
+                  Text(
+                    'Kopie von "${template.title}" erstellen',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: C.text),
                   ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: () => Navigator.of(ctx).pop(true),
-                    style: FilledButton.styleFrom(backgroundColor: C.accent),
-                    child: const Text('Kopie erstellen'),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Wähle einen Namen für die neue Kampagne.',
+                    style: TextStyle(fontSize: 12, color: C.textMid),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    enabled: !isCreating,
+                    style: TextStyle(fontSize: 13, color: C.text),
+                    decoration: InputDecoration(
+                      hintText: 'Name der Kampagne',
+                      hintStyle: TextStyle(color: C.textSoft),
+                      filled: true,
+                      fillColor: C.bgHover,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: C.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: C.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: C.accent),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: isCreating ? null : () => Navigator.of(ctx).pop(),
+                        child: Text('Abbrechen', style: TextStyle(color: C.textMid)),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: isCreating ? null : create,
+                        style: FilledButton.styleFrom(backgroundColor: C.accent),
+                        child: isCreating
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('Kopie erstellen'),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
 
-    if (!(confirmed ?? false) || !context.mounted) return;
-
-    final title = controller.text.trim();
-    if (title.isEmpty) return;
-
-    final copy = await viewModel.createCopyFromTemplate(template, title: title);
-    if (copy != null && context.mounted) {
+    if (!mounted) {
+      return;
+    }
+    if (createdCopy != null) {
       setState(() => _activeTab = 0);
-      SnackBarHelper.showSuccess(context, 'Kopie "${copy.title}" erstellt');
-    } else if (context.mounted) {
-      SnackBarHelper.showError(context, 'Fehler beim Erstellen der Kopie');
+      SnackBarHelper.showSuccess(context, 'Kopie "${createdCopy!.title}" erstellt');
+    } else if (viewModel.error != null) {
+      SnackBarHelper.showError(context, viewModel.error!);
     }
   }
 
-  Future<void> _exportTemplate(
-    BuildContext context,
-    Campaign template,
-    CampaignViewModel viewModel,
-  ) async {
+  Future<void> _exportTemplate(Campaign template, CampaignViewModel viewModel) async {
     final filePath = await viewModel.exportTemplate(template.id);
-    if (!context.mounted) return;
-    if (filePath != null) {
-      SnackBarHelper.showSuccess(context, 'Exportiert: $filePath');
-    } else {
-      SnackBarHelper.showError(context, 'Export fehlgeschlagen');
+    if (!mounted) {
+      return;
     }
+    if (filePath == null) {
+      // Fehler anzeigen; bei Abbruch (kein Error) schweigen
+      if (viewModel.error != null) {
+        SnackBarHelper.showError(context, viewModel.error!);
+      }
+      return;
+    }
+    final fileName = filePath.split(RegExp(r'[/\\]')).last;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Exportiert: $fileName'),
+        duration: const Duration(seconds: 6),
+        action: SnackBarAction(
+          label: Platform.isWindows ? 'Im Explorer öffnen' : 'Pfad kopieren',
+          onPressed: Platform.isWindows
+              ? () => unawaited(
+                    Process.run('explorer.exe', ['/select,${filePath.replaceAll('/', Platform.pathSeparator)}']),
+                  )
+              : () => unawaited(Clipboard.setData(ClipboardData(text: filePath))),
+        ),
+      ),
+    );
   }
 
-  Future<void> _importTemplate(
-    BuildContext context,
-    CampaignViewModel viewModel,
-  ) async {
+  Future<void> _importTemplate(CampaignViewModel viewModel) async {
     final campaign = await viewModel.importTemplate();
-    if (!context.mounted) return;
+    if (!mounted) {
+      return;
+    }
     if (campaign != null) {
       SnackBarHelper.showSuccess(context, 'Vorlage "${campaign.title}" importiert');
     } else {
@@ -530,11 +561,13 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
     }
   }
 
-  Future<void> _checkForUpdatesManually(BuildContext context) async {
+  Future<void> _checkForUpdatesManually() async {
     final viewModel = context.read<UpdateViewModel>();
     SnackBarHelper.showInfo(context, 'Prüfe auf Updates...');
     await viewModel.checkForUpdate(force: true);
-    if (!context.mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     if (viewModel.availableUpdate != null) {
       await showUpdateDialogIfNeeded(context, forceShow: true);
@@ -545,7 +578,7 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
     }
   }
 
-  void _showSearchDialog(BuildContext context) async {
+  Future<void> _showSearchDialog() async {
     final C = context.appColors;
     final viewModel = context.read<CampaignViewModel>();
 
@@ -595,8 +628,8 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
       ),
     );
 
-    if (selectedCampaign != null && context.mounted) {
-      _navigateToCampaign(context, selectedCampaign);
+    if (selectedCampaign != null && mounted) {
+      unawaited(_navigateToCampaign(selectedCampaign));
     }
   }
 }
@@ -622,30 +655,28 @@ class _HoverIconButtonState extends State<_HoverIconButton> {
   bool _hovered = false;
 
   @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            color: _hovered ? widget.C.bgHover : Colors.transparent,
-            border: Border.all(
-              color: _hovered ? widget.C.border : Colors.transparent,
+  Widget build(BuildContext context) => MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: _hovered ? widget.C.bgHover : Colors.transparent,
+              border: Border.all(
+                color: _hovered ? widget.C.border : Colors.transparent,
+              ),
+              borderRadius: BorderRadius.circular(7),
             ),
-            borderRadius: BorderRadius.circular(7),
-          ),
-          child: Center(
-            child: AppIcon(widget.icon, size: 14, color: widget.C.textMid),
+            child: Center(
+              child: AppIcon(widget.icon, size: 14, color: widget.C.textMid),
+            ),
           ),
         ),
-      ),
-    );
-  }
+      );
 }
 
 // ── TAB PILL ──────────────────────────────────────────────────────────────────

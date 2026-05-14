@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../models/campaign.dart';
-import '../../../utils/color_utils.dart';
 import '../../../theme/app_theme.dart';
+import '../../../utils/color_utils.dart';
 import '../../../viewmodels/campaign_viewmodel.dart';
 import '../../../widgets/ui_components/shared/app_icon.dart';
 import '../base/unified_card_base.dart';
@@ -46,8 +46,15 @@ class _CampaignCardContent extends StatefulWidget {
 
 class _CampaignCardContentState extends State<_CampaignCardContent> {
   bool _hovered = false;
+  bool _popupOpen = false;
 
   UnifiedCampaignCard get c => widget.card;
+
+  void _onPopupOpenState({required bool isOpen}) {
+    if (mounted) {
+      setState(() => _popupOpen = isOpen);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -129,14 +136,18 @@ class _CampaignCardContentState extends State<_CampaignCardContent> {
                           ),
                         ),
                         // Aktionen (bei Hover)
-                        if (_hovered) ...[
+                        if (_hovered || _popupOpen) ...[
                           _IconBtn(
                             C: C,
                             icon: AppIconName.edit,
                             onTap: c.onEdit,
                           ),
                           const SizedBox(width: 2),
-                          _PopupBtn(card: c, C: C),
+                          _PopupBtn(
+                            card: c,
+                            C: C,
+                            onOpenStateChanged: _onPopupOpenState,
+                          ),
                         ],
                       ],
                     ),
@@ -198,10 +209,15 @@ class _CampaignCardContentState extends State<_CampaignCardContent> {
 // ── POPUP MENU ────────────────────────────────────────────────────────────────
 
 class _PopupBtn extends StatelessWidget {
-  const _PopupBtn({required this.card, required this.C});
+  const _PopupBtn({
+    required this.card,
+    required this.C,
+    this.onOpenStateChanged,
+  });
 
   final UnifiedCampaignCard card;
   final AppColorsExtension C;
+  final void Function({required bool isOpen})? onOpenStateChanged;
 
   @override
   Widget build(BuildContext context) => PopupMenuButton<String>(
@@ -212,7 +228,12 @@ class _PopupBtn extends StatelessWidget {
           side: BorderSide(color: C.border),
         ),
         offset: const Offset(0, 30),
-        onSelected: (v) => _handle(context, v),
+        onOpened: () => onOpenStateChanged?.call(isOpen: true),
+        onSelected: (v) {
+          onOpenStateChanged?.call(isOpen: false);
+          _handle(context, v);
+        },
+        onCanceled: () => onOpenStateChanged?.call(isOpen: false),
         itemBuilder: (_) => [
           if (card.onUseCopy != null)
             _item('use_copy', AppIconName.copy, 'Als Kopie verwenden', C)

@@ -3591,7 +3591,7 @@ class _VerlaufsRowState extends State<_VerlaufsRow> {
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
-        onTap: () => widget.vm.selectVerlaufsEintrag(widget.eintrag),
+        onTap: () => widget.vm.selectVerlaufsEintragOnMap(widget.eintrag),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 100),
           margin: const EdgeInsets.only(bottom: 5),
@@ -4231,7 +4231,7 @@ class _VerlaufsGraphViewState extends State<_VerlaufsGraphView> {
         }
       }
     } else {
-      vm.selectVerlaufsEintrag(e);
+      await vm.selectVerlaufsEintragOnMap(e);
     }
   }
 
