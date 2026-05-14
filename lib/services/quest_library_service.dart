@@ -73,8 +73,7 @@ class QuestLibraryService {
         );
       }
 
-      final quest = Quest(
-        id: DateTime.now().millisecondsSinceEpoch,
+      final quest = Quest.create(
         title: title,
         description: description,
         questType: questType,
@@ -86,8 +85,6 @@ class QuestLibraryService {
         involvedNpcs: involvedNpcs,
         rewards: rewards,
         isFavorite: isFavorite,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
       );
 
       await _questRepository.create(quest);
@@ -149,7 +146,7 @@ class QuestLibraryService {
         );
       }
 
-      final exists = existingQuests.data!.any((q) => q.id.toString() == questId);
+      final exists = existingQuests.data!.any((q) => q.id == questId);
       if (!exists) {
         throw ResourceNotFoundException.forId(
           'Quest',
@@ -263,7 +260,7 @@ class QuestLibraryService {
       }
 
       final quest = allQuestsResult.data!.firstWhere(
-        (q) => q.id.toString() == questId,
+        (q) => q.id == questId,
         orElse: () => throw ResourceNotFoundException.forId(
           'Quest',
           questId,

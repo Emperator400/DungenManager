@@ -109,7 +109,7 @@ class QuestEntity extends BaseEntity {
     String? imageUrl,
   }) {
     return QuestEntity(
-      id: quest.id.toString(),
+      id: quest.id,
       title: quest.title,
       description: quest.description,
       status: quest.status,
@@ -322,7 +322,7 @@ class QuestEntity extends BaseEntity {
   /// Konvertierung zurück zum Quest Model
   Quest toModel() {
     return Quest(
-      id: int.tryParse(id) ?? 0,
+      id: id,
       title: title,
       description: description,
       status: status,
