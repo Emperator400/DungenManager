@@ -5,9 +5,15 @@ import 'dart:async';
 import '../models/campaign.dart';
 import '../models/ort.dart';
 import '../models/quest.dart';
+import '../models/session.dart';
+import '../models/scene.dart';
+import '../models/wiki_entry.dart';
 import '../database/repositories/campaign_model_repository.dart';
 import '../database/repositories/ort_model_repository.dart';
 import '../database/repositories/quest_model_repository.dart';
+import '../database/repositories/session_model_repository.dart';
+import '../database/repositories/scene_model_repository.dart';
+import '../database/repositories/wiki_entry_model_repository.dart';
 import '../database/core/database_connection.dart';
 import '../services/uuid_service.dart';
 import 'exceptions/service_exceptions.dart';
@@ -23,14 +29,22 @@ class CampaignService {
   final CampaignModelRepository _campaignRepository;
   final OrtModelRepository _ortRepository;
   final QuestModelRepository _questRepository;
-
+  final SessionModelRepository _sessionRepository;
+  final SceneModelRepository _sceneRepository;
+  final WikiEntryModelRepository _wikiRepository;
   CampaignService({
     CampaignModelRepository? campaignRepository,
     OrtModelRepository? ortRepository,
     QuestModelRepository? questRepository,
+    SessionModelRepository? sessionRepository,
+    SceneModelRepository? sceneRepository,
+    WikiEntryModelRepository? wikiRepository,
   })  : _campaignRepository = campaignRepository ?? CampaignModelRepository(DatabaseConnection.instance),
         _ortRepository = ortRepository ?? OrtModelRepository(DatabaseConnection.instance),
-        _questRepository = questRepository ?? QuestModelRepository(DatabaseConnection.instance);
+        _questRepository = questRepository ?? QuestModelRepository(DatabaseConnection.instance),
+        _sessionRepository = sessionRepository ?? SessionModelRepository(DatabaseConnection.instance),
+        _sceneRepository = sceneRepository ?? SceneModelRepository(DatabaseConnection.instance),
+        _wikiRepository = wikiRepository ?? WikiEntryModelRepository(DatabaseConnection.instance);
 
   // ========== CRUD OPERATIONS ==========
 
@@ -598,9 +612,108 @@ class CampaignService {
         );
       }
 
+      final idMap = <String, String>{}; // oldId → newId
+      final newCampaignId = UuidService().generateId();
       final now = DateTime.now();
+
+      // ── 1. WikiEntries ─────────────────────────────────────────────────────
+      // Phase A: IDs vergeben
+      final wikiEntries = await _wikiRepository.findByCampaign(template.id);
+      for (final w in wikiEntries) {
+        idMap[w.id] = UuidService().generateId();
+      }
+      // Phase B: speichern mit remappten parentId / childIds
+      final copiedWikiIds = <String>[];
+      for (final w in wikiEntries) {
+        final newId = idMap[w.id]!;
+        copiedWikiIds.add(newId);
+        await _wikiRepository.create(w.copyWith(
+          id: newId,
+          campaignId: newCampaignId,
+          parentId: w.parentId != null ? idMap[w.parentId!] : null,
+          childIds: _remapIds(w.childIds, idMap),
+          isFavorite: false,
+        ));
+      }
+
+      // ── 2. Quests ──────────────────────────────────────────────────────────
+      final quests = await _questRepository.findByCampaign(template.id);
+      for (final q in quests) {
+        idMap[q.id] = UuidService().generateId();
+      }
+      final copiedQuestIds = <String>[];
+      for (final q in quests) {
+        final newId = idMap[q.id]!;
+        copiedQuestIds.add(newId);
+        await _questRepository.create(q.copyWith(
+          id: newId,
+          campaignId: newCampaignId,
+          status: QuestStatus.active,
+          completedAt: null,
+          linkedWikiEntryIds: _remapIds(q.linkedWikiEntryIds, idMap),
+        ));
+      }
+
+      // ── 4. Orte (2 Phasen wegen connectedOrtIds + parentOrtId) ────────────
+      final orte = await _ortRepository.findByCampaign(template.id);
+      for (final o in orte) {
+        idMap[o.id] = UuidService().generateId();
+      }
+      for (final o in orte) {
+        await _ortRepository.create(o.copyWith(
+          id: idMap[o.id]!,
+          campaignId: newCampaignId,
+          templateOrtId: o.id,
+          connectedOrtIds: _remapIds(o.connectedOrtIds, idMap),
+          parentOrtId: o.parentOrtId != null ? idMap[o.parentOrtId!] : null,
+          lastVisitedAt: null,
+          memory: null,
+        ));
+      }
+
+      // ── 5. Sessions + Scenes ───────────────────────────────────────────────
+      final sessions = await _sessionRepository.findByCampaign(template.id);
+      for (final s in sessions) {
+        idMap[s.id] = UuidService().generateId();
+      }
+      final copiedSessionIds = <String>[];
+      for (final s in sessions) {
+        final newSessionId = idMap[s.id]!;
+        copiedSessionIds.add(newSessionId);
+
+        final scenes = await _sceneRepository.findBySession(s.id);
+        for (final sc in scenes) {
+          idMap[sc.id] = UuidService().generateId();
+        }
+        final copiedSceneIds = <String>[];
+        for (final sc in scenes) {
+          final newSceneId = idMap[sc.id]!;
+          copiedSceneIds.add(newSceneId);
+          await _sceneRepository.create(sc.copyWith(
+            id: newSceneId,
+            sessionId: newSessionId,
+            linkedQuestIds: _remapIds(sc.linkedQuestIds, idMap),
+            linkedWikiEntryIds: _remapIds(sc.linkedWikiEntryIds, idMap),
+            linkedEncounterId: null,    // Encounters werden nicht kopiert
+            linkedCharacterIds: [],     // Helden werden neu hinzugefügt
+          ));
+        }
+
+        await _sessionRepository.create(s.copyWith(
+          id: newSessionId,
+          campaignId: newCampaignId,
+          sceneIds: copiedSceneIds,
+          activeSceneId: null,
+          characterTrackingIds: [],
+          questProgressIds: [],
+          startedAt: null,
+          completedAt: null,
+        ));
+      }
+
+      // ── 6. Campaign erstellen ──────────────────────────────────────────────
       final copy = await _campaignRepository.create(Campaign(
-        id: UuidService().generateId(),
+        id: newCampaignId,
         title: title,
         description: template.description,
         status: CampaignStatus.planning,
@@ -612,43 +725,22 @@ class CampaignService {
         system: template.system,
         isTemplate: false,
         templateId: template.id,
+        sessionIds: copiedSessionIds,
+        questIds: copiedQuestIds,
+        wikiEntryIds: copiedWikiIds,
+        verlaufsplan: template.verlaufsplan,
+        verlaufsKarteImagePath: template.verlaufsKarteImagePath,
+        karteImagePath: template.karteImagePath,
       ));
-
-      // Orte kopieren
-      final orte = await _ortRepository.findByCampaign(template.id);
-      for (final ort in orte) {
-        await _ortRepository.create(Ort.create(
-          campaignId: copy.id,
-          name: ort.name,
-          type: ort.type,
-          description: ort.description,
-          sortOrder: ort.sortOrder,
-          templateOrtId: ort.id,
-        ));
-      }
-
-      // Quests kopieren
-      final quests = await _questRepository.findByCampaign(template.id);
-      for (final quest in quests) {
-        await _questRepository.create(Quest.create(
-          campaignId: copy.id,
-          title: quest.title,
-          description: quest.description,
-          status: QuestStatus.active,
-          questType: quest.questType,
-          difficulty: quest.difficulty,
-          location: quest.location,
-          recommendedLevel: quest.recommendedLevel,
-          estimatedDurationHours: quest.estimatedDurationHours,
-          tags: List<String>.from(quest.tags),
-          rewards: List.from(quest.rewards),
-          involvedNpcs: List<String>.from(quest.involvedNpcs),
-        ));
-      }
 
       return copy;
     });
   }
+
+  /// Hilfsmethode: remappt eine Liste von IDs anhand der idMap.
+  /// IDs die nicht in der Map sind bleiben unverändert.
+  List<String> _remapIds(List<String> ids, Map<String, String> idMap) =>
+      ids.map((id) => idMap[id] ?? id).toList();
 
   // ========== PRIVATE HELPER METHODS ==========
 

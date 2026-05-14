@@ -2,6 +2,8 @@
 import 'package:flutter/foundation.dart';
 import '../models/campaign.dart';
 import '../services/uuid_service.dart';
+import '../services/campaign_service.dart';
+import '../services/campaign_template_export_import_service.dart';
 import '../database/repositories/campaign_model_repository.dart';
 import '../database/repositories/player_character_model_repository.dart';
 
@@ -29,13 +31,19 @@ enum CampaignSortOption {
 class CampaignViewModel extends ChangeNotifier {
   final CampaignModelRepository? _campaignRepo;
   final PlayerCharacterModelRepository? _characterRepo;
+  final CampaignService _campaignService;
+  final CampaignTemplateExportImportService _exportImportService;
 
   CampaignViewModel({
     CampaignModelRepository? campaignRepo,
     PlayerCharacterModelRepository? characterRepo,
+    CampaignService? campaignService,
+    CampaignTemplateExportImportService? exportImportService,
   }) : _campaignRepo = campaignRepo,
-       _characterRepo = characterRepo {
-    debugPrint('🏗️ [CampaignViewModel] Konstruktor aufgerufen');
+       _characterRepo = characterRepo,
+       _campaignService = campaignService ?? CampaignService(),
+       _exportImportService = exportImportService ?? CampaignTemplateExportImportService() {
+    debugPrint('[CampaignViewModel] Konstruktor aufgerufen');
   }
 
   // State
@@ -357,7 +365,7 @@ class CampaignViewModel extends ChangeNotifier {
     }
   }
 
-  /// Erstellt eine Kopie aus einer Vorlage
+  /// Erstellt eine vollständige Kopie aus einer Vorlage (Deep-Copy mit ID-Remapping).
   Future<Campaign?> createCopyFromTemplate(
     Campaign template, {
     required String title,
@@ -365,29 +373,61 @@ class CampaignViewModel extends ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
-      if (_campaignRepo == null) throw Exception('CampaignModelRepository nicht verfügbar');
-      final now = DateTime.now();
-      final copy = Campaign(
-        id: UuidService().generateId(),
-        title: title,
-        description: template.description,
-        status: CampaignStatus.planning,
-        type: template.type,
-        createdAt: now,
-        updatedAt: now,
-        settings: template.settings,
-        accentColor: template.accentColor,
-        system: template.system,
-        isTemplate: false,
-        templateId: template.id,
-      );
-      final saved = await _campaignRepo!.create(copy);
-      _campaigns.insert(0, saved);
+      final result = await _campaignService.createCopyFromTemplate(template, title: title);
+      if (!result.isSuccess || result.data == null) {
+        _setError(result.errorMessage ?? 'Fehler beim Kopieren der Vorlage');
+        return null;
+      }
+      final copy = result.data!;
+      _campaigns.insert(0, copy);
       _invalidateFilteredCache();
       notifyListeners();
-      return saved;
+      return copy;
     } catch (e) {
       _setError('Fehler beim Kopieren der Vorlage: $e');
+      return null;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Exportiert eine Vorlage als .campaign.json-Datei.
+  /// Gibt den Dateipfad zurück, den die UI für einen Share-Dialog nutzen kann.
+  Future<String?> exportTemplate(String campaignId) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final result = await _exportImportService.exportTemplate(campaignId);
+      if (!result.isSuccess) {
+        _setError(result.errorMessage ?? 'Export fehlgeschlagen');
+        return null;
+      }
+      return result.data;
+    } catch (e) {
+      _setError('Export fehlgeschlagen: $e');
+      return null;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Importiert eine Vorlage aus einer .campaign.json-Datei (öffnet Datei-Picker).
+  Future<Campaign?> importTemplate() async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final result = await _exportImportService.importTemplate();
+      if (!result.isSuccess || result.data == null) {
+        _setError(result.errorMessage ?? 'Import fehlgeschlagen');
+        return null;
+      }
+      final imported = result.data!;
+      _campaigns.insert(0, imported);
+      _invalidateFilteredCache();
+      notifyListeners();
+      return imported;
+    } catch (e) {
+      _setError('Import fehlgeschlagen: $e');
       return null;
     } finally {
       _setLoading(false);
