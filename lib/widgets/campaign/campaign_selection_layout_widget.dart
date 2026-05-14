@@ -533,7 +533,7 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
   Future<void> _checkForUpdatesManually(BuildContext context) async {
     final viewModel = context.read<UpdateViewModel>();
     SnackBarHelper.showInfo(context, 'Prüfe auf Updates...');
-    await viewModel.checkForUpdate();
+    await viewModel.checkForUpdate(force: true);
     if (!context.mounted) return;
 
     if (viewModel.availableUpdate != null) {

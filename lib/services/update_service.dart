@@ -1,14 +1,14 @@
 /// Update Service für automatische Updates von GitHub Releases
-/// 
+///
 /// Unterstützt Windows und Linux mit automatischem Download und Entpacken.
 library;
 
-import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:archive/archive.dart';
+import 'package:archive/archive_io.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
@@ -22,14 +22,10 @@ class GitHubConfig {
   static const String owner = 'Emperator400';
   static const String repo = 'DungenManager';
   static const String baseUrl = 'https://api.github.com';
-  
+
   /// API URL für neuestes Release
-  static String get latestReleaseUrl => 
+  static String get latestReleaseUrl =>
       '$baseUrl/repos/$owner/$repo/releases/latest';
-  
-  /// API URL für alle Releases
-  static String get allReleasesUrl => 
-      '$baseUrl/repos/$owner/$repo/releases';
 }
 
 /// Status des Update-Prozesses
@@ -68,11 +64,9 @@ class UpdateService {
   String _currentVersionString = '0.0.0';
   bool _versionLoaded = false;
 
-  /// Status-Controller für UI-Updates
   final _statusController = StreamController<UpdateStatus>.broadcast();
   Stream<UpdateStatus> get statusStream => _statusController.stream;
-  
-  /// Progress-Controller für Download-Fortschritt (0.0 - 1.0)
+
   final _progressController = StreamController<double>.broadcast();
   Stream<double> get progressStream => _progressController.stream;
 
@@ -83,20 +77,22 @@ class UpdateService {
   String? _extractedPath;
   String? _lastError;
 
-  // Download-Fortschritt in Bytes
   int _downloadedBytes = 0;
   int _totalBytes = 0;
   int get downloadedBytes => _downloadedBytes;
   int get totalBytes => _totalBytes;
 
-  /// Gibt die aktuelle App-Version zurück (nach erstem checkForUpdate() verfügbar)
+  // Stall-detection: snapshot of _downloadedBytes from last watchdog tick
+  int _stallSnapshot = 0;
+  Timer? _stallWatchdog;
+
   AppVersion get currentVersion => AppVersion(
-    version: _currentVersionString,
-    tagName: 'v$_currentVersionString',
-    releaseNotes: '',
-    downloadUrl: '',
-    publishedAt: DateTime.now(),
-  );
+        version: _currentVersionString,
+        tagName: 'v$_currentVersionString',
+        releaseNotes: '',
+        downloadUrl: '',
+        publishedAt: DateTime.now(),
+      );
 
   Future<void> _ensureVersionLoaded() async {
     if (_versionLoaded) return;
@@ -105,73 +101,109 @@ class UpdateService {
     _versionLoaded = true;
   }
 
-  /// Setzt den Status und benachrichtigt Listener
   void _setStatus(UpdateStatus status) {
     _currentStatus = status;
     _statusController.add(status);
   }
 
-  /// Setzt den Fortschritt und benachrichtigt Listener
   void _setProgress(double progress) {
     _progressController.add(progress);
   }
 
-  /// Prüft auf GitHub ob eine neue Version verfügbar ist
-  Future<UpdateCheckResult> checkForUpdate() async {
+  // ── Error messages ──────────────────────────────────────────────────────────
+
+  String _friendlyError(Object e) {
+    final msg = e.toString().toLowerCase();
+    if (msg.contains('timeout')) {
+      return 'Verbindungs-Timeout — bitte Internetverbindung prüfen';
+    }
+    if (msg.contains('socketexception') || msg.contains('no address')) {
+      return 'Keine Internetverbindung';
+    }
+    if (msg.contains('403')) {
+      return 'GitHub API Rate-Limit erreicht — bitte später erneut versuchen';
+    }
+    if (msg.contains('404')) {
+      return 'Release nicht gefunden';
+    }
+    if (msg.contains('http ')) {
+      return 'Server-Fehler — bitte später erneut versuchen';
+    }
+    if (msg.contains('filesystemexception') || msg.contains('permission')) {
+      return 'Dateizugriff verweigert — bitte App-Berechtigungen prüfen';
+    }
+    if (msg.contains('cancelled') || msg.contains('canceled')) {
+      return 'Download abgebrochen';
+    }
+    return 'Unbekannter Fehler — bitte später erneut versuchen';
+  }
+
+  // ── Update-Check ────────────────────────────────────────────────────────────
+
+  /// Prüft auf GitHub ob eine neue Version verfügbar ist.
+  ///
+  /// [includePrereleases]: wenn false (Standard), werden Pre-Releases ignoriert.
+  Future<UpdateCheckResult> checkForUpdate({bool includePrereleases = false}) async {
     await _ensureVersionLoaded();
     _setStatus(UpdateStatus.checking);
     _lastError = null;
 
     try {
-      final response = await http.get(
-        Uri.parse(GitHubConfig.latestReleaseUrl),
-        headers: {
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'DungenManager-Update-Check',
-        },
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .get(
+            Uri.parse(GitHubConfig.latestReleaseUrl),
+            headers: {
+              'Accept': 'application/vnd.github.v3+json',
+              'User-Agent': 'DungenManager-Update-Check',
+            },
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode != 200) {
-        throw Exception('GitHub API Fehler: ${response.statusCode}');
+        throw Exception('HTTP ${response.statusCode}');
       }
 
       final data = json.decode(response.body) as Map<String, dynamic>;
       final latestVersion = _parseGitHubRelease(data);
 
       if (latestVersion == null) {
-        throw Exception('Konnte Release-Informationen nicht parsen');
+        throw Exception('Release-Informationen konnten nicht gelesen werden');
+      }
+
+      // Pre-Release-Filter
+      if (!includePrereleases && latestVersion.isPrerelease) {
+        _setStatus(UpdateStatus.noUpdate);
+        return UpdateCheckResult(
+          hasUpdate: false,
+          latestVersion: latestVersion,
+          currentVersion: currentVersion,
+        );
       }
 
       final hasUpdate = currentVersion.isOlderThan(latestVersion);
-      
       _setStatus(hasUpdate ? UpdateStatus.updateAvailable : UpdateStatus.noUpdate);
-      
+
       return UpdateCheckResult(
         hasUpdate: hasUpdate,
         latestVersion: latestVersion,
         currentVersion: currentVersion,
       );
     } catch (e) {
-      _lastError = e.toString();
+      _lastError = _friendlyError(e);
       _setStatus(UpdateStatus.error);
-      return UpdateCheckResult(
-        hasUpdate: false,
-        errorMessage: e.toString(),
-      );
+      return UpdateCheckResult(hasUpdate: false, errorMessage: _lastError);
     }
   }
 
-  /// Parst ein GitHub Release JSON in ein AppVersion Objekt
   AppVersion? _parseGitHubRelease(Map<String, dynamic> data) {
     try {
       final tagName = data['tag_name'] as String;
       final version = AppVersion.parseVersionFromTag(tagName);
       final body = data['body'] as String? ?? '';
-      
-      // Finde die passende Download-URL für die aktuelle Plattform
+
       final assets = data['assets'] as List<dynamic>;
       String? downloadUrl;
-      
+
       final platformSuffix = _getPlatformAssetSuffix();
       for (final asset in assets) {
         final name = (asset['name'] as String).toLowerCase();
@@ -182,8 +214,7 @@ class UpdateService {
       }
 
       if (downloadUrl == null) {
-        debugPrint('⚠️ Kein passendes Asset für Plattform gefunden: $platformSuffix');
-        // Fallback: Nimm das erste ZIP
+        debugPrint('⚠️ Kein passendes Asset für Plattform: $platformSuffix — versuche erstes ZIP');
         for (final asset in assets) {
           final name = (asset['name'] as String).toLowerCase();
           if (name.endsWith('.zip')) {
@@ -207,19 +238,19 @@ class UpdateService {
     }
   }
 
-  /// Gibt den Asset-Suffix für die aktuelle Plattform zurück
   String _getPlatformAssetSuffix() {
-    if (Platform.isWindows) {
-      return 'windows';
-    } else if (Platform.isLinux) {
-      return 'linux';
-    } else if (Platform.isMacOS) {
-      return 'macos';
-    }
+    if (Platform.isWindows) return 'windows';
+    if (Platform.isLinux) return 'linux';
+    if (Platform.isMacOS) return 'macos';
     return 'unknown';
   }
 
-  /// Lädt das Update herunter
+  // ── Download ────────────────────────────────────────────────────────────────
+
+  /// Lädt das Update herunter.
+  ///
+  /// Ein Watchdog-Timer bricht den Download ab wenn 45 Sekunden lang kein
+  /// Fortschritt messbar ist (z.B. bei getrennter Verbindung).
   Future<String?> downloadUpdate(AppVersion version) async {
     if (version.downloadUrl.isEmpty) {
       _lastError = 'Keine Download-URL verfügbar';
@@ -231,12 +262,14 @@ class UpdateService {
     _setProgress(0.0);
     _downloadedBytes = 0;
     _totalBytes = 0;
+    _stallSnapshot = 0;
 
-    // Alten Client abbrechen falls noch aktiv
     _httpClient?.close();
     _httpClient = http.Client();
+    _startStallWatchdog();
 
     IOSink? sink;
+    File? zipFile;
     try {
       final appDir = await getApplicationDocumentsDirectory();
       final updateDir = Directory(p.join(appDir.path, 'DungenManager', 'updates'));
@@ -246,24 +279,21 @@ class UpdateService {
 
       final fileName = 'dungen_manager_${version.tagName}.zip';
       final filePath = p.join(updateDir.path, fileName);
-      final file = File(filePath);
+      zipFile = File(filePath);
 
       final request = http.Request('GET', Uri.parse(version.downloadUrl));
-      final response = await _httpClient!
-          .send(request)
-          .timeout(const Duration(seconds: 30), onTimeout: () {
-        throw Exception('Verbindungs-Timeout — Server antwortet nicht');
-      });
+      final response = await _httpClient!.send(request).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () => throw Exception('Verbindungs-Timeout'),
+      );
 
       if (response.statusCode != 200) {
-        throw Exception('Download fehlgeschlagen: HTTP ${response.statusCode}');
+        throw Exception('HTTP ${response.statusCode}');
       }
 
       _totalBytes = response.contentLength ?? 0;
+      sink = zipFile.openWrite();
 
-      sink = file.openWrite();
-
-      // await for propagiert Netzwerkfehler korrekt (listen().asFuture() tut das nicht)
       await for (final chunk in response.stream) {
         sink.add(chunk);
         _downloadedBytes += chunk.length;
@@ -274,12 +304,20 @@ class UpdateService {
 
       await sink.close();
       sink = null;
+      _cancelStallWatchdog();
 
       _setStatus(UpdateStatus.extracting);
       _setProgress(0.0);
 
-      final extractedPath = await _extractUpdate(file);
+      final extractedPath = await _extractUpdate(zipFile);
+
+      // ZIP nach erfolgreichem Entpacken löschen
       if (extractedPath != null) {
+        try {
+          await zipFile.delete();
+        } catch (e) {
+          debugPrint('⚠️ ZIP konnte nicht gelöscht werden: $e');
+        }
         _extractedPath = extractedPath;
         _setStatus(UpdateStatus.ready);
         return extractedPath;
@@ -288,7 +326,12 @@ class UpdateService {
       return null;
     } catch (e) {
       await sink?.close();
-      _lastError = e.toString();
+      _cancelStallWatchdog();
+      // Unvollständige ZIP löschen
+      try {
+        if (zipFile != null && await zipFile.exists()) await zipFile.delete();
+      } catch (_) {}
+      _lastError = _friendlyError(e);
       _setStatus(UpdateStatus.error);
       return null;
     } finally {
@@ -297,33 +340,66 @@ class UpdateService {
     }
   }
 
-  /// Entpackt das heruntergeladene ZIP-Archiv
+  void _startStallWatchdog() {
+    _stallWatchdog?.cancel();
+    _stallSnapshot = _downloadedBytes;
+    _stallWatchdog = Timer.periodic(const Duration(seconds: 45), (t) {
+      if (_currentStatus != UpdateStatus.downloading) {
+        t.cancel();
+        return;
+      }
+      if (_downloadedBytes == _stallSnapshot) {
+        debugPrint('⚠️ Download-Stall erkannt — breche ab');
+        t.cancel();
+        // Schließt den HTTP-Client → stream wirft eine Exception
+        _httpClient?.close();
+      } else {
+        _stallSnapshot = _downloadedBytes;
+      }
+    });
+  }
+
+  void _cancelStallWatchdog() {
+    _stallWatchdog?.cancel();
+    _stallWatchdog = null;
+  }
+
+  /// Bricht einen laufenden Download sofort ab.
+  void cancelDownload() {
+    _cancelStallWatchdog();
+    _httpClient?.close();
+    _httpClient = null;
+    _setStatus(UpdateStatus.idle);
+    _setProgress(0.0);
+    _downloadedBytes = 0;
+    _totalBytes = 0;
+  }
+
+  // ── Extraktion ──────────────────────────────────────────────────────────────
+
+  /// Entpackt das heruntergeladene ZIP-Archiv (streaming, ohne RAM-Spike).
   Future<String?> _extractUpdate(File zipFile) async {
     try {
       final appDir = await getApplicationDocumentsDirectory();
-      final extractDir = Directory(p.join(
-        appDir.path, 
-        'DungenManager', 
-        'updates', 
-        'extracted'
-      ));
-      
-      // Alte extrahierte Dateien löschen
+      final extractDir = Directory(
+        p.join(appDir.path, 'DungenManager', 'updates', 'extracted'),
+      );
+
       if (await extractDir.exists()) {
         await extractDir.delete(recursive: true);
       }
       await extractDir.create(recursive: true);
 
-      // ZIP entpacken
-      final bytes = await zipFile.readAsBytes();
-      final archive = ZipDecoder().decodeBytes(bytes);
+      // InputFileStream liest das ZIP vom Disk in Chunks — kein vollständiges
+      // Einlesen in den Heap wie bei readAsBytes().
+      final inputStream = InputFileStream(zipFile.path);
+      final archive = ZipDecoder().decodeBuffer(inputStream);
 
-      var extractedFiles = 0;
-      final totalFiles = archive.length;
+      var extracted = 0;
+      final total = archive.length;
 
       for (final file in archive) {
         final filePath = p.join(extractDir.path, file.name);
-        
         if (file.isFile) {
           final outFile = File(filePath);
           await outFile.parent.create(recursive: true);
@@ -331,25 +407,27 @@ class UpdateService {
         } else {
           await Directory(filePath).create(recursive: true);
         }
-
-        extractedFiles++;
-        _setProgress(extractedFiles / totalFiles);
+        extracted++;
+        _setProgress(extracted / total);
       }
 
+      await inputStream.close();
       debugPrint('✅ Update entpackt nach: ${extractDir.path}');
       return extractDir.path;
     } catch (e) {
       debugPrint('❌ Fehler beim Entpacken: $e');
-      _lastError = e.toString();
+      _lastError = _friendlyError(e);
       _setStatus(UpdateStatus.error);
       return null;
     }
   }
 
-  /// Installiert das Update und startet die App automatisch neu (nur Windows)
+  // ── Installation ────────────────────────────────────────────────────────────
+
+  /// Installiert das Update und startet die App neu (nur Windows).
   ///
-  /// Erstellt ein temporäres PowerShell-Skript, das nach dem App-Exit
-  /// die neuen Dateien in das Installationsverzeichnis kopiert und die App neu startet.
+  /// Erstellt ein PowerShell-Skript das nach dem App-Exit die Dateien kopiert
+  /// und die App neu startet.
   Future<bool> applyUpdateAndRestart() async {
     if (_extractedPath == null) {
       _lastError = 'Kein entpacktes Update gefunden';
@@ -372,27 +450,26 @@ class UpdateService {
       final tempDir = await getTemporaryDirectory();
       final scriptPath = p.join(tempDir.path, 'dungenmanager_update.ps1');
 
-      // Single-Quotes in Pfaden escapen (PowerShell: '' = literales ').
-      // PS-Single-Quoted-Strings interpolieren keine Variablen/Sonderzeichen
-      // → sicher für Pfade mit Leerzeichen, $, Backticks, etc.
+      // Single-Quotes escapen (PowerShell: '' = literales ')
       final sqSource = "'${extractedPath.replaceAll("'", "''")}'";
       final sqTarget = "'${installDir.replaceAll("'", "''")}'";
-      final sqExe    = "'${exeName.replaceAll("'", "''")}'";
+      final sqExe = "'${exeName.replaceAll("'", "''")}'";
 
-      // PowerShell-Skript: wartet auf App-Exit, kopiert Dateien, startet neu.
-      // Fehler werden in eine Log-Datei geschrieben statt still ignoriert.
       final script = r'''
 $logFile = "$env:TEMP\dungenmanager_update_log.txt"
 try {
   Start-Sleep -Seconds 5
 
-  $sourceDir = ''' + sqSource + r'''
-  $targetDir = ''' + sqTarget + r'''
-  $exeName   = ''' + sqExe + r'''
+  $sourceDir = ''' +
+          sqSource +
+          r'''
+  $targetDir = ''' +
+          sqTarget +
+          r'''
+  $exeName   = ''' +
+          sqExe +
+          r'''
 
-  # Nur in Unterordner wechseln wenn die oberste Ebene ausschließlich einen
-  # Ordner enthält (ZIP-Wrapper-Struktur). Bei gemischtem Inhalt (Dateien + Ordner
-  # auf oberster Ebene, z.B. Flutter-Build) bleibt sourceDir unverändert.
   $topFiles = Get-ChildItem -Path "$sourceDir" -File -ErrorAction SilentlyContinue
   $subDirs  = Get-ChildItem -Path "$sourceDir" -Directory -ErrorAction SilentlyContinue
   if ($subDirs.Count -eq 1 -and $topFiles.Count -eq 0) {
@@ -421,27 +498,22 @@ try {
         mode: ProcessStartMode.detached,
       );
 
-      // App beenden — das Skript übernimmt
       exit(0);
     } catch (e) {
-      _lastError = 'Fehler beim Installieren: $e';
+      _lastError = 'Fehler beim Installieren: ${_friendlyError(e)}';
       _setStatus(UpdateStatus.error);
       debugPrint('❌ Fehler beim Anwenden des Updates: $e');
       return false;
     }
   }
 
-  /// Öffnet das extrahierte Verzeichnis im Dateimanager
-  Future<bool> openExtractedFolder() async {
-    if (_extractedPath == null) {
-      return false;
-    }
+  // ── Hilfsmethoden ───────────────────────────────────────────────────────────
 
+  Future<bool> openExtractedFolder() async {
+    if (_extractedPath == null) return false;
     try {
       final uri = Uri.file(_extractedPath!);
-      if (await canLaunchUrl(uri)) {
-        return await launchUrl(uri);
-      }
+      if (await canLaunchUrl(uri)) return await launchUrl(uri);
       return false;
     } catch (e) {
       debugPrint('❌ Fehler beim Öffnen des Ordners: $e');
@@ -449,7 +521,6 @@ try {
     }
   }
 
-  /// Öffnet die GitHub Releases Seite im Browser
   Future<bool> openReleasesPage() async {
     const url = 'https://github.com/${GitHubConfig.owner}/${GitHubConfig.repo}/releases';
     try {
@@ -464,20 +535,16 @@ try {
     }
   }
 
-  /// Gibt den letzten Fehler zurück
   String? get lastError => _lastError;
-
-  /// Gibt den Pfad der extrahierten Dateien zurück
   String? get extractedPath => _extractedPath;
 
-  /// Setzt den Service zurück
   void reset() {
+    _cancelStallWatchdog();
     _setStatus(UpdateStatus.idle);
     _setProgress(0.0);
     _lastError = null;
   }
 
-  /// Bereinigt temporäre Update-Dateien
   Future<void> cleanup() async {
     try {
       final appDir = await getApplicationDocumentsDirectory();
@@ -491,8 +558,8 @@ try {
     }
   }
 
-  /// Dispose
   void dispose() {
+    _cancelStallWatchdog();
     _statusController.close();
     _progressController.close();
   }
