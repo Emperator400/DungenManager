@@ -131,6 +131,6 @@ lib/
 
 ## Lizenz
 
-© 2024–2025 Emperator400. Alle Rechte vorbehalten.
+© 2024–2026 Emperator400. Alle Rechte vorbehalten.
 
 Dieser Quellcode ist öffentlich einsehbar, aber **nicht zur Nutzung, Kopie, Modifikation oder Weiterverbreitung freigegeben** ohne ausdrückliche schriftliche Genehmigung des Autors.
