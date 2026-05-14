@@ -73,7 +73,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                     _buildProgress(C, vm)
                   else ...[
                     if (vm.hasError && vm.errorMessage != null) _buildError(C, vm),
-                    if (vm.isReady) _buildSuccess(C),
+                    if (vm.isReady) _buildSuccess(C, vm),
                     _buildReleaseNotes(C, vm),
                   ],
                 ],
@@ -222,25 +222,40 @@ class _UpdateDialogState extends State<UpdateDialog> {
         ),
       );
 
-  Widget _buildSuccess(AppColorsExtension C) => Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: C.greenSoft,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: C.green.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.check_circle_outline, color: C.green, size: 16),
-            const SizedBox(width: 8),
+  Widget _buildSuccess(AppColorsExtension C, UpdateViewModel vm) {
+    final isWindows = vm.isWindows;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: C.greenSoft,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: C.green.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.check_circle_outline, color: C.green, size: 16),
+              const SizedBox(width: 8),
+              Text(
+                'Update heruntergeladen und entpackt!',
+                style: TextStyle(fontSize: 12, color: C.green),
+              ),
+            ],
+          ),
+          if (!isWindows) ...[
+            const SizedBox(height: 6),
             Text(
-              'Update heruntergeladen und entpackt!',
-              style: TextStyle(fontSize: 12, color: C.green),
+              'Öffne den Ordner und kopiere die Dateien manuell in das App-Verzeichnis.',
+              style: TextStyle(fontSize: 11, color: C.textMid),
             ),
           ],
-        ),
-      );
+        ],
+      ),
+    );
+  }
 
   Widget _buildReleaseNotes(AppColorsExtension C, UpdateViewModel vm) {
     final update = vm.availableUpdate!;
@@ -323,21 +338,56 @@ class _UpdateDialogState extends State<UpdateDialog> {
   }
 
   Widget _buildActions(AppColorsExtension C, UpdateViewModel vm) {
-    if (vm.isDownloading || vm.isExtracting || vm.isBackingUp) {
+    // Laufender Prozess: Cancel-Button (außer beim Backup, das kurz ist)
+    if (vm.isDownloading || vm.isExtracting) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          _btn(
+            C,
+            'Abbrechen',
+            C.textSoft,
+            vm.isDownloading ? () => vm.cancelDownload() : null,
+            filled: false,
+          ),
+        ],
+      );
+    }
+
+    if (vm.isBackingUp) {
       return _btn(C, 'Bitte warten...', C.textSoft, null, filled: false);
     }
 
     if (vm.isReady) {
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          _btn(C, 'Später', C.textSoft, () => Navigator.of(context).pop(false), filled: false),
-          const SizedBox(width: 8),
-          _btn(C, 'Installieren & Neu starten', Colors.white,
+      // Auf Windows: automatische Installation möglich.
+      // Auf Linux/macOS: Nutzer muss die Dateien manuell kopieren.
+      if (vm.isWindows) {
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            _btn(C, 'Später', C.textSoft, () => Navigator.of(context).pop(false), filled: false),
+            const SizedBox(width: 8),
+            _btn(
+              C, 'Installieren & Neu starten', Colors.white,
               () => _confirmAndInstall(context, vm),
-              icon: Icons.restart_alt, bgColor: C.green),
-        ],
-      );
+              icon: Icons.restart_alt, bgColor: C.green,
+            ),
+          ],
+        );
+      } else {
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            _btn(C, 'Schließen', C.textSoft, () => Navigator.of(context).pop(false), filled: false),
+            const SizedBox(width: 8),
+            _btn(
+              C, 'Ordner öffnen', Colors.white,
+              () => vm.openExtractedFolder(),
+              icon: Icons.folder_open_outlined, bgColor: C.accent,
+            ),
+          ],
+        );
+      }
     }
 
     if (vm.hasError) {
