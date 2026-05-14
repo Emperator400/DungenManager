@@ -87,9 +87,16 @@ class QuestLibraryViewModel extends ChangeNotifier {
     _campaignId = campaignId;
     await _performAsyncOperation(() async {
       if (_questRepository != null) {
-        final linked = await _questRepository!.findByCampaign(campaignId);
-        _linkedQuestIds = linked.map((q) => q.id).toSet();
-        _allQuests = await _questRepository!.findAll();
+        // Kopien die bereits in der Kampagne existieren
+        final campaignCopies = await _questRepository!.findByCampaign(campaignId);
+        // Nur Lorekeeper-Vorlagen (ohne campaignId) anzeigen
+        _allQuests = await _questRepository!.findQuestsWithoutCampaign();
+        // Template als "verknüpft" markieren wenn eine Kopie mit gleichem Titel existiert
+        final campaignTitles = campaignCopies.map((q) => q.title).toSet();
+        _linkedQuestIds = _allQuests
+            .where((t) => campaignTitles.contains(t.title))
+            .map((t) => t.id)
+            .toSet();
       }
       _selectedQuestIds.clear();
       _applyFiltersAndSort();
@@ -113,7 +120,7 @@ class QuestLibraryViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Ausgewählte Quests zur Kampagne hinzufügen
+  /// Ausgewählte Quests zur Kampagne hinzufügen (als Kopie, Original bleibt im Lorekeeper)
   Future<bool> addSelectedToCampaign() async {
     if (_campaignId == null || _selectedQuestIds.isEmpty || _questRepository == null) {
       return false;
@@ -121,16 +128,26 @@ class QuestLibraryViewModel extends ChangeNotifier {
 
     bool success = false;
     await _performAsyncOperation(() async {
-      for (final questId in _selectedQuestIds.toList()) {
-        final idx = _allQuests.indexWhere((q) => q.id == questId);
-        if (idx == -1) continue;
-        final updated = _allQuests[idx].copyWith(
+      for (final templateId in _selectedQuestIds.toList()) {
+        final template = _allQuests.firstWhere((q) => q.id == templateId);
+        // Neue Kopie mit eigener UUID und campaign-Zugehörigkeit erstellen
+        final copy = Quest.create(
+          title: template.title,
+          description: template.description,
+          questType: template.questType,
+          difficulty: template.difficulty,
           campaignId: _campaignId,
-          updatedAt: DateTime.now(),
+          location: template.location,
+          recommendedLevel: template.recommendedLevel,
+          estimatedDurationHours: template.estimatedDurationHours,
+          tags: List.from(template.tags),
+          involvedNpcs: List.from(template.involvedNpcs),
+          rewards: List.from(template.rewards),
+          linkedWikiEntryIds: List.from(template.linkedWikiEntryIds),
         );
-        await _questRepository!.update(updated);
-        _allQuests[idx] = updated;
-        _linkedQuestIds.add(questId);
+        await _questRepository!.create(copy);
+        // Template-ID als verknüpft markieren (Original bleibt unverändert)
+        _linkedQuestIds.add(templateId);
       }
       _selectedQuestIds.clear();
       _applyFiltersAndSort();
@@ -139,13 +156,11 @@ class QuestLibraryViewModel extends ChangeNotifier {
     return success;
   }
 
-  /// Lädt alle Quests aus der Datenbank über neues Repository
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue QuestModelRepository
+  /// Lädt alle Lorekeeper-Quests (ohne Kampagnen-Kopien)
   Future<void> loadQuests() async {
     await _performAsyncOperation(() async {
       if (_questRepository != null) {
-        _allQuests = await _questRepository!.findAll();
+        _allQuests = await _questRepository!.findQuestsWithoutCampaign();
       } else {
         _allQuests = [];
       }
