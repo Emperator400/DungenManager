@@ -1627,8 +1627,6 @@ class _OrtHeader extends StatelessWidget {
                   Text(
                     ort.description,
                     style: TextStyle(fontSize: 12, color: C.textMid, height: 1.5),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ],
