@@ -48,12 +48,7 @@ class DatabaseConnection {
   
   /// Datenbank-Instanz
   Future<Database> get database async {
-    debugPrint('🔌 [DatabaseConnection] database getter aufgerufen');
-    if (_database != null) {
-      debugPrint('✅ [DatabaseConnection] Datenbank bereits initialisiert');
-      return _database!;
-    }
-    debugPrint('⏳ [DatabaseConnection] Initialisiere Datenbank...');
+    if (_database != null) return _database!;
     _database = await _initDatabase();
     return _database!;
   }
@@ -93,7 +88,7 @@ class DatabaseConnection {
 
     final db = await openDatabase(
       path,
-      version: 24,
+      version: 25,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       onOpen: (db) async => db.execute('PRAGMA foreign_keys = ON'),
@@ -1283,8 +1278,46 @@ class DatabaseConnection {
         debugPrint('⚠️ Konnte player_characters nicht migrieren: $e');
       }
     }
+
+    if (oldVersion < 25 && newVersion >= 25) {
+      // Migration v20 renamed `scenes` → `scenes_old` then dropped it.
+      // SQLite 3.26+ auto-updates child FK references on rename, so
+      // encounters.scene_id FK got rewritten to reference `scenes_old`.
+      // After `scenes_old` was dropped, every INSERT into encounters fails.
+      // Fix: rebuild encounters with the FK pointing to `scenes`.
+      try {
+        await db.execute('PRAGMA foreign_keys = OFF');
+
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS encounters_repaired (
+            id TEXT PRIMARY KEY,
+            scene_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT,
+            status TEXT NOT NULL DEFAULT 'planning',
+            participant_ids TEXT,
+            created_at TEXT NOT NULL,
+            started_at TEXT,
+            completed_at TEXT,
+            FOREIGN KEY (scene_id) REFERENCES scenes (id) ON DELETE CASCADE
+          )
+        ''');
+
+        await db.execute('INSERT INTO encounters_repaired SELECT * FROM encounters');
+        await db.execute('DROP TABLE encounters');
+        await db.execute('ALTER TABLE encounters_repaired RENAME TO encounters');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_encounters_scene_id ON encounters(scene_id)');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_encounters_status ON encounters(status)');
+
+        await db.execute('PRAGMA foreign_keys = ON');
+        debugPrint('✅ encounters FK-Referenz repariert (Version 25)');
+      } catch (e) {
+        await db.execute('PRAGMA foreign_keys = ON');
+        debugPrint('⚠️ Konnte encounters nicht reparieren: $e');
+      }
+    }
   }
-  
+
   /// Schließt die Datenbankverbindung
   Future<void> close() async {
     if (_database != null) {

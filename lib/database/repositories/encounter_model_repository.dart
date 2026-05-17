@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import '../core/database_connection.dart';
 import '../../models/encounter.dart';
 import 'model_repository.dart';
@@ -8,29 +7,16 @@ import 'model_repository.dart';
 /// Dieses Repository arbeitet direkt mit dem Encounter Modell,
 /// das seine eigene Serialisierung über toDatabaseMap() und fromDatabaseMap() bereitstellt.
 class EncounterModelRepository extends ModelRepository<Encounter> {
-  EncounterModelRepository(DatabaseConnection connection) : super(connection) {
-    debugPrint('EncounterModelRepository initialisiert');
-  }
-  
+  EncounterModelRepository(DatabaseConnection connection) : super(connection);
+
   @override
   String get tableName => Encounter.tableName;
 
   @override
-  Map<String, dynamic> toDatabaseMap(Encounter encounter) {
-    final map = encounter.toDatabaseMap();
-    debugPrint('toDatabaseMap aufgerufen für Encounter: ${encounter.title}');
-    debugPrint('  ID: ${encounter.id}');
-    debugPrint('  Scene ID: ${encounter.sceneId}');
-    return map;
-  }
+  Map<String, dynamic> toDatabaseMap(Encounter encounter) => encounter.toDatabaseMap();
 
   @override
-  Encounter fromDatabaseMap(Map<String, dynamic> map) {
-    debugPrint('fromDatabaseMap aufgerufen');
-    debugPrint('  ID: ${map['id']}');
-    debugPrint('  Title: ${map['title']}');
-    return Encounter.fromDatabaseMap(map);
-  }
+  Encounter fromDatabaseMap(Map<String, dynamic> map) => Encounter.fromDatabaseMap(map);
 
   /// ===== SPEZIALISIERTE SUCHMETHODEN =====
 

@@ -7,11 +7,14 @@ import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/campaign.dart';
+import '../../models/encounter.dart';
 import '../../models/ort.dart';
+import '../../models/scene.dart';
 import '../../models/player.dart';
 import '../../models/player_character.dart';
 import '../../models/quest.dart';
 import '../../models/session.dart';
+import '../../models/sound.dart';
 import '../../models/verlaufs_eintrag.dart';
 import '../../models/wiki_entry.dart';
 import '../../database/core/database_connection.dart';
@@ -28,7 +31,16 @@ import '../../widgets/ui_components/shared/app_icon.dart';
 import '../../widgets/ui_components/shared/app_logo.dart';
 import '../characters/edit_pc_screen.dart';
 import '../lore/lore_keeper_screen.dart';
+import '../../database/repositories/creature_model_repository.dart';
+import '../../database/repositories/encounter_model_repository.dart';
+import '../../database/repositories/quest_model_repository.dart';
+import '../../database/repositories/scene_model_repository.dart';
+import '../../database/repositories/sound_model_repository.dart';
+import '../../database/repositories/wiki_entry_model_repository.dart';
+import '../../viewmodels/edit_scene_viewmodel.dart';
 import '../quests/edit_quest_screen.dart';
+import '../scenes/edit_scene_screen.dart';
+import '../../services/multi_stream_sound_service.dart';
 import '../session/active_session_screen.dart';
 
 // ── ENTRY POINT ───────────────────────────────────────────────────────────────
@@ -388,13 +400,14 @@ class _KarteTabState extends State<_KarteTab> {
   // then remaining Orte not in the plan follow at the bottom.
   List<({Ort ort, int? stepIndex, bool stepDone, String? stepEntryId})> _verlaufsSorted() {
     final vm = widget.vm;
+    final allOrte = vm.orte;
     final sorted = <({Ort ort, int? stepIndex, bool stepDone, String? stepEntryId})>[];
     final inPlanOrtIds = <String>{};
 
     for (var i = 0; i < vm.verlaufsplan.length; i++) {
       final entry = vm.verlaufsplan[i];
       if (entry.type != VerlaufsEintragType.ort || entry.refId == null) continue;
-      final ort = vm.orte.where((o) => o.id == entry.refId).firstOrNull;
+      final ort = allOrte.where((o) => o.id == entry.refId).firstOrNull;
       if (ort == null) continue;
       inPlanOrtIds.add(ort.id);
       sorted.add((ort: ort, stepIndex: i, stepDone: entry.isDone, stepEntryId: entry.id));
@@ -430,30 +443,28 @@ class _KarteTabState extends State<_KarteTab> {
                 style: TextStyle(fontSize: 11, color: C.textSoft),
               ),
               const SizedBox(width: 8),
-              // Verlauf-Sort nur auf Weltkarte sinnvoll
-              if (!onSubMap)
-                GestureDetector(
-                  onTap: () => setState(() => _verlaufsSort = !_verlaufsSort),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 120),
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: _verlaufsSort ? C.accent.withValues(alpha: 0.12) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(5),
-                      border: Border.all(
-                        color: _verlaufsSort ? C.accent.withValues(alpha: 0.4) : C.border,
-                      ),
+              GestureDetector(
+                onTap: () => setState(() => _verlaufsSort = !_verlaufsSort),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: _verlaufsSort ? C.accent.withValues(alpha: 0.12) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(5),
+                    border: Border.all(
+                      color: _verlaufsSort ? C.accent.withValues(alpha: 0.4) : C.border,
                     ),
-                    child: Text(
-                      'Verlauf',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: _verlaufsSort ? C.accent : C.textMid,
-                        fontWeight: _verlaufsSort ? FontWeight.w600 : FontWeight.w400,
-                      ),
+                  ),
+                  child: Text(
+                    'Verlauf',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: _verlaufsSort ? C.accent : C.textMid,
+                      fontWeight: _verlaufsSort ? FontWeight.w600 : FontWeight.w400,
                     ),
                   ),
                 ),
+              ),
               const Spacer(),
               _LoreKeeperBtn(
                 onTap: () async {
@@ -490,7 +501,7 @@ class _KarteTabState extends State<_KarteTab> {
                     style: TextStyle(fontSize: 13, color: C.textSoft),
                   ),
                 )
-              : (!onSubMap && _verlaufsSort)
+              : _verlaufsSort
                   ? _VerlaufsSortedList(items: _verlaufsSorted(), vm: vm)
                   : ReorderableListView.builder(
                       padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
@@ -598,6 +609,10 @@ class _VerlaufsSortedList extends StatelessWidget {
                   onToggleDone: e.stepEntryId != null
                       ? () => vm.toggleVerlaufsEintrag(e.stepEntryId!)
                       : null,
+                  showPathHint: true,
+                  onTap: e.ort.parentOrtId != vm.currentMapParentId
+                      ? () => vm.navigateToOrt(e.ort)
+                      : null,
                 ),
               ),
               if (!isLast && eintrag != null)
@@ -632,6 +647,10 @@ class _VerlaufsSortedList extends StatelessWidget {
                   ort: e.ort,
                   selected: vm.selectedOrt?.id == e.ort.id,
                   vm: vm,
+                  showPathHint: true,
+                  onTap: e.ort.parentOrtId != vm.currentMapParentId
+                      ? () => vm.navigateToOrt(e.ort)
+                      : null,
                 ),
               )),
         ],
@@ -648,6 +667,8 @@ class _OrtCard extends StatefulWidget {
     this.stepIndex,
     this.stepDone = false,
     this.onToggleDone,
+    this.showPathHint = false,
+    this.onTap,
   });
 
   final Ort ort;
@@ -656,6 +677,8 @@ class _OrtCard extends StatefulWidget {
   final int? stepIndex;
   final bool stepDone;
   final VoidCallback? onToggleDone;
+  final bool showPathHint;
+  final VoidCallback? onTap;
 
   @override
   State<_OrtCard> createState() => _OrtCardState();
@@ -684,7 +707,7 @@ class _OrtCardState extends State<_OrtCard> {
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
-        onTap: () => widget.vm.selectOrt(widget.ort),
+        onTap: () => widget.onTap != null ? widget.onTap!() : widget.vm.selectOrt(widget.ort),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 100),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -756,6 +779,13 @@ class _OrtCardState extends State<_OrtCard> {
                       widget.ort.type.label,
                       style: TextStyle(fontSize: 11, color: C.textSoft),
                     ),
+                    if (widget.showPathHint && widget.ort.parentOrtId != widget.vm.currentMapParentId)
+                      Text(
+                        widget.vm.ortPath(widget.ort.id),
+                        style: TextStyle(fontSize: 10, color: C.textSoft.withValues(alpha: 0.65)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                   ],
                 ),
               ),
@@ -1643,6 +1673,20 @@ class _OrtHeader extends StatelessWidget {
             ),
           ),
           _TopBarIconBtn(
+            iconData: Icons.map_outlined,
+            iconColor: C.accent,
+            C: C,
+            tooltip: vm.hasChildren(ort.id) ? 'Subkarte öffnen' : 'Subkarte erstellen',
+            onTap: () => vm.drillInto(ort),
+          ),
+          _TopBarIconBtn(
+            iconData: ort.mapPositionLocked ? Icons.lock_outline : Icons.lock_open_outlined,
+            iconColor: ort.mapPositionLocked ? C.amber : C.textSoft,
+            C: C,
+            tooltip: ort.mapPositionLocked ? 'Position entsperren' : 'Position sperren',
+            onTap: () => vm.toggleOrtPositionLock(ort),
+          ),
+          _TopBarIconBtn(
             icon: AppIconName.close,
             C: C,
             onTap: vm.deselectOrt,
@@ -1751,92 +1795,34 @@ class _OrtDetail extends StatelessWidget {
   Widget build(BuildContext context) {
     final C = context.appColors;
 
-    final hasChildren = vm.hasChildren(ort.id);
+    final sceneCount = vm.selectedOrtScenes.length;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
       children: [
-        // Subkarte
-        _LiveActionBtn(
-          label: hasChildren ? 'Subkarte öffnen' : 'Subkarte erstellen',
-          icon: Icons.map_outlined,
-          color: C.accent,
-          C: C,
-          onTap: () => vm.drillInto(ort),
-        ),
-        const SizedBox(height: 6),
-        _LiveActionBtn(
-          label: ort.mapPositionLocked ? 'Position entsperren' : 'Position sperren',
-          icon: ort.mapPositionLocked ? Icons.lock_open_outlined : Icons.lock_outline,
-          color: ort.mapPositionLocked ? C.amber : C.textSoft,
-          C: C,
-          onTap: () => vm.toggleOrtPositionLock(ort),
-        ),
-        const SizedBox(height: 16),
-
-        // Sessions
+        // Szenen (primär — was passiert hier)
         _SectionHeader(
-          title: 'Sessions',
+          title: sceneCount > 0 ? 'Szenen ($sceneCount)' : 'Szenen',
           C: C,
-          action: 'Session hinzufügen',
-          onAction: () => showDialog<void>(
-            context: context,
-            builder: (_) => _CreateSessionDialog(ort: ort, vm: vm),
-          ),
+          action: 'Neue Szene',
+          onAction: () => _showCreateSceneDialog(context),
         ),
         const SizedBox(height: 8),
-        if (vm.selectedOrtSessions.isEmpty)
-          _EmptyHint('Noch keine Sessions für diesen Marker.', C)
+        if (vm.selectedOrtScenes.isEmpty)
+          _EmptyHint('Noch keine Szenen für diesen Marker.', C)
         else
-          ...vm.selectedOrtSessions.map((session) => Padding(
-                key: ValueKey(session.id),
+          ...vm.selectedOrtScenes.map((scene) => Padding(
+                key: ValueKey(scene.id),
                 padding: const EdgeInsets.only(bottom: 6),
-                child: _SessionRow(session: session, vm: vm),
+                child: _SceneMarkerCard(
+                  scene: scene,
+                  C: C,
+                  onEdit: () => _openSceneEditor(context, scene),
+                  onToggleDone: () => vm.toggleSceneCompleted(scene),
+                  onDelete: () => vm.deleteScene(scene),
+                ),
               )),
-        const SizedBox(height: 20),
-
-        // Wiki-Verknüpfungen
-        _SectionHeader(
-          title: 'Wiki-Einträge',
-          C: C,
-          action: 'Hinzufügen',
-          onAction: () => _showWikiPickerDialog(context),
-        ),
-        const SizedBox(height: 8),
-        if (ort.linkedWikiEntryIds.isEmpty)
-          _EmptyHint('Noch keine Wiki-Einträge verknüpft.', C)
-        else
-          ...ort.linkedWikiEntryIds.map((wikiId) {
-            final entry = vm.wikiEntries.where((w) => w.id == wikiId).firstOrNull;
-            if (entry == null) return const SizedBox.shrink();
-            return _WikiEntryRow(entry: entry, onRemove: () => vm.unlinkWikiEntry(ort, wikiId), C: C);
-          }),
-
-        const SizedBox(height: 20),
-
-        // Verbindungen zu anderen Orten
-        _SectionHeader(
-          title: 'Verbindungen',
-          C: C,
-          action: 'Verbinden',
-          onAction: () => _showConnectOrtDialog(context),
-        ),
-        const SizedBox(height: 8),
-        if (ort.connectedOrtIds.isEmpty)
-          _EmptyHint('Noch keine Verbindungen zu anderen Markern.', C)
-        else
-          ...ort.connectedOrtIds.map((targetId) {
-            final target = vm.orte.where((o) => o.id == targetId).firstOrNull;
-            if (target == null) return const SizedBox.shrink();
-            return _ConnectedOrtRow(
-              target: target,
-              onRemove: () => vm.disconnectOrte(ort, target),
-              onSelect: () => vm.selectOrt(target),
-              C: C,
-            );
-          }),
-
-        const SizedBox(height: 20),
+        const SizedBox(height: 14),
 
         // Verlaufsplan
         _SectionHeader(
@@ -1871,8 +1857,74 @@ class _OrtDetail extends StatelessWidget {
             )).toList(),
           );
         }),
+        const SizedBox(height: 14),
 
-        const SizedBox(height: 20),
+        // Sessions
+        _SectionHeader(
+          title: 'Sessions',
+          C: C,
+          action: 'Session hinzufügen',
+          onAction: () => showDialog<void>(
+            context: context,
+            builder: (_) => _CreateSessionDialog(ort: ort, vm: vm),
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (vm.selectedOrtSessions.isEmpty)
+          _EmptyHint('Noch keine Sessions für diesen Marker.', C)
+        else
+          ...vm.selectedOrtSessions.map((session) => Padding(
+                key: ValueKey(session.id),
+                padding: const EdgeInsets.only(bottom: 6),
+                child: _SessionRow(session: session, vm: vm),
+              )),
+        const SizedBox(height: 14),
+
+        // Verbindungen zu anderen Orten
+        _SectionHeader(
+          title: 'Verbindungen',
+          C: C,
+          action: 'Verbinden',
+          onAction: () => _showConnectOrtDialog(context),
+        ),
+        const SizedBox(height: 8),
+        if (ort.connectedOrtIds.isEmpty)
+          _EmptyHint('Noch keine Verbindungen zu anderen Markern.', C)
+        else
+          ...ort.connectedOrtIds.map((targetId) {
+            final target = vm.orte.where((o) => o.id == targetId).firstOrNull;
+            if (target == null) return const SizedBox.shrink();
+            return _ConnectedOrtRow(
+              target: target,
+              onRemove: () => vm.disconnectOrte(ort, target),
+              onSelect: () => vm.navigateToOrt(target),
+              C: C,
+            );
+          }),
+        const SizedBox(height: 14),
+
+        // Wiki-Verknüpfungen
+        _SectionHeader(
+          title: 'Wiki-Einträge',
+          C: C,
+          action: 'Hinzufügen',
+          onAction: () => _showWikiPickerDialog(context),
+        ),
+        const SizedBox(height: 8),
+        if (ort.linkedWikiEntryIds.isEmpty)
+          _EmptyHint('Noch keine Wiki-Einträge verknüpft.', C)
+        else
+          ...ort.linkedWikiEntryIds.map((wikiId) {
+            final entry = vm.wikiEntries.where((w) => w.id == wikiId).firstOrNull;
+            if (entry == null) {
+              return _WikiEntryRow.orphan(
+                onRemove: () => vm.unlinkWikiEntry(ort, wikiId),
+                C: C,
+              );
+            }
+            return _WikiEntryRow(entry: entry, onRemove: () => vm.unlinkWikiEntry(ort, wikiId), C: C);
+          }),
+        const SizedBox(height: 14),
 
         // Live-Modus Aktionen
         if (vm.mode == DmBuchMode.live) ...[
@@ -1969,67 +2021,15 @@ class _OrtDetail extends StatelessWidget {
     );
   }
 
-  void _showWikiPickerDialog(BuildContext context) {
+  Future<void> _showWikiPickerDialog(BuildContext context) async {
+    if (vm.wikiEntries.isEmpty) {
+      await vm.reloadWikiEntries();
+      if (!context.mounted) return;
+    }
     final C = context.appColors;
-    final available = vm.wikiEntries
-        .where((w) => !ort.linkedWikiEntryIds.contains(w.id))
-        .toList();
-    showDialog<void>(
+    await showDialog<void>(
       context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: C.bgPanel,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-          side: BorderSide(color: C.border),
-        ),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 380, maxHeight: 480),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Wiki-Eintrag verknüpfen',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.text)),
-                const SizedBox(height: 12),
-                if (available.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    child: Text('Alle Wiki-Einträge bereits verknüpft.',
-                        style: TextStyle(fontSize: 12, color: C.textSoft)),
-                  )
-                else
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: available.length,
-                      itemBuilder: (_, i) {
-                        final entry = available[i];
-                        return ListTile(
-                          dense: true,
-                          title: Text(entry.title,
-                              style: TextStyle(fontSize: 13, color: C.text)),
-                          subtitle: Text(entry.entryType.name,
-                              style: TextStyle(fontSize: 11, color: C.textSoft)),
-                          onTap: () {
-                            vm.linkWikiEntry(ort, entry.id);
-                            Navigator.of(ctx).pop();
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    child: Text('Schließen', style: TextStyle(color: C.textMid)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      builder: (ctx) => _WikiPickerDialog(ort: ort, vm: vm, C: C),
     );
   }
 
@@ -2114,49 +2114,847 @@ class _OrtDetail extends StatelessWidget {
       case OrtType.other:      return C.textSoft;
     }
   }
+
+  void _showCreateSceneDialog(BuildContext context) {
+    final C = context.appColors;
+    final nameCtrl = TextEditingController();
+    SceneType selectedType = SceneType.Exploration;
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => Dialog(
+          backgroundColor: C.bgPanel,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(color: C.border),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Neue Szene', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: C.text)),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: nameCtrl,
+                    autofocus: true,
+                    style: TextStyle(fontSize: 13, color: C.text),
+                    decoration: InputDecoration(
+                      labelText: 'Name',
+                      labelStyle: TextStyle(color: C.textSoft),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(7)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text('Typ', style: TextStyle(fontSize: 11, color: C.textSoft)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: SceneType.values.map((type) {
+                      final isSelected = selectedType == type;
+                      return GestureDetector(
+                        onTap: () => setState(() => selectedType = type),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: isSelected ? C.accent.withValues(alpha: 0.2) : C.bgHover,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: isSelected ? C.accent : C.border),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(_sceneTypeIcon(type), style: const TextStyle(fontSize: 12)),
+                              const SizedBox(width: 5),
+                              Text(_sceneTypeLabel(type), style: TextStyle(fontSize: 11, color: isSelected ? C.accent : C.text)),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: Text('Abbrechen', style: TextStyle(color: C.textMid)),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: () async {
+                          final name = nameCtrl.text.trim();
+                          if (name.isEmpty) return;
+                          Navigator.of(ctx).pop();
+                          final scene = await vm.createSceneForOrt(
+                            ort: ort,
+                            name: name,
+                            type: selectedType,
+                          );
+                          if (scene != null && context.mounted) {
+                            await _openSceneEditor(context, scene);
+                          }
+                        },
+                        style: FilledButton.styleFrom(backgroundColor: C.accent),
+                        child: const Text('Erstellen & Bearbeiten'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String _sceneTypeIcon(SceneType type) {
+    switch (type) {
+      case SceneType.Combat:       return '⚔️';
+      case SceneType.Social:       return '💬';
+      case SceneType.Exploration:  return '🔍';
+      case SceneType.Puzzle:       return '🧩';
+      case SceneType.Introduction: return '📖';
+      case SceneType.Climax:       return '🔥';
+      case SceneType.Resolution:   return '🏆';
+    }
+  }
+
+  static String _sceneTypeLabel(SceneType type) {
+    switch (type) {
+      case SceneType.Combat:       return 'Kampf';
+      case SceneType.Social:       return 'Sozial';
+      case SceneType.Exploration:  return 'Erkundung';
+      case SceneType.Puzzle:       return 'Rätsel';
+      case SceneType.Introduction: return 'Einführung';
+      case SceneType.Climax:       return 'Höhepunkt';
+      case SceneType.Resolution:   return 'Auflösung';
+    }
+  }
+
+  Future<void> _openSceneEditor(BuildContext context, Scene scene) async {
+    final db = DatabaseConnection.instance;
+    await Navigator.push<bool>(
+      context,
+      MaterialPageRoute<bool>(
+        builder: (_) => MultiProvider(
+          providers: [
+            ChangeNotifierProvider(
+              create: (_) => EditSceneViewModel(
+                sceneRepository: SceneModelRepository(db),
+                creatureRepository: CreatureModelRepository(db),
+                playerCharacterRepository: PlayerCharacterModelRepository(db),
+                questRepository: QuestModelRepository(db),
+                soundRepository: SoundModelRepository(db),
+                wikiEntryRepository: WikiEntryModelRepository(db),
+                encounterRepository: EncounterModelRepository(db),
+              ),
+            ),
+          ],
+          child: EditSceneScreen(scene: scene),
+        ),
+      ),
+    );
+    // Immer neu laden — der Editor kann die Szene auch ohne explizites Speichern
+    // verändern (z.B. Encounter-Erstellung), daher kein result-Check.
+    if (ort.id.isNotEmpty) {
+      await vm.reloadScenesForOrt(ort.id);
+    }
+  }
+}
+
+class _SceneMarkerCard extends StatelessWidget {
+  const _SceneMarkerCard({
+    required this.scene,
+    required this.C,
+    required this.onEdit,
+    required this.onToggleDone,
+    required this.onDelete,
+  });
+
+  final Scene scene;
+  final AppColorsExtension C;
+  final VoidCallback onEdit;
+  final VoidCallback onToggleDone;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final typeColor = _sceneTypeColor(scene.sceneType);
+
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: scene.isCompleted ? C.border.withValues(alpha: 0.4) : C.border,
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: scene.isCompleted ? C.bgPanel.withValues(alpha: 0.5) : C.bgPanel,
+          border: Border(left: BorderSide(color: typeColor, width: 3)),
+        ),
+        child: Theme(
+          data: Theme.of(context).copyWith(
+            dividerColor: Colors.transparent,
+            splashColor: Colors.transparent,
+            highlightColor: Colors.transparent,
+          ),
+          child: ExpansionTile(
+            tilePadding: const EdgeInsets.only(left: 9, right: 10, top: 2, bottom: 2),
+            leading: Container(
+              width: 26,
+              height: 26,
+              decoration: BoxDecoration(
+                color: typeColor,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                _sceneTypeIcon(scene.sceneType),
+                style: const TextStyle(fontSize: 13),
+              ),
+            ),
+            title: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        scene.name,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: scene.isCompleted ? C.textSoft : C.text,
+                          decoration: scene.isCompleted ? TextDecoration.lineThrough : null,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Wrap(
+                        spacing: 5,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(
+                            scene.sceneTypeDisplayName,
+                            style: TextStyle(fontSize: 11, color: C.textMid),
+                          ),
+                          if (scene.linkedEncounterId != null)
+                            _SceneBadge(Icons.gavel, C.red),
+                          if (scene.linkedQuestIds.isNotEmpty)
+                            _SceneBadge(Icons.flag_outlined, C.amber,
+                                count: scene.linkedQuestIds.length),
+                          if (scene.linkedWikiEntryIds.isNotEmpty)
+                            _SceneBadge(Icons.menu_book_outlined, C.accent,
+                                count: scene.linkedWikiEntryIds.length),
+                          if (scene.linkedCharacterIds.isNotEmpty)
+                            _SceneBadge(Icons.person_outline, C.textMid,
+                                count: scene.linkedCharacterIds.length),
+                          if (scene.linkedSoundIds.isNotEmpty)
+                            _SceneBadge(Icons.music_note_outlined, C.accent,
+                                count: scene.linkedSoundIds.length),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Action buttons (icon-only to avoid overflow)
+                _IconBtn(
+                  icon: scene.isCompleted ? Icons.replay : Icons.check_circle_outline,
+                  color: scene.isCompleted ? C.textSoft : C.green,
+                  onTap: onToggleDone,
+                ),
+                _IconBtn(icon: Icons.edit_outlined, color: C.accent, onTap: onEdit),
+                _IconBtn(icon: Icons.close, color: C.textSoft, onTap: onDelete),
+              ],
+            ),
+            backgroundColor: Colors.transparent,
+            collapsedBackgroundColor: Colors.transparent,
+            iconColor: C.textMid,
+            collapsedIconColor: C.textMid,
+            children: [_SceneExpandedContent(scene: scene, C: C)],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static Color _sceneTypeColor(SceneType type) => switch (type) {
+    SceneType.Introduction => const Color(0xFF2F6FEB),
+    SceneType.Exploration  => const Color(0xFF1A7F4B),
+    SceneType.Combat       => const Color(0xFFC93A3A),
+    SceneType.Social       => const Color(0xFF7C3AED),
+    SceneType.Puzzle       => const Color(0xFFB45309),
+    SceneType.Climax       => const Color(0xFF0891B2),
+    SceneType.Resolution   => const Color(0xFF6B6B66),
+  };
+
+  static String _sceneTypeIcon(SceneType type) => switch (type) {
+    SceneType.Combat       => '⚔️',
+    SceneType.Social       => '💬',
+    SceneType.Exploration  => '🔍',
+    SceneType.Puzzle       => '🧩',
+    SceneType.Introduction => '📖',
+    SceneType.Climax       => '🔥',
+    SceneType.Resolution   => '🏆',
+  };
+}
+
+class _IconBtn extends StatelessWidget {
+  const _IconBtn({required this.icon, required this.color, required this.onTap});
+
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
+          child: Icon(icon, size: 16, color: color),
+        ),
+      );
+}
+
+class _SceneBadge extends StatelessWidget {
+  const _SceneBadge(this.icon, this.color, {this.count});
+
+  final IconData icon;
+  final Color color;
+  final int? count;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 10, color: color.withValues(alpha: 0.75)),
+          if (count != null) ...[
+            const SizedBox(width: 2),
+            Text(
+              '$count',
+              style: TextStyle(fontSize: 9, color: color.withValues(alpha: 0.75)),
+            ),
+          ],
+        ],
+      );
+}
+
+// ── Data container for resolved linked items ──────────────────────────────────
+class _ResolvedSceneData {
+  const _ResolvedSceneData({
+    this.encounter,
+    this.quests = const [],
+    this.wikiEntries = const [],
+    this.sounds = const [],
+    this.characters = const [],
+  });
+
+  final Encounter? encounter;
+  final List<Quest> quests;
+  final List<WikiEntry> wikiEntries;
+  final List<Sound> sounds;
+  // each entry: (name, subtitle e.g. "Lvl 3" / "CR 2", isPC)
+  final List<({String name, String? subtitle, bool isPC})> characters;
+}
+
+class _SceneExpandedContent extends StatefulWidget {
+  const _SceneExpandedContent({required this.scene, required this.C});
+
+  final Scene scene;
+  final AppColorsExtension C;
+
+  @override
+  State<_SceneExpandedContent> createState() => _SceneExpandedContentState();
+}
+
+class _SceneExpandedContentState extends State<_SceneExpandedContent> {
+  _ResolvedSceneData? _data;
+  final _soundService = MultiStreamSoundService();
+  final _soundPlaying = <String>{};
+
+  Scene get _scene => widget.scene;
+  AppColorsExtension get C => widget.C;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _soundService.dispose();
+    super.dispose();
+  }
+
+  Future<void> _toggleSound(Sound sound) async {
+    if (_soundPlaying.contains(sound.id)) {
+      await _soundService.stopSound(sound.id);
+      if (mounted) setState(() => _soundPlaying.remove(sound.id));
+    } else {
+      final channelId = await _soundService.addSound(sound, autoPlay: true, isLooping: true);
+      if (channelId != null && mounted) setState(() => _soundPlaying.add(sound.id));
+    }
+  }
+
+  Future<void> _load() async {
+    final db = DatabaseConnection.instance;
+    final scene = _scene;
+
+    // Load all in parallel using typed futures
+    final results = await (
+      _loadEncounter(db, scene.linkedEncounterId),
+      _loadQuests(db, scene.linkedQuestIds),
+      _loadWikiEntries(db, scene.linkedWikiEntryIds),
+      _loadSounds(db, scene.linkedSoundIds),
+      _loadCharacters(db, scene.linkedCharacterIds),
+    ).wait;
+
+    if (!mounted) return;
+    setState(() {
+      _data = _ResolvedSceneData(
+        encounter: results.$1,
+        quests: results.$2,
+        wikiEntries: results.$3,
+        sounds: results.$4,
+        characters: results.$5,
+      );
+    });
+  }
+
+  static Future<Encounter?> _loadEncounter(DatabaseConnection db, String? id) async {
+    if (id == null) return null;
+    try { return await EncounterModelRepository(db).findById(id); } catch (_) { return null; }
+  }
+
+  static Future<List<Quest>> _loadQuests(DatabaseConnection db, List<String> ids) async {
+    final repo = QuestModelRepository(db);
+    final result = <Quest>[];
+    for (final id in ids) {
+      try { final q = await repo.findById(id); if (q != null) result.add(q); } catch (_) {}
+    }
+    return result;
+  }
+
+  static Future<List<WikiEntry>> _loadWikiEntries(DatabaseConnection db, List<String> ids) async {
+    final repo = WikiEntryModelRepository(db);
+    final result = <WikiEntry>[];
+    for (final id in ids) {
+      try { final e = await repo.findById(id); if (e != null) result.add(e); } catch (_) {}
+    }
+    return result;
+  }
+
+  static Future<List<Sound>> _loadSounds(DatabaseConnection db, List<String> ids) async {
+    final repo = SoundModelRepository(db);
+    final result = <Sound>[];
+    for (final id in ids) {
+      try { final s = await repo.findById(id); if (s != null) result.add(s); } catch (_) {}
+    }
+    return result;
+  }
+
+  static Future<List<({String name, String? subtitle, bool isPC})>> _loadCharacters(
+    DatabaseConnection db,
+    List<String> ids,
+  ) async {
+    final pcRepo = PlayerCharacterModelRepository(db);
+    final creatureRepo = CreatureModelRepository(db);
+    final result = <({String name, String? subtitle, bool isPC})>[];
+    for (final id in ids) {
+      try {
+        final pc = await pcRepo.findById(id);
+        if (pc != null) {
+          result.add((name: pc.name, subtitle: 'Lvl ${pc.level}', isPC: true));
+          continue;
+        }
+      } catch (_) {}
+      try {
+        final creature = await creatureRepo.findById(id);
+        if (creature != null) {
+          result.add((
+            name: creature.name,
+            subtitle: creature.challengeRating != null ? 'CR ${creature.challengeRating}' : null,
+            isPC: false,
+          ));
+        }
+      } catch (_) {}
+    }
+    return result;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasContent = _scene.description.isNotEmpty ||
+        _scene.linkedCharacterIds.isNotEmpty ||
+        _scene.linkedWikiEntryIds.isNotEmpty ||
+        _scene.linkedSoundIds.isNotEmpty ||
+        _scene.linkedQuestIds.isNotEmpty ||
+        _scene.linkedEncounterId != null ||
+        _scene.complexity != null ||
+        _scene.estimatedDuration != null;
+
+    if (!hasContent) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+        child: Text('Keine weiteren Details', style: TextStyle(fontSize: 12, color: C.textSoft)),
+      );
+    }
+
+    final data = _data;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      decoration: BoxDecoration(border: Border(top: BorderSide(color: C.border))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Description ──────────────────────────────────────────────────
+          if (_scene.description.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _sectionLabel('BESCHREIBUNG'),
+            const SizedBox(height: 4),
+            Text(_scene.description, style: TextStyle(fontSize: 12, color: C.textMid, height: 1.6)),
+          ],
+
+          // ── Encounter ────────────────────────────────────────────────────
+          if (_scene.linkedEncounterId != null) ...[
+            const SizedBox(height: 10),
+            _sectionLabel('ENCOUNTER'),
+            const SizedBox(height: 6),
+            data == null
+                ? _loadingDot()
+                : data.encounter != null
+                    ? _LinkChip(icon: Icons.gavel, label: data.encounter!.title, color: C.red)
+                    : _LinkChip(icon: Icons.gavel, label: 'Encounter', color: C.red),
+          ],
+
+          // ── Characters ───────────────────────────────────────────────────
+          if (_scene.linkedCharacterIds.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _sectionLabel('CHARAKTERE & NPCS'),
+            const SizedBox(height: 6),
+            data == null
+                ? _loadingDot()
+                : data.characters.isEmpty
+                    ? Text('${_scene.linkedCharacterIds.length} verknüpft',
+                        style: TextStyle(fontSize: 11, color: C.textSoft))
+                    : Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: data.characters.map((c) => _LinkChip(
+                          icon: c.isPC ? Icons.person : Icons.smart_toy_outlined,
+                          label: c.subtitle != null ? '${c.name} (${c.subtitle})' : c.name,
+                          color: c.isPC ? C.accent : C.textMid,
+                        )).toList(),
+                      ),
+          ],
+
+          // ── Quests ───────────────────────────────────────────────────────
+          if (_scene.linkedQuestIds.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _sectionLabel('QUESTS'),
+            const SizedBox(height: 6),
+            data == null
+                ? _loadingDot()
+                : data.quests.isEmpty
+                    ? Text('${_scene.linkedQuestIds.length} verknüpft',
+                        style: TextStyle(fontSize: 11, color: C.textSoft))
+                    : Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: data.quests
+                            .map((q) => _LinkChip(icon: Icons.flag_outlined, label: q.title, color: C.amber))
+                            .toList(),
+                      ),
+          ],
+
+          // ── Wiki entries ─────────────────────────────────────────────────
+          if (_scene.linkedWikiEntryIds.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _sectionLabel('WIKI-EINTRÄGE'),
+            const SizedBox(height: 6),
+            data == null
+                ? _loadingDot()
+                : data.wikiEntries.isEmpty
+                    ? Text('${_scene.linkedWikiEntryIds.length} verknüpft',
+                        style: TextStyle(fontSize: 11, color: C.textSoft))
+                    : Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: data.wikiEntries
+                            .map((e) => _LinkChip(icon: Icons.menu_book_outlined, label: e.title, color: C.accent))
+                            .toList(),
+                      ),
+          ],
+
+          // ── Sounds ───────────────────────────────────────────────────────
+          if (_scene.linkedSoundIds.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _sectionLabel('SOUNDS'),
+            const SizedBox(height: 6),
+            data == null
+                ? _loadingDot()
+                : data.sounds.isEmpty
+                    ? Text('${_scene.linkedSoundIds.length} verknüpft',
+                        style: TextStyle(fontSize: 11, color: C.textSoft))
+                    : Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: data.sounds.map((s) {
+                          final isPlaying = _soundPlaying.contains(s.id);
+                          final color = isPlaying ? C.green : C.accent;
+                          return GestureDetector(
+                            onTap: () => _toggleSound(s),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 160),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: color.withValues(alpha: 0.10),
+                                  borderRadius: BorderRadius.circular(5),
+                                  border: Border.all(color: color.withValues(alpha: 0.30)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      isPlaying ? Icons.stop_rounded : Icons.play_arrow_rounded,
+                                      size: 10,
+                                      color: color,
+                                    ),
+                                    const SizedBox(width: 3),
+                                    Flexible(
+                                      child: Text(
+                                        s.name,
+                                        style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w500),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+          ],
+
+          // ── Meta (complexity / duration) ─────────────────────────────────
+          if (_scene.complexity != null || _scene.estimatedDuration != null) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                if (_scene.complexity != null)
+                  _LinkChip(icon: Icons.trending_up, label: _scene.complexityDisplayName, color: C.accent),
+                if (_scene.estimatedDuration != null)
+                  _LinkChip(
+                    icon: Icons.schedule,
+                    label: _formatDuration(_scene.estimatedDuration!),
+                    color: C.accent,
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String text) => Text(
+        text,
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: C.textSoft, letterSpacing: 0.5),
+      );
+
+  Widget _loadingDot() => SizedBox(
+        width: 14,
+        height: 14,
+        child: CircularProgressIndicator(strokeWidth: 1.5, color: C.textSoft),
+      );
+
+  static String _formatDuration(Duration d) {
+    if (d.inHours >= 1) return '${d.inHours}h ${d.inMinutes.remainder(60)}min';
+    return '${d.inMinutes}min';
+  }
+}
+
+class _LinkChip extends StatelessWidget {
+  const _LinkChip({required this.icon, required this.label, required this.color});
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 160),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(5),
+            border: Border.all(color: color.withValues(alpha: 0.30)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 10, color: color),
+              const SizedBox(width: 3),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w500),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
 }
 
 class _WikiEntryRow extends StatelessWidget {
   const _WikiEntryRow({required this.entry, required this.onRemove, required this.C});
-  final WikiEntry entry;
+  const _WikiEntryRow.orphan({required this.onRemove, required this.C})
+      : entry = null;
+
+  final WikiEntry? entry;
   final VoidCallback onRemove;
   final AppColorsExtension C;
 
   @override
-  Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.only(bottom: 5),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        decoration: BoxDecoration(
-          color: C.bgHover,
-          borderRadius: BorderRadius.circular(7),
-          border: Border.all(color: C.border),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.menu_book_outlined, size: 13, color: C.accent),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(entry.title,
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: C.text),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                  Text(entry.entryType.name,
-                      style: TextStyle(fontSize: 10, color: C.textSoft)),
-                ],
-              ),
+  Widget build(BuildContext context) {
+    final orphaned = entry == null;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: C.bgHover,
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: orphaned ? C.border.withValues(alpha: 0.5) : C.border),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.menu_book_outlined, size: 13, color: orphaned ? C.textSoft : C.accent),
+          const SizedBox(width: 8),
+          Expanded(
+            child: orphaned
+                ? Text('Eintrag nicht gefunden',
+                    style: TextStyle(fontSize: 12, color: C.textSoft, fontStyle: FontStyle.italic))
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(entry!.title,
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: C.text),
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text(entry!.entryType.name,
+                          style: TextStyle(fontSize: 10, color: C.textSoft)),
+                    ],
+                  ),
+          ),
+          GestureDetector(
+            onTap: onRemove,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(Icons.close, size: 13, color: C.textSoft),
             ),
-            GestureDetector(
-              onTap: onRemove,
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Icon(Icons.close, size: 13, color: C.textSoft),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WikiPickerDialog extends StatelessWidget {
+  const _WikiPickerDialog({required this.ort, required this.vm, required this.C});
+
+  final Ort ort;
+  final DmBuchViewModel vm;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) {
+    final available = vm.wikiEntries
+        .where((w) => !ort.linkedWikiEntryIds.contains(w.id))
+        .toList();
+
+    return Dialog(
+      backgroundColor: C.bgPanel,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: C.border),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 380, maxHeight: 480),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Wiki-Eintrag verknüpfen',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.text)),
+              const SizedBox(height: 12),
+              if (vm.wikiEntries.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: Text('Keine Wiki-Einträge in dieser Kampagne vorhanden.',
+                      style: TextStyle(fontSize: 12, color: C.textSoft)),
+                )
+              else if (available.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: Text('Alle Wiki-Einträge bereits verknüpft.',
+                      style: TextStyle(fontSize: 12, color: C.textSoft)),
+                )
+              else
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: available.length,
+                    itemBuilder: (_, i) {
+                      final entry = available[i];
+                      return ListTile(
+                        dense: true,
+                        title: Text(entry.title,
+                            style: TextStyle(fontSize: 13, color: C.text)),
+                        subtitle: Text(entry.entryType.name,
+                            style: TextStyle(fontSize: 11, color: C.textSoft)),
+                        onTap: () {
+                          vm.linkWikiEntry(ort, entry.id);
+                          Navigator.of(context).pop();
+                        },
+                      );
+                    },
+                  ),
+                ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('Schließen', style: TextStyle(color: C.textMid)),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 class _ConnectedOrtRow extends StatelessWidget {
@@ -3493,6 +4291,12 @@ class _VerlaufTab extends StatelessWidget {
     final plan = vm.verlaufsplan;
     final isVorbereitung = vm.mode == DmBuchMode.vorbereitung;
 
+    final inPlanOrtIds = plan
+        .where((e) => e.type == VerlaufsEintragType.ort && e.refId != null)
+        .map((e) => e.refId!)
+        .toSet();
+    final notInPlan = vm.orte.where((o) => !inPlanOrtIds.contains(o.id)).toList();
+
     return Column(
       children: [
         Padding(
@@ -3516,27 +4320,65 @@ class _VerlaufTab extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: plan.isEmpty
+          child: plan.isEmpty && notInPlan.isEmpty
               ? Center(
                   child: Text(
                     'Noch kein Verlaufsplan',
                     style: TextStyle(fontSize: 13, color: C.textSoft),
                   ),
                 )
-              : ReorderableListView.builder(
-                  padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
-                  buildDefaultDragHandles: false,
-                  onReorder: isVorbereitung ? vm.reorderVerlaufsplan : (_, __) {},
-                  itemCount: plan.length,
-                  itemBuilder: (ctx, i) => _VerlaufsRow(
-                    key: ValueKey(plan[i].id),
-                    index: i,
-                    eintrag: plan[i],
-                    vm: vm,
-                    isVorbereitung: isVorbereitung,
-                    selected: vm.selectedVerlaufsEintrag?.id == plan[i].id,
-                    showConnector: i < plan.length - 1,
-                  ),
+              : CustomScrollView(
+                  slivers: [
+                    if (plan.isNotEmpty)
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(10, 4, 10, 0),
+                        sliver: SliverReorderableList(
+                          itemCount: plan.length,
+                          onReorder: isVorbereitung ? vm.reorderVerlaufsplan : (_, __) {},
+                          itemBuilder: (ctx, i) => _VerlaufsRow(
+                            key: ValueKey(plan[i].id),
+                            index: i,
+                            eintrag: plan[i],
+                            vm: vm,
+                            isVorbereitung: isVorbereitung,
+                            selected: vm.selectedVerlaufsEintrag?.id == plan[i].id,
+                            showConnector: i < plan.length - 1,
+                          ),
+                        ),
+                      ),
+                    if (notInPlan.isNotEmpty) ...[
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
+                          child: Row(
+                            children: [
+                              Expanded(child: Divider(height: 1, color: C.border)),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                child: Text(
+                                  'Nicht im Plan (${notInPlan.length})',
+                                  style: TextStyle(fontSize: 10, color: C.textSoft),
+                                ),
+                              ),
+                              Expanded(child: Divider(height: 1, color: C.border)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                        sliver: SliverList.builder(
+                          itemCount: notInPlan.length,
+                          itemBuilder: (ctx, i) => _NotInPlanOrtRow(
+                            ort: notInPlan[i],
+                            vm: vm,
+                            C: C,
+                            isVorbereitung: isVorbereitung,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
         ),
       ],
@@ -3612,12 +4454,13 @@ class _VerlaufsRowState extends State<_VerlaufsRow> {
                       : C.border,
             ),
         ),
-        child: Row(
-          children: [
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             // Farb-Streifen
             Container(
               width: 4,
-              height: 48,
               decoration: BoxDecoration(
                 color: e.isDone ? color.withValues(alpha: 0.3) : color,
                 borderRadius: const BorderRadius.only(
@@ -3657,7 +4500,14 @@ class _VerlaufsRowState extends State<_VerlaufsRow> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (e.note != null && e.note!.isNotEmpty)
+                    if (e.type == VerlaufsEintragType.ort && e.refId != null)
+                      Text(
+                        widget.vm.ortPath(e.refId!),
+                        style: TextStyle(fontSize: 10, color: C.textSoft),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    else if (e.note != null && e.note!.isNotEmpty)
                       Text(
                         e.note!,
                         style: TextStyle(fontSize: 10, color: C.textSoft),
@@ -3668,6 +4518,13 @@ class _VerlaufsRowState extends State<_VerlaufsRow> {
                       Text(
                         e.type.label,
                         style: TextStyle(fontSize: 10, color: C.textSoft),
+                      ),
+                    if (e.type == VerlaufsEintragType.ort && e.note != null && e.note!.isNotEmpty)
+                      Text(
+                        e.note!,
+                        style: TextStyle(fontSize: 10, color: C.textSoft.withValues(alpha: 0.7)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                   ],
                 ),
@@ -3703,6 +4560,7 @@ class _VerlaufsRowState extends State<_VerlaufsRow> {
               ),
             ],
           ],
+          ),
         ),
         ),
       ),
@@ -3716,6 +4574,110 @@ class _VerlaufsRowState extends State<_VerlaufsRow> {
           C: C,
         ),
       ],
+    );
+  }
+}
+
+// ── NICHT IM PLAN ─────────────────────────────────────────────────────────────
+
+class _NotInPlanOrtRow extends StatefulWidget {
+  const _NotInPlanOrtRow({
+    required this.ort,
+    required this.vm,
+    required this.C,
+    required this.isVorbereitung,
+  });
+
+  final Ort ort;
+  final DmBuchViewModel vm;
+  final AppColorsExtension C;
+  final bool isVorbereitung;
+
+  @override
+  State<_NotInPlanOrtRow> createState() => _NotInPlanOrtRowState();
+}
+
+class _NotInPlanOrtRowState extends State<_NotInPlanOrtRow> {
+  bool _hovered = false;
+
+  Color _typeColor() {
+    final C = widget.C;
+    switch (widget.ort.type) {
+      case OrtType.dungeon:    return C.red;
+      case OrtType.city:       return C.green;
+      case OrtType.building:   return C.accent;
+      case OrtType.wilderness: return C.amber;
+      case OrtType.region:     return AppColors.typGeschichte;
+      case OrtType.other:      return C.textSoft;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final C = widget.C;
+    final color = _typeColor();
+    final path = widget.vm.ortPath(widget.ort.id);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: () => widget.vm.navigateToOrt(widget.ort),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 100),
+          margin: const EdgeInsets.only(bottom: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: _hovered ? C.bgHover : C.bgPanel,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: C.border.withValues(alpha: 0.6)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.ort.name,
+                      style: TextStyle(fontSize: 12, color: C.textMid),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      path,
+                      style: TextStyle(fontSize: 10, color: C.textSoft),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              if (widget.isVorbereitung)
+                GestureDetector(
+                  onTap: () => widget.vm.addVerlaufsEintrag(
+                    VerlaufsEintrag.create(
+                      type: VerlaufsEintragType.ort,
+                      refId: widget.ort.id,
+                      label: widget.ort.name,
+                    ),
+                  ),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 4, 2, 4),
+                    child: Icon(Icons.add, size: 14, color: C.accent),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -4637,6 +5599,10 @@ class _VerlaufsMapNodeState extends State<_VerlaufsMapNode> {
                         widget.ort.type.label,
                         style: TextStyle(fontSize: 9, color: C.textSoft),
                       ),
+                      if (widget.ort.parentOrtId != null) ...[
+                        const SizedBox(width: 4),
+                        Icon(Icons.subdirectory_arrow_right, size: 9, color: C.textSoft),
+                      ],
                     ],
                   ),
                 ],
@@ -4846,11 +5812,21 @@ class _GraphMapBtnState extends State<_GraphMapBtn> {
 // ── SHARED ICON BTN ───────────────────────────────────────────────────────────
 
 class _TopBarIconBtn extends StatefulWidget {
-  const _TopBarIconBtn({required this.icon, required this.C, required this.onTap});
+  const _TopBarIconBtn({
+    this.icon,
+    this.iconData,
+    this.iconColor,
+    required this.C,
+    required this.onTap,
+    this.tooltip,
+  }) : assert(icon != null || iconData != null, 'Provide icon or iconData');
 
-  final AppIconName icon;
+  final AppIconName? icon;
+  final IconData? iconData;
+  final Color? iconColor;
   final AppColorsExtension C;
   final VoidCallback onTap;
+  final String? tooltip;
 
   @override
   State<_TopBarIconBtn> createState() => _TopBarIconBtnState();
@@ -4860,28 +5836,34 @@ class _TopBarIconBtnState extends State<_TopBarIconBtn> {
   bool _hovered = false;
 
   @override
-  Widget build(BuildContext context) => MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 100),
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: _hovered ? widget.C.bgHover : Colors.transparent,
-              border: Border.all(
-                color: _hovered ? widget.C.border : Colors.transparent,
-              ),
-              borderRadius: BorderRadius.circular(7),
+  Widget build(BuildContext context) {
+    Widget btn = MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 100),
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: _hovered ? widget.C.bgHover : Colors.transparent,
+            border: Border.all(
+              color: _hovered ? widget.C.border : Colors.transparent,
             ),
-            child: Center(
-              child: AppIcon(widget.icon, size: 14, color: widget.C.textMid),
-            ),
+            borderRadius: BorderRadius.circular(7),
+          ),
+          child: Center(
+            child: widget.iconData != null
+                ? Icon(widget.iconData!, size: 14, color: widget.iconColor ?? widget.C.textMid)
+                : AppIcon(widget.icon!, size: 14, color: widget.C.textMid),
           ),
         ),
-      );
+      ),
+    );
+    if (widget.tooltip != null) btn = Tooltip(message: widget.tooltip!, child: btn);
+    return btn;
+  }
 }
 
 // ── LEND HERO DIALOG (DM-Buch) ────────────────────────────────────────────────
@@ -5061,6 +6043,8 @@ class _KarteGraphViewState extends State<_KarteGraphView>
 
   bool _connectMode = false;
   String? _connectSource;
+
+  bool _scenePlaceMode = false;
 
   String? _lastSelectedOrtId;
   BoxConstraints? _constraints;
@@ -5244,8 +6228,42 @@ class _KarteGraphViewState extends State<_KarteGraphView>
     }
   }
 
+  Future<void> _onCanvasScenePlaceTap(BuildContext ctx, Offset localPos) async {
+    final vm = widget.vm;
+    final inv = Matrix4.inverted(_tc.value);
+    final canvas = MatrixUtils.transformPoint(inv, localPos);
+    final fracX = (canvas.dx / _cW).clamp(0.0, 1.0);
+    final fracY = (canvas.dy / _cH).clamp(0.0, 1.0);
+
+    final result = await showDialog<({String name, SceneType type})>(
+      context: ctx,
+      builder: (_) => const _PlaceSceneDialog(),
+    );
+    if (result == null || !ctx.mounted) return;
+
+    final created = await vm.createSceneAndOrtAt(
+      fracX: fracX,
+      fracY: fracY,
+      name: result.name,
+      sceneType: result.type,
+    );
+    if (created != null) {
+      setState(() => _positions[created.ort.id] = Offset(fracX, fracY));
+    }
+  }
+
   Future<void> _onNodeTap(Ort ort) async {
     final vm = widget.vm;
+    if (_scenePlaceMode) {
+      // Szene zu bestehendem Ort hinzufügen
+      final result = await showDialog<({String name, SceneType type})>(
+        context: context,
+        builder: (_) => const _PlaceSceneDialog(),
+      );
+      if (result == null || !mounted) return;
+      await vm.createSceneForOrt(ort: ort, name: result.name, type: result.type);
+      return;
+    }
     if (_connectMode) {
       if (_connectSource == null) {
         setState(() => _connectSource = ort.id);
@@ -5295,8 +6313,11 @@ class _KarteGraphViewState extends State<_KarteGraphView>
           // Gesamter Canvas (Hintergrund + Kanten + Pins) im InteractiveViewer
           GestureDetector(
             behavior: HitTestBehavior.translucent,
-            onDoubleTapDown: (isVorbereitung && !_connectMode)
+            onDoubleTapDown: (isVorbereitung && !_connectMode && !_scenePlaceMode)
                 ? (d) => _onCanvasDoubleTap(context, d.localPosition)
+                : null,
+            onTapDown: _scenePlaceMode
+                ? (d) => _onCanvasScenePlaceTap(context, d.localPosition)
                 : null,
             child: InteractiveViewer(
               transformationController: _tc,
@@ -5366,6 +6387,7 @@ class _KarteGraphViewState extends State<_KarteGraphView>
                                 selected: vm.selectedOrt?.id == ort.id,
                                 isConnectSource: _connectSource == ort.id,
                                 hasChildren: vm.hasChildren(ort.id),
+                                sceneCount: vm.ortSceneCount(ort.id),
                                 C: C,
                               ),
                             ),
@@ -5446,6 +6468,23 @@ class _KarteGraphViewState extends State<_KarteGraphView>
                     onTap: () => setState(() {
                       _connectMode = !_connectMode;
                       _connectSource = null;
+                      _scenePlaceMode = false;
+                    }),
+                    C: C,
+                  ),
+                  const SizedBox(height: 4),
+                  _GraphMapBtn(
+                    icon: _scenePlaceMode
+                        ? Icons.close
+                        : Icons.add_location_alt_outlined,
+                    label: _scenePlaceMode
+                        ? 'Platzieren beenden'
+                        : 'Szene platzieren',
+                    active: _scenePlaceMode,
+                    onTap: () => setState(() {
+                      _scenePlaceMode = !_scenePlaceMode;
+                      _connectMode = false;
+                      _connectSource = null;
                     }),
                     C: C,
                   ),
@@ -5472,6 +6511,27 @@ class _KarteGraphViewState extends State<_KarteGraphView>
                         ? 'Tippe auf einen Ort als Ausgangspunkt'
                         : 'Tippe auf den Ziel-Ort  •  Nochmals tippen zum Abbrechen',
                     style: TextStyle(fontSize: 11, color: C.amber),
+                  ),
+                ),
+              ),
+            ),
+
+          if (_scenePlaceMode)
+            Positioned(
+              bottom: 12,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: C.accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: C.accent.withValues(alpha: 0.4)),
+                  ),
+                  child: Text(
+                    'Tippe auf die Karte, um eine Szene zu platzieren',
+                    style: TextStyle(fontSize: 11, color: C.accent),
                   ),
                 ),
               ),
@@ -5552,6 +6612,7 @@ class _KarteMapNode extends StatefulWidget {
     required this.selected,
     required this.isConnectSource,
     required this.hasChildren,
+    required this.sceneCount,
     required this.C,
   });
 
@@ -5559,6 +6620,7 @@ class _KarteMapNode extends StatefulWidget {
   final bool selected;
   final bool isConnectSource;
   final bool hasChildren;
+  final int sceneCount;
   final AppColorsExtension C;
 
   @override
@@ -5653,11 +6715,119 @@ class _KarteMapNodeState extends State<_KarteMapNode> {
               const SizedBox(width: 3),
               Icon(Icons.lock_outline, size: 9, color: C.textSoft.withValues(alpha: 0.7)),
             ],
+            if (widget.sceneCount > 0) ...[
+              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: C.accent.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '${widget.sceneCount}',
+                  style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: C.bgPanel),
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
+}
+
+// ── PLACE SCENE DIALOG ────────────────────────────────────────────────────────
+
+class _PlaceSceneDialog extends StatefulWidget {
+  const _PlaceSceneDialog();
+
+  @override
+  State<_PlaceSceneDialog> createState() => _PlaceSceneDialogState();
+}
+
+class _PlaceSceneDialogState extends State<_PlaceSceneDialog> {
+  final _nameCtrl = TextEditingController();
+  SceneType _type = SceneType.Combat;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final C = Theme.of(context).extension<AppColorsExtension>()!;
+    return AlertDialog(
+      backgroundColor: C.bgPanel,
+      title: const Text('Szene platzieren'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: _nameCtrl,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'Name',
+              hintText: 'z.B. Goblin-Hinterhalt',
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text('Typ:', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: SceneType.values.map((t) {
+              final selected = t == _type;
+              return ChoiceChip(
+                label: Text('${_sceneTypeEmoji(t)} ${_sceneTypeLabel(t)}'),
+                selected: selected,
+                onSelected: (_) => setState(() => _type = t),
+                selectedColor: C.accent.withValues(alpha: 0.25),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Abbrechen'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final name = _nameCtrl.text.trim();
+            if (name.isEmpty) return;
+            Navigator.of(context).pop((name: name, type: _type));
+          },
+          style: FilledButton.styleFrom(backgroundColor: C.accent),
+          child: const Text('Platzieren'),
+        ),
+      ],
+    );
+  }
+
+  String _sceneTypeLabel(SceneType t) => switch (t) {
+    SceneType.Combat       => 'Kampf',
+    SceneType.Social       => 'Sozial',
+    SceneType.Exploration  => 'Erkundung',
+    SceneType.Puzzle       => 'Rätsel',
+    SceneType.Introduction => 'Einführung',
+    SceneType.Climax       => 'Höhepunkt',
+    SceneType.Resolution   => 'Auflösung',
+  };
+
+  String _sceneTypeEmoji(SceneType t) => switch (t) {
+    SceneType.Combat       => '⚔️',
+    SceneType.Social       => '💬',
+    SceneType.Exploration  => '🔍',
+    SceneType.Puzzle       => '🧩',
+    SceneType.Introduction => '📖',
+    SceneType.Climax       => '🔥',
+    SceneType.Resolution   => '🏆',
+  };
 }
 
 // ── KARTE ORT PICKER DIALOG ───────────────────────────────────────────────────

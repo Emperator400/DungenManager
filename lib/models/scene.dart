@@ -24,7 +24,8 @@ enum Complexity {
 
 class Scene {
   final String id;
-  final String sessionId;
+  final String? sessionId;
+  final String? campaignId;
   int orderIndex;
   String name; // Umbenannt von title für Konsistenz
   String description;
@@ -45,7 +46,8 @@ class Scene {
 
   Scene({
     String? id,
-    required this.sessionId,
+    this.sessionId,
+    this.campaignId,
     required this.orderIndex,
     this.name = "Neue Szene",
     this.description = "",
@@ -76,7 +78,8 @@ class Scene {
   /// Creates a copy of this Scene with updated values
   Scene copyWith({
     String? id,
-    String? sessionId,
+    Object? sessionId = _sentinel,
+    Object? campaignId = _sentinel,
     int? orderIndex,
     String? name,
     String? description,
@@ -97,7 +100,8 @@ class Scene {
   }) {
     return Scene(
       id: id ?? this.id,
-      sessionId: sessionId ?? this.sessionId,
+      sessionId: sessionId == _sentinel ? this.sessionId : sessionId as String?,
+      campaignId: campaignId == _sentinel ? this.campaignId : campaignId as String?,
       orderIndex: orderIndex ?? this.orderIndex,
       name: name ?? this.name,
       description: description ?? this.description,
@@ -144,7 +148,7 @@ class Scene {
     try {
       return Scene(
         id: ModelParsingHelper.safeId(map, 'id'),
-        sessionId: ModelParsingHelper.safeString(map, 'sessionId', ''),
+        sessionId: ModelParsingHelper.safeStringOrNull(map, 'sessionId', null),
         orderIndex: ModelParsingHelper.safeInt(map, 'orderIndex', 0),
         name: ModelParsingHelper.safeString(map, 'name', ModelParsingHelper.safeString(map, 'title', "Unbenannte Szene")),
         description: ModelParsingHelper.safeString(map, 'description', ''),
@@ -169,9 +173,8 @@ class Scene {
         updatedAt: ModelParsingHelper.safeDateTime(map, 'updatedAt', DateTime.now()),
       );
     } catch (e) {
-      // Fallback bei Parsing-Fehlern
       return Scene(
-        sessionId: ModelParsingHelper.safeString(map, 'sessionId', ''),
+        sessionId: ModelParsingHelper.safeStringOrNull(map, 'sessionId', null),
         orderIndex: ModelParsingHelper.safeInt(map, 'orderIndex', 0),
         name: ModelParsingHelper.safeString(map, 'name', "Fehlerhafte Szene"),
       );
@@ -215,7 +218,7 @@ class Scene {
 
   /// Validates the scene model
   bool get isValid {
-    return name.isNotEmpty && (sessionId.isNotEmpty || ortId != null);
+    return name.isNotEmpty && (sessionId?.isNotEmpty == true || ortId != null || campaignId != null);
   }
 
   @override
@@ -301,7 +304,8 @@ class Scene {
   Map<String, dynamic> toDatabaseMap() {
     return {
       'id': id,
-      'session_id': sessionId.isEmpty ? null : sessionId,
+      'session_id': sessionId?.isEmpty == true ? null : sessionId,
+      'campaign_id': campaignId,
       'order_index': orderIndex,
       'name': name,
       'description': description,
@@ -329,7 +333,8 @@ class Scene {
     try {
       return Scene(
         id: ModelParsingHelper.safeId(map, 'id'),
-        sessionId: ModelParsingHelper.safeString(map, 'session_id', ModelParsingHelper.safeString(map, 'sessionId', '')),
+        sessionId: ModelParsingHelper.safeStringOrNull(map, 'session_id', ModelParsingHelper.safeStringOrNull(map, 'sessionId', null)),
+        campaignId: ModelParsingHelper.safeStringOrNull(map, 'campaign_id', null),
         orderIndex: ModelParsingHelper.safeInt(map, 'order_index', ModelParsingHelper.safeInt(map, 'orderIndex', 0)),
         name: ModelParsingHelper.safeString(map, 'name', ModelParsingHelper.safeString(map, 'title', "Unbenannte Szene")),
         description: ModelParsingHelper.safeString(map, 'description', ''),
@@ -359,9 +364,8 @@ class Scene {
         ortId: map['ort_id'] as String?,
       );
     } catch (e) {
-      // Fallback bei Parsing-Fehlern
       return Scene(
-        sessionId: ModelParsingHelper.safeString(map, 'session_id', ModelParsingHelper.safeString(map, 'sessionId', '')),
+        sessionId: ModelParsingHelper.safeStringOrNull(map, 'session_id', ModelParsingHelper.safeStringOrNull(map, 'sessionId', null)),
         orderIndex: ModelParsingHelper.safeInt(map, 'order_index', ModelParsingHelper.safeInt(map, 'orderIndex', 0)),
         name: ModelParsingHelper.safeString(map, 'name', "Fehlerhafte Szene"),
       );

@@ -11,30 +11,16 @@ import 'model_repository.dart';
 // das seine eigene Serialisierung über toDatabaseMap() und fromDatabaseMap() bereitstellt.
 /// Es ersetzt das Entity-basierte System.
 class PlayerCharacterModelRepository extends ModelRepository<PlayerCharacter> {
-  PlayerCharacterModelRepository(DatabaseConnection connection) : super(connection) {
-    debugPrint('PlayerCharacterModelRepository initialisiert');
-  }
-  
+  PlayerCharacterModelRepository(DatabaseConnection connection) : super(connection);
+
   @override
   String get tableName => PlayerCharacter.tableName;
 
   @override
-  Map<String, dynamic> toDatabaseMap(PlayerCharacter character) {
-    final map = character.toDatabaseMap();
-    debugPrint('toDatabaseMap aufgerufen für Character: ${character.name}');
-    debugPrint('  ID: ${character.id}');
-    debugPrint('  Campaign ID: ${character.campaignId}');
-    debugPrint('  Map Keys: ${map.keys.join(', ')}');
-    return map;
-  }
+  Map<String, dynamic> toDatabaseMap(PlayerCharacter character) => character.toDatabaseMap();
 
   @override
-  PlayerCharacter fromDatabaseMap(Map<String, dynamic> map) {
-    debugPrint('fromDatabaseMap aufgerufen');
-    debugPrint('  ID: ${map['id']}');
-    debugPrint('  Name: ${map['name']}');
-    return PlayerCharacter.fromDatabaseMap(map);
-  }
+  PlayerCharacter fromDatabaseMap(Map<String, dynamic> map) => PlayerCharacter.fromDatabaseMap(map);
 
   /// ===== SPEZIALISIERTE SUCHMETHODEN =====
 

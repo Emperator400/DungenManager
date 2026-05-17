@@ -28,120 +28,49 @@ abstract class ModelRepository<T> {
   
   /// Erstellt eine neue Entität in der Datenbank
   Future<T> create(T model) async {
-    debugPrint('💾 [ModelRepository] CREATE aufgerufen für Tabelle: $tableName');
-    
     final db = await _connection.database;
     final modelMap = toDatabaseMap(model);
-    debugPrint('💾 [ModelRepository] Model zu speichern: $modelMap');
-    
-    final rowId = await db.insert(tableName, modelMap);
-    debugPrint('💾 [ModelRepository] Insert rowid: $rowId');
-    
-    // Hole das eingefügte Model aus der Datenbank zurück
-    // Dies stellt sicher, dass alle Felder korrekt serialisiert wurden
+    await db.insert(tableName, modelMap);
     try {
       final modelId = (model as dynamic).id;
-        debugPrint('💾 [ModelRepository] Model ID: $modelId (${modelId.runtimeType})');
-        
-        // Unterscheide zwischen int und String IDs
-        if (modelId is int) {
-          // Bei int IDs: Hole das Model aus der DB
-          debugPrint('💾 [ModelRepository] Hole Model mit int ID aus DB');
-          final maps = await db.query(
-            tableName,
-            where: 'id = ?',
-            whereArgs: [modelId],
-            limit: 1,
-          );
-          if (maps.isNotEmpty) {
-            final result = fromDatabaseMap(maps.first);
-            debugPrint('💾 [ModelRepository] Model erfolgreich aus DB geholt');
-            return result;
-          }
-          // Fallback wenn nicht gefunden (sollte nicht passieren)
-          return model;
-        } else if (modelId is String) {
-          // Bei String IDs: Hole das Model aus der DB
-          debugPrint('💾 [ModelRepository] Hole Model mit String ID aus DB');
-          final maps = await db.query(
-            tableName,
-            where: 'id = ?',
-            whereArgs: [modelId],
-            limit: 1,
-          );
-          if (maps.isNotEmpty) {
-            final result = fromDatabaseMap(maps.first);
-            debugPrint('💾 [ModelRepository] Model erfolgreich aus DB geholt');
-            return result;
-          }
-          // Fallback wenn nicht gefunden (sollte nicht passieren)
-          debugPrint('💾 [ModelRepository] Warnung: Model nicht in DB gefunden, gib Original zurück');
-          return model;
-        }
-        
-        // Fallback: Kein ID-Typ erkannt
-        debugPrint('💾 [ModelRepository] Unbekannter ID-Typ, gib Original zurück');
-        return model;
+      final maps = await db.query(
+        tableName,
+        where: 'id = ?',
+        whereArgs: [modelId],
+        limit: 1,
+      );
+      if (maps.isNotEmpty) return fromDatabaseMap(maps.first);
+      return model;
     } catch (e) {
-      // Fallback bei Fehler
-      debugPrint('💾 [ModelRepository] Fehler beim Lesen aus DB: $e, gib Original zurück');
+      debugPrint('❌ [ModelRepository] create: Fehler beim Nachladen aus DB: $e');
       return model;
     }
   }
   
   /// Findet eine Entität anhand ihrer ID
   Future<T?> findById(String id) async {
-    debugPrint('💾 [ModelRepository] FIND BY ID aufgerufen: $id');
-    
     final db = await _connection.database;
-    final maps = await db.query(
-      tableName,
-      where: 'id = ?',
-      whereArgs: [id],
-      limit: 1,
-    );
-    
-    debugPrint('💾 [ModelRepository] ${maps.length} Einträge gefunden');
+    final maps = await db.query(tableName, where: 'id = ?', whereArgs: [id], limit: 1);
     if (maps.isEmpty) return null;
     return fromDatabaseMap(maps.first);
   }
   
   /// Holt alle Entitäten der Tabelle
-  Future<List<T>> findAll({
-    String? orderBy,
-    int? limit,
-    int? offset,
-  }) async {
-    debugPrint('💾 [ModelRepository] FIND ALL aufgerufen für Tabelle: $tableName');
-    
+  Future<List<T>> findAll({String? orderBy, int? limit, int? offset}) async {
     try {
       final db = await _connection.database;
-      final maps = await db.query(
-        tableName,
-        orderBy: orderBy,
-        limit: limit,
-        offset: offset,
-      );
-      
-      debugPrint('💾 [ModelRepository] ${maps.length} Einträge gefunden');
-      
-      // Parse jedes Map einzeln und fange Exceptions ab
+      final maps = await db.query(tableName, orderBy: orderBy, limit: limit, offset: offset);
       final result = <T>[];
       for (int i = 0; i < maps.length; i++) {
         try {
-          final model = fromDatabaseMap(maps[i]);
-          result.add(model);
+          result.add(fromDatabaseMap(maps[i]));
         } catch (e) {
-          debugPrint('⚠️ [ModelRepository] Fehler beim Parsen von Eintrag $i: $e');
-          debugPrint('⚠️ [ModelRepository] Problematische Daten: ${maps[i]}');
-          // Überspringe fehlerhafte Einträge statt abzubrechen
+          debugPrint('⚠️ [ModelRepository] Fehler beim Parsen von Eintrag $i in $tableName: $e');
         }
       }
-      
-      debugPrint('💾 [ModelRepository] ${result.length} erfolgreich geparste Einträge');
       return result;
     } catch (e) {
-      debugPrint('❌ [ModelRepository] Kritischer Fehler in findAll(): $e');
+      debugPrint('❌ [ModelRepository] Kritischer Fehler in findAll($tableName): $e');
       rethrow;
     }
   }

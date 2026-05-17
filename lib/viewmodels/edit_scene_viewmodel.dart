@@ -100,7 +100,6 @@ class EditSceneViewModel extends ChangeNotifier {
         // Bearbeiten einer existierenden Scene
         _scene = scene;
         _isEditingExistingScene = true;
-        debugPrint('✏️ [EditSceneViewModel] Initialisiere als BEARBEITEN (existierende Scene)');
       } else if (sessionId != null) {
         // Erstellen einer neuen Scene
         _isEditingExistingScene = false;
@@ -117,17 +116,15 @@ class EditSceneViewModel extends ChangeNotifier {
           name: initialName ?? '',
           description: initialDescription ?? '',
         );
-        debugPrint('➕ [EditSceneViewModel] Initialisiere als NEU (neue Scene)');
       } else {
-        // Fallback: Neue Scene ohne sessionId
+        // Fallback: Neue Scene ohne sessionId (Map-Marker)
         _isEditingExistingScene = false;
         _scene = Scene(
-          sessionId: 'default',
+          sessionId: null,
           orderIndex: 0,
-          name: '',
-          description: '',
+          name: initialName ?? '',
+          description: initialDescription ?? '',
         );
-        debugPrint('➕ [EditSceneViewModel] Initialisiere als NEU (Fallback ohne sessionId)');
       }
       
       _resetUnsavedChanges();
@@ -145,13 +142,7 @@ class EditSceneViewModel extends ChangeNotifier {
 
   /// Speichert die aktuelle Scene
   Future<bool> saveScene() async {
-    debugPrint('💾 [EditSceneViewModel] saveScene() aufgerufen');
-    debugPrint('💾 [EditSceneViewModel] Scene: $_scene');
-    debugPrint('💾 [EditSceneViewModel] isEditing: $isEditing');
-    debugPrint('💾 [EditSceneViewModel] hasValidScene: ${_hasValidScene()}');
-    
     if (_scene == null || !_hasValidScene()) {
-      debugPrint('❌ [EditSceneViewModel] Ungültige Scene-Daten');
       _setError('Ungültige Scene-Daten');
       return false;
     }
@@ -159,26 +150,17 @@ class EditSceneViewModel extends ChangeNotifier {
     try {
       _setLoading(true);
       _clearError();
-      debugPrint('✅ [EditSceneViewModel] Starte Speichern...');
-      
-      // Aktualisiere updatedAt
+
       _scene = _scene!.copyWith(updatedAt: DateTime.now());
-      
-      // Speichern in der Datenbank
+
       if (isEditing) {
-        debugPrint('✏️ [EditSceneViewModel] Aktualisiere existierende Scene...');
         _scene = await _sceneRepository.update(_scene!);
-        debugPrint('✅ [EditSceneViewModel] Scene aktualisiert');
       } else {
-        debugPrint('➕ [EditSceneViewModel] Erstelle neue Scene...');
         _scene = await _sceneRepository.create(_scene!);
-        // Nach dem ersten Speichern: Als existierende Scene markieren
         _isEditingExistingScene = true;
-        debugPrint('✅ [EditSceneViewModel] Scene erstellt');
       }
-      
+
       _resetUnsavedChanges();
-      debugPrint('✅ [EditSceneViewModel] Speichern erfolgreich');
       return true;
     } catch (e) {
       debugPrint('❌ [EditSceneViewModel] FEHLER beim Speichern: $e');
@@ -630,6 +612,31 @@ class EditSceneViewModel extends ChangeNotifier {
     if (_scene == null) {
       _setError('Keine Szene zum Erstellen des Encounters vorhanden');
       return null;
+    }
+
+    // Prüfe zuerst in-memory
+    if (_scene!.linkedEncounterId != null) {
+      if (_linkedEncounter == null) await loadLinkedEncounter();
+      if (_linkedEncounter != null) {
+        debugPrint('[EditSceneViewModel] Szene hat bereits Encounter (in-memory): ${_linkedEncounter!.id}');
+        return _linkedEncounter;
+      }
+    }
+
+    // Robuste DB-Prüfung: Suche direkt nach vorhandenen Encounters für diese Szene,
+    // auch wenn der In-Memory-State veraltet ist (kein Save nach letztem Edit).
+    final existingEncounters = await _encounterRepository.findByScene(_scene!.id);
+    if (existingEncounters.isNotEmpty) {
+      final existing = existingEncounters.first;
+      debugPrint('[EditSceneViewModel] Encounter bereits in DB gefunden: ${existing.id} — kein Duplikat erstellt');
+      _linkedEncounter = existing;
+      // Scene-Referenz reparieren falls veraltet
+      if (_scene!.linkedEncounterId != existing.id) {
+        _scene = _scene!.copyWith(linkedEncounterId: existing.id, updatedAt: DateTime.now());
+        await _sceneRepository.update(_scene!);
+      }
+      notifyListeners();
+      return _linkedEncounter;
     }
 
     try {

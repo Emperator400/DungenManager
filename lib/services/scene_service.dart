@@ -301,12 +301,12 @@ class SceneService {
   /// Verschiebt eine Scene nach oben
   Future<void> moveSceneUp(String sceneId) async {
     final scene = await getSceneById(sceneId);
-    if (scene == null || scene.orderIndex <= 0) return;
-    
-    final scenes = await getScenesBySessionId(scene.sessionId);
+    if (scene == null || scene.orderIndex <= 0 || scene.sessionId == null) return;
+
+    final scenes = await getScenesBySessionId(scene.sessionId!);
     final currentIndex = scenes.indexWhere((s) => s.id == sceneId);
     if (currentIndex <= 0) return;
-    
+
     // Tausche mit vorheriger Scene
     final previousScene = scenes[currentIndex - 1];
     await updateScene(scene.copyWith(orderIndex: currentIndex - 1));
@@ -316,9 +316,9 @@ class SceneService {
   /// Verschiebt eine Scene nach unten
   Future<void> moveSceneDown(String sceneId) async {
     final scene = await getSceneById(sceneId);
-    if (scene == null) return;
-    
-    final scenes = await getScenesBySessionId(scene.sessionId);
+    if (scene == null || scene.sessionId == null) return;
+
+    final scenes = await getScenesBySessionId(scene.sessionId!);
     final currentIndex = scenes.indexWhere((s) => s.id == sceneId);
     if (currentIndex >= scenes.length - 1) return;
     
