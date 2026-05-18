@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import '../core/database_connection.dart';
 import '../../models/encounter_participant.dart';
 import 'model_repository.dart';
@@ -8,29 +7,16 @@ import 'model_repository.dart';
 /// Dieses Repository arbeitet direkt mit dem EncounterParticipant Modell,
 /// das seine eigene Serialisierung über toDatabaseMap() und fromDatabaseMap() bereitstellt.
 class EncounterParticipantModelRepository extends ModelRepository<EncounterParticipant> {
-  EncounterParticipantModelRepository(DatabaseConnection connection) : super(connection) {
-    debugPrint('EncounterParticipantModelRepository initialisiert');
-  }
-  
+  EncounterParticipantModelRepository(DatabaseConnection connection) : super(connection);
+
   @override
   String get tableName => EncounterParticipant.tableName;
 
   @override
-  Map<String, dynamic> toDatabaseMap(EncounterParticipant participant) {
-    final map = participant.toDatabaseMap();
-    debugPrint('toDatabaseMap aufgerufen für Participant: ${participant.name}');
-    debugPrint('  ID: ${participant.id}');
-    debugPrint('  Encounter ID: ${participant.encounterId}');
-    return map;
-  }
+  Map<String, dynamic> toDatabaseMap(EncounterParticipant participant) => participant.toDatabaseMap();
 
   @override
-  EncounterParticipant fromDatabaseMap(Map<String, dynamic> map) {
-    debugPrint('fromDatabaseMap aufgerufen');
-    debugPrint('  ID: ${map['id']}');
-    debugPrint('  Name: ${map['name']}');
-    return EncounterParticipant.fromDatabaseMap(map);
-  }
+  EncounterParticipant fromDatabaseMap(Map<String, dynamic> map) => EncounterParticipant.fromDatabaseMap(map);
 
   /// ===== SPEZIALISIERTE SUCHMETHODEN =====
 

@@ -126,12 +126,21 @@ class Quest {
     }
   }
 
+  static final _uuidRegex = RegExp(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    caseSensitive: false,
+  );
+
+  static String _resolveId(String? raw) {
+    if (raw != null && _uuidRegex.hasMatch(raw)) return raw;
+    return UuidService().generateId();
+  }
+
   /// Factory für Datenbank-Map mit sicherem Parsing (Neu)
   factory Quest.fromDatabaseMap(Map<String, dynamic> map) {
     try {
-      debugPrint('📋 [Quest.fromDatabaseMap] Map: $map');
       return Quest(
-        id: map['id']?.toString() ?? UuidService().generateId(),
+        id: _resolveId(map['id']?.toString()),
         title: map['title'] as String? ?? '',
         description: map['description'] as String? ?? '',
         status: QuestStatus.values.firstWhere(

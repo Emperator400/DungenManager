@@ -37,16 +37,15 @@ abstract final class CampaignEditModal {
     BuildContext context, {
     Campaign? campaign,
     bool isTemplate = false,
-  }) {
-    return showDialog<void>(
-      context: context,
-      barrierColor: Colors.black54,
-      builder: (ctx) => ChangeNotifierProvider.value(
-        value: context.read<CampaignViewModel>(),
-        child: _CampaignEditModal(campaign: campaign, isTemplate: isTemplate),
-      ),
-    );
-  }
+  }) =>
+      showDialog<void>(
+        context: context,
+        barrierColor: Colors.black54,
+        builder: (ctx) => ChangeNotifierProvider.value(
+          value: context.read<CampaignViewModel>(),
+          child: _CampaignEditModal(campaign: campaign, isTemplate: isTemplate),
+        ),
+      );
 }
 
 // ── MODAL ─────────────────────────────────────────────────────────────────────
@@ -66,6 +65,7 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
   late CampaignStatus _status;
   late String _system;
   late String _accentColor;
+  Campaign? _templateSource;
 
   bool get _isNew => widget.campaign == null;
 
@@ -114,13 +114,19 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 20),
+                        if (_isNew && !widget.isTemplate) ...[
+                          _buildTemplateSection(C),
+                          const SizedBox(height: 14),
+                        ],
                         _buildNameField(C),
                         const SizedBox(height: 14),
                         _buildDescField(C),
-                        const SizedBox(height: 14),
-                        _buildSystemStatusRow(C),
-                        const SizedBox(height: 14),
-                        _buildColorPicker(C),
+                        if (_templateSource == null) ...[
+                          const SizedBox(height: 14),
+                          _buildSystemStatusRow(C),
+                          const SizedBox(height: 14),
+                          _buildColorPicker(C),
+                        ],
                         const SizedBox(height: 14),
                         _buildPreview(C),
                         if (!_isNew) ...[
@@ -143,8 +149,7 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
 
   // ── HEADER ─────────────────────────────────────────────────────────────────
 
-  Widget _buildHeader(AppColorsExtension C) {
-    return Container(
+  Widget _buildHeader(AppColorsExtension C) => Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: C.border)),
@@ -166,7 +171,13 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _isNew ? 'Neue Kampagne' : 'Kampagne bearbeiten',
+                  _isNew
+                      ? (_templateSource != null
+                          ? 'Aus Vorlage erstellen'
+                          : widget.isTemplate
+                              ? 'Neue Vorlage'
+                              : 'Neue Kampagne')
+                      : 'Kampagne bearbeiten',
                   style: TextStyle(
                     fontSize: 15, fontWeight: FontWeight.w600, color: C.text,
                   ),
@@ -189,121 +200,180 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
         ],
       ),
     );
-  }
 
   // ── FIELDS ─────────────────────────────────────────────────────────────────
 
-  Widget _buildNameField(AppColorsExtension C) {
+  Widget _buildTemplateSection(AppColorsExtension C) {
+    final templates = context.read<CampaignViewModel>().templates;
+    if (templates.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _Label('Name *', C),
+        _Label('Von Vorlage starten', C),
         const SizedBox(height: 5),
-        TextField(
-          controller: _nameCtrl,
-          style: TextStyle(fontSize: 13, color: C.text),
-          decoration: _inputDeco(C, 'Kampagnen-Name'),
-          onChanged: (_) => setState(() {}),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDescField(AppColorsExtension C) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _Label('Beschreibung', C),
-        const SizedBox(height: 5),
-        TextField(
-          controller: _descCtrl,
-          style: TextStyle(fontSize: 13, color: C.text),
-          decoration: _inputDeco(C, 'Kurze Beschreibung der Kampagne...'),
-          maxLines: 3,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSystemStatusRow(AppColorsExtension C) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _Label('System', C),
-              const SizedBox(height: 5),
-              _Dropdown<String>(
-                value: _system,
-                items: _kSystems,
-                label: (s) => s,
-                C: C,
-                onChanged: (v) => setState(() => _system = v),
-              ),
-            ],
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: C.bgHover,
+            borderRadius: BorderRadius.circular(7),
+            border: Border.all(color: C.border),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _Label('Status', C),
-              const SizedBox(height: 5),
-              _Dropdown<CampaignStatus>(
-                value: _status,
-                items: CampaignStatus.values,
-                label: (s) => _kStatusCfg[s]?.label ?? s.name,
-                C: C,
-                onChanged: (v) => setState(() => _status = v),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildColorPicker(AppColorsExtension C) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _Label('Farbe', C),
-        const SizedBox(height: 8),
-        Row(
-          children: _kAccentColors.map((hex) {
-            final selected = _accentColor == hex;
-            final col = ColorUtils.fromHex(hex)!;
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: GestureDetector(
-                onTap: () => setState(() => _accentColor = hex),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 120),
-                  width: 30, height: 30,
-                  decoration: BoxDecoration(
-                    color: col,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: selected ? C.text : Colors.transparent,
-                      width: 2,
-                    ),
-                    boxShadow: selected
-                        ? [BoxShadow(color: col.withValues(alpha: 0.4), blurRadius: 6)]
-                        : null,
-                  ),
-                  child: selected
-                      ? const Icon(Icons.check, size: 14, color: Colors.white)
-                      : null,
+          child: DropdownButton<Campaign?>(
+            value: _templateSource,
+            isExpanded: true,
+            underline: const SizedBox.shrink(),
+            dropdownColor: C.bgPanel,
+            style: TextStyle(fontSize: 13, color: C.text),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            items: [
+              DropdownMenuItem<Campaign?>(
+                child: Text(
+                  'Keine (leere Kampagne)',
+                  style: TextStyle(color: C.textSoft, fontSize: 13),
                 ),
               ),
-            );
-          }).toList(),
+              ...templates.map(
+                (t) => DropdownMenuItem<Campaign?>(
+                  value: t,
+                  child: Text(t.title, style: TextStyle(color: C.text, fontSize: 13)),
+                ),
+              ),
+            ],
+            onChanged: (t) {
+              setState(() {
+                _templateSource = t;
+                if (t != null) {
+                  _nameCtrl.text = '${t.title} — Gruppe 1';
+                  _accentColor = t.accentColor;
+                  _system = t.system;
+                }
+              });
+            },
+          ),
         ),
+        if (_templateSource != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Row(
+              children: [
+                Icon(Icons.copy_outlined, size: 12, color: C.accent),
+                const SizedBox(width: 4),
+                Text(
+                  'Alle Inhalte der Vorlage werden übernommen.',
+                  style: TextStyle(fontSize: 11, color: C.textMid),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
+
+  Widget _buildNameField(AppColorsExtension C) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _Label('Name *', C),
+          const SizedBox(height: 5),
+          TextField(
+            controller: _nameCtrl,
+            style: TextStyle(fontSize: 13, color: C.text),
+            decoration: _inputDeco(C, 'Kampagnen-Name'),
+            onChanged: (_) => setState(() {}),
+          ),
+        ],
+      );
+
+  Widget _buildDescField(AppColorsExtension C) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _Label('Beschreibung', C),
+          const SizedBox(height: 5),
+          TextField(
+            controller: _descCtrl,
+            style: TextStyle(fontSize: 13, color: C.text),
+            decoration: _inputDeco(C, 'Kurze Beschreibung der Kampagne...'),
+            maxLines: 3,
+          ),
+        ],
+      );
+
+  Widget _buildSystemStatusRow(AppColorsExtension C) => Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _Label('System', C),
+                const SizedBox(height: 5),
+                _Dropdown<String>(
+                  value: _system,
+                  items: _kSystems,
+                  label: (s) => s,
+                  C: C,
+                  onChanged: (v) => setState(() => _system = v),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _Label('Status', C),
+                const SizedBox(height: 5),
+                _Dropdown<CampaignStatus>(
+                  value: _status,
+                  items: CampaignStatus.values,
+                  label: (s) => _kStatusCfg[s]?.label ?? s.name,
+                  C: C,
+                  onChanged: (v) => setState(() => _status = v),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+
+  Widget _buildColorPicker(AppColorsExtension C) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _Label('Farbe', C),
+          const SizedBox(height: 8),
+          Row(
+            children: _kAccentColors.map((hex) {
+              final selected = _accentColor == hex;
+              final col = ColorUtils.fromHex(hex)!;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: GestureDetector(
+                  onTap: () => setState(() => _accentColor = hex),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 120),
+                    width: 30, height: 30,
+                    decoration: BoxDecoration(
+                      color: col,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: selected ? C.text : Colors.transparent,
+                        width: 2,
+                      ),
+                      boxShadow: selected
+                          ? [BoxShadow(color: col.withValues(alpha: 0.4), blurRadius: 6)]
+                          : null,
+                    ),
+                    child: selected
+                        ? const Icon(Icons.check, size: 14, color: Colors.white)
+                        : null,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      );
 
   Widget _buildPreview(AppColorsExtension C) {
     final title = _nameCtrl.text.trim();
@@ -420,8 +490,7 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
 
   // ── FOOTER ─────────────────────────────────────────────────────────────────
 
-  Widget _buildFooter(AppColorsExtension C) {
-    return Container(
+  Widget _buildFooter(AppColorsExtension C) => Container(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
       decoration: BoxDecoration(
         border: Border(top: BorderSide(color: C.border)),
@@ -471,7 +540,6 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
         ],
       ),
     );
-  }
 
   // ── ACTIONS ────────────────────────────────────────────────────────────────
 
@@ -481,7 +549,9 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
     final desc  = _descCtrl.text.trim();
 
     if (_isNew) {
-      if (widget.isTemplate) {
+      if (_templateSource != null) {
+        await vm.createCopyFromTemplate(_templateSource!, title: title);
+      } else if (widget.isTemplate) {
         await vm.createTemplate(
           title: title,
           description: desc,
@@ -509,7 +579,9 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
         ),
       );
     }
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     if (vm.error == null) {
       Navigator.of(context).pop();
     } else {
@@ -518,10 +590,14 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
   }
 
   Future<void> _duplicate() async {
-    if (widget.campaign == null) return;
+    if (widget.campaign == null) {
+      return;
+    }
     final vm = context.read<CampaignViewModel>();
     await vm.duplicateCampaign(widget.campaign!);
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     Navigator.of(context).pop();
     if (vm.error == null) {
       SnackBarHelper.showSuccess(context, 'Kampagne dupliziert');
@@ -530,27 +606,25 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
 
   // ── HELPERS ────────────────────────────────────────────────────────────────
 
-  InputDecoration _inputDeco(AppColorsExtension C, String hint) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: TextStyle(color: C.textSoft, fontSize: 13),
-      filled: true,
-      fillColor: C.bgHover,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(7),
-        borderSide: BorderSide(color: C.border),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(7),
-        borderSide: BorderSide(color: C.border),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(7),
-        borderSide: BorderSide(color: C.accent, width: 1.5),
-      ),
-    );
-  }
+  InputDecoration _inputDeco(AppColorsExtension C, String hint) => InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: C.textSoft, fontSize: 13),
+        filled: true,
+        fillColor: C.bgHover,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(7),
+          borderSide: BorderSide(color: C.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(7),
+          borderSide: BorderSide(color: C.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(7),
+          borderSide: BorderSide(color: C.accent, width: 1.5),
+        ),
+      );
 }
 
 // ── REUSABLE HELPERS ──────────────────────────────────────────────────────────
@@ -585,35 +659,32 @@ class _Dropdown<T> extends StatelessWidget {
   final void Function(T) onChanged;
 
   @override
-  Widget build(BuildContext context) {
-    return DropdownButtonFormField<T>(
-      value: value,
-      style: TextStyle(fontSize: 13, color: C.text),
-      dropdownColor: C.bgPanel,
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: C.bgHover,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-        border: OutlineInputBorder(
+  Widget build(BuildContext context) => DecoratedBox(
+        decoration: BoxDecoration(
+          color: C.bgHover,
           borderRadius: BorderRadius.circular(7),
-          borderSide: BorderSide(color: C.border),
+          border: Border.all(color: C.border),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(7),
-          borderSide: BorderSide(color: C.border),
+        child: DropdownButton<T>(
+          value: value,
+          isExpanded: true,
+          underline: const SizedBox.shrink(),
+          dropdownColor: C.bgPanel,
+          style: TextStyle(fontSize: 13, color: C.text),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          items: items.map(
+            (item) => DropdownMenuItem<T>(
+              value: item,
+              child: Text(label(item), style: TextStyle(color: C.text, fontSize: 13)),
+            ),
+          ).toList(),
+          onChanged: (v) {
+            if (v != null) {
+              onChanged(v);
+            }
+          },
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(7),
-          borderSide: BorderSide(color: C.accent, width: 1.5),
-        ),
-      ),
-      items: items.map((item) => DropdownMenuItem<T>(
-        value: item,
-        child: Text(label(item), style: TextStyle(color: C.text, fontSize: 13)),
-      )).toList(),
-      onChanged: (v) { if (v != null) onChanged(v); },
-    );
-  }
+      );
 }
 
 class _StatusBadge extends StatelessWidget {
@@ -621,31 +692,29 @@ class _StatusBadge extends StatelessWidget {
   final _StatusStyle style;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: style.color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(5),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 5, height: 5,
-            decoration: BoxDecoration(
-              color: style.color, shape: BoxShape.circle,
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: style.color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(5),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 5, height: 5,
+              decoration: BoxDecoration(
+                color: style.color, shape: BoxShape.circle,
+              ),
             ),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            style.label,
-            style: TextStyle(
-              fontSize: 11, fontWeight: FontWeight.w500, color: style.color,
+            const SizedBox(width: 4),
+            Text(
+              style.label,
+              style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w500, color: style.color,
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
+          ],
+        ),
+      );
 }

@@ -2,7 +2,7 @@
 
 > Eine Flutter-App für Windows, macOS und iOS, die Dungeon Mastern ein vollständiges digitales Werkzeugset an die Hand gibt — von der Kampagnenplanung bis zum Live-Spielbetrieb am Tisch.
 
-![Version](https://img.shields.io/badge/version-1.0.9-blue)
+![Version](https://img.shields.io/badge/version-1.1.1-blue)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20iOS-lightgrey)
 ![Status](https://img.shields.io/badge/status-aktiv%20entwickelt-green)
 ![License](https://img.shields.io/badge/license-proprietary-red)

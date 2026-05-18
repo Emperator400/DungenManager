@@ -35,6 +35,15 @@ class SceneModelRepository extends ModelRepository<Scene> {
     );
   }
 
+  /// Findet alle Szenen für eine Kampagne (ohne Session-Filter)
+  Future<List<Scene>> findByCampaign(String campaignId) async {
+    return await findWhere(
+      where: 'campaign_id = ?',
+      whereArgs: [campaignId],
+      orderBy: 'order_index ASC',
+    );
+  }
+
   /// Findet alle Szenen für einen Ort
   Future<List<Scene>> findByOrtId(String ortId) async {
     return await findWhere(
@@ -42,6 +51,18 @@ class SceneModelRepository extends ModelRepository<Scene> {
       whereArgs: [ortId],
       orderBy: 'order_index ASC',
     );
+  }
+
+  /// Zählt Szenen pro Ort (für Badges auf der Karte)
+  Future<Map<String, int>> countByOrtId(List<String> ortIds) async {
+    if (ortIds.isEmpty) return {};
+    final placeholders = ortIds.map((_) => '?').join(', ');
+    final db = await connection.database;
+    final rows = await db.rawQuery(
+      'SELECT ort_id, COUNT(*) as cnt FROM scenes WHERE ort_id IN ($placeholders) GROUP BY ort_id',
+      ortIds,
+    );
+    return {for (final r in rows) r['ort_id'] as String: (r['cnt'] as int)};
   }
 
   /// Findet abgeschlossene Szenen

@@ -6,8 +6,10 @@ import '../database/repositories/ort_model_repository.dart';
 import '../database/repositories/player_character_model_repository.dart';
 import '../database/repositories/quest_model_repository.dart';
 import '../database/repositories/session_model_repository.dart';
+import '../database/repositories/scene_model_repository.dart';
 import '../database/repositories/wiki_entry_model_repository.dart';
 import '../models/campaign.dart';
+import '../models/scene.dart';
 import '../models/ort.dart';
 import '../models/player_character.dart';
 import '../models/quest.dart';
@@ -30,6 +32,7 @@ class DmBuchViewModel extends ChangeNotifier {
   final OrtModelRepository _ortRepo;
   final QuestModelRepository _questRepo;
   final SessionModelRepository _sessionRepo;
+  final SceneModelRepository _sceneRepo;
   final WikiEntryModelRepository _wikiRepo;
   final CampaignModelRepository _campaignRepo;
   final PlayerCharacterModelRepository _pcRepo;
@@ -40,6 +43,7 @@ class DmBuchViewModel extends ChangeNotifier {
     OrtModelRepository? ortRepo,
     QuestModelRepository? questRepo,
     SessionModelRepository? sessionRepo,
+    SceneModelRepository? sceneRepo,
     WikiEntryModelRepository? wikiRepo,
     CampaignModelRepository? campaignRepo,
     PlayerCharacterModelRepository? pcRepo,
@@ -48,6 +52,7 @@ class DmBuchViewModel extends ChangeNotifier {
         _ortRepo = ortRepo ?? OrtModelRepository(DatabaseConnection.instance),
         _questRepo = questRepo ?? QuestModelRepository(DatabaseConnection.instance),
         _sessionRepo = sessionRepo ?? SessionModelRepository(DatabaseConnection.instance),
+        _sceneRepo = sceneRepo ?? SceneModelRepository(DatabaseConnection.instance),
         _wikiRepo = wikiRepo ?? WikiEntryModelRepository(DatabaseConnection.instance),
         _campaignRepo = campaignRepo ?? CampaignModelRepository(DatabaseConnection.instance),
         _pcRepo = pcRepo ?? PlayerCharacterModelRepository(DatabaseConnection.instance);
@@ -106,11 +111,18 @@ class DmBuchViewModel extends ChangeNotifier {
   List<Session> _selectedOrtSessions = [];
   List<Session> get selectedOrtSessions => _selectedOrtSessions;
 
+  List<Scene> _selectedOrtScenes = [];
+  List<Scene> get selectedOrtScenes => _selectedOrtScenes;
+
+  Map<String, int> _ortSceneCounts = {};
+  int ortSceneCount(String ortId) => _ortSceneCounts[ortId] ?? 0;
+
   List<Quest> _quests = [];
   List<Quest> get quests => _quests;
 
   List<WikiEntry> _wikiEntries = [];
   List<WikiEntry> get wikiEntries => _wikiEntries;
+  bool _isLoadingWikiEntries = false;
 
   List<PlayerCharacter> _characters = [];
   List<PlayerCharacter> get characters => _characters;
@@ -140,6 +152,7 @@ class DmBuchViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       await Future.wait([_loadOrte(), _loadQuests(), _loadWikiEntries(), _loadCharacters()]);
+      await _loadSceneCounts();
     } catch (e) {
       _error = 'Fehler beim Laden: $e';
     } finally {
@@ -160,6 +173,17 @@ class DmBuchViewModel extends ChangeNotifier {
     _wikiEntries = await _wikiRepo.findByCampaign(campaign.id);
   }
 
+  Future<void> reloadWikiEntries() async {
+    if (_isLoadingWikiEntries) return;
+    _isLoadingWikiEntries = true;
+    try {
+      await _loadWikiEntries();
+      notifyListeners();
+    } finally {
+      _isLoadingWikiEntries = false;
+    }
+  }
+
   Future<void> _loadCharacters() async {
     _characters = await _pcRepo.findByCampaign(campaign.id);
   }
@@ -171,6 +195,87 @@ class DmBuchViewModel extends ChangeNotifier {
 
   Future<void> _loadSessionsForOrt(String ortId) async {
     _selectedOrtSessions = await _sessionRepo.findByOrtId(ortId);
+  }
+
+  Future<void> _loadSceneCounts() async {
+    final ortIds = _orte.map((o) => o.id).toList();
+    _ortSceneCounts = await _sceneRepo.countByOrtId(ortIds);
+  }
+
+  Future<Scene?> createSceneForOrt({
+    required Ort ort,
+    required String name,
+    required SceneType type,
+  }) async {
+    try {
+      final scene = Scene(
+        sessionId: null,
+        campaignId: campaign.id,
+        orderIndex: _selectedOrtScenes.length,
+        name: name,
+        sceneType: type,
+        ortId: ort.id,
+      );
+      final created = await _sceneRepo.create(scene);
+      _selectedOrtScenes.add(created);
+      _ortSceneCounts[ort.id] = (_ortSceneCounts[ort.id] ?? 0) + 1;
+      notifyListeners();
+      return created;
+    } catch (e) {
+      debugPrint('[DmBuchViewModel] createSceneForOrt error: $e');
+      return null;
+    }
+  }
+
+  Future<({Ort ort, Scene scene})?> createSceneAndOrtAt({
+    required double fracX,
+    required double fracY,
+    required String name,
+    required SceneType sceneType,
+    OrtType ortType = OrtType.other,
+  }) async {
+    try {
+      final ort = await createOrt(
+        name: name,
+        type: ortType,
+        mapX: fracX,
+        mapY: fracY,
+        parentOrtId: currentMapParentId,
+      );
+      if (ort == null) return null;
+      final scene = await createSceneForOrt(ort: ort, name: name, type: sceneType);
+      if (scene == null) return null;
+      return (ort: ort, scene: scene);
+    } catch (e) {
+      debugPrint('[DmBuchViewModel] createSceneAndOrtAt error: $e');
+      return null;
+    }
+  }
+
+  Future<void> toggleSceneCompleted(Scene scene) async {
+    try {
+      final updated = await _sceneRepo.updateCompletionStatus(scene.id, !scene.isCompleted);
+      if (updated == null) return;
+      final idx = _selectedOrtScenes.indexWhere((s) => s.id == scene.id);
+      if (idx >= 0) _selectedOrtScenes[idx] = updated;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[DmBuchViewModel] toggleSceneCompleted error: $e');
+    }
+  }
+
+  Future<void> deleteScene(Scene scene) async {
+    try {
+      await _sceneRepo.delete(scene.id);
+      _selectedOrtScenes.removeWhere((s) => s.id == scene.id);
+      if (scene.ortId != null) {
+        final cur = _ortSceneCounts[scene.ortId!] ?? 0;
+        _ortSceneCounts[scene.ortId!] = (cur - 1).clamp(0, 9999);
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[DmBuchViewModel] deleteScene error: $e');
+    }
   }
 
   // ── NAVIGATION ────────────────────────────────────────────────────────────
@@ -188,14 +293,29 @@ class DmBuchViewModel extends ChangeNotifier {
   Future<void> selectOrt(Ort ort) async {
     _selectedOrt = ort;
     _selectedOrtSessions = [];
+    _selectedOrtScenes = [];
     notifyListeners();
-    await _loadSessionsForOrt(ort.id);
+    await Future.wait([
+      _loadSessionsForOrt(ort.id),
+      _loadScenesForOrt(ort.id),
+    ]);
     notifyListeners();
   }
 
   void deselectOrt() {
     _selectedOrt = null;
     _selectedOrtSessions = [];
+    _selectedOrtScenes = [];
+    notifyListeners();
+  }
+
+  Future<void> _loadScenesForOrt(String ortId) async {
+    _selectedOrtScenes = await _sceneRepo.findByOrtId(ortId);
+  }
+
+  Future<void> reloadScenesForOrt(String ortId) async {
+    await _loadScenesForOrt(ortId);
+    await _loadSceneCounts();
     notifyListeners();
   }
 
@@ -224,9 +344,62 @@ class DmBuchViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> selectVerlaufsEintragOnMap(VerlaufsEintrag eintrag) async {
+    _selectedVerlaufsEintrag = eintrag;
+    if (eintrag.type == VerlaufsEintragType.ort && eintrag.refId != null) {
+      final ort = _orte.where((o) => o.id == eintrag.refId).firstOrNull;
+      if (ort != null) {
+        await navigateToOrt(ort);
+        return;
+      }
+    }
+    notifyListeners();
+  }
+
+  Future<void> navigateToOrt(Ort ort) async {
+    if (ort.parentOrtId == currentMapParentId) {
+      _leftTab = DmBuchLeftTab.karte;
+      await selectOrt(ort);
+      return;
+    }
+    if (ort.parentOrtId != null) {
+      final chain = <String>[];
+      var parentId = ort.parentOrtId;
+      while (parentId != null) {
+        chain.insert(0, parentId);
+        final parent = _orte.where((o) => o.id == parentId).firstOrNull;
+        parentId = parent?.parentOrtId;
+      }
+      _mapStack
+        ..clear()
+        ..add(null)
+        ..addAll(chain);
+    } else {
+      _mapStack
+        ..clear()
+        ..add(null);
+    }
+    _leftTab = DmBuchLeftTab.karte;
+    await selectOrt(ort);
+  }
+
   void deselectVerlaufsEintrag() {
     _selectedVerlaufsEintrag = null;
     notifyListeners();
+  }
+
+  // ── ORT PFAD ─────────────────────────────────────────────────────────────
+
+  String ortPath(String ortId) {
+    final chain = <String>[];
+    var parentId = _orte.where((o) => o.id == ortId).firstOrNull?.parentOrtId;
+    while (parentId != null) {
+      final parent = _orte.where((o) => o.id == parentId).firstOrNull;
+      if (parent == null) break;
+      chain.insert(0, parent.name);
+      parentId = parent.parentOrtId;
+    }
+    return ['Welt', ...chain].join(' › ');
   }
 
   // ── ORT REIHENFOLGE ───────────────────────────────────────────────────────
@@ -243,6 +416,7 @@ class DmBuchViewModel extends ChangeNotifier {
 
   Future<Ort?> createOrtFromWikiEntry(WikiEntry entry, {String? parentOrtId}) => createOrt(
         name: entry.title,
+        type: _ortTypeFromWikiEntryType(entry.entryType),
         description: entry.content,
         linkedWikiEntryIds: [entry.id],
         parentOrtId: parentOrtId,
@@ -441,10 +615,31 @@ class DmBuchViewModel extends ChangeNotifier {
 
   // ── WIKI-VERLINKUNG ───────────────────────────────────────────────────────
 
+  OrtType _ortTypeFromWikiEntryType(WikiEntryType entryType) {
+    switch (entryType) {
+      case WikiEntryType.Place:    return OrtType.region;
+      case WikiEntryType.Person:   return OrtType.city;
+      case WikiEntryType.Faction:  return OrtType.building;
+      case WikiEntryType.Magic:    return OrtType.building;
+      case WikiEntryType.Quest:    return OrtType.dungeon;
+      case WikiEntryType.Creature: return OrtType.wilderness;
+      case WikiEntryType.Lore:
+      case WikiEntryType.History:
+      case WikiEntryType.Item:     return OrtType.other;
+    }
+  }
+
   Future<void> linkWikiEntry(Ort ort, String wikiEntryId) async {
     if (ort.linkedWikiEntryIds.contains(wikiEntryId)) return;
+    var newType = ort.type;
+    if (ort.type == OrtType.other) {
+      final entry = _wikiEntries.where((w) => w.id == wikiEntryId).firstOrNull;
+      if (entry != null)
+        newType = _ortTypeFromWikiEntryType(entry.entryType);
+    }
     final updated = ort.copyWith(
       linkedWikiEntryIds: [...ort.linkedWikiEntryIds, wikiEntryId],
+      type: newType,
       updatedAt: DateTime.now(),
     );
     await _ortRepo.update(updated);

@@ -1,30 +1,17 @@
-// Dart Core
 import 'dart:async';
 
-// Eigene Projekte
-import '../models/campaign.dart';
-import '../models/ort.dart';
-import '../models/quest.dart';
-import '../models/session.dart';
-import '../models/scene.dart';
-import '../models/wiki_entry.dart';
+import '../database/core/database_connection.dart';
 import '../database/repositories/campaign_model_repository.dart';
 import '../database/repositories/ort_model_repository.dart';
 import '../database/repositories/quest_model_repository.dart';
-import '../database/repositories/session_model_repository.dart';
 import '../database/repositories/scene_model_repository.dart';
+import '../database/repositories/session_model_repository.dart';
 import '../database/repositories/wiki_entry_model_repository.dart';
-import '../database/core/database_connection.dart';
+import '../models/campaign.dart';
+import '../models/quest.dart';
 import '../services/uuid_service.dart';
 import 'exceptions/service_exceptions.dart';
 
-/// Service für Campaign Business Logic
-/// 
-/// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
-/// 
-/// Bietet alle CRUD-Operationen für Kampagnen und
-/// kapselt die Datenbankzugriffe mit Validierung.
-/// Verwendet spezifische Exceptions und ServiceResult Pattern.
 class CampaignService {
   final CampaignModelRepository _campaignRepository;
   final OrtModelRepository _ortRepository;
@@ -32,6 +19,7 @@ class CampaignService {
   final SessionModelRepository _sessionRepository;
   final SceneModelRepository _sceneRepository;
   final WikiEntryModelRepository _wikiRepository;
+
   CampaignService({
     CampaignModelRepository? campaignRepository,
     OrtModelRepository? ortRepository,
@@ -46,354 +34,232 @@ class CampaignService {
         _sceneRepository = sceneRepository ?? SceneModelRepository(DatabaseConnection.instance),
         _wikiRepository = wikiRepository ?? WikiEntryModelRepository(DatabaseConnection.instance);
 
-  // ========== CRUD OPERATIONS ==========
+  Future<ServiceResult<List<Campaign>>> getAllCampaigns() async =>
+      performServiceOperation('getAllCampaigns', () async => _campaignRepository.findAll());
 
-  /// Holt alle Kampagnen aus der Datenbank über neues Repository
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
-  Future<ServiceResult<List<Campaign>>> getAllCampaigns() async {
-    return performServiceOperation('getAllCampaigns', () async {
-      return await _campaignRepository.findAll();
-    });
-  }
+  Future<ServiceResult<Campaign?>> getCampaignById(String id) async =>
+      performServiceOperation('getCampaignById', () async => _campaignRepository.findById(id));
 
-  /// Holt eine Kampagne per ID über neues Repository
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
-  Future<ServiceResult<Campaign?>> getCampaignById(String id) async {
-    return performServiceOperation('getCampaignById', () async {
-      return await _campaignRepository.findById(id);
-    });
-  }
+  Future<ServiceResult<Campaign>> createCampaign(Campaign campaign) async =>
+      performServiceOperation('createCampaign', () async {
+        if (!campaign.isValid) {
+          throw ValidationException.fromErrors(
+            campaign.validationErrors,
+            operation: 'createCampaign',
+          );
+        }
+        return _campaignRepository.create(campaign);
+      });
 
-  /// Erstellt eine neue Kampagne über neues Repository
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
-  Future<ServiceResult<Campaign>> createCampaign(Campaign campaign) async {
-    return performServiceOperation('createCampaign', () async {
-      // Validierung
-      if (!campaign.isValid) {
-        throw ValidationException.fromErrors(
-          campaign.validationErrors,
-          operation: 'createCampaign',
-        );
-      }
+  Future<ServiceResult<Campaign>> updateCampaign(Campaign campaign) async =>
+      performServiceOperation('updateCampaign', () async {
+        if (!campaign.isValid) {
+          throw ValidationException.fromErrors(
+            campaign.validationErrors,
+            operation: 'updateCampaign',
+          );
+        }
+        return _campaignRepository.update(campaign);
+      });
 
-      return await _campaignRepository.create(campaign);
-    });
-  }
+  Future<ServiceResult<void>> deleteCampaign(String id) async =>
+      performServiceOperation('deleteCampaign', () async {
+        final exists = await campaignExists(id);
+        if (!exists) {
+          throw ResourceNotFoundException.forId('Campaign', id, operation: 'deleteCampaign');
+        }
+        await _campaignRepository.delete(id);
+      });
 
-  /// Aktualisiert eine Kampagne über neues Repository
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
-  Future<ServiceResult<Campaign>> updateCampaign(Campaign campaign) async {
-    return performServiceOperation('updateCampaign', () async {
-      // Validierung
-      if (!campaign.isValid) {
-        throw ValidationException.fromErrors(
-          campaign.validationErrors,
-          operation: 'updateCampaign',
-        );
-      }
-
-      return await _campaignRepository.update(campaign);
-    });
-  }
-
-  /// Löscht eine Kampagne über neues Repository
-  Future<ServiceResult<void>> deleteCampaign(String id) async {
-    return performServiceOperation('deleteCampaign', () async {
-      final exists = await campaignExists(id);
-      if (!exists) {
-        throw ResourceNotFoundException.forId('Campaign', id, operation: 'deleteCampaign');
-      }
-      
-      await _campaignRepository.delete(id);
-    });
-  }
-
-  // ========== STATUS OPERATIONS ==========
-
-  /// Aktualisiert den Status einer Kampagne
   Future<ServiceResult<void>> updateCampaignStatus(
-    String campaignId, 
+    String campaignId,
     CampaignStatus status,
-  ) async {
-    return performServiceOperation('updateCampaignStatus', () async {
-      final campaign = await _getCampaignOrThrow(campaignId);
+  ) async =>
+      performServiceOperation('updateCampaignStatus', () async {
+        final campaign = await _getCampaignOrThrow(campaignId);
+        final updatedCampaign = campaign.copyWith(
+          status: status,
+          updatedAt: DateTime.now(),
+          startedAt: status == CampaignStatus.active && campaign.startedAt == null
+              ? DateTime.now()
+              : campaign.startedAt,
+          completedAt: status == CampaignStatus.completed && campaign.completedAt == null
+              ? DateTime.now()
+              : campaign.completedAt,
+        );
+        await updateCampaign(updatedCampaign);
+      });
 
-      final updatedCampaign = campaign.copyWith(
-        status: status,
-        updatedAt: DateTime.now(),
-        // Timestamps für Status-Wechsel
-        startedAt: status == CampaignStatus.active && campaign.startedAt == null 
-            ? DateTime.now() 
-            : campaign.startedAt,
-        completedAt: status == CampaignStatus.completed && campaign.completedAt == null 
-            ? DateTime.now() 
-            : campaign.completedAt,
-      );
-
-      await updateCampaign(updatedCampaign);
-    });
-  }
-
-  // ========== PLAYER MANAGEMENT ==========
-
-  /// Fügt einen Player zu einer Kampagne hinzu
   Future<ServiceResult<void>> addPlayerToCampaign(
-    String campaignId, 
+    String campaignId,
     String playerId,
-  ) async {
-    return performServiceOperation('addPlayerToCampaign', () async {
-      final campaign = await _getCampaignOrThrow(campaignId);
+  ) async =>
+      performServiceOperation('addPlayerToCampaign', () async {
+        final campaign = await _getCampaignOrThrow(campaignId);
+        if (campaign.playerCharacterIds.contains(playerId)) {
+          throw const BusinessException(
+            'Player bereits in Kampagne vorhanden',
+            operation: 'addPlayerToCampaign',
+          );
+        }
+        await updateCampaign(campaign.copyWith(
+          playerCharacterIds: [...campaign.playerCharacterIds, playerId],
+          updatedAt: DateTime.now(),
+        ));
+      });
 
-      // Prüfe ob Player bereits existiert
-      if (campaign.playerCharacterIds.contains(playerId)) {
-        throw BusinessException(
-          'Player bereits in Kampagne vorhanden',
-          operation: 'addPlayerToCampaign',
-        );
-      }
-
-      final updatedPlayerIds = [...campaign.playerCharacterIds, playerId];
-      final updatedCampaign = campaign.copyWith(
-        playerCharacterIds: updatedPlayerIds,
-        updatedAt: DateTime.now(),
-      );
-
-      await updateCampaign(updatedCampaign);
-    });
-  }
-
-  /// Entfernt einen Player aus einer Kampagne
   Future<ServiceResult<void>> removePlayerFromCampaign(
-    String campaignId, 
+    String campaignId,
     String playerId,
-  ) async {
-    return performServiceOperation('removePlayerFromCampaign', () async {
-      final campaign = await _getCampaignOrThrow(campaignId);
+  ) async =>
+      performServiceOperation('removePlayerFromCampaign', () async {
+        final campaign = await _getCampaignOrThrow(campaignId);
+        if (!campaign.playerCharacterIds.contains(playerId)) {
+          throw const BusinessException(
+            'Player nicht in Kampagne vorhanden',
+            operation: 'removePlayerFromCampaign',
+          );
+        }
+        await updateCampaign(campaign.copyWith(
+          playerCharacterIds: campaign.playerCharacterIds
+              .where((id) => id != playerId)
+              .toList(),
+          updatedAt: DateTime.now(),
+        ));
+      });
 
-      if (!campaign.playerCharacterIds.contains(playerId)) {
-        throw BusinessException(
-          'Player nicht in Kampagne vorhanden',
-          operation: 'removePlayerFromCampaign',
-        );
-      }
-
-      final updatedPlayerIds = campaign.playerCharacterIds
-          .where((id) => id != playerId)
-          .toList();
-      final updatedCampaign = campaign.copyWith(
-        playerCharacterIds: updatedPlayerIds,
-        updatedAt: DateTime.now(),
-      );
-
-      await updateCampaign(updatedCampaign);
-    });
-  }
-
-  // ========== QUEST MANAGEMENT ==========
-
-  /// Fügt eine Quest zu einer Kampagne hinzu
   Future<ServiceResult<void>> addQuestToCampaign(
-    String campaignId, 
+    String campaignId,
     String questId,
-  ) async {
-    return performServiceOperation('addQuestToCampaign', () async {
-      final campaign = await _getCampaignOrThrow(campaignId);
+  ) async =>
+      performServiceOperation('addQuestToCampaign', () async {
+        final campaign = await _getCampaignOrThrow(campaignId);
+        if (campaign.questIds.contains(questId)) {
+          throw const BusinessException(
+            'Quest bereits in Kampagne vorhanden',
+            operation: 'addQuestToCampaign',
+          );
+        }
+        await updateCampaign(campaign.copyWith(
+          questIds: [...campaign.questIds, questId],
+          updatedAt: DateTime.now(),
+        ));
+      });
 
-      if (campaign.questIds.contains(questId)) {
-        throw BusinessException(
-          'Quest bereits in Kampagne vorhanden',
-          operation: 'addQuestToCampaign',
-        );
-      }
-
-      final updatedQuestIds = [...campaign.questIds, questId];
-      final updatedCampaign = campaign.copyWith(
-        questIds: updatedQuestIds,
-        updatedAt: DateTime.now(),
-      );
-
-      await updateCampaign(updatedCampaign);
-    });
-  }
-
-  /// Entfernt eine Quest aus einer Kampagne
   Future<ServiceResult<void>> removeQuestFromCampaign(
-    String campaignId, 
+    String campaignId,
     String questId,
-  ) async {
-    return performServiceOperation('removeQuestFromCampaign', () async {
-      final campaign = await _getCampaignOrThrow(campaignId);
+  ) async =>
+      performServiceOperation('removeQuestFromCampaign', () async {
+        final campaign = await _getCampaignOrThrow(campaignId);
+        if (!campaign.questIds.contains(questId)) {
+          throw const BusinessException(
+            'Quest nicht in Kampagne vorhanden',
+            operation: 'removeQuestFromCampaign',
+          );
+        }
+        await updateCampaign(campaign.copyWith(
+          questIds: campaign.questIds.where((id) => id != questId).toList(),
+          updatedAt: DateTime.now(),
+        ));
+      });
 
-      if (!campaign.questIds.contains(questId)) {
-        throw BusinessException(
-          'Quest nicht in Kampagne vorhanden',
-          operation: 'removeQuestFromCampaign',
-        );
-      }
-
-      final updatedQuestIds = campaign.questIds
-          .where((id) => id != questId)
-          .toList();
-      final updatedCampaign = campaign.copyWith(
-        questIds: updatedQuestIds,
-        updatedAt: DateTime.now(),
-      );
-
-      await updateCampaign(updatedCampaign);
-    });
-  }
-
-  // ========== WIKI MANAGEMENT ==========
-
-  /// Fügt einen Wiki-Eintrag zu einer Kampagne hinzu
   Future<ServiceResult<void>> addWikiEntryToCampaign(
-    String campaignId, 
+    String campaignId,
     String wikiEntryId,
-  ) async {
-    return performServiceOperation('addWikiEntryToCampaign', () async {
-      final campaign = await _getCampaignOrThrow(campaignId);
+  ) async =>
+      performServiceOperation('addWikiEntryToCampaign', () async {
+        final campaign = await _getCampaignOrThrow(campaignId);
+        if (campaign.wikiEntryIds.contains(wikiEntryId)) {
+          throw const BusinessException(
+            'Wiki-Eintrag bereits in Kampagne vorhanden',
+            operation: 'addWikiEntryToCampaign',
+          );
+        }
+        await updateCampaign(campaign.copyWith(
+          wikiEntryIds: [...campaign.wikiEntryIds, wikiEntryId],
+          updatedAt: DateTime.now(),
+        ));
+      });
 
-      if (campaign.wikiEntryIds.contains(wikiEntryId)) {
-        throw BusinessException(
-          'Wiki-Eintrag bereits in Kampagne vorhanden',
-          operation: 'addWikiEntryToCampaign',
-        );
-      }
-
-      final updatedWikiEntryIds = [...campaign.wikiEntryIds, wikiEntryId];
-      final updatedCampaign = campaign.copyWith(
-        wikiEntryIds: updatedWikiEntryIds,
-        updatedAt: DateTime.now(),
-      );
-
-      await updateCampaign(updatedCampaign);
-    });
-  }
-
-  /// Entfernt einen Wiki-Eintrag aus einer Kampagne
   Future<ServiceResult<void>> removeWikiEntryFromCampaign(
-    String campaignId, 
+    String campaignId,
     String wikiEntryId,
-  ) async {
-    return performServiceOperation('removeWikiEntryFromCampaign', () async {
-      final campaign = await _getCampaignOrThrow(campaignId);
+  ) async =>
+      performServiceOperation('removeWikiEntryFromCampaign', () async {
+        final campaign = await _getCampaignOrThrow(campaignId);
+        if (!campaign.wikiEntryIds.contains(wikiEntryId)) {
+          throw const BusinessException(
+            'Wiki-Eintrag nicht in Kampagne vorhanden',
+            operation: 'removeWikiEntryFromCampaign',
+          );
+        }
+        await updateCampaign(campaign.copyWith(
+          wikiEntryIds: campaign.wikiEntryIds.where((id) => id != wikiEntryId).toList(),
+          updatedAt: DateTime.now(),
+        ));
+      });
 
-      if (!campaign.wikiEntryIds.contains(wikiEntryId)) {
-        throw BusinessException(
-          'Wiki-Eintrag nicht in Kampagne vorhanden',
-          operation: 'removeWikiEntryFromCampaign',
-        );
-      }
-
-      final updatedWikiEntryIds = campaign.wikiEntryIds
-          .where((id) => id != wikiEntryId)
-          .toList();
-      final updatedCampaign = campaign.copyWith(
-        wikiEntryIds: updatedWikiEntryIds,
-        updatedAt: DateTime.now(),
-      );
-
-      await updateCampaign(updatedCampaign);
-    });
-  }
-
-  // ========== SESSION MANAGEMENT ==========
-
-  /// Fügt eine Session zu einer Kampagne hinzu
   Future<ServiceResult<void>> addSessionToCampaign(
-    String campaignId, 
+    String campaignId,
     String sessionId,
-  ) async {
-    return performServiceOperation('addSessionToCampaign', () async {
-      final campaign = await _getCampaignOrThrow(campaignId);
+  ) async =>
+      performServiceOperation('addSessionToCampaign', () async {
+        final campaign = await _getCampaignOrThrow(campaignId);
+        if (campaign.sessionIds.contains(sessionId)) {
+          throw const BusinessException(
+            'Session bereits in Kampagne vorhanden',
+            operation: 'addSessionToCampaign',
+          );
+        }
+        await updateCampaign(campaign.copyWith(
+          sessionIds: [...campaign.sessionIds, sessionId],
+          updatedAt: DateTime.now(),
+        ));
+      });
 
-      if (campaign.sessionIds.contains(sessionId)) {
-        throw BusinessException(
-          'Session bereits in Kampagne vorhanden',
-          operation: 'addSessionToCampaign',
-        );
-      }
-
-      final updatedSessionIds = [...campaign.sessionIds, sessionId];
-      final updatedCampaign = campaign.copyWith(
-        sessionIds: updatedSessionIds,
-        updatedAt: DateTime.now(),
-      );
-
-      await updateCampaign(updatedCampaign);
-    });
-  }
-
-  /// Entfernt eine Session aus einer Kampagne
   Future<ServiceResult<void>> removeSessionFromCampaign(
-    String campaignId, 
+    String campaignId,
     String sessionId,
-  ) async {
-    return performServiceOperation('removeSessionFromCampaign', () async {
-      final campaign = await _getCampaignOrThrow(campaignId);
+  ) async =>
+      performServiceOperation('removeSessionFromCampaign', () async {
+        final campaign = await _getCampaignOrThrow(campaignId);
+        if (!campaign.sessionIds.contains(sessionId)) {
+          throw const BusinessException(
+            'Session nicht in Kampagne vorhanden',
+            operation: 'removeSessionFromCampaign',
+          );
+        }
+        await updateCampaign(campaign.copyWith(
+          sessionIds: campaign.sessionIds.where((id) => id != sessionId).toList(),
+          updatedAt: DateTime.now(),
+        ));
+      });
 
-      if (!campaign.sessionIds.contains(sessionId)) {
-        throw BusinessException(
-          'Session nicht in Kampagne vorhanden',
-          operation: 'removeSessionFromCampaign',
-        );
-      }
-
-      final updatedSessionIds = campaign.sessionIds
-          .where((id) => id != sessionId)
-          .toList();
-      final updatedCampaign = campaign.copyWith(
-        sessionIds: updatedSessionIds,
-        updatedAt: DateTime.now(),
-      );
-
-      await updateCampaign(updatedCampaign);
-    });
-  }
-
-  // ========== SETTINGS MANAGEMENT ==========
-
-  /// Aktualisiert die Kampagnen-Einstellungen
   Future<ServiceResult<void>> updateCampaignSettings(
-    String campaignId, 
+    String campaignId,
     CampaignSettings settings,
-  ) async {
-    return performServiceOperation('updateCampaignSettings', () async {
-      final campaign = await _getCampaignOrThrow(campaignId);
+  ) async =>
+      performServiceOperation('updateCampaignSettings', () async {
+        final campaign = await _getCampaignOrThrow(campaignId);
+        await updateCampaign(campaign.copyWith(
+          settings: settings,
+          updatedAt: DateTime.now(),
+        ));
+      });
 
-      final updatedCampaign = campaign.copyWith(
-        settings: settings,
-        updatedAt: DateTime.now(),
-      );
+  Future<ServiceResult<void>> toggleFavorite(String campaignId) async =>
+      performServiceOperation('toggleFavorite', () async {
+        final campaign = await _getCampaignOrThrow(campaignId);
+        final updatedSettings = campaign.settings.copyWith(
+          isPublic: !campaign.settings.isPublic,
+        );
+        await updateCampaign(campaign.copyWith(
+          settings: updatedSettings,
+          updatedAt: DateTime.now(),
+        ));
+      });
 
-      await updateCampaign(updatedCampaign);
-    });
-  }
-
-  // ========== UTILITY METHODS ==========
-
-  /// Toggle Favorite Status (verwendet isPublic als Favorite)
-  Future<ServiceResult<void>> toggleFavorite(String campaignId) async {
-    return performServiceOperation('toggleFavorite', () async {
-      final campaign = await _getCampaignOrThrow(campaignId);
-
-      final updatedSettings = campaign.settings.copyWith(
-        isPublic: !campaign.settings.isPublic,
-      );
-      final updatedCampaign = campaign.copyWith(
-        settings: updatedSettings,
-        updatedAt: DateTime.now(),
-      );
-
-      await updateCampaign(updatedCampaign);
-    });
-  }
-
-  /// Prüft ob eine Kampagne existiert
   Future<bool> campaignExists(String id) async {
     try {
       final result = await getCampaignById(id);
@@ -403,153 +269,123 @@ class CampaignService {
     }
   }
 
-  /// Holt Kampagnen für einen bestimmten Dungeon Master
   Future<ServiceResult<List<Campaign>>> getCampaignsByDM(
     String dungeonMasterId,
-  ) async {
-    return performServiceOperation('getCampaignsByDM', () async {
-      final allCampaignsResult = await getAllCampaigns();
-      if (!allCampaignsResult.isSuccess) {
-        throw DatabaseException(
-          'Fehler beim Laden aller Kampagnen',
-          operation: 'getCampaignsByDM',
-        );
-      }
+  ) async =>
+      performServiceOperation('getCampaignsByDM', () async {
+        final allCampaignsResult = await getAllCampaigns();
+        if (!allCampaignsResult.isSuccess) {
+          throw const DatabaseException(
+            'Fehler beim Laden aller Kampagnen',
+            operation: 'getCampaignsByDM',
+          );
+        }
+        return allCampaignsResult.data!
+            .where((campaign) => campaign.dungeonMasterId == dungeonMasterId)
+            .toList();
+      });
 
-      return allCampaignsResult.data!
-          .where((campaign) => campaign.dungeonMasterId == dungeonMasterId)
-          .toList();
-    });
-  }
+  Future<ServiceResult<List<Campaign>>> getActiveCampaigns() async =>
+      performServiceOperation('getActiveCampaigns', () async {
+        final allCampaignsResult = await getAllCampaigns();
+        if (!allCampaignsResult.isSuccess) {
+          throw const DatabaseException(
+            'Fehler beim Laden aller Kampagnen',
+            operation: 'getActiveCampaigns',
+          );
+        }
+        return allCampaignsResult.data!
+            .where((campaign) => campaign.status == CampaignStatus.active)
+            .toList();
+      });
 
-  /// Holt aktive Kampagnen
-  Future<ServiceResult<List<Campaign>>> getActiveCampaigns() async {
-    return performServiceOperation('getActiveCampaigns', () async {
-      final allCampaignsResult = await getAllCampaigns();
-      if (!allCampaignsResult.isSuccess) {
-        throw DatabaseException(
-          'Fehler beim Laden aller Kampagnen',
-          operation: 'getActiveCampaigns',
-        );
-      }
+  Future<ServiceResult<List<Campaign>>> getCompletedCampaigns() async =>
+      performServiceOperation('getCompletedCampaigns', () async {
+        final allCampaignsResult = await getAllCampaigns();
+        if (!allCampaignsResult.isSuccess) {
+          throw const DatabaseException(
+            'Fehler beim Laden aller Kampagnen',
+            operation: 'getCompletedCampaigns',
+          );
+        }
+        return allCampaignsResult.data!
+            .where((campaign) => campaign.status == CampaignStatus.completed)
+            .toList();
+      });
 
-      return allCampaignsResult.data!
-          .where((campaign) => campaign.status == CampaignStatus.active)
-          .toList();
-    });
-  }
+  Future<ServiceResult<List<Campaign>>> searchCampaigns(String query) async =>
+      performServiceOperation('searchCampaigns', () async {
+        if (query.trim().isEmpty) {
+          throw const ValidationException(
+            'Suchbegriff darf nicht leer sein',
+            operation: 'searchCampaigns',
+          );
+        }
+        final allCampaignsResult = await getAllCampaigns();
+        if (!allCampaignsResult.isSuccess) {
+          throw const DatabaseException(
+            'Fehler beim Laden aller Kampagnen',
+            operation: 'searchCampaigns',
+          );
+        }
+        final queryLower = query.toLowerCase();
+        return allCampaignsResult.data!.where((campaign) =>
+            campaign.title.toLowerCase().contains(queryLower) ||
+            campaign.description.toLowerCase().contains(queryLower)).toList();
+      });
 
-  /// Holt abgeschlossene Kampagnen
-  Future<ServiceResult<List<Campaign>>> getCompletedCampaigns() async {
-    return performServiceOperation('getCompletedCampaigns', () async {
-      final allCampaignsResult = await getAllCampaigns();
-      if (!allCampaignsResult.isSuccess) {
-        throw DatabaseException(
-          'Fehler beim Laden aller Kampagnen',
-          operation: 'getCompletedCampaigns',
-        );
-      }
-
-      return allCampaignsResult.data!
-          .where((campaign) => campaign.status == CampaignStatus.completed)
-          .toList();
-    });
-  }
-
-  /// Sucht Kampagnen nach Titel oder Beschreibung
-  Future<ServiceResult<List<Campaign>>> searchCampaigns(String query) async {
-    return performServiceOperation('searchCampaigns', () async {
-      if (query.trim().isEmpty) {
-        throw ValidationException(
-          'Suchbegriff darf nicht leer sein',
-          operation: 'searchCampaigns',
-        );
-      }
-
-      final allCampaignsResult = await getAllCampaigns();
-      if (!allCampaignsResult.isSuccess) {
-        throw DatabaseException(
-          'Fehler beim Laden aller Kampagnen',
-          operation: 'searchCampaigns',
-        );
-      }
-
-      final queryLower = query.toLowerCase();
-      return allCampaignsResult.data!.where((campaign) {
-        return campaign.title.toLowerCase().contains(queryLower) ||
-               campaign.description.toLowerCase().contains(queryLower);
-      }).toList();
-    });
-  }
-
-  /// Holt Kampagnen nach Status
   Future<ServiceResult<List<Campaign>>> getCampaignsByStatus(
     CampaignStatus status,
-  ) async {
-    return performServiceOperation('getCampaignsByStatus', () async {
-      final allCampaignsResult = await getAllCampaigns();
-      if (!allCampaignsResult.isSuccess) {
-        throw DatabaseException(
-          'Fehler beim Laden aller Kampagnen',
-          operation: 'getCampaignsByStatus',
-        );
-      }
+  ) async =>
+      performServiceOperation('getCampaignsByStatus', () async {
+        final allCampaignsResult = await getAllCampaigns();
+        if (!allCampaignsResult.isSuccess) {
+          throw const DatabaseException(
+            'Fehler beim Laden aller Kampagnen',
+            operation: 'getCampaignsByStatus',
+          );
+        }
+        return allCampaignsResult.data!
+            .where((campaign) => campaign.status == status)
+            .toList();
+      });
 
-      return allCampaignsResult.data!
-          .where((campaign) => campaign.status == status)
-          .toList();
-    });
-  }
-
-  /// Holt Kampagnen nach Typ
   Future<ServiceResult<List<Campaign>>> getCampaignsByType(
     CampaignType type,
-  ) async {
-    return performServiceOperation('getCampaignsByType', () async {
-      final allCampaignsResult = await getAllCampaigns();
-      if (!allCampaignsResult.isSuccess) {
-        throw DatabaseException(
-          'Fehler beim Laden aller Kampagnen',
-          operation: 'getCampaignsByType',
+  ) async =>
+      performServiceOperation('getCampaignsByType', () async {
+        final allCampaignsResult = await getAllCampaigns();
+        if (!allCampaignsResult.isSuccess) {
+          throw const DatabaseException(
+            'Fehler beim Laden aller Kampagnen',
+            operation: 'getCampaignsByType',
+          );
+        }
+        return allCampaignsResult.data!
+            .where((campaign) => campaign.type == type)
+            .toList();
+      });
+
+  Future<ServiceResult<Campaign>> duplicateCampaign(String campaignId) async =>
+      performServiceOperation('duplicateCampaign', () async {
+        final originalCampaignResult = await getCampaignById(campaignId);
+        if (!originalCampaignResult.isSuccess || originalCampaignResult.data == null) {
+          throw ResourceNotFoundException.forId(
+            'Campaign',
+            campaignId,
+            operation: 'duplicateCampaign',
+          );
+        }
+        final originalCampaign = originalCampaignResult.data!;
+        final duplicatedCampaign = Campaign.create(
+          title: '${originalCampaign.title} (Kopie)',
+          description: originalCampaign.description,
+          type: originalCampaign.type,
+          settings: originalCampaign.settings,
         );
-      }
+        return _campaignRepository.create(duplicatedCampaign);
+      });
 
-      return allCampaignsResult.data!
-          .where((campaign) => campaign.type == type)
-          .toList();
-    });
-  }
-
-  // ========== STATISTICS METHODS ==========
-
-  /// Dupliziert eine Kampagne über neues Repository
-  /// 
-  /// HINWEIS: Verwendet jetzt das neue CampaignModelRepository
-  Future<ServiceResult<Campaign>> duplicateCampaign(String campaignId) async {
-    return performServiceOperation('duplicateCampaign', () async {
-      final originalCampaignResult = await getCampaignById(campaignId);
-      if (!originalCampaignResult.isSuccess || originalCampaignResult.data == null) {
-        throw ResourceNotFoundException.forId(
-          'Campaign',
-          campaignId,
-          operation: 'duplicateCampaign',
-        );
-      }
-
-      final originalCampaign = originalCampaignResult.data!;
-      final duplicatedCampaign = Campaign.create(
-        title: '${originalCampaign.title} (Kopie)',
-        description: originalCampaign.description,
-        status: CampaignStatus.planning,
-        type: originalCampaign.type,
-        settings: originalCampaign.settings,
-      );
-
-      return await _campaignRepository.create(duplicatedCampaign);
-    });
-  }
-
-  /// Holt die Anzahl der Helden für eine Kampagne (Legacy-Methode für ViewModel-Kompatibilität)
   Future<int> getHeroCount(String campaignId) async {
     try {
       final campaign = await _getCampaignOrThrow(campaignId);
@@ -559,7 +395,6 @@ class CampaignService {
     }
   }
 
-  /// Holt die Anzahl der Sessions für eine Kampagne (Legacy-Methode für ViewModel-Kompatibilität)
   Future<int> getSessionCount(String campaignId) async {
     try {
       final campaign = await _getCampaignOrThrow(campaignId);
@@ -569,7 +404,6 @@ class CampaignService {
     }
   }
 
-  /// Holt die Anzahl der Quests für eine Kampagne (Legacy-Methode für ViewModel-Kompatibilität)
   Future<int> getQuestCount(String campaignId) async {
     try {
       final campaign = await _getCampaignOrThrow(campaignId);
@@ -579,7 +413,6 @@ class CampaignService {
     }
   }
 
-  /// Holt das Datum der letzten Aktivität für eine Kampagne (Legacy-Methode für ViewModel-Kompatibilität)
   Future<DateTime?> getLastActiveDate(String campaignId) async {
     try {
       final campaign = await _getCampaignOrThrow(campaignId);
@@ -589,162 +422,142 @@ class CampaignService {
     }
   }
 
-  // ========== TEMPLATE OPERATIONS ==========
+  Future<ServiceResult<List<Campaign>>> getTemplates() async =>
+      performServiceOperation('getTemplates', () async {
+        final all = await _campaignRepository.findAll();
+        return all.where((c) => c.isTemplate).toList();
+      });
 
-  /// Gibt alle Vorlagen zurück
-  Future<ServiceResult<List<Campaign>>> getTemplates() async {
-    return performServiceOperation('getTemplates', () async {
-      final all = await _campaignRepository.findAll();
-      return all.where((c) => c.isTemplate).toList();
-    });
-  }
-
-  /// Erstellt eine Kopie einer Vorlage als neue aktive Kampagne
   Future<ServiceResult<Campaign>> createCopyFromTemplate(
     Campaign template, {
     required String title,
-  }) async {
-    return performServiceOperation('createCopyFromTemplate', () async {
-      if (!template.isTemplate) {
-        throw ValidationException(
-          'Nur Vorlagen können kopiert werden',
-          operation: 'createCopyFromTemplate',
-        );
-      }
-
-      final idMap = <String, String>{}; // oldId → newId
-      final newCampaignId = UuidService().generateId();
-      final now = DateTime.now();
-
-      // ── 1. WikiEntries ─────────────────────────────────────────────────────
-      // Phase A: IDs vergeben
-      final wikiEntries = await _wikiRepository.findByCampaign(template.id);
-      for (final w in wikiEntries) {
-        idMap[w.id] = UuidService().generateId();
-      }
-      // Phase B: speichern mit remappten parentId / childIds
-      final copiedWikiIds = <String>[];
-      for (final w in wikiEntries) {
-        final newId = idMap[w.id]!;
-        copiedWikiIds.add(newId);
-        await _wikiRepository.create(w.copyWith(
-          id: newId,
-          campaignId: newCampaignId,
-          parentId: w.parentId != null ? idMap[w.parentId!] : null,
-          childIds: _remapIds(w.childIds, idMap),
-          isFavorite: false,
-        ));
-      }
-
-      // ── 2. Quests ──────────────────────────────────────────────────────────
-      final quests = await _questRepository.findByCampaign(template.id);
-      for (final q in quests) {
-        idMap[q.id] = UuidService().generateId();
-      }
-      final copiedQuestIds = <String>[];
-      for (final q in quests) {
-        final newId = idMap[q.id]!;
-        copiedQuestIds.add(newId);
-        await _questRepository.create(q.copyWith(
-          id: newId,
-          campaignId: newCampaignId,
-          status: QuestStatus.active,
-          completedAt: null,
-          linkedWikiEntryIds: _remapIds(q.linkedWikiEntryIds, idMap),
-        ));
-      }
-
-      // ── 4. Orte (2 Phasen wegen connectedOrtIds + parentOrtId) ────────────
-      final orte = await _ortRepository.findByCampaign(template.id);
-      for (final o in orte) {
-        idMap[o.id] = UuidService().generateId();
-      }
-      for (final o in orte) {
-        await _ortRepository.create(o.copyWith(
-          id: idMap[o.id]!,
-          campaignId: newCampaignId,
-          templateOrtId: o.id,
-          connectedOrtIds: _remapIds(o.connectedOrtIds, idMap),
-          parentOrtId: o.parentOrtId != null ? idMap[o.parentOrtId!] : null,
-          lastVisitedAt: null,
-          memory: null,
-        ));
-      }
-
-      // ── 5. Sessions + Scenes ───────────────────────────────────────────────
-      final sessions = await _sessionRepository.findByCampaign(template.id);
-      for (final s in sessions) {
-        idMap[s.id] = UuidService().generateId();
-      }
-      final copiedSessionIds = <String>[];
-      for (final s in sessions) {
-        final newSessionId = idMap[s.id]!;
-        copiedSessionIds.add(newSessionId);
-
-        final scenes = await _sceneRepository.findBySession(s.id);
-        for (final sc in scenes) {
-          idMap[sc.id] = UuidService().generateId();
+  }) async =>
+      performServiceOperation('createCopyFromTemplate', () async {
+        if (!template.isTemplate) {
+          throw const ValidationException(
+            'Nur Vorlagen können kopiert werden',
+            operation: 'createCopyFromTemplate',
+          );
         }
-        final copiedSceneIds = <String>[];
-        for (final sc in scenes) {
-          final newSceneId = idMap[sc.id]!;
-          copiedSceneIds.add(newSceneId);
-          await _sceneRepository.create(sc.copyWith(
-            id: newSceneId,
-            sessionId: newSessionId,
-            linkedQuestIds: _remapIds(sc.linkedQuestIds, idMap),
-            linkedWikiEntryIds: _remapIds(sc.linkedWikiEntryIds, idMap),
-            linkedEncounterId: null,    // Encounters werden nicht kopiert
-            linkedCharacterIds: [],     // Helden werden neu hinzugefügt
+
+        final idMap = <String, String>{};
+        final newCampaignId = UuidService().generateId();
+        final now = DateTime.now();
+
+        // Create campaign stub first so session FK (campaignId → campaigns.id) is satisfied.
+        // IDs will be backfilled via update() after all children are created.
+        final newCampaign = await _campaignRepository.create(Campaign(
+          id: newCampaignId,
+          title: title,
+          description: template.description,
+          type: template.type,
+          createdAt: now,
+          updatedAt: now,
+          settings: template.settings,
+          accentColor: template.accentColor,
+          system: template.system,
+          templateId: template.id,
+          verlaufsplan: template.verlaufsplan,
+          verlaufsKarteImagePath: template.verlaufsKarteImagePath,
+          karteImagePath: template.karteImagePath,
+        ));
+
+        final wikiEntries = await _wikiRepository.findByCampaign(template.id);
+        for (final w in wikiEntries) {
+          idMap[w.id] = UuidService().generateId();
+        }
+        final copiedWikiIds = <String>[];
+        for (final w in wikiEntries) {
+          final newId = idMap[w.id]!;
+          copiedWikiIds.add(newId);
+          await _wikiRepository.create(w.copyWith(
+            id: newId,
+            campaignId: newCampaignId,
+            parentId: w.parentId != null ? idMap[w.parentId] : null,
+            childIds: _remapIds(w.childIds, idMap),
+            isFavorite: false,
           ));
         }
 
-        await _sessionRepository.create(s.copyWith(
-          id: newSessionId,
-          campaignId: newCampaignId,
-          sceneIds: copiedSceneIds,
-          activeSceneId: null,
-          characterTrackingIds: [],
-          questProgressIds: [],
-          startedAt: null,
-          completedAt: null,
+        final quests = await _questRepository.findByCampaign(template.id);
+        for (final q in quests) {
+          idMap[q.id] = UuidService().generateId();
+        }
+        final copiedQuestIds = <String>[];
+        for (final q in quests) {
+          final newId = idMap[q.id]!;
+          copiedQuestIds.add(newId);
+          await _questRepository.create(q.copyWith(
+            id: newId,
+            campaignId: newCampaignId,
+            status: QuestStatus.active,
+            linkedWikiEntryIds: _remapIds(q.linkedWikiEntryIds, idMap),
+          ));
+        }
+
+        final orte = await _ortRepository.findByCampaign(template.id);
+        for (final o in orte) {
+          idMap[o.id] = UuidService().generateId();
+        }
+        for (final o in orte) {
+          await _ortRepository.create(o.copyWith(
+            id: idMap[o.id],
+            campaignId: newCampaignId,
+            templateOrtId: o.id,
+            connectedOrtIds: _remapIds(o.connectedOrtIds, idMap),
+            parentOrtId: o.parentOrtId != null ? idMap[o.parentOrtId] : null,
+            lastVisitedAt: null,
+            memory: null,
+          ));
+        }
+
+        final sessions = await _sessionRepository.findByCampaign(template.id);
+        for (final s in sessions) {
+          idMap[s.id] = UuidService().generateId();
+        }
+        final copiedSessionIds = <String>[];
+        for (final s in sessions) {
+          final newSessionId = idMap[s.id]!;
+          copiedSessionIds.add(newSessionId);
+
+          final scenes = await _sceneRepository.findBySession(s.id);
+          for (final sc in scenes) {
+            idMap[sc.id] = UuidService().generateId();
+          }
+          final copiedSceneIds = <String>[];
+          for (final sc in scenes) {
+            final newSceneId = idMap[sc.id]!;
+            copiedSceneIds.add(newSceneId);
+            await _sceneRepository.create(sc.copyWith(
+              id: newSceneId,
+              sessionId: newSessionId,
+              linkedQuestIds: _remapIds(sc.linkedQuestIds, idMap),
+              linkedWikiEntryIds: _remapIds(sc.linkedWikiEntryIds, idMap),
+              linkedCharacterIds: [],
+            ));
+          }
+
+          await _sessionRepository.create(s.copyWith(
+            id: newSessionId,
+            campaignId: newCampaignId,
+            sceneIds: copiedSceneIds,
+            characterTrackingIds: [],
+            questProgressIds: [],
+            ortId: s.ortId != null ? idMap[s.ortId!] : null,
+          ));
+        }
+
+        // Backfill collected child IDs into the campaign record.
+        return _campaignRepository.update(newCampaign.copyWith(
+          sessionIds: copiedSessionIds,
+          questIds: copiedQuestIds,
+          wikiEntryIds: copiedWikiIds,
         ));
-      }
+      });
 
-      // ── 6. Campaign erstellen ──────────────────────────────────────────────
-      final copy = await _campaignRepository.create(Campaign(
-        id: newCampaignId,
-        title: title,
-        description: template.description,
-        status: CampaignStatus.planning,
-        type: template.type,
-        createdAt: now,
-        updatedAt: now,
-        settings: template.settings,
-        accentColor: template.accentColor,
-        system: template.system,
-        isTemplate: false,
-        templateId: template.id,
-        sessionIds: copiedSessionIds,
-        questIds: copiedQuestIds,
-        wikiEntryIds: copiedWikiIds,
-        verlaufsplan: template.verlaufsplan,
-        verlaufsKarteImagePath: template.verlaufsKarteImagePath,
-        karteImagePath: template.karteImagePath,
-      ));
-
-      return copy;
-    });
-  }
-
-  /// Hilfsmethode: remappt eine Liste von IDs anhand der idMap.
-  /// IDs die nicht in der Map sind bleiben unverändert.
   List<String> _remapIds(List<String> ids, Map<String, String> idMap) =>
       ids.map((id) => idMap[id] ?? id).toList();
 
-  // ========== PRIVATE HELPER METHODS ==========
-
-  /// Holt eine Kampagne oder wirft Exception
   Future<Campaign> _getCampaignOrThrow(String campaignId) async {
     final result = await getCampaignById(campaignId);
     if (!result.isSuccess || result.data == null) {

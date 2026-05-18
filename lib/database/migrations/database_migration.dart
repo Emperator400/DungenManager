@@ -116,7 +116,73 @@ class DatabaseMigration {
   // Subkarten-Hierarchie
   await _addParentOrtIdColumn(db);
 
+  // Szenen als Map-Marker: session_id nullable + campaign_id
+  await _makeSceneSessionIdNullable(db);
+
   debugPrint('Database migration completed successfully');
+  }
+
+  Future<void> _makeSceneSessionIdNullable(Database db) async {
+    final columns = await db.rawQuery("PRAGMA table_info('scenes')");
+    final names = columns.map((c) => c['name'] as String).toSet();
+
+    if (names.contains('campaign_id')) {
+      debugPrint('scenes.campaign_id already exists — skipping migration');
+      return;
+    }
+
+    debugPrint('Migrating scenes: session_id nullable + adding campaign_id');
+
+    final allTargetCols = [
+      'id', 'session_id', 'order_index', 'name', 'description', 'scene_type',
+      'is_completed', 'estimated_duration', 'complexity', 'linked_wiki_entry_ids',
+      'linked_quest_ids', 'linked_character_ids', 'linked_sound_ids', 'sound_volumes',
+      'linked_encounter_id', 'scene_data', 'created_at', 'updated_at', 'ort_id',
+    ];
+    final copyCols = allTargetCols.where(names.contains).toList();
+    final colList = copyCols.join(', ');
+
+    await db.execute('''
+      CREATE TABLE scenes_v2 (
+        id TEXT PRIMARY KEY,
+        session_id TEXT,
+        campaign_id TEXT,
+        order_index INTEGER NOT NULL DEFAULT 0,
+        name TEXT NOT NULL DEFAULT '',
+        description TEXT DEFAULT '',
+        scene_type TEXT NOT NULL DEFAULT 'Exploration',
+        is_completed INTEGER NOT NULL DEFAULT 0,
+        estimated_duration INTEGER,
+        complexity TEXT,
+        linked_wiki_entry_ids TEXT DEFAULT '[]',
+        linked_quest_ids TEXT DEFAULT '[]',
+        linked_character_ids TEXT DEFAULT '[]',
+        linked_sound_ids TEXT DEFAULT '[]',
+        sound_volumes TEXT DEFAULT '{}',
+        linked_encounter_id TEXT,
+        scene_data TEXT DEFAULT '{}',
+        created_at TEXT NOT NULL DEFAULT '',
+        updated_at TEXT NOT NULL DEFAULT '',
+        ort_id TEXT
+      )
+    ''');
+
+    await db.execute('INSERT INTO scenes_v2 ($colList) SELECT $colList FROM scenes');
+    await db.execute('DROP TABLE scenes');
+    await db.execute('ALTER TABLE scenes_v2 RENAME TO scenes');
+
+    for (final idx in [
+      'CREATE INDEX IF NOT EXISTS idx_scenes_session_id ON scenes(session_id)',
+      'CREATE INDEX IF NOT EXISTS idx_scenes_order_index ON scenes(order_index)',
+      'CREATE INDEX IF NOT EXISTS idx_scenes_scene_type ON scenes(scene_type)',
+      'CREATE INDEX IF NOT EXISTS idx_scenes_is_completed ON scenes(is_completed)',
+      'CREATE INDEX IF NOT EXISTS idx_scenes_linked_encounter_id ON scenes(linked_encounter_id)',
+      'CREATE INDEX IF NOT EXISTS idx_scenes_ort_id ON scenes(ort_id)',
+      'CREATE INDEX IF NOT EXISTS idx_scenes_campaign_id ON scenes(campaign_id)',
+    ]) {
+      try { await db.execute(idx); } catch (_) {}
+    }
+    debugPrint('Scenes table migrated successfully');
   }
 
   Future<void> _addMapColumnsToOrte(Database db) async {
