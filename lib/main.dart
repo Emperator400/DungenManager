@@ -37,8 +37,11 @@ import 'database/repositories/sound_model_repository.dart';
 import 'database/repositories/wiki_entry_model_repository.dart';
 import 'database/repositories/encounter_model_repository.dart';
 import 'database/repositories/player_model_repository.dart';
+import 'database/repositories/dm_profile_model_repository.dart';
 import 'viewmodels/player_viewmodel.dart';
+import 'viewmodels/dm_profile_viewmodel.dart';
 import 'services/player_service.dart';
+import 'services/dm_profile_service.dart';
 import 'viewmodels/update_viewmodel.dart';
 import 'widgets/ui_components/shared/app_logo.dart';
 import 'widgets/ui_components/shared/app_title_bar.dart';
@@ -199,6 +202,16 @@ class DmApp extends StatelessWidget {
             playerService: PlayerService(
               playerRepository: PlayerModelRepository(dbConnection),
               characterRepository: PlayerCharacterModelRepository(dbConnection),
+            ),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => DmProfileViewModel(
+            service: DmProfileService(
+              profileRepo: DmProfileModelRepository(dbConnection),
+              campaignRepo: CampaignModelRepository(dbConnection),
+              sessionRepo: SessionModelRepository(dbConnection),
+              characterRepo: PlayerCharacterModelRepository(dbConnection),
             ),
           ),
         ),

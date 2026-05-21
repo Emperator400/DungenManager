@@ -119,6 +119,9 @@ class DatabaseMigration {
   // Szenen als Map-Marker: session_id nullable + campaign_id
   await _makeSceneSessionIdNullable(db);
 
+  // DM-Profil (Singleton)
+  await _createDmProfileTable(db);
+
   debugPrint('Database migration completed successfully');
   }
 
@@ -1663,5 +1666,25 @@ class DatabaseMigration {
       );
       debugPrint('Added player_id column to player_characters');
     }
+  }
+
+  Future<void> _createDmProfileTable(Database db) async {
+    final result = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='dm_profile'",
+    );
+    if (result.isNotEmpty) return;
+
+    await db.execute('''
+      CREATE TABLE dm_profile (
+        id TEXT PRIMARY KEY,
+        dm_name TEXT NOT NULL DEFAULT '',
+        bio TEXT,
+        avatar_path TEXT,
+        favorite_system TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    debugPrint('Created dm_profile table');
   }
 }
