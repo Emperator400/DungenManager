@@ -400,6 +400,7 @@ class _OrtNodeState extends State<_OrtNode> {
       case OrtType.wilderness: return C.amber;
       case OrtType.region:     return AppColors.typGeschichte;
       case OrtType.other:      return C.textSoft;
+      case OrtType.token:      return const Color(0xFF9b59b6);
     }
   }
 

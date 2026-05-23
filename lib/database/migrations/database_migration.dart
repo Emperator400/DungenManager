@@ -116,6 +116,9 @@ class DatabaseMigration {
   // Subkarten-Hierarchie
   await _addParentOrtIdColumn(db);
 
+  // Token-Bild für OrtType.token
+  await _addTokenImagePathColumn(db);
+
   // Szenen als Map-Marker: session_id nullable + campaign_id
   await _makeSceneSessionIdNullable(db);
 
@@ -204,6 +207,15 @@ class DatabaseMigration {
     if (!names.contains('karte_image_path')) {
       await db.execute('ALTER TABLE campaigns ADD COLUMN karte_image_path TEXT');
       debugPrint('Added karte_image_path column to campaigns');
+    }
+  }
+
+  Future<void> _addTokenImagePathColumn(Database db) async {
+    final cols  = await db.rawQuery("PRAGMA table_info('orte')");
+    final names = cols.map((c) => c['name'] as String).toSet();
+    if (!names.contains('token_image_path')) {
+      await db.execute('ALTER TABLE orte ADD COLUMN token_image_path TEXT');
+      debugPrint('Added token_image_path column to orte');
     }
   }
 

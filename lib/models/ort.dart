@@ -8,6 +8,7 @@ enum OrtType {
   wilderness,
   region,
   other,
+  token,
 }
 
 extension OrtTypeLabel on OrtType {
@@ -19,6 +20,7 @@ extension OrtTypeLabel on OrtType {
       case OrtType.wilderness: return 'Wildnis';
       case OrtType.region:     return 'Region';
       case OrtType.other:      return 'Sonstiges';
+      case OrtType.token:      return 'Token';
     }
   }
 }
@@ -56,6 +58,9 @@ class Ort {
   // Hintergrundbild für die Subkarte dieses Ortes
   final String? mapImagePath;
 
+  // Bild für OrtType.token — wird im Token-Kreis statt Buchstaben gezeigt
+  final String? tokenImagePath;
+
   // Pin-Position auf der Karte gesperrt (kein Drag möglich)
   final bool mapPositionLocked;
 
@@ -79,6 +84,7 @@ class Ort {
     this.mapY,
     this.parentOrtId,
     this.mapImagePath,
+    this.tokenImagePath,
     this.mapPositionLocked = false,
   });
 
@@ -133,6 +139,7 @@ class Ort {
       mapY: (map['map_y'] as num?)?.toDouble(),
       parentOrtId: map['parent_ort_id'] as String?,
       mapImagePath: map['map_image_path'] as String?,
+      tokenImagePath: map['token_image_path'] as String?,
       mapPositionLocked: (map['map_position_locked'] as int? ?? 0) == 1,
     );
   }
@@ -155,6 +162,7 @@ class Ort {
         'map_y': mapY,
         'parent_ort_id': parentOrtId,
         'map_image_path': mapImagePath,
+        'token_image_path': tokenImagePath,
         'map_position_locked': mapPositionLocked ? 1 : 0,
       };
 
@@ -176,6 +184,7 @@ class Ort {
     Object? mapY = _sentinel,
     Object? parentOrtId = _sentinel,
     Object? mapImagePath = _sentinel,
+    Object? tokenImagePath = _sentinel,
     bool? mapPositionLocked,
   }) =>
       Ort(
@@ -200,6 +209,7 @@ class Ort {
         mapY: mapY == _sentinel ? this.mapY : mapY as double?,
         parentOrtId: parentOrtId == _sentinel ? this.parentOrtId : parentOrtId as String?,
         mapImagePath: mapImagePath == _sentinel ? this.mapImagePath : mapImagePath as String?,
+        tokenImagePath: tokenImagePath == _sentinel ? this.tokenImagePath : tokenImagePath as String?,
         mapPositionLocked: mapPositionLocked ?? this.mapPositionLocked,
       );
 
