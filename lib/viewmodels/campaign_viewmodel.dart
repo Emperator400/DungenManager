@@ -676,19 +676,15 @@ class CampaignViewModel extends ChangeNotifier {
 
       // Cloud → Lokal: importiere neuere Cloud-Versionen
       for (final cloud in cloudCampaigns) {
-        final localIdx = _campaigns.indexWhere((c) => c.id == cloud.id);
-        if (localIdx == -1) {
-          // Neu aus der Cloud — lokal anlegen
-          if (_campaignRepo != null) {
-            final saved = await _campaignRepo!.create(cloud);
-            _campaigns.insert(0, saved);
-          }
-        } else if (cloud.updatedAt.isAfter(_campaigns[localIdx].updatedAt)) {
-          // Cloud-Version ist neuer — lokal überschreiben
-          if (_campaignRepo != null) {
-            final saved = await _campaignRepo!.update(cloud);
-            _campaigns[localIdx] = saved;
-          }
+        if (_campaignRepo == null) continue;
+        final existing = await _campaignRepo!.findById(cloud.id);
+        if (existing == null) {
+          final saved = await _campaignRepo!.create(cloud);
+          _campaigns.insert(0, saved);
+        } else if (cloud.updatedAt.isAfter(existing.updatedAt)) {
+          final saved = await _campaignRepo!.update(cloud);
+          final idx = _campaigns.indexWhere((c) => c.id == cloud.id);
+          if (idx != -1) _campaigns[idx] = saved;
         }
       }
 
