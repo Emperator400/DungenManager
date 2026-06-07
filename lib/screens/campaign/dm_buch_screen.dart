@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import '../../models/campaign.dart';
 import '../../models/encounter.dart';
+import '../../models/map_layer.dart';
 import '../../models/ort.dart';
 import '../../models/scene.dart';
 import '../../models/player.dart';
@@ -2373,8 +2374,8 @@ class _SceneMarkerCard extends StatelessWidget {
                 ),
                 // Action buttons (icon-only to avoid overflow)
                 _IconBtn(
-                  icon: scene.isCompleted ? Icons.replay : Icons.check_circle_outline,
-                  color: scene.isCompleted ? C.textSoft : C.green,
+                  icon: scene.isCompleted ? Icons.replay : Icons.radio_button_unchecked,
+                  color: scene.isCompleted ? C.textSoft : C.textMid,
                   onTap: onToggleDone,
                 ),
                 _IconBtn(icon: Icons.edit_outlined, color: C.accent, onTap: onEdit),
@@ -2636,6 +2637,80 @@ class _SceneExpandedContentState extends State<_SceneExpandedContent> {
     return result;
   }
 
+  Future<void> _updateQuestStatus(Quest quest, QuestStatus newStatus) async {
+    if (quest.status == newStatus) return;
+    try {
+      final repo = QuestModelRepository(DatabaseConnection.instance);
+      final updated = await repo.updateStatus(quest.id, newStatus);
+      if (!mounted) return;
+      setState(() {
+        _data = _data == null
+            ? null
+            : _ResolvedSceneData(
+                encounter: _data!.encounter,
+                quests: _data!.quests.map((q) => q.id == quest.id ? updated : q).toList(),
+                wikiEntries: _data!.wikiEntries,
+                sounds: _data!.sounds,
+                characters: _data!.characters,
+              );
+      });
+    } catch (e) {
+      debugPrint('[_SceneExpandedContent] Quest status update failed: $e');
+    }
+  }
+
+  Widget _buildQuestCard(Quest quest) {
+    final statusColor = _questStatusColor(quest.status, C);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      decoration: BoxDecoration(
+        color: statusColor.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(width: 7, height: 7, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
+              const SizedBox(width: 7),
+              Expanded(child: Text(quest.title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: C.text))),
+              Text(_questStatusLabel(quest.status), style: TextStyle(fontSize: 10, color: statusColor)),
+            ],
+          ),
+          const SizedBox(height: 7),
+          Row(
+            children: [
+              _QuestStatusBtn(label: 'Aktiv',       icon: Icons.play_circle_outline,   color: C.green,  isSelected: quest.status == QuestStatus.active,    onTap: () => _updateQuestStatus(quest, QuestStatus.active)),
+              const SizedBox(width: 4),
+              _QuestStatusBtn(label: 'Erledigt',    icon: Icons.check_circle_outline,  color: C.accent, isSelected: quest.status == QuestStatus.completed, onTap: () => _updateQuestStatus(quest, QuestStatus.completed)),
+              const SizedBox(width: 4),
+              _QuestStatusBtn(label: 'Aufgegeben',  icon: Icons.remove_circle_outline, color: C.red, isSelected: quest.status == QuestStatus.abandoned,  onTap: () => _updateQuestStatus(quest, QuestStatus.abandoned)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Color _questStatusColor(QuestStatus status, AppColorsExtension C) => switch (status) {
+    QuestStatus.active    => C.green,
+    QuestStatus.completed => C.accent,
+    QuestStatus.failed    => C.red,
+    QuestStatus.abandoned => C.red,
+    QuestStatus.onHold    => C.amber,
+  };
+
+  static String _questStatusLabel(QuestStatus status) => switch (status) {
+    QuestStatus.active    => 'Aktiv',
+    QuestStatus.completed => 'Erledigt',
+    QuestStatus.failed    => 'Fehlgeschlagen',
+    QuestStatus.abandoned => 'Aufgegeben',
+    QuestStatus.onHold    => 'Pausiert',
+  };
+
   @override
   Widget build(BuildContext context) {
     final data = _data;
@@ -2697,11 +2772,9 @@ class _SceneExpandedContentState extends State<_SceneExpandedContent> {
                 : data.quests.isEmpty
                     ? Text('${_scene.linkedQuestIds.length} verknüpft',
                         style: TextStyle(fontSize: 11, color: C.textSoft))
-                    : Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
+                    : Column(
                         children: data.quests
-                            .map((q) => _LinkChip(icon: Icons.flag_outlined, label: q.title, color: C.amber))
+                            .map((q) => _buildQuestCard(q))
                             .toList(),
                       ),
           ],
@@ -2874,6 +2947,42 @@ class _LinkChip extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      );
+}
+
+class _QuestStatusBtn extends StatelessWidget {
+  const _QuestStatusBtn({required this.label, required this.icon, required this.color, required this.isSelected, required this.onTap});
+
+  final String label;
+  final IconData icon;
+  final Color color;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            decoration: BoxDecoration(
+              color: isSelected ? color.withValues(alpha: 0.18) : Colors.transparent,
+              borderRadius: BorderRadius.circular(5),
+              border: Border.all(color: isSelected ? color : color.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 11, color: isSelected ? color : color.withValues(alpha: 0.6)),
+                const SizedBox(width: 3),
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: isSelected ? color : color.withValues(alpha: 0.6)),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -4513,17 +4622,13 @@ class _DmBuchMenuBtn extends StatelessWidget {
   }
 
   Future<void> _syncFromTemplate(BuildContext context) async {
-    final count = await vm.syncFromTemplate();
+    final result = await vm.syncFromTemplate();
     if (!context.mounted) return;
-    final msg = count == null
-        ? 'Sync fehlgeschlagen'
-        : count == 0
-            ? 'Alles aktuell – keine Änderungen'
-            : '$count Marker aktualisiert';
+    final ok = result != null;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
+      content: Text(ok ? result.summary : 'Sync fehlgeschlagen'),
       duration: const Duration(seconds: 3),
-      backgroundColor: count == null ? C.red : C.green,
+      backgroundColor: ok ? C.green : C.red,
     ));
   }
 }
@@ -6754,6 +6859,12 @@ class _KarteGraphViewState extends State<_KarteGraphView>
   bool _connectMode = false;
   String? _connectSource;
   bool _scenePlaceMode = false;
+  bool _showLayerPanel = false;
+
+  // Local copy of the last synced layers list — needed because old.vm and
+  // widget.vm point to the same ViewModel object in didUpdateWidget, so
+  // direct comparison of old.vm.currentLevelLayers always returns equal.
+  List<MapLayer> _syncedLayers = const [];
 
   String? _lastSelectedOrtId;
   BoxConstraints? _constraints;
@@ -6763,7 +6874,6 @@ class _KarteGraphViewState extends State<_KarteGraphView>
 
   int _lastMapDepth = 1;
   double _pinScale = 1.0;
-  double _playerAspectRatio = 16.0 / 9.0; // assumed player screen aspect ratio
   String _lastTokenSig = '';
 
   @override
@@ -6782,7 +6892,22 @@ class _KarteGraphViewState extends State<_KarteGraphView>
       final path = widget.vm.currentMapImagePath;
       if (path != null) lanVm.setImage(path);
       _syncTokenOrte(lanVm);
+      _syncLayers(lanVm);
     });
+  }
+
+  void _syncLayers(LanMapViewModel lanVm) {
+    final layers = widget.vm.currentLevelLayers;
+    _syncedLayers = layers;
+    lanVm.setLayers(layers);
+    _precacheLayers(layers);
+  }
+
+  void _precacheLayers(List<MapLayer> layers) {
+    for (final layer in layers) {
+      if (layer.imagePath == null) continue;
+      precacheImage(FileImage(File(layer.imagePath!)), context);
+    }
   }
 
   // Triggers rebuild of viewport rect when DM pans/zooms the graph view
@@ -6818,6 +6943,11 @@ class _KarteGraphViewState extends State<_KarteGraphView>
       if (path != null) context.read<LanMapViewModel>().setImage(path);
     }
 
+    // Compare against local _syncedLayers because old.vm == widget.vm (same object).
+    if (!identical(_syncedLayers, widget.vm.currentLevelLayers)) {
+      _syncLayers(context.read<LanMapViewModel>());
+    }
+
     // Wenn die Kartenebene gewechselt hat, Positionen neu initialisieren
     if (widget.vm.mapStackDepth != _lastMapDepth) {
       _lastMapDepth = widget.vm.mapStackDepth;
@@ -6825,7 +6955,9 @@ class _KarteGraphViewState extends State<_KarteGraphView>
       _lastTokenSig = '';
       _dragPos.clear();
       _initPositions(widget.vm.currentLevelOrte);
-      _syncTokenOrte(context.read<LanMapViewModel>());
+      final lanVm = context.read<LanMapViewModel>();
+      _syncTokenOrte(lanVm);
+      _syncLayers(lanVm);
       return;
     }
 
@@ -7144,16 +7276,29 @@ class _KarteGraphViewState extends State<_KarteGraphView>
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    // Hintergrund (Karte oder Dot-Grid)
+                    // Hintergrund (Karte + Layer oder Dot-Grid)
                     Positioned.fill(
                       child: IgnorePointer(
                         child: vm.currentMapImagePath != null
-                            ? Image.file(
-                                File(vm.currentMapImagePath!),
-                                fit: BoxFit.contain,
-                                frameBuilder: (ctx, child, frame, sync) =>
-                                    (sync || frame != null) ? child : CustomPaint(painter: _GraphGridPainter(C)),
-                                errorBuilder: (_, __, ___) => ColoredBox(color: C.bgPanel),
+                            ? Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Image.file(
+                                    File(vm.currentMapImagePath!),
+                                    fit: BoxFit.contain,
+                                    frameBuilder: (ctx, child, frame, sync) =>
+                                        (sync || frame != null) ? child : CustomPaint(painter: _GraphGridPainter(C)),
+                                    errorBuilder: (_, __, ___) => ColoredBox(color: C.bgPanel),
+                                  ),
+                                  for (final layer in vm.currentLevelLayers)
+                                    if (layer.isVisible && layer.imagePath != null)
+                                      Image.file(
+                                        File(layer.imagePath!),
+                                        fit: BoxFit.contain,
+                                        gaplessPlayback: true,
+                                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                                      ),
+                                ],
                               )
                             : CustomPaint(painter: _GraphGridPainter(C)),
                       ),
@@ -7488,6 +7633,14 @@ class _KarteGraphViewState extends State<_KarteGraphView>
                     onTap: () => vm.setCurrentLevelMapImage(null),
                     C: C,
                   ),
+                  const SizedBox(height: 4),
+                  _GraphMapBtn(
+                    icon: Icons.layers_outlined,
+                    label: 'Layer',
+                    active: _showLayerPanel,
+                    onTap: () => setState(() => _showLayerPanel = !_showLayerPanel),
+                    C: C,
+                  ),
                   if (lanVm.paintMode == 'viewport') ...[
                     const SizedBox(height: 4),
                     _GraphMapBtn(
@@ -7604,9 +7757,204 @@ class _KarteGraphViewState extends State<_KarteGraphView>
                 ),
               ),
             ),
+
+          // Layer-Panel
+          if (_showLayerPanel)
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: _LayerPanel(vm: vm, C: C),
+            ),
         ],
       );
     });
+  }
+}
+
+// ── LAYER PANEL ───────────────────────────────────────────────────────────────
+
+class _LayerPanel extends StatelessWidget {
+  const _LayerPanel({required this.vm, required this.C});
+
+  final DmBuchViewModel vm;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) {
+    final layers = vm.currentLevelLayers;
+    return Container(
+      width: 240,
+      decoration: BoxDecoration(
+        color: C.bgPanel,
+        border: Border(right: BorderSide(color: C.border)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 12, offset: const Offset(2, 0))],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: C.bgHover,
+              border: Border(bottom: BorderSide(color: C.border)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.layers_outlined, size: 15, color: C.accent),
+                const SizedBox(width: 8),
+                Text('Karten-Layer', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.text)),
+                const Spacer(),
+                Tooltip(
+                  message: 'Layer hinzufügen',
+                  child: GestureDetector(
+                    onTap: () => _addLayer(context),
+                    child: Icon(Icons.add, size: 18, color: C.accent),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: layers.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        'Noch keine Layer.\nTippe auf + um einen hinzuzufügen.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 12, color: C.textSoft),
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    itemCount: layers.length,
+                    separatorBuilder: (_, __) => Divider(height: 1, color: C.border),
+                    itemBuilder: (_, i) => _LayerRow(layer: layers[i], vm: vm, C: C),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _addLayer(BuildContext context) async {
+    final nameController = TextEditingController();
+    final C = this.C;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: C.bgPanel,
+        title: Text('Neuer Layer', style: TextStyle(color: C.text, fontSize: 15)),
+        content: TextField(
+          controller: nameController,
+          autofocus: true,
+          style: TextStyle(color: C.text),
+          decoration: InputDecoration(
+            hintText: 'Layer-Name',
+            hintStyle: TextStyle(color: C.textSoft),
+            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: C.border)),
+            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: C.accent)),
+          ),
+          onSubmitted: (_) => Navigator.pop(ctx, true),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Abbrechen', style: TextStyle(color: C.textSoft))),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Erstellen', style: TextStyle(color: C.accent)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && nameController.text.trim().isNotEmpty) {
+      await vm.createLayer(nameController.text.trim());
+    }
+  }
+}
+
+class _LayerRow extends StatelessWidget {
+  const _LayerRow({required this.layer, required this.vm, required this.C});
+
+  final MapLayer layer;
+  final DmBuchViewModel vm;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => vm.toggleLayerVisibility(layer),
+            child: Icon(
+              layer.isVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+              size: 18,
+              color: layer.isVisible ? C.accent : C.textSoft,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _pickImage(context),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    layer.name,
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: C.text),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (layer.imagePath != null)
+                    Text(
+                      layer.imagePath!.split(Platform.pathSeparator).last,
+                      style: TextStyle(fontSize: 10, color: C.textSoft),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    )
+                  else
+                    Text('Kein Bild – tippen zum Laden', style: TextStyle(fontSize: 10, color: C.textSoft)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: () => _confirmDelete(context),
+            child: Icon(Icons.delete_outline, size: 16, color: C.textSoft),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickImage(BuildContext context) async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.image, allowMultiple: false);
+    if (result != null && result.files.single.path != null) {
+      await vm.setLayerImage(layer, result.files.single.path);
+    }
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final C = this.C;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: C.bgPanel,
+        title: Text('Layer löschen?', style: TextStyle(color: C.text, fontSize: 15)),
+        content: Text('"${layer.name}" wird unwiderruflich entfernt.', style: TextStyle(color: C.textSoft, fontSize: 13)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Abbrechen', style: TextStyle(color: C.textSoft))),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Löschen', style: TextStyle(color: C.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await vm.deleteLayer(layer);
   }
 }
 
@@ -8059,73 +8407,6 @@ class _KarteOrtPickerDialogState extends State<_KarteOrtPickerDialog> {
       ),
     );
   }
-}
-
-// ── Camera mode helpers ───────────────────────────────────────────────────────
-
-class _CamFogPainter extends CustomPainter {
-  final Set<int> revealedCells;
-  final bool fogEnabled;
-  final int cols, rows;
-  final Size? imageNaturalSize;
-
-  const _CamFogPainter({
-    required this.revealedCells,
-    required this.fogEnabled,
-    required this.cols,
-    required this.rows,
-    this.imageNaturalSize,
-  });
-
-  Rect _containRect(Size size) {
-    if (imageNaturalSize == null) return Rect.fromLTWH(0, 0, size.width, size.height);
-    final imgAr = imageNaturalSize!.width / imageNaturalSize!.height;
-    final canAr = size.width / size.height;
-    final double w, h;
-    if (imgAr > canAr) {
-      w = size.width;
-      h = size.width / imgAr;
-    } else {
-      h = size.height;
-      w = size.height * imgAr;
-    }
-    return Rect.fromLTWH((size.width - w) / 2, (size.height - h) / 2, w, h);
-  }
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = _containRect(size);
-    final cw = rect.width  / cols;
-    final ch = rect.height / rows;
-
-    if (fogEnabled) {
-      final fogPaint = Paint()..color = Colors.black.withValues(alpha: 0.82);
-      for (int r = 0; r < rows; r++) {
-        for (int c = 0; c < cols; c++) {
-          if (!revealedCells.contains(r * cols + c)) {
-            canvas.drawRect(Rect.fromLTWH(rect.left + c * cw, rect.top + r * ch, cw, ch), fogPaint);
-          }
-        }
-      }
-    }
-
-    final gridPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.08)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.5;
-    for (int c = 0; c <= cols; c++) {
-      canvas.drawLine(Offset(rect.left + c * cw, rect.top), Offset(rect.left + c * cw, rect.bottom), gridPaint);
-    }
-    for (int r = 0; r <= rows; r++) {
-      canvas.drawLine(Offset(rect.left, rect.top + r * ch), Offset(rect.right, rect.top + r * ch), gridPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_CamFogPainter old) =>
-      old.fogEnabled != fogEnabled ||
-      old.revealedCells != revealedCells ||
-      old.imageNaturalSize != imageNaturalSize;
 }
 
 class _CamTokenDot extends StatelessWidget {

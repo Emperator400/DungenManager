@@ -27,6 +27,7 @@ class Quest {
   final List<QuestReward> rewards;
   final List<String> involvedNpcs;
   final List<String> linkedWikiEntryIds;
+  final String? templateQuestId;
 
   const Quest({
     required this.id,
@@ -47,6 +48,7 @@ class Quest {
     this.rewards = const [],
     this.involvedNpcs = const [],
     this.linkedWikiEntryIds = const [],
+    this.templateQuestId,
   });
 
   /// Factory für neue Quests mit automatisch generierter ID
@@ -171,6 +173,7 @@ class Quest {
         rewards: _deserializeRewards(map['rewards'] as String?),
         involvedNpcs: _deserializeStringList(map['involved_npcs'] as String?),
         linkedWikiEntryIds: _deserializeStringList(map['linked_wiki_entry_ids'] as String?),
+        templateQuestId: map['template_quest_id'] as String?,
       );
     } catch (e) {
       debugPrint('Fehler beim Parsen der Quest: $e');
@@ -330,6 +333,7 @@ class Quest {
       'rewards': _serializeRewards(rewards),
       'involved_npcs': _serializeStringList(involvedNpcs),
       'linked_wiki_entry_ids': _serializeStringList(linkedWikiEntryIds),
+      'template_quest_id': templateQuestId,
     };
   }
 
@@ -353,6 +357,7 @@ class Quest {
     List<QuestReward>? rewards,
     List<String>? involvedNpcs,
     List<String>? linkedWikiEntryIds,
+    Object? templateQuestId = _sentinel,
   }) {
     return Quest(
       id: id ?? this.id,
@@ -373,8 +378,11 @@ class Quest {
       rewards: rewards ?? this.rewards,
       involvedNpcs: involvedNpcs ?? this.involvedNpcs,
       linkedWikiEntryIds: linkedWikiEntryIds ?? this.linkedWikiEntryIds,
+      templateQuestId: templateQuestId == _sentinel ? this.templateQuestId : templateQuestId as String?,
     );
   }
+
+  static const Object _sentinel = Object();
 
   @override
   bool operator ==(Object other) {

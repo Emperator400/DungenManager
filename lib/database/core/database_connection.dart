@@ -88,7 +88,7 @@ class DatabaseConnection {
 
     final db = await openDatabase(
       path,
-      version: 25,
+      version: 26,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       onOpen: (db) async => db.execute('PRAGMA foreign_keys = ON'),
@@ -551,6 +551,7 @@ class DatabaseConnection {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         ort_id TEXT,
+        template_scene_id TEXT,
         FOREIGN KEY (session_id) REFERENCES sessions (id) ON DELETE CASCADE
       )
     ''');
@@ -709,7 +710,8 @@ class DatabaseConnection {
         version TEXT DEFAULT '1.0',
         priority INTEGER NOT NULL DEFAULT 0,
         quest_giver_id TEXT,
-        image_url TEXT
+        image_url TEXT,
+        template_quest_id TEXT
       )
     ''');
 
@@ -1314,6 +1316,27 @@ class DatabaseConnection {
       } catch (e) {
         await db.execute('PRAGMA foreign_keys = ON');
         debugPrint('⚠️ Konnte encounters nicht reparieren: $e');
+      }
+    }
+
+    if (oldVersion < 26 && newVersion >= 26) {
+      try {
+        final ortCols   = (await db.rawQuery('PRAGMA table_info(orte)')).map((c) => c['name'] as String).toSet();
+        final sceneCols = (await db.rawQuery('PRAGMA table_info(scenes)')).map((c) => c['name'] as String).toSet();
+        final questCols = (await db.rawQuery('PRAGMA table_info(quests)')).map((c) => c['name'] as String).toSet();
+
+        if (!ortCols.contains('is_hidden')) {
+          await db.execute('ALTER TABLE orte ADD COLUMN is_hidden INTEGER NOT NULL DEFAULT 0');
+        }
+        if (!sceneCols.contains('template_scene_id')) {
+          await db.execute('ALTER TABLE scenes ADD COLUMN template_scene_id TEXT');
+        }
+        if (!questCols.contains('template_quest_id')) {
+          await db.execute('ALTER TABLE quests ADD COLUMN template_quest_id TEXT');
+        }
+        debugPrint('✅ Template-Sync-Spalten hinzugefügt (Version 26)');
+      } catch (e) {
+        debugPrint('⚠️ Migration v26 fehlgeschlagen: $e');
       }
     }
   }

@@ -64,6 +64,9 @@ class Ort {
   // Pin-Position auf der Karte gesperrt (kein Drag möglich)
   final bool mapPositionLocked;
 
+  // Vom Template-Sync ausgeblendet (Ort wurde aus Vorlage entfernt)
+  final bool isHidden;
+
   static const String tableName = 'orte';
 
   const Ort({
@@ -86,6 +89,7 @@ class Ort {
     this.mapImagePath,
     this.tokenImagePath,
     this.mapPositionLocked = false,
+    this.isHidden = false,
   });
 
   factory Ort.create({
@@ -141,6 +145,7 @@ class Ort {
       mapImagePath: map['map_image_path'] as String?,
       tokenImagePath: map['token_image_path'] as String?,
       mapPositionLocked: (map['map_position_locked'] as int? ?? 0) == 1,
+      isHidden: (map['is_hidden'] as int? ?? 0) == 1,
     );
   }
 
@@ -164,6 +169,7 @@ class Ort {
         'map_image_path': mapImagePath,
         'token_image_path': tokenImagePath,
         'map_position_locked': mapPositionLocked ? 1 : 0,
+        'is_hidden': isHidden ? 1 : 0,
       };
 
   Ort copyWith({
@@ -186,6 +192,7 @@ class Ort {
     Object? mapImagePath = _sentinel,
     Object? tokenImagePath = _sentinel,
     bool? mapPositionLocked,
+    bool? isHidden,
   }) =>
       Ort(
         id: id ?? this.id,
@@ -211,6 +218,7 @@ class Ort {
         mapImagePath: mapImagePath == _sentinel ? this.mapImagePath : mapImagePath as String?,
         tokenImagePath: tokenImagePath == _sentinel ? this.tokenImagePath : tokenImagePath as String?,
         mapPositionLocked: mapPositionLocked ?? this.mapPositionLocked,
+        isHidden: isHidden ?? this.isHidden,
       );
 
   static const Object _sentinel = Object();
