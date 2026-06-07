@@ -686,6 +686,7 @@ class CampaignViewModel extends ChangeNotifier {
       final cloudCampaigns = await syncService.downloadCampaigns(user.uid);
 
       // Cloud → Lokal
+      final conflictIds = <String>{};
       for (final cloud in cloudCampaigns) {
         if (_campaignRepo == null) continue;
         final existing = await _campaignRepo!.findById(cloud.id);
@@ -693,15 +694,15 @@ class CampaignViewModel extends ChangeNotifier {
           final saved = await _campaignRepo!.create(cloud);
           _campaigns.insert(0, saved);
         } else if (cloud.updatedAt.isAfter(existing.updatedAt)) {
-          // Konflikt: Cloud neuer als lokale Version — Nutzer entscheidet
+          // Cloud ist neuer → Nutzer entscheidet; lokale Version NICHT hochladen
+          conflictIds.add(cloud.id);
           conflicts.add(SyncConflict(local: existing, cloud: cloud));
         }
       }
 
-      // Lokal → Cloud: alle lokalen Kampagnen hochladen
-      // (immer, nicht nur wenn neuer — stellt sicher dass Orte/Szenen/Quests
-      // auch bei vorhandenen Cloud-Dokumenten aktualisiert werden)
+      // Lokal → Cloud: alle lokalen Kampagnen hochladen (außer Konflikte)
       for (final local in _campaigns) {
+        if (conflictIds.contains(local.id)) continue;
         await syncService.uploadCampaign(local, user.uid);
       }
 
