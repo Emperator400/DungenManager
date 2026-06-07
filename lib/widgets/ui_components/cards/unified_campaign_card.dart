@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../../models/campaign.dart';
@@ -80,6 +82,7 @@ class _CampaignCardContentState extends State<_CampaignCardContent> {
                 letter: c.campaign.title.isNotEmpty ? c.campaign.title[0].toUpperCase() : '?',
                 color: cardColor,
                 bg: cardColor.withValues(alpha: 0.15),
+                coverImagePath: c.campaign.coverImagePath,
               ),
               const SizedBox(width: 10),
               // Titel + Meta
@@ -317,32 +320,46 @@ class _Avatar extends StatelessWidget {
     required this.letter,
     required this.color,
     required this.bg,
+    this.coverImagePath,
   });
 
   final String letter;
   final Color color;
   final Color bg;
+  final String? coverImagePath;
 
   @override
-  Widget build(BuildContext context) => Container(
-        width: 28,
-        height: 28,
-        decoration: BoxDecoration(
-          color: bg,
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Center(
-          child: Text(
-            letter,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: color,
+  Widget build(BuildContext context) {
+    final hasImage = coverImagePath != null && File(coverImagePath!).existsSync();
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: hasImage
+          ? SizedBox(
+              width: 28,
+              height: 28,
+              child: Image.file(File(coverImagePath!), fit: BoxFit.cover),
+            )
+          : Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: bg,
+                border: Border.all(color: color.withValues(alpha: 0.3)),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Center(
+                child: Text(
+                  letter,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
-      );
+    );
+  }
 }
 
 class _StatusBadge extends StatelessWidget {

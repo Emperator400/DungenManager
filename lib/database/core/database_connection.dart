@@ -88,7 +88,7 @@ class DatabaseConnection {
 
     final db = await openDatabase(
       path,
-      version: 26,
+      version: 27,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       onOpen: (db) async => db.execute('PRAGMA foreign_keys = ON'),
@@ -190,7 +190,8 @@ class DatabaseConnection {
         template_id TEXT,
         verlaufsplan TEXT,
         verlaufs_karte_image_path TEXT,
-        karte_image_path TEXT
+        karte_image_path TEXT,
+        cover_image_path TEXT
       )
     ''');
     
@@ -1337,6 +1338,18 @@ class DatabaseConnection {
         debugPrint('✅ Template-Sync-Spalten hinzugefügt (Version 26)');
       } catch (e) {
         debugPrint('⚠️ Migration v26 fehlgeschlagen: $e');
+      }
+    }
+
+    if (oldVersion < 27 && newVersion >= 27) {
+      try {
+        final campaignCols = (await db.rawQuery('PRAGMA table_info(campaigns)')).map((c) => c['name'] as String).toSet();
+        if (!campaignCols.contains('cover_image_path')) {
+          await db.execute('ALTER TABLE campaigns ADD COLUMN cover_image_path TEXT');
+        }
+        debugPrint('✅ cover_image_path zur campaigns-Tabelle hinzugefügt (Version 27)');
+      } catch (e) {
+        debugPrint('⚠️ Migration v27 fehlgeschlagen: $e');
       }
     }
   }

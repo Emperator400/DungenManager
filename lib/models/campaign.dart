@@ -406,6 +406,7 @@ class Campaign {
   final List<VerlaufsEintrag> verlaufsplan;
   final String? verlaufsKarteImagePath;
   final String? karteImagePath;
+  final String? coverImagePath;
 
   /// Tabellenname für die Datenbank
   static const String tableName = 'campaigns';
@@ -436,6 +437,7 @@ class Campaign {
     this.verlaufsplan = const [],
     this.verlaufsKarteImagePath,
     this.karteImagePath,
+    this.coverImagePath,
   });
 
   /// Factory für neue Kampagnen mit automatisch generierter ID
@@ -448,6 +450,7 @@ class Campaign {
     CampaignSettings? settings,
     String accentColor = '#7c3aed',
     String system = 'D&D 5e',
+    String? coverImagePath,
   }) {
     final now = DateTime.now();
     return Campaign(
@@ -463,6 +466,7 @@ class Campaign {
       stats: const CampaignStats(),
       accentColor: accentColor,
       system: system,
+      coverImagePath: coverImagePath,
     );
   }
 
@@ -596,6 +600,7 @@ class Campaign {
         verlaufsplan: VerlaufsEintrag.listFromJson(map['verlaufsplan'] as String?),
         verlaufsKarteImagePath: map['verlaufs_karte_image_path'] as String?,
         karteImagePath: map['karte_image_path'] as String?,
+        coverImagePath: map['cover_image_path'] as String?,
       );
     } catch (e) {
       debugPrint('Fehler beim Parsen der Kampagne: $e');
@@ -713,6 +718,7 @@ class Campaign {
       'verlaufsplan': verlaufsplan.isEmpty ? null : VerlaufsEintrag.listToJson(verlaufsplan),
       'verlaufs_karte_image_path': verlaufsKarteImagePath,
       'karte_image_path': karteImagePath,
+      'cover_image_path': coverImagePath,
     };
   }
 
@@ -743,6 +749,7 @@ class Campaign {
     List<VerlaufsEintrag>? verlaufsplan,
     Object? verlaufsKarteImagePath = _sentinel,
     Object? karteImagePath = _sentinel,
+    Object? coverImagePath = _sentinel,
   }) {
     return Campaign(
       id: id ?? this.id,
@@ -774,6 +781,9 @@ class Campaign {
       karteImagePath: karteImagePath == _sentinel
           ? this.karteImagePath
           : karteImagePath as String?,
+      coverImagePath: coverImagePath == _sentinel
+          ? this.coverImagePath
+          : coverImagePath as String?,
     );
   }
 
@@ -914,6 +924,7 @@ class Campaign {
         'verlaufsplan': verlaufsplan.isEmpty ? null : VerlaufsEintrag.listToJson(verlaufsplan),
         'verlaufsKarteImagePath': verlaufsKarteImagePath,
         'karteImagePath': karteImagePath,
+        'coverImagePath': coverImagePath,
         // Settings (flattened)
         'maxPlayerLevel': settings.maxPlayerLevel,
         'startingLevel': settings.startingLevel,
@@ -968,6 +979,7 @@ class Campaign {
       verlaufsplan: VerlaufsEintrag.listFromJson(m['verlaufsplan'] as String?),
       verlaufsKarteImagePath: m['verlaufsKarteImagePath'] as String?,
       karteImagePath: m['karteImagePath'] as String?,
+      coverImagePath: m['coverImagePath'] as String?,
       settings: CampaignSettings(
         maxPlayerLevel: m['maxPlayerLevel'] as int? ?? 20,
         startingLevel: m['startingLevel'] as int? ?? 1,

@@ -224,6 +224,7 @@ class CampaignViewModel extends ChangeNotifier {
     String accentColor = '#7c3aed',
     String system = 'D&D 5e',
     CampaignStatus status = CampaignStatus.planning,
+    String? coverImagePath,
   }) async {
     debugPrint('🔄 [CampaignViewModel] createCampaign() aufgerufen: $title');
     _setLoading(true);
@@ -236,6 +237,7 @@ class CampaignViewModel extends ChangeNotifier {
         accentColor: accentColor,
         system: system,
         status: status,
+        coverImagePath: coverImagePath,
       );
 
       if (_campaignRepo != null) {
