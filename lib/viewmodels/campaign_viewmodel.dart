@@ -97,11 +97,14 @@ class CampaignViewModel extends ChangeNotifier {
   AppUser? _syncUser;
   final Set<String> _syncedIds = {};
   final Set<String> _pendingSyncIds = {};
+  final Set<String> _downloadedIds = {};
 
   bool get hasActiveFilters => _searchQuery.isNotEmpty;
 
   bool isSynced(String campaignId) => _syncedIds.contains(campaignId);
   bool isPendingSync(String campaignId) => _pendingSyncIds.contains(campaignId);
+  /// True wenn diese Kampagne beim letzten Sync aus der Cloud heruntergeladen wurde.
+  bool isDownloadedFromCloud(String campaignId) => _downloadedIds.contains(campaignId);
 
   List<Campaign>? _cachedFilteredCampaigns;
   bool _isCacheValid = false;
@@ -693,6 +696,7 @@ class CampaignViewModel extends ChangeNotifier {
         if (existing == null) {
           final saved = await _campaignRepo!.create(cloud);
           _campaigns.insert(0, saved);
+          _downloadedIds.add(saved.id);
         } else if (cloud.updatedAt.isAfter(existing.updatedAt)) {
           // Cloud ist neuer → Nutzer entscheidet; lokale Version NICHT hochladen
           conflictIds.add(cloud.id);
@@ -700,9 +704,10 @@ class CampaignViewModel extends ChangeNotifier {
         }
       }
 
-      // Lokal → Cloud: alle lokalen Kampagnen hochladen (außer Konflikte)
+      // Lokal → Cloud: alle lokalen Kampagnen hochladen (außer Konflikte + deaktiviert)
       for (final local in _campaigns) {
         if (conflictIds.contains(local.id)) continue;
+        if (!local.syncEnabled) continue;
         await syncService.uploadCampaign(local, user.uid);
       }
 
@@ -741,6 +746,17 @@ class CampaignViewModel extends ChangeNotifier {
         await syncService.uploadCampaign(conflict.local, user.uid);
       }
     }
+    _invalidateFilteredCache();
+    notifyListeners();
+  }
+
+  /// Schaltet den Cloud-Sync für eine Kampagne ein oder aus.
+  Future<void> toggleSyncEnabled(Campaign campaign) async {
+    if (_campaignRepo == null) return;
+    final updated = campaign.copyWith(syncEnabled: !campaign.syncEnabled);
+    final saved = await _campaignRepo!.update(updated);
+    final idx = _campaigns.indexWhere((c) => c.id == saved.id);
+    if (idx != -1) _campaigns[idx] = saved;
     _invalidateFilteredCache();
     notifyListeners();
   }

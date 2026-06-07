@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../models/campaign.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/dnd_theme.dart';
 import '../../../utils/color_utils.dart';
 import '../../../viewmodels/campaign_viewmodel.dart';
 import '../../../widgets/ui_components/shared/app_icon.dart';
@@ -122,6 +123,8 @@ class _CampaignCardContentState extends State<_CampaignCardContent> {
                           _CloudStatusIcon(
                             isSynced: c.viewModel.isSynced(c.campaign.id),
                             isPending: c.viewModel.isPendingSync(c.campaign.id),
+                            isDownloaded: c.viewModel.isDownloadedFromCloud(c.campaign.id),
+                            isSyncDisabled: !c.campaign.syncEnabled,
                             C: C,
                           ),
                           Text(_formatDate(c.campaign.createdAt), style: TextStyle(fontSize: 10, color: C.textSoft)),
@@ -460,15 +463,28 @@ class _CloudStatusIcon extends StatelessWidget {
   const _CloudStatusIcon({
     required this.isSynced,
     required this.isPending,
+    required this.isDownloaded,
+    required this.isSyncDisabled,
     required this.C,
   });
 
   final bool isSynced;
   final bool isPending;
+  final bool isDownloaded;
+  final bool isSyncDisabled;
   final AppColorsExtension C;
 
   @override
   Widget build(BuildContext context) {
+    if (isSyncDisabled) {
+      return Padding(
+        padding: const EdgeInsets.only(right: 5),
+        child: Tooltip(
+          message: 'Sync deaktiviert',
+          child: Icon(Icons.cloud_off_outlined, size: 12, color: C.textSoft.withValues(alpha: 0.4)),
+        ),
+      );
+    }
     if (isPending) {
       return Padding(
         padding: const EdgeInsets.only(right: 5),
@@ -479,10 +495,22 @@ class _CloudStatusIcon extends StatelessWidget {
         ),
       );
     }
+    if (isDownloaded) {
+      return Padding(
+        padding: const EdgeInsets.only(right: 5),
+        child: Tooltip(
+          message: 'Aus Cloud synchronisiert',
+          child: Icon(Icons.cloud_download_outlined, size: 12, color: DnDTheme.infoBlue),
+        ),
+      );
+    }
     if (isSynced) {
       return Padding(
         padding: const EdgeInsets.only(right: 5),
-        child: Icon(Icons.cloud_done_outlined, size: 12, color: C.textSoft),
+        child: Tooltip(
+          message: 'Synchronisiert',
+          child: Icon(Icons.cloud_done_outlined, size: 12, color: C.textSoft),
+        ),
       );
     }
     return const SizedBox.shrink();

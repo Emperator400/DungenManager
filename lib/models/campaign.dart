@@ -407,6 +407,8 @@ class Campaign {
   final String? verlaufsKarteImagePath;
   final String? karteImagePath;
   final String? coverImagePath;
+  /// Ob diese Kampagne beim Cloud-Sync hochgeladen wird. Lokal-only — wird nicht synchronisiert.
+  final bool syncEnabled;
 
   /// Tabellenname für die Datenbank
   static const String tableName = 'campaigns';
@@ -438,6 +440,7 @@ class Campaign {
     this.verlaufsKarteImagePath,
     this.karteImagePath,
     this.coverImagePath,
+    this.syncEnabled = true,
   });
 
   /// Factory für neue Kampagnen mit automatisch generierter ID
@@ -601,6 +604,7 @@ class Campaign {
         verlaufsKarteImagePath: map['verlaufs_karte_image_path'] as String?,
         karteImagePath: map['karte_image_path'] as String?,
         coverImagePath: map['cover_image_path'] as String?,
+        syncEnabled: (map['sync_enabled'] as int? ?? 1) == 1,
       );
     } catch (e) {
       debugPrint('Fehler beim Parsen der Kampagne: $e');
@@ -719,6 +723,7 @@ class Campaign {
       'verlaufs_karte_image_path': verlaufsKarteImagePath,
       'karte_image_path': karteImagePath,
       'cover_image_path': coverImagePath,
+      'sync_enabled': syncEnabled ? 1 : 0,
     };
   }
 
@@ -750,6 +755,7 @@ class Campaign {
     Object? verlaufsKarteImagePath = _sentinel,
     Object? karteImagePath = _sentinel,
     Object? coverImagePath = _sentinel,
+    bool? syncEnabled,
   }) {
     return Campaign(
       id: id ?? this.id,
@@ -784,6 +790,7 @@ class Campaign {
       coverImagePath: coverImagePath == _sentinel
           ? this.coverImagePath
           : coverImagePath as String?,
+      syncEnabled: syncEnabled ?? this.syncEnabled,
     );
   }
 

@@ -206,6 +206,45 @@ void main() {
     });
   });
 
+  group('syncWithCloud – syncEnabled = false', () {
+    test('Kampagne mit syncEnabled=false wird NICHT hochgeladen', () async {
+      final local = Campaign(
+        id: 'no-sync',
+        title: 'Privat',
+        description: '',
+        createdAt: DateTime(2025),
+        updatedAt: _t0,
+        syncEnabled: false,
+      );
+
+      await _loadCampaigns([local]);
+      when(() => syncService.downloadCampaigns(_user.uid))
+          .thenAnswer((_) async => []);
+
+      await vm.syncWithCloud(_user, syncService);
+
+      verifyNever(() => syncService.uploadCampaign(any(), any()));
+    });
+
+    test('Kampagne mit syncEnabled=true wird hochgeladen', () async {
+      final local = Campaign(
+        id: 'yes-sync',
+        title: 'Normal',
+        description: '',
+        createdAt: DateTime(2025),
+        updatedAt: _t0,
+      );
+
+      await _loadCampaigns([local]);
+      when(() => syncService.downloadCampaigns(_user.uid))
+          .thenAnswer((_) async => []);
+
+      await vm.syncWithCloud(_user, syncService);
+
+      verify(() => syncService.uploadCampaign(any(), _user.uid)).called(1);
+    });
+  });
+
   group('resolveConflicts', () {
     test('useCloud=true → lokale Version wird mit Cloud-Version ersetzt', () async {
       final local = _c('c1', _t0);

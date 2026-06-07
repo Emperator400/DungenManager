@@ -69,6 +69,7 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
   late String _system;
   late String _accentColor;
   String? _coverImagePath;
+  late bool _syncEnabled;
   Campaign? _templateSource;
 
   bool get _isNew => widget.campaign == null;
@@ -82,6 +83,7 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
     _system          = widget.campaign?.system ?? 'D&D 5e';
     _accentColor     = widget.campaign?.accentColor ?? '#7c3aed';
     _coverImagePath  = widget.campaign?.coverImagePath;
+    _syncEnabled     = widget.campaign?.syncEnabled ?? true;
   }
 
   @override
@@ -133,6 +135,8 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
                           _buildColorPicker(C),
                           const SizedBox(height: 14),
                           _buildImagePicker(C),
+                          const SizedBox(height: 14),
+                          _buildSyncToggle(C),
                         ],
                         const SizedBox(height: 14),
                         _buildPreview(C),
@@ -439,6 +443,39 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
     );
   }
 
+  Widget _buildSyncToggle(AppColorsExtension C) => Row(
+        children: [
+          Icon(
+            _syncEnabled ? Icons.cloud_outlined : Icons.cloud_off_outlined,
+            size: 16,
+            color: _syncEnabled ? C.textMid : C.textSoft.withValues(alpha: 0.5),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Cloud-Sync',
+                  style: TextStyle(fontSize: 13, color: C.text),
+                ),
+                Text(
+                  _syncEnabled
+                      ? 'Wird bei der Synchronisierung hochgeladen'
+                      : 'Wird nicht hochgeladen',
+                  style: TextStyle(fontSize: 11, color: C.textSoft),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: _syncEnabled,
+            onChanged: (v) => setState(() => _syncEnabled = v),
+            activeThumbColor: C.accent,
+          ),
+        ],
+      );
+
   Future<void> _pickCoverImage() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.image,
@@ -651,6 +688,7 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
           status: _status,
           updatedAt: DateTime.now(),
           coverImagePath: _coverImagePath,
+          syncEnabled: _syncEnabled,
         ),
       );
     }
