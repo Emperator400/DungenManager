@@ -50,6 +50,7 @@ import 'services/image_storage_service.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'services/campaign_sync_service.dart';
+import 'services/cloud_image_service.dart';
 import 'viewmodels/auth_viewmodel.dart';
 
 // ============================================================
@@ -174,12 +175,16 @@ class DmApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => AuthViewModel(authService: AuthService()),
         ),
+        Provider<CloudImageService>(
+          create: (_) => CloudImageService(AuthService()),
+        ),
         Provider<CampaignSyncService>(
-          create: (_) => CampaignSyncService(
+          create: (ctx) => CampaignSyncService(
             AuthService(),
             OrtModelRepository(dbConnection),
             SceneModelRepository(dbConnection),
             QuestModelRepository(dbConnection),
+            ctx.read<CloudImageService>(),
           ),
         ),
         ChangeNotifierProxyProvider<AuthViewModel, CampaignViewModel>(

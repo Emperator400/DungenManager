@@ -13,18 +13,21 @@ import '../models/ort.dart';
 import '../models/quest.dart';
 import '../models/scene.dart';
 import 'auth_service.dart';
+import 'cloud_image_service.dart';
 
 /// Synchronisiert Kampagnen mit Firestore.
 /// Windows: Firestore REST API (kein nativer SDK — VS 2026 Inkompatibilität).
 /// Android / iOS: natives cloud_firestore Plugin.
 ///
 /// Firestore-Struktur: users/{uid}/campaigns/{campaignId}
-/// Jedes Dokument enthält:
+/// Felder pro Dokument:
 ///   data       — JSON-kodierte Kampagne (String)
 ///   updatedAt  — ISO-8601-Zeitstempel für Konflikterkennung
-///   orteData   — JSON-Array aller Orte der Kampagne
-///   scenesData — JSON-Array aller Szenen der Kampagne
-///   questsData — JSON-Array aller Quests der Kampagne
+///   orteData   — JSON-Array aller Orte
+///   scenesData — JSON-Array aller Szenen
+///   questsData — JSON-Array aller Quests
+///
+/// Bilder werden separat in Firebase Storage gespeichert (anonymisierte Pfade).
 class CampaignSyncService {
   static const _projectId = 'dungoenmanager';
   static const _firestoreBase =
@@ -34,25 +37,35 @@ class CampaignSyncService {
   final OrtModelRepository _ortRepo;
   final SceneModelRepository _sceneRepo;
   final QuestModelRepository _questRepo;
+  final CloudImageService _imageService;
 
   CampaignSyncService(
     this._authService,
     this._ortRepo,
     this._sceneRepo,
     this._questRepo,
+    this._imageService,
   );
 
   // ── Public API ────────────────────────────────────────────────────────────
 
   Future<void> uploadCampaign(Campaign campaign, String uid) async {
+    // Bilder hochladen und lokale Pfade durch Cloud-Pfade ersetzen
+    final cloudCampaign = await _uploadCampaignImages(campaign, uid);
+
     final orte   = await _ortRepo.findByCampaign(campaign.id);
     final scenes = await _sceneRepo.findByCampaign(campaign.id);
     final quests = await _questRepo.findByCampaign(campaign.id);
 
+    // Ort-Bilder hochladen
+    final cloudOrte = await Future.wait(
+      orte.map((o) => _uploadOrtImages(o, uid)),
+    );
+
     if (Platform.isWindows) {
-      await _restUpload(campaign, uid, orte, scenes, quests);
+      await _restUpload(cloudCampaign, uid, cloudOrte, scenes, quests);
     } else {
-      await _nativeUpload(campaign, uid, orte, scenes, quests);
+      await _nativeUpload(cloudCampaign, uid, cloudOrte, scenes, quests);
     }
   }
 
@@ -70,6 +83,48 @@ class CampaignSyncService {
     } else {
       await _nativeDelete(campaignId, uid);
     }
+  }
+
+  // ── Bild-Upload (lokal → Cloud) ───────────────────────────────────────────
+
+  Future<Campaign> _uploadCampaignImages(Campaign campaign, String uid) async {
+    final cover = await _imageService.uploadIfLocal(
+      campaign.coverImagePath, uid, campaign.id, 'cover',
+    );
+    final karte = await _imageService.uploadIfLocal(
+      campaign.karteImagePath, uid, campaign.id, 'karte',
+    );
+    final verlauf = await _imageService.uploadIfLocal(
+      campaign.verlaufsKarteImagePath, uid, campaign.id, 'verlaufskarte',
+    );
+    return campaign.copyWith(
+      coverImagePath: cover,
+      karteImagePath: karte,
+      verlaufsKarteImagePath: verlauf,
+    );
+  }
+
+  Future<Ort> _uploadOrtImages(Ort ort, String uid) async {
+    final mapImg = await _imageService.uploadIfLocal(
+      ort.mapImagePath, uid, ort.id, 'map',
+    );
+    final token = await _imageService.uploadIfLocal(
+      ort.tokenImagePath, uid, ort.id, 'token',
+    );
+    return ort.copyWith(mapImagePath: mapImg, tokenImagePath: token);
+  }
+
+  // ── Bild-Download (Cloud → lokal) ─────────────────────────────────────────
+
+  Future<Campaign> _downloadCampaignImages(Campaign campaign) async {
+    final cover = await _imageService.downloadIfCloud(campaign.coverImagePath);
+    final karte = await _imageService.downloadIfCloud(campaign.karteImagePath);
+    final verlauf = await _imageService.downloadIfCloud(campaign.verlaufsKarteImagePath);
+    return campaign.copyWith(
+      coverImagePath: cover,
+      karteImagePath: karte,
+      verlaufsKarteImagePath: verlauf,
+    );
   }
 
   // ── Windows REST API ──────────────────────────────────────────────────────
@@ -124,13 +179,14 @@ class CampaignSyncService {
     final campaigns = <Campaign>[];
     for (final doc in docs) {
       try {
-        final fields  = doc['fields'] as Map<String, dynamic>;
+        final fields   = doc['fields'] as Map<String, dynamic>;
         final dataJson = fields['data']['stringValue'] as String;
-        final campaign = Campaign.fromCloudJson(dataJson);
+        final raw      = Campaign.fromCloudJson(dataJson);
+        // Bilder herunterladen und lokale Pfade setzen
+        final campaign = await _downloadCampaignImages(raw);
         campaigns.add(campaign);
 
         await _upsertRelated(
-          campaignId: campaign.id,
           orteJson:   fields['orteData']?['stringValue'] as String?,
           scenesJson: fields['scenesData']?['stringValue'] as String?,
           questsJson: fields['questsData']?['stringValue'] as String?,
@@ -177,11 +233,11 @@ class CampaignSyncService {
     for (final doc in snapshot.docs) {
       try {
         final data = doc.data();
-        final campaign = Campaign.fromCloudJson(data['data'] as String);
+        final raw  = Campaign.fromCloudJson(data['data'] as String);
+        final campaign = await _downloadCampaignImages(raw);
         campaigns.add(campaign);
 
         await _upsertRelated(
-          campaignId: campaign.id,
           orteJson:   data['orteData'] as String?,
           scenesJson: data['scenesData'] as String?,
           questsJson: data['questsData'] as String?,
@@ -197,17 +253,16 @@ class CampaignSyncService {
     await _collection(uid).doc(campaignId).delete();
   }
 
-  // ── Related-Entity Upsert ─────────────────────────────────────────────────
+  // ── Entitäten-Upsert ──────────────────────────────────────────────────────
 
   Future<void> _upsertRelated({
-    required String campaignId,
     String? orteJson,
     String? scenesJson,
     String? questsJson,
   }) async {
     await Future.wait([
       if (orteJson != null && orteJson.isNotEmpty)
-        _upsertOrte(campaignId, orteJson),
+        _upsertOrte(orteJson),
       if (scenesJson != null && scenesJson.isNotEmpty)
         _upsertScenes(scenesJson),
       if (questsJson != null && questsJson.isNotEmpty)
@@ -215,11 +270,20 @@ class CampaignSyncService {
     ]);
   }
 
-  Future<void> _upsertOrte(String campaignId, String json) async {
+  Future<void> _upsertOrte(String json) async {
     try {
       final list = jsonDecode(json) as List<dynamic>;
       for (final item in list) {
-        final map = item as Map<String, dynamic>;
+        final map        = item as Map<String, dynamic>;
+        final rawMapImg  = map['map_image_path'] as String?;
+        final rawToken   = map['token_image_path'] as String?;
+        // Ort-Bilder herunterladen und lokale Pfade setzen
+        if (CloudImageService.isCloudPath(rawMapImg)) {
+          map['map_image_path'] = await _imageService.downloadIfCloud(rawMapImg);
+        }
+        if (CloudImageService.isCloudPath(rawToken)) {
+          map['token_image_path'] = await _imageService.downloadIfCloud(rawToken);
+        }
         final ort = Ort.fromDatabaseMap(map);
         final existing = await _ortRepo.findById(ort.id);
         if (existing == null) {
@@ -237,8 +301,7 @@ class CampaignSyncService {
     try {
       final list = jsonDecode(json) as List<dynamic>;
       for (final item in list) {
-        final map = item as Map<String, dynamic>;
-        final scene = Scene.fromDatabaseMap(map);
+        final scene = Scene.fromDatabaseMap(item as Map<String, dynamic>);
         final existing = await _sceneRepo.findById(scene.id);
         if (existing == null) {
           await _sceneRepo.create(scene);
@@ -255,8 +318,7 @@ class CampaignSyncService {
     try {
       final list = jsonDecode(json) as List<dynamic>;
       for (final item in list) {
-        final map = item as Map<String, dynamic>;
-        final quest = Quest.fromDatabaseMap(map);
+        final quest = Quest.fromDatabaseMap(item as Map<String, dynamic>);
         final existing = await _questRepo.findById(quest.id);
         if (existing == null) {
           await _questRepo.create(quest);
@@ -269,7 +331,7 @@ class CampaignSyncService {
     }
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
+  // ── Helfer ────────────────────────────────────────────────────────────────
 
   String _encodeList(List<Map<String, dynamic>> list) => jsonEncode(list);
 }
