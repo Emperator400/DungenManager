@@ -698,13 +698,11 @@ class CampaignViewModel extends ChangeNotifier {
         }
       }
 
-      // Lokal → Cloud: lade Kampagnen hoch, die in der Cloud fehlen oder älter sind
-      final cloudIds = {for (final c in cloudCampaigns) c.id: c.updatedAt};
+      // Lokal → Cloud: alle lokalen Kampagnen hochladen
+      // (immer, nicht nur wenn neuer — stellt sicher dass Orte/Szenen/Quests
+      // auch bei vorhandenen Cloud-Dokumenten aktualisiert werden)
       for (final local in _campaigns) {
-        final cloudUpdated = cloudIds[local.id];
-        if (cloudUpdated == null || local.updatedAt.isAfter(cloudUpdated)) {
-          await syncService.uploadCampaign(local, user.uid);
-        }
+        await syncService.uploadCampaign(local, user.uid);
       }
 
       for (final c in _campaigns) {

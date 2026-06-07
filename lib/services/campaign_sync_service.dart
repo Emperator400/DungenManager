@@ -57,6 +57,9 @@ class CampaignSyncService {
     final scenes = await _sceneRepo.findByCampaign(campaign.id);
     final quests = await _questRepo.findByCampaign(campaign.id);
 
+    debugPrint('[CampaignSync] Upload "${campaign.title}": '
+        '${orte.length} Orte, ${scenes.length} Szenen, ${quests.length} Quests');
+
     // Ort-Bilder hochladen
     final cloudOrte = await Future.wait(
       orte.map((o) => _uploadOrtImages(o, uid)),
@@ -67,6 +70,7 @@ class CampaignSyncService {
     } else {
       await _nativeUpload(cloudCampaign, uid, cloudOrte, scenes, quests);
     }
+    debugPrint('[CampaignSync] Upload "${campaign.title}" abgeschlossen');
   }
 
   Future<List<Campaign>> downloadCampaigns(String uid) async {
@@ -273,6 +277,7 @@ class CampaignSyncService {
   Future<void> _upsertOrte(String json) async {
     try {
       final list = jsonDecode(json) as List<dynamic>;
+      debugPrint('[CampaignSync] Upsert ${list.length} Orte...');
       for (final item in list) {
         final map        = item as Map<String, dynamic>;
         final rawMapImg  = map['map_image_path'] as String?;
