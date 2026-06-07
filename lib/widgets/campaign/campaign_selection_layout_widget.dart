@@ -238,7 +238,7 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+              padding: const EdgeInsets.fromLTRB(16, 7, 16, 7),
               child: EnhancedCampaignFilterChipsWidget(viewModel: viewModel),
             ),
             Divider(height: 1, thickness: 1, color: C.border),
@@ -301,7 +301,7 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
       padding: const EdgeInsets.all(16),
       itemCount: filtered.length,
       itemBuilder: (ctx, i) => Padding(
-        padding: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.only(bottom: 6),
         child: UnifiedCampaignCard(
           campaign: filtered[i],
           viewModel: viewModel,
