@@ -46,6 +46,14 @@ dependencies:
   # MCP Server dependencies
   json_rpc_2: ^3.0.2
 
+  # Firebase
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.0
+  cloud_firestore: ^5.4.0
+
+  # Session-Persistenz (Windows-Auth-Token speichern)
+  shared_preferences: ^2.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

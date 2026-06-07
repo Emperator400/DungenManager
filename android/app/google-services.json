@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "530188287523",
+    "project_id": "dungoenmanager",
+    "storage_bucket": "dungoenmanager.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:530188287523:android:624e2c6969d19633bbbb96",
+        "android_client_info": {
+          "package_name": "com.example.hive_test_projekt"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD8aXX8C3E0pAg7l9FDg5X61I1n2QIpcpk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

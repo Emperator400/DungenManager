@@ -11,6 +11,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 // 3. Eigene Projekte (absolute Pfade von lib/)
 import 'screens/campaign/campaign_selection_screen.dart';
@@ -45,6 +46,10 @@ import 'widgets/ui_components/shared/app_title_bar.dart';
 import 'widgets/update_dialog.dart';
 import 'services/multi_stream_sound_service.dart';
 import 'services/image_storage_service.dart';
+import 'firebase_options.dart';
+import 'services/auth_service.dart';
+import 'services/campaign_sync_service.dart';
+import 'viewmodels/auth_viewmodel.dart';
 
 // ============================================================
 // APP KONFIGURATION
@@ -63,7 +68,7 @@ const bool kIsProductionMode = true;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Custom Window Frame für Desktop initialisieren
+// Custom Window Frame für Desktop initialisieren
   if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
     await windowManager.ensureInitialized();
     const windowOptions = WindowOptions(
@@ -78,6 +83,14 @@ void main() async {
       await windowManager.focus();
     });
   }
+
+  // Firebase initialisieren (nicht auf Windows — precompilierte Libs inkompatibel mit VS 2026)
+  if (!Platform.isWindows) {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  }
+
+  // Windows-Session aus SharedPreferences wiederherstellen (vor runApp!)
+  await AuthService.restoreSession();
 
   // Datenbank initialisieren
   await _initializeDatabase();
@@ -156,11 +169,22 @@ class DmApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeNotifier()),
+        // Auth + Cloud Sync (muss vor CampaignViewModel stehen)
         ChangeNotifierProvider(
+          create: (_) => AuthViewModel(authService: AuthService()),
+        ),
+        Provider<CampaignSyncService>(
+          create: (_) => CampaignSyncService(AuthService()),
+        ),
+        ChangeNotifierProxyProvider<AuthViewModel, CampaignViewModel>(
           create: (_) => CampaignViewModel(
             campaignRepo: CampaignModelRepository(dbConnection),
             characterRepo: PlayerCharacterModelRepository(dbConnection),
           ),
+          update: (context, authVm, vm) {
+            vm!.bindCloudSync(authVm.user, context.read<CampaignSyncService>());
+            return vm;
+          },
         ),
         ChangeNotifierProvider(
           create: (_) => WikiViewModel(),

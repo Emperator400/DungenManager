@@ -189,6 +189,11 @@ class _CampaignCardContentState extends State<_CampaignCardContent> {
                           C: C,
                         ),
                         const Spacer(),
+                        _CloudStatusIcon(
+                          isSynced: c.viewModel.isSynced(c.campaign.id),
+                          isPending: c.viewModel.isPendingSync(c.campaign.id),
+                          C: C,
+                        ),
                         Text(
                           _formatDate(c.campaign.createdAt),
                           style: TextStyle(fontSize: 10, color: C.textSoft),
@@ -500,6 +505,39 @@ class _IconBtn extends StatelessWidget {
 
 String _formatDate(DateTime date) =>
     '${date.day}.${date.month}.${date.year}';
+
+class _CloudStatusIcon extends StatelessWidget {
+  const _CloudStatusIcon({
+    required this.isSynced,
+    required this.isPending,
+    required this.C,
+  });
+
+  final bool isSynced;
+  final bool isPending;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isPending) {
+      return Padding(
+        padding: const EdgeInsets.only(right: 5),
+        child: SizedBox(
+          width: 10,
+          height: 10,
+          child: CircularProgressIndicator(strokeWidth: 1.5, color: C.textSoft),
+        ),
+      );
+    }
+    if (isSynced) {
+      return Padding(
+        padding: const EdgeInsets.only(right: 5),
+        child: Icon(Icons.cloud_done_outlined, size: 12, color: C.textSoft),
+      );
+    }
+    return const SizedBox.shrink();
+  }
+}
 
 // ── TEMPLATE / COPY BADGES ────────────────────────────────────────────────────
 

@@ -9,7 +9,9 @@ import '../../database/core/database_connection.dart';
 import '../../database/repositories/campaign_model_repository.dart';
 import '../../models/campaign.dart';
 import '../../screens/campaign/dm_buch_screen.dart';
+import '../../services/campaign_sync_service.dart';
 import '../../theme/app_theme.dart';
+import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/campaign_viewmodel.dart';
 import '../../viewmodels/update_viewmodel.dart';
 import '../../widgets/campaign/campaign_edit_modal_widget.dart';
@@ -32,6 +34,44 @@ class CampaignSelectionLayout extends StatefulWidget {
 
 class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
   int _activeTab = 0; // 0 = Kampagnen, 1 = Vorlagen
+
+  AuthViewModel? _authVm;
+  bool _lastIsLoggedIn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initAutoSync());
+  }
+
+  void _initAutoSync() {
+    if (!mounted) return;
+    _authVm = context.read<AuthViewModel>();
+    _lastIsLoggedIn = _authVm!.isLoggedIn;
+    _authVm!.addListener(_onAuthChanged);
+    if (_authVm!.isLoggedIn) _triggerSync();
+  }
+
+  void _onAuthChanged() {
+    if (!mounted) return;
+    final isLoggedIn = _authVm?.isLoggedIn ?? false;
+    if (isLoggedIn && !_lastIsLoggedIn) _triggerSync();
+    _lastIsLoggedIn = isLoggedIn;
+  }
+
+  void _triggerSync() {
+    if (!mounted) return;
+    final vm = context.read<CampaignViewModel>();
+    final syncSvc = context.read<CampaignSyncService>();
+    final user = _authVm?.user;
+    if (user != null) vm.syncWithCloud(user, syncSvc);
+  }
+
+  @override
+  void dispose() {
+    _authVm?.removeListener(_onAuthChanged);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -127,6 +167,35 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
                       ),
                     ),
                     const Spacer(),
+                    // Cloud Sync (nur wenn angemeldet)
+                    Consumer2<AuthViewModel, CampaignViewModel>(
+                      builder: (context, auth, vm, _) {
+                        if (!auth.isLoggedIn) return const SizedBox.shrink();
+                        if (vm.isSyncing) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: C.accent,
+                              ),
+                            ),
+                          );
+                        }
+                        return Tooltip(
+                          message: 'Mit Cloud synchronisieren',
+                          child: _iconBtn(
+                            context,
+                            C,
+                            AppIconName.upload,
+                            () => unawaited(_syncWithCloud(context, auth, vm)),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 4),
                     // Update Check
                     _iconBtn(
                       context,
@@ -558,6 +627,23 @@ class _CampaignSelectionLayoutState extends State<CampaignSelectionLayout> {
       SnackBarHelper.showSuccess(context, 'Vorlage "${campaign.title}" importiert');
     } else {
       SnackBarHelper.showError(context, 'Import fehlgeschlagen oder abgebrochen');
+    }
+  }
+
+  Future<void> _syncWithCloud(
+    BuildContext context,
+    AuthViewModel auth,
+    CampaignViewModel vm,
+  ) async {
+    final user = auth.user;
+    if (user == null) return;
+    final syncService = context.read<CampaignSyncService>();
+    await vm.syncWithCloud(user, syncService);
+    if (!mounted) return;
+    if (vm.syncError != null) {
+      SnackBarHelper.showError(context, 'Sync fehlgeschlagen: ${vm.syncError}');
+    } else {
+      SnackBarHelper.showSuccess(context, 'Cloud-Sync abgeschlossen');
     }
   }
 

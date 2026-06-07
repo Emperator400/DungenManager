@@ -374,10 +374,12 @@ class _LanMapControllerViewState extends State<_LanMapControllerView> {
         tokens: vm.tokens,
         cols: _cols,
         rows: _rows,
-        onCellTap: (col, row) {
+        onCellTap: (nx, ny) {
           if (vm.paintMode == 'token') {
-            vm.placeToken(col, row);
+            vm.placeToken(nx, ny);
           } else {
+            final col = (nx * _cols).floor().clamp(0, _cols - 1);
+            final row = (ny * _rows).floor().clamp(0, _rows - 1);
             vm.paintCell(row * _cols + col);
           }
         },
@@ -429,7 +431,7 @@ class _MapContent extends StatelessWidget {
   final bool fogEnabled;
   final List<MapToken> tokens;
   final int cols, rows;
-  final void Function(int col, int row) onCellTap;
+  final void Function(double nx, double ny) onCellTap;
 
   const _MapContent({
     required this.imagePath,
@@ -449,9 +451,9 @@ class _MapContent extends StatelessWidget {
         final h = constraints.maxHeight;
         return GestureDetector(
           onTapUp: (d) {
-            final col = (d.localPosition.dx / (w / cols)).floor().clamp(0, cols - 1);
-            final row = (d.localPosition.dy / (h / rows)).floor().clamp(0, rows - 1);
-            onCellTap(col, row);
+            final nx = (d.localPosition.dx / w).clamp(0.0, 1.0);
+            final ny = (d.localPosition.dy / h).clamp(0.0, 1.0);
+            onCellTap(nx, ny);
           },
           child: SizedBox(
             width: w,
@@ -477,13 +479,11 @@ class _MapContent extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Tokens
+                // Tokens — t.x/t.y sind normalisierte Koordinaten (0.0–1.0)
                 ...tokens.map((t) {
-                  final cw = w / cols;
-                  final ch = h / rows;
-                  final left = t.x * cw + cw * 0.1;
-                  final top  = t.y * ch + ch * 0.1;
-                  final size = cw * 0.8;
+                  final size = (w / cols) * 0.8 * t.size;
+                  final left = t.x * w - size / 2;
+                  final top  = t.y * h - size / 2;
                   return Positioned(
                     left: left,
                     top: top,

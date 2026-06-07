@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 
 import '../models/companion_map_state.dart';
+export '../models/companion_map_state.dart' show MapLayerEntry;
 
 // ── Protocol message types (server → browser) ────────────────────────────────
 const String _msgFullState      = 'full_state';
@@ -16,6 +17,7 @@ const String _msgTokenRemove    = 'token_remove';
 const String _msgImage          = 'image';
 const String _msgRoomEnded      = 'room_ended';
 const String _msgViewportActive = 'viewport_active';
+const String _msgLayers         = 'layers';
 
 class LanMapServer {
   static const int _port = 7771;
@@ -45,6 +47,9 @@ class LanMapServer {
 
   // Token images: ort_id → absolute file path on DM machine
   final Map<String, String> _tokenImgPaths = {};
+
+  // Layers: layerId → MapLayerEntry
+  final Map<String, MapLayerEntry> _layers = {};
 
   bool get isRunning   => _httpServer != null;
   static int get port  => _port;
@@ -103,6 +108,10 @@ class LanMapServer {
       default:
         if (path.startsWith('/img/')) {
           await _serveTokenImage(req.response, path.substring(5));
+          return;
+        }
+        if (path.startsWith('/layer/')) {
+          await _serveLayerImage(req.response, path.substring(7));
           return;
         }
         req.response
@@ -193,6 +202,29 @@ class LanMapServer {
       ..addAll(paths);
   }
 
+  void setLayers(List<MapLayerEntry> layers) {
+    _layers.clear();
+    for (final l in layers) {
+      _layers[l.id] = l;
+    }
+    _broadcast({
+      'type': _msgLayers,
+      'layers': _buildLayersPayload(),
+    });
+  }
+
+  // Sends ALL layers that have an image — browser pre-loads them all and only
+  // toggles draw visibility, so switching is instant without re-fetching.
+  List<Map<String, dynamic>> _buildLayersPayload() => _layers.values
+      .where((l) => l.imagePath != null)
+      .map((l) => {
+            'id': l.id,
+            'name': l.name,
+            'url': '/layer/${l.id}',
+            'visible': l.isVisible,
+          })
+      .toList();
+
   void revealCells(List<int> indices) {
     _revealedCells.addAll(indices);
     _broadcast({
@@ -246,6 +278,7 @@ class LanMapServer {
       'fogEnabled': _fogEnabled,
     },
     'tokens': _tokens.map((t) => t.toMap()).toList(),
+    'layers': _buildLayersPayload(),
   };
 
   // ── HTTP response helpers ─────────────────────────────────────────────────
@@ -330,6 +363,35 @@ class LanMapServer {
 
   Future<void> _serveTokenImage(HttpResponse res, String ortId) async {
     final path = _tokenImgPaths[ortId];
+    if (path == null) {
+      res.statusCode = HttpStatus.noContent;
+      res.close();
+      return;
+    }
+    try {
+      final file  = File(path);
+      final bytes = await file.readAsBytes();
+      final ext   = path.split('.').last.toLowerCase();
+      final mime  = switch (ext) {
+        'jpg' || 'jpeg' => 'image/jpeg',
+        'webp'          => 'image/webp',
+        'gif'           => 'image/gif',
+        'png'           => 'image/png',
+        _               => 'application/octet-stream',
+      };
+      res.headers
+        ..contentType = ContentType.parse(mime)
+        ..set('Cache-Control', 'no-cache');
+      res.add(bytes);
+    } catch (e) {
+      res.statusCode = HttpStatus.notFound;
+    }
+    res.close();
+  }
+
+  Future<void> _serveLayerImage(HttpResponse res, String layerId) async {
+    final entry = _layers[layerId];
+    final path = entry?.imagePath;
     if (path == null) {
       res.statusCode = HttpStatus.noContent;
       res.close();
@@ -448,11 +510,13 @@ let vpX = 0, vpY = 0, vpScale = 1;
 let revealedSet   = new Set();
 let fogEnabled    = true;
 let tokens        = [];
+let layers        = []; // [{id, name, url, visible}]
 let viewportActive = false;
 const GRID_COLS   = 20;
 const GRID_ROWS   = 20;
 let ws, reconnectTimer;
-const imgCache    = {}; // key: imageUrl → HTMLImageElement | 'loading'
+const imgCache      = {}; // key: imageUrl → HTMLImageElement | 'loading'
+const layerImgCache = {}; // key: layerId → HTMLImageElement | 'loading' | null
 
 idleImg.onload  = () => { idleImg.style.display = 'block'; idleTxt.style.display = 'none';  };
 idleImg.onerror = () => { idleImg.style.display = 'none';  idleTxt.style.display = 'block'; };
@@ -509,6 +573,9 @@ function draw() {
   const ih = mapImg.naturalHeight;
   ctx.drawImage(mapImg, -iw/2, -ih/2, iw, ih);
 
+  // Layer overlays (drawn in order above base map)
+  drawLayers(iw, ih);
+
   // Fog overlay
   if (fogEnabled) drawFog(iw, ih);
 
@@ -516,6 +583,17 @@ function draw() {
   drawTokens(iw, ih);
 
   ctx.restore();
+}
+
+function drawLayers(iw, ih) {
+  for (const layer of layers) {
+    if (!layer.visible || !layer.url) continue; // hidden — skip draw, image stays cached
+    const cached = layerImgCache[layer.id];
+    if (cached && cached !== 'loading') {
+      ctx.drawImage(cached, -iw/2, -ih/2, iw, ih);
+    }
+    // Image not yet cached: preloadLayers() will handle it, draw() fires on load
+  }
 }
 
 function drawFog(iw, ih) {
@@ -536,8 +614,9 @@ function drawTokens(iw, ih) {
   const cw = iw / GRID_COLS;
   const ch = ih / GRID_ROWS;
   for (const t of tokens) {
-    const px = -iw/2 + (t.x + 0.5) * cw;
-    const py = -ih/2 + (t.y + 0.5) * ch;
+    // t.x / t.y sind normalisierte Koordinaten (0.0–1.0)
+    const px = -iw/2 + t.x * iw;
+    const py = -ih/2 + t.y * ih;
     const r  = Math.min(cw, ch) * 0.4 * (t.size || 1.0);
 
     if (t.imageUrl) {
@@ -609,17 +688,20 @@ function connect() {
 
 function handleMessage(msg) {
   switch (msg.type) {
-    case 'full_state':
+    case 'full_state': {
       fogEnabled     = msg.fog?.fogEnabled ?? true;
       revealedSet    = new Set(msg.fog?.revealed ?? []);
       tokens         = msg.tokens ?? [];
+      layers         = msg.layers ?? [];
       viewportActive = msg.viewportActive ?? false;
       applyViewport(msg.viewport);
       if (msg.hasImage) loadImage();
       loadIdleImage();
+      preloadLayers(); // fetch all layer images up-front
       applyIdleState();
       draw();
       break;
+    }
 
     case 'viewport_active':
       viewportActive = msg.active ?? false;
@@ -654,6 +736,24 @@ function handleMessage(msg) {
       if (msg.hasImage) loadImage();
       break;
 
+    case 'layers': {
+      const newLayers = msg.layers ?? [];
+      // Only invalidate cache when the image URL itself changed (new file picked)
+      // Visibility changes do NOT invalidate — image stays in memory for instant toggle
+      for (const nl of newLayers) {
+        const old = layers.find(l => l.id === nl.id);
+        if (old && old.url !== nl.url) delete layerImgCache[nl.id];
+      }
+      // Drop cache for layers that were fully removed
+      for (const ol of layers) {
+        if (!newLayers.find(l => l.id === ol.id)) delete layerImgCache[ol.id];
+      }
+      layers = newLayers;
+      preloadLayers(); // pre-fetch all layers including currently hidden ones
+      draw();
+      break;
+    }
+
     case 'room_ended':
       showStatus('Session beendet', false);
       break;
@@ -672,6 +772,20 @@ function loadImage() {
   img.onload = () => { mapImg = img; draw(); };
   img.onerror = () => showStatus('Karte konnte nicht geladen werden');
   img.src = `/map?t=${Date.now()}`;
+}
+
+function preloadLayers() {
+  // Pre-fetch ALL layers that have a URL — visible or not.
+  // This way toggling visibility is instant (no network round-trip).
+  for (const layer of layers) {
+    if (!layer.url) continue;
+    if (layerImgCache[layer.id]) continue; // already cached or loading
+    layerImgCache[layer.id] = 'loading';
+    const img = new Image();
+    img.onload  = () => { layerImgCache[layer.id] = img; draw(); };
+    img.onerror = () => { layerImgCache[layer.id] = null; };
+    img.src = `${layer.url}?t=${Date.now()}`;
+  }
 }
 
 connect();

@@ -1,10 +1,14 @@
 # Project-level configuration.
 cmake_minimum_required(VERSION 3.14)
-project(DungenManager LANGUAGES CXX)
+project(DungeonManager LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
-set(BINARY_NAME "DungenManager")
+set(BINARY_NAME "DungeonManager")
+
+# Allow legacy third-party CMakeLists.txt (e.g. Firebase C++ SDK) that still
+# use cmake_minimum_required(VERSION < 3.5) to work with CMake 4.0+.
+set(CMAKE_POLICY_VERSION_MINIMUM "3.5" CACHE INTERNAL "")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
@@ -57,9 +61,25 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 add_subdirectory("runner")
 
 
-# Generated plugin build rules, which manage building the plugins and adding
-# them to the application.
-include(flutter/generated_plugins.cmake)
+# Custom plugin list — replaces include(flutter/generated_plugins.cmake).
+# Firebase plugins (cloud_firestore, firebase_auth, firebase_core) are excluded:
+# their precompiled .lib files require VS 2022 (v143 toolset) and fail to link
+# with VS 2026 (v18.x) due to missing __std_find_trivial_*, _Thrd_sleep_for, etc.
+# Do NOT restore include(flutter/generated_plugins.cmake) — it adds Firebase back.
+set(_custom_plugin_list
+  audioplayers_windows
+  file_selector_windows
+  screen_retriever_windows
+  url_launcher_windows
+  window_manager
+)
+set(PLUGIN_BUNDLED_LIBRARIES)
+foreach(plugin ${_custom_plugin_list})
+  add_subdirectory(flutter/ephemeral/.plugin_symlinks/${plugin}/windows plugins/${plugin})
+  target_link_libraries(${BINARY_NAME} PRIVATE ${plugin}_plugin)
+  list(APPEND PLUGIN_BUNDLED_LIBRARIES $<TARGET_FILE:${plugin}_plugin>)
+  list(APPEND PLUGIN_BUNDLED_LIBRARIES ${${plugin}_bundled_libraries})
+endforeach(plugin)
 
 
 # === Installation ===

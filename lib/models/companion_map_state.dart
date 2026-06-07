@@ -1,7 +1,21 @@
+class MapLayerEntry {
+  final String id;
+  final String name;
+  final String? imagePath;
+  final bool isVisible;
+
+  const MapLayerEntry({
+    required this.id,
+    required this.name,
+    this.imagePath,
+    required this.isVisible,
+  });
+}
+
 class MapToken {
   final String id;
-  final int x;
-  final int y;
+  final double x; // normalized 0.0–1.0 fraction of image width
+  final double y; // normalized 0.0–1.0 fraction of image height
   final String label;
   final String color; // Hex
   final double size;     // grid-cell radius multiplier, default 1.0
@@ -19,8 +33,8 @@ class MapToken {
 
   factory MapToken.fromMap(Map<String, dynamic> map) => MapToken(
         id: map['id'] as String? ?? '',
-        x: map['x'] as int? ?? 0,
-        y: map['y'] as int? ?? 0,
+        x: (map['x'] as num?)?.toDouble() ?? 0.0,
+        y: (map['y'] as num?)?.toDouble() ?? 0.0,
         label: map['label'] as String? ?? '',
         color: map['color'] as String? ?? '#7c3aed',
         size: (map['size'] as num?)?.toDouble() ?? 1.0,
@@ -37,7 +51,7 @@ class MapToken {
         if (imageUrl != null) 'imageUrl': imageUrl,
       };
 
-  MapToken copyWith({int? x, int? y, String? label, String? color, double? size, String? imageUrl}) => MapToken(
+  MapToken copyWith({double? x, double? y, String? label, String? color, double? size, String? imageUrl}) => MapToken(
         id: id,
         x: x ?? this.x,
         y: y ?? this.y,

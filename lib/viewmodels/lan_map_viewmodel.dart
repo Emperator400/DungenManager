@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/companion_map_state.dart';
+import '../models/map_layer.dart';
 import '../models/ort.dart';
 import '../services/lan_map_server.dart';
 
@@ -147,6 +148,19 @@ class LanMapViewModel extends ChangeNotifier {
     _loadImageSize(path);
   }
 
+  void setLayers(List<MapLayer> layers) {
+    _server.setLayers(
+      layers
+          .map((l) => MapLayerEntry(
+                id: l.id,
+                name: l.name,
+                imagePath: l.imagePath,
+                isVisible: l.isVisible,
+              ))
+          .toList(),
+    );
+  }
+
   Future<void> _loadImageSize(String path) async {
     try {
       final completer = Completer<ImageInfo>();
@@ -217,11 +231,11 @@ class LanMapViewModel extends ChangeNotifier {
 
   // ── Tokens ────────────────────────────────────────────────────────────────
 
-  void placeToken(int col, int row) {
+  void placeToken(double x, double y) {
     final token = MapToken(
       id:    _uuid.v4(),
-      x:     col,
-      y:     row,
+      x:     x,
+      y:     y,
       label: tokenLabel,
       color: tokenColor,
     );
@@ -263,13 +277,11 @@ class LanMapViewModel extends ChangeNotifier {
     final imgPaths = <String, String>{};
     for (final ort in tokenOrte) {
       if (ort.mapX == null || ort.mapY == null) continue;
-      final col = (ort.mapX! * 20).floor().clamp(0, 19);
-      final row = (ort.mapY! * 20).floor().clamp(0, 19);
       if (ort.tokenImagePath != null) imgPaths[ort.id] = ort.tokenImagePath!;
       final token = MapToken(
         id:       'ort_${ort.id}',
-        x:        col,
-        y:        row,
+        x:        ort.mapX!,
+        y:        ort.mapY!,
         label:    ort.name,
         color:    '#9b59b6',
         size:     _tokenOrtSizes[ort.id] ?? 1.0,
