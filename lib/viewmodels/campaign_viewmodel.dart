@@ -11,6 +11,12 @@ import '../services/campaign_sync_service.dart';
 import '../services/campaign_template_export_import_service.dart';
 import '../services/uuid_service.dart';
 
+class SyncConflict {
+  final Campaign local;
+  final Campaign cloud;
+  const SyncConflict({required this.local, required this.cloud});
+}
+
 enum CampaignViewMode {
   overview,
   heroes,
@@ -665,16 +671,19 @@ class CampaignViewModel extends ChangeNotifier {
 
   /// Synchronisiert lokale Kampagnen mit Firestore.
   /// Konfliktlösung: die Version mit dem neueren [updatedAt]-Zeitstempel gewinnt.
-  Future<void> syncWithCloud(AppUser user, CampaignSyncService syncService) async {
-    if (_isSyncing) return;
+  /// Synchronisiert mit der Cloud. Gibt erkannte Konflikte zurück (gleiche ID,
+  /// Cloud neuer als Lokal) — diese werden NICHT automatisch überschrieben.
+  Future<List<SyncConflict>> syncWithCloud(AppUser user, CampaignSyncService syncService) async {
+    if (_isSyncing) return [];
     _isSyncing = true;
     _syncError = null;
     notifyListeners();
 
+    final conflicts = <SyncConflict>[];
     try {
       final cloudCampaigns = await syncService.downloadCampaigns(user.uid);
 
-      // Cloud → Lokal: importiere neuere Cloud-Versionen
+      // Cloud → Lokal
       for (final cloud in cloudCampaigns) {
         if (_campaignRepo == null) continue;
         final existing = await _campaignRepo!.findById(cloud.id);
@@ -682,13 +691,12 @@ class CampaignViewModel extends ChangeNotifier {
           final saved = await _campaignRepo!.create(cloud);
           _campaigns.insert(0, saved);
         } else if (cloud.updatedAt.isAfter(existing.updatedAt)) {
-          final saved = await _campaignRepo!.update(cloud);
-          final idx = _campaigns.indexWhere((c) => c.id == cloud.id);
-          if (idx != -1) _campaigns[idx] = saved;
+          // Konflikt: Cloud neuer als lokale Version — Nutzer entscheidet
+          conflicts.add(SyncConflict(local: existing, cloud: cloud));
         }
       }
 
-      // Lokal → Cloud: lade lokale Kampagnen hoch, die neu oder neuer sind
+      // Lokal → Cloud: lade Kampagnen hoch, die in der Cloud fehlen oder älter sind
       final cloudIds = {for (final c in cloudCampaigns) c.id: c.updatedAt};
       for (final local in _campaigns) {
         final cloudUpdated = cloudIds[local.id];
@@ -697,14 +705,13 @@ class CampaignViewModel extends ChangeNotifier {
         }
       }
 
-      // Nach erfolgreichem Full-Sync alle lokalen Kampagnen als synced markieren
       for (final c in _campaigns) {
         _syncedIds.add(c.id);
       }
       _pendingSyncIds.clear();
       _invalidateFilteredCache();
       _lastSyncedAt = DateTime.now();
-      debugPrint('[CampaignViewModel] Cloud-Sync abgeschlossen um $_lastSyncedAt');
+      debugPrint('[CampaignViewModel] Sync abgeschlossen, ${conflicts.length} Konflikte');
     } catch (e) {
       _syncError = e.toString().replaceFirst('Exception: ', '');
       debugPrint('[CampaignViewModel] Sync-Fehler: $e');
@@ -712,6 +719,29 @@ class CampaignViewModel extends ChangeNotifier {
       _isSyncing = false;
       notifyListeners();
     }
+    return conflicts;
+  }
+
+  /// Löst Konflikte auf. [useCloud] = true → Cloud-Version übernehmen.
+  Future<void> resolveConflicts(
+    List<SyncConflict> conflicts,
+    bool useCloud,
+    CampaignSyncService syncService,
+    AppUser user,
+  ) async {
+    if (_campaignRepo == null) return;
+    for (final conflict in conflicts) {
+      if (useCloud) {
+        final saved = await _campaignRepo!.update(conflict.cloud);
+        final idx = _campaigns.indexWhere((c) => c.id == conflict.local.id);
+        if (idx != -1) _campaigns[idx] = saved;
+      } else {
+        // Lokale Version gewinnt → in Cloud hochladen
+        await syncService.uploadCampaign(conflict.local, user.uid);
+      }
+    }
+    _invalidateFilteredCache();
+    notifyListeners();
   }
 
   @override

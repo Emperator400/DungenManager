@@ -239,17 +239,122 @@ class _DmProfilScreenState extends State<DmProfilScreen> {
     final user = auth.user;
     if (user == null) return;
     final syncService = context.read<CampaignSyncService>();
-    await vm.syncWithCloud(user, syncService);
+    final conflicts = await vm.syncWithCloud(user, syncService);
     if (!mounted) return;
+
     if (vm.syncError != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Fehler: ${vm.syncError}'), backgroundColor: Colors.red),
       );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Synchronisierung abgeschlossen')),
-      );
+      return;
     }
+
+    if (conflicts.isNotEmpty) {
+      await _showConflictDialog(context, conflicts, vm, syncService, auth);
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Synchronisierung abgeschlossen')),
+    );
+  }
+
+  Future<void> _showConflictDialog(
+    BuildContext context,
+    List<SyncConflict> conflicts,
+    CampaignViewModel vm,
+    CampaignSyncService syncService,
+    AuthViewModel auth,
+  ) async {
+    final C = context.appColors;
+    final useCloud = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: C.bgPanel,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          title: Row(
+            children: [
+              Icon(Icons.sync_problem, color: Colors.orange, size: 22),
+              const SizedBox(width: 10),
+              Text(
+                '${conflicts.length} Konflikt${conflicts.length > 1 ? 'e' : ''}',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: C.text),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 380,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Diese Kampagnen wurden auf einem anderen Gerät neuer bearbeitet als hier:',
+                  style: TextStyle(fontSize: 13, color: C.textSoft),
+                ),
+                const SizedBox(height: 12),
+                ...conflicts.map((c) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: C.bgHover,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: C.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(c.local.title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.text)),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            _ConflictTag(label: 'Lokal', time: c.local.updatedAt, color: C.textSoft),
+                            const SizedBox(width: 12),
+                            _ConflictTag(label: 'Cloud', time: c.cloud.updatedAt, color: Colors.orange),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                )),
+                const SizedBox(height: 4),
+                Text(
+                  'Was soll behalten werden?',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: C.text),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text('Lokale Version behalten', style: TextStyle(color: C.text)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Cloud übernehmen'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (useCloud == null || !mounted) return;
+    final user = auth.user;
+    if (user == null) return;
+    await vm.resolveConflicts(conflicts, useCloud, syncService, user);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(useCloud ? 'Cloud-Versionen übernommen' : 'Lokale Versionen behalten')),
+    );
   }
 
   // ── App-Info ──────────────────────────────────────────────────────────────
@@ -382,6 +487,34 @@ class _InfoRow extends StatelessWidget {
       children: [
         Text(label, style: TextStyle(fontSize: 13, color: C.textSoft)),
         Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: C.text)),
+      ],
+    );
+  }
+}
+
+class _ConflictTag extends StatelessWidget {
+  const _ConflictTag({required this.label, required this.time, required this.color});
+
+  final String label;
+  final DateTime time;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final formatted = '${time.day}.${time.month}.${time.year} ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+        ),
+        const SizedBox(width: 4),
+        Text(formatted, style: TextStyle(fontSize: 11, color: color)),
       ],
     );
   }
