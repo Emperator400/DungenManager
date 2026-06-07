@@ -38,6 +38,7 @@ import 'database/repositories/sound_model_repository.dart';
 import 'database/repositories/wiki_entry_model_repository.dart';
 import 'database/repositories/encounter_model_repository.dart';
 import 'database/repositories/player_model_repository.dart';
+import 'database/repositories/ort_model_repository.dart';
 import 'viewmodels/player_viewmodel.dart';
 import 'services/player_service.dart';
 import 'viewmodels/update_viewmodel.dart';
@@ -174,7 +175,12 @@ class DmApp extends StatelessWidget {
           create: (_) => AuthViewModel(authService: AuthService()),
         ),
         Provider<CampaignSyncService>(
-          create: (_) => CampaignSyncService(AuthService()),
+          create: (_) => CampaignSyncService(
+            AuthService(),
+            OrtModelRepository(dbConnection),
+            SceneModelRepository(dbConnection),
+            QuestModelRepository(dbConnection),
+          ),
         ),
         ChangeNotifierProxyProvider<AuthViewModel, CampaignViewModel>(
           create: (_) => CampaignViewModel(
