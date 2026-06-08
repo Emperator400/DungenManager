@@ -1,93 +1,62 @@
-import 'package:flutter/foundation.dart';
 import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart';
+
+import '../database/core/database_connection.dart';
 import '../database/repositories/player_character_model_repository.dart';
 import '../database/repositories/wiki_entry_model_repository.dart';
-//import '../database/repositories/quest_model_repository.dart';
-import '../database/core/database_connection.dart';
+import 'resource_service.dart';
 
-/// Service zum sicheren Speichern und Migrieren von importierten Bildern
+/// Migriert alte absolute Bildpfade in den `resources/`-Ordner mit `resource://`-Referenzen.
 class ImageStorageService {
-  /// Sichert ein Bild im permanenten Dokumente-Ordner und gibt den neuen Pfad zurück
+  /// Kopiert eine Datei in den `resources/`-Ordner und gibt `resource://filename` zurück.
+  /// Gibt den Original-Pfad zurück wenn die Datei nicht existiert oder bereits resource:// ist.
   static Future<String?> saveImageToSecureFolder(String originalPath) async {
     if (originalPath.isEmpty) return null;
-    
+    if (ResourceService.isResourceRef(originalPath)) return originalPath;
+
     try {
-      final Directory documentsDir = await getApplicationDocumentsDirectory();
-      final String securePath = path.join(documentsDir.path, 'DungenManager', 'images');
-      final Directory secureDir = Directory(securePath);
+      final file = File(originalPath);
+      if (!await file.exists()) return originalPath;
 
-      if (!await secureDir.exists()) {
-        await secureDir.create(recursive: true);
-      }
-
-      // Bereits im sicheren Ordner?
-      if (originalPath.contains(securePath)) return originalPath;
-
-      final File sourceFile = File(originalPath);
-      if (await sourceFile.exists()) {
-        final String fileName = path.basename(originalPath);
-        final String newFilePath = path.join(securePath, '${DateTime.now().millisecondsSinceEpoch}_$fileName');
-
-        await sourceFile.copy(newFilePath);
-        return newFilePath;
-      }
+      final filename = '${DateTime.now().millisecondsSinceEpoch}_${path.basename(originalPath)}';
+      return await ResourceService.importFile(originalPath, filename);
     } catch (e) {
-      debugPrint('⚠️ Fehler beim Sichern des Bildes: $e');
+      debugPrint('⚠️ Fehler beim Importieren des Bildes: $e');
     }
-    return originalPath; // Fallback: Alten Pfad behalten, falls Kopieren fehlschlägt
+    return originalPath;
   }
 
-  /// Migriert alle bestehenden Bilder von Charakteren, Wikis und Quests in den sicheren Ordner
+  /// Migriert alle bestehenden Bildpfade (PC, Wiki) in den `resources/`-Ordner.
   static Future<void> migrateExistingImages() async {
-    debugPrint('🔄 Starte Bild-Migration in sicheren Ordner...');
-    final dbConnection = DatabaseConnection.instance;
-    
+    debugPrint('🔄 Starte Bild-Migration in resources/-Ordner...');
+    final db = DatabaseConnection.instance;
+
     try {
-      // 1. Spieler-Charaktere migrieren (Feld: imagePath)
-      final pcRepo = PlayerCharacterModelRepository(dbConnection);
-      final characters = await pcRepo.findAll();
-      for (var char in characters) {
-        if (char.imagePath != null && char.imagePath!.isNotEmpty) {
-          final newPath = await saveImageToSecureFolder(char.imagePath!);
-          if (newPath != null && newPath != char.imagePath) {
-            await pcRepo.update(char.copyWith(imagePath: newPath));
-            debugPrint('✅ Bild für Charakter gesichert.');
-          }
+      final pcRepo = PlayerCharacterModelRepository(db);
+      for (final char in await pcRepo.findAll()) {
+        final p = char.imagePath;
+        if (p == null || p.isEmpty || ResourceService.isResourceRef(p)) continue;
+        final newRef = await saveImageToSecureFolder(p);
+        if (newRef != null && newRef != p) {
+          await pcRepo.update(char.copyWith(imagePath: newRef));
+          debugPrint('✅ PC-Bild migriert: $p → $newRef');
         }
       }
 
-      // 2. Wiki-Einträge migrieren (Feld: imageUrl)
-      final wikiRepo = WikiEntryModelRepository(dbConnection);
-      final wikis = await wikiRepo.findAll();
-      for (var wiki in wikis) {
-        if (wiki.imageUrl != null && wiki.imageUrl!.isNotEmpty) {
-          final newPath = await saveImageToSecureFolder(wiki.imageUrl!);
-          if (newPath != null && newPath != wiki.imageUrl) {
-            await wikiRepo.update(wiki.copyWith(imageUrl: newPath));
-            debugPrint('✅ Bild für Wiki-Eintrag gesichert.');
-          }
+      final wikiRepo = WikiEntryModelRepository(db);
+      for (final wiki in await wikiRepo.findAll()) {
+        final u = wiki.imageUrl;
+        if (u == null || u.isEmpty || ResourceService.isResourceRef(u)) continue;
+        final newRef = await saveImageToSecureFolder(u);
+        if (newRef != null && newRef != u) {
+          await wikiRepo.update(wiki.copyWith(imageUrl: newRef));
+          debugPrint('✅ Wiki-Bild migriert: $u → $newRef');
         }
       }
-
-      /* 
-      // 3. Quests migrieren (Feld: imageUrl)
-      final questRepo = QuestModelRepository(dbConnection);
-      final quests = await questRepo.findAll();
-      for (var quest in quests) {
-        if (quest.imageUrl != null && quest.imageUrl!.isNotEmpty) {
-          final newPath = await saveImageToSecureFolder(quest.imageUrl!);
-          if (newPath != null && newPath != quest.imageUrl) {
-            await questRepo.update(quest.copyWith(imageUrl: newPath));
-            debugPrint('✅ Bild für Quest gesichert.');
-          }
-        }
-      }
-      */
-      
     } catch (e) {
-      debugPrint('⚠️ Fehler bei der generellen Bild-Migration: $e');
+      debugPrint('⚠️ Fehler bei der Bild-Migration: $e');
     }
     debugPrint('✅ Bild-Migration abgeschlossen.');
   }

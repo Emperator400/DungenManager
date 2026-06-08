@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/campaign.dart';
 import '../../theme/app_theme.dart';
+import '../ui_components/resource_image.dart';
 
 /// Enhanced Campaign Card Widget mit modernem Design
 class EnhancedCampaignCardWidget extends StatelessWidget {
@@ -194,13 +195,14 @@ class EnhancedCampaignCardWidget extends StatelessWidget {
       child: Stack(
         children: [
           // Hauptbild mit Fallback
-          Image.network(
-            campaign.settings.imageUrl!,
+          SizedBox(
             height: 120,
             width: double.infinity,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
+            child: buildResourceImage(
+              ref: campaign.settings.imageUrl,
+              height: 120,
+              width: double.infinity,
+              fallback: Container(
                 height: 120,
                 width: double.infinity,
                 decoration: BoxDecoration(
@@ -214,55 +216,10 @@ class EnhancedCampaignCardWidget extends StatelessWidget {
                   ),
                 ),
                 child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.castle,
-                        size: 48,
-                        color: Theme.of(context).primaryColor,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        campaign.title,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Theme.of(context).primaryColor,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
+                  child: Icon(Icons.castle, size: 48, color: Theme.of(context).primaryColor),
                 ),
-              );
-            },
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Container(
-                height: 120,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                      Theme.of(context).colorScheme.secondary.withValues(alpha: 0.05),
-                    ],
-                  ),
-                ),
-                child: Center(
-                  child: CircularProgressIndicator(
-                    value: loadingProgress.expectedTotalBytes != null
-                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                        : null,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                ),
-              );
-            },
+              ),
+            ),
           ),
 
           // Overlay für bessere Text-Lesbarkeit

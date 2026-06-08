@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/player_character.dart';
 import '../../theme/app_theme.dart';
+import '../ui_components/resource_image.dart';
 import 'character_list_helpers.dart';
 
 /// Widget für die Anzeige des Helden-Avatars mit Bild-Fallback und Klassenfarben
@@ -150,24 +151,15 @@ class HeroAvatarWidget extends StatelessWidget {
   }
 
   Widget _buildAvatarContent() {
-    // Wenn ein Bildpfad vorhanden ist, versuche es zu laden
     if (character.imagePath != null && character.imagePath!.isNotEmpty) {
-      return Image.network(
-        character.imagePath!,
+      final img = buildResourceImage(
+        ref: character.imagePath,
+        fallback: _buildDefaultAvatar(),
         width: size,
         height: size,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return _buildDefaultAvatar();
-        },
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return _buildLoadingAvatar();
-        },
       );
+      return img;
     }
-
-    // Standard-Avatar mit Klassen-Icon
     return _buildDefaultAvatar();
   }
 
@@ -211,26 +203,6 @@ class HeroAvatarWidget extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildLoadingAvatar() {
-    return Container(
-      width: size,
-      height: size,
-      color: Colors.white.withValues(alpha: 0.1),
-      child: Center(
-        child: SizedBox(
-          width: size * 0.3,
-          height: size * 0.3,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(
-              Colors.white.withValues(alpha: 0.7),
-            ),
-          ),
-        ),
       ),
     );
   }
