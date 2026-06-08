@@ -8,6 +8,7 @@ import '../database/repositories/quest_model_repository.dart';
 import '../database/repositories/session_model_repository.dart';
 import '../database/repositories/scene_model_repository.dart';
 import '../database/repositories/wiki_entry_model_repository.dart';
+import '../models/app_user.dart';
 import '../models/campaign.dart';
 import '../models/map_layer.dart';
 import '../models/scene.dart';
@@ -19,7 +20,9 @@ import '../models/session.dart';
 import '../models/verlaufs_eintrag.dart';
 import '../models/wiki_entry.dart';
 export '../models/wiki_entry.dart' show WikiEntry, WikiEntryType;
+import '../services/campaign_sync_service.dart';
 import '../services/campaign_template_sync_service.dart';
+import '../services/cloud_resource_service.dart';
 import '../services/ort_service.dart';
 
 enum DmBuchMode { vorbereitung, live }
@@ -38,6 +41,9 @@ class DmBuchViewModel extends ChangeNotifier {
   final WikiEntryModelRepository _wikiRepo;
   final CampaignModelRepository _campaignRepo;
   final PlayerCharacterModelRepository _pcRepo;
+  final CampaignSyncService? _campaignSyncService;
+  final CloudResourceService? _cloudResourceService;
+  AppUser? _syncUser;
 
   DmBuchViewModel({
     required Campaign campaign,
@@ -49,6 +55,9 @@ class DmBuchViewModel extends ChangeNotifier {
     WikiEntryModelRepository? wikiRepo,
     CampaignModelRepository? campaignRepo,
     PlayerCharacterModelRepository? pcRepo,
+    CampaignSyncService? campaignSyncService,
+    CloudResourceService? cloudResourceService,
+    AppUser? syncUser,
   })  : _campaign = campaign,
         _ortService = ortService ?? OrtService(),
         _ortRepo = ortRepo ?? OrtModelRepository(DatabaseConnection.instance),
@@ -57,7 +66,10 @@ class DmBuchViewModel extends ChangeNotifier {
         _sceneRepo = sceneRepo ?? SceneModelRepository(DatabaseConnection.instance),
         _wikiRepo = wikiRepo ?? WikiEntryModelRepository(DatabaseConnection.instance),
         _campaignRepo = campaignRepo ?? CampaignModelRepository(DatabaseConnection.instance),
-        _pcRepo = pcRepo ?? PlayerCharacterModelRepository(DatabaseConnection.instance);
+        _pcRepo = pcRepo ?? PlayerCharacterModelRepository(DatabaseConnection.instance),
+        _campaignSyncService = campaignSyncService,
+        _cloudResourceService = cloudResourceService,
+        _syncUser = syncUser;
 
   // ── STATE ──────────────────────────────────────────────────────────────────
 
@@ -528,6 +540,31 @@ class DmBuchViewModel extends ChangeNotifier {
 
   bool _isSyncing = false;
   bool get isSyncing => _isSyncing;
+
+  bool get canSyncToCloud =>
+      _campaignSyncService != null && _cloudResourceService != null && _syncUser != null;
+
+  /// Lädt diese Kampagne + den Ressourcen-Ordner in die Cloud hoch.
+  /// Gibt true zurück wenn erfolgreich.
+  Future<bool> syncToCloud() async {
+    final user = _syncUser;
+    final syncSvc = _campaignSyncService;
+    final resSvc = _cloudResourceService;
+    if (user == null || syncSvc == null || resSvc == null) return false;
+    _isSyncing = true;
+    notifyListeners();
+    try {
+      await resSvc.syncResources(user.uid);
+      await syncSvc.uploadCampaign(_campaign, user.uid);
+      return true;
+    } catch (e) {
+      debugPrint('[DmBuchViewModel] syncToCloud error: $e');
+      return false;
+    } finally {
+      _isSyncing = false;
+      notifyListeners();
+    }
+  }
 
   /// Synchronisiert Orte, Szenen und Quests von der Vorlage in diese Kopie.
   /// Gibt eine Zusammenfassung zurück, oder null bei Fehler.

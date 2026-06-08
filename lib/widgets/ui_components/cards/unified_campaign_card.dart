@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../../models/campaign.dart';
+import '../../../services/resource_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/dnd_theme.dart';
 import '../../../utils/color_utils.dart';
@@ -333,14 +334,15 @@ class _Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = coverImagePath != null && File(coverImagePath!).existsSync();
+    final resolvedCover = ResourceService.resolveLocalPath(coverImagePath);
+    final hasImage = resolvedCover != null && File(resolvedCover).existsSync();
     return ClipRRect(
       borderRadius: BorderRadius.circular(6),
       child: hasImage
           ? SizedBox(
               width: 28,
               height: 28,
-              child: Image.file(File(coverImagePath!), fit: BoxFit.cover),
+              child: Image.file(File(resolvedCover), fit: BoxFit.cover),
             )
           : Container(
               width: 28,

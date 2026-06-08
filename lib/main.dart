@@ -51,6 +51,8 @@ import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'services/campaign_sync_service.dart';
 import 'services/cloud_image_service.dart';
+import 'services/cloud_resource_service.dart';
+import 'services/resource_service.dart';
 import 'viewmodels/auth_viewmodel.dart';
 
 // ============================================================
@@ -93,6 +95,9 @@ void main() async {
 
   // Windows-Session aus SharedPreferences wiederherstellen (vor runApp!)
   await AuthService.restoreSession();
+
+  // Ressourcen-Ordner initialisieren (synchrone Auflösung danach möglich)
+  await ResourceService.init();
 
   // Datenbank initialisieren
   await _initializeDatabase();
@@ -178,6 +183,9 @@ class DmApp extends StatelessWidget {
         Provider<CloudImageService>(
           create: (_) => CloudImageService(AuthService()),
         ),
+        Provider<CloudResourceService>(
+          create: (_) => CloudResourceService(AuthService()),
+        ),
         Provider<CampaignSyncService>(
           create: (ctx) => CampaignSyncService(
             AuthService(),
@@ -187,13 +195,18 @@ class DmApp extends StatelessWidget {
             ctx.read<CloudImageService>(),
           ),
         ),
-        ChangeNotifierProxyProvider<AuthViewModel, CampaignViewModel>(
+        ChangeNotifierProxyProvider2<AuthViewModel, CloudResourceService,
+            CampaignViewModel>(
           create: (_) => CampaignViewModel(
             campaignRepo: CampaignModelRepository(dbConnection),
             characterRepo: PlayerCharacterModelRepository(dbConnection),
           ),
-          update: (context, authVm, vm) {
-            vm!.bindCloudSync(authVm.user, context.read<CampaignSyncService>());
+          update: (context, authVm, _, vm) {
+            vm!.bindCloudSync(
+              authVm.user,
+              context.read<CampaignSyncService>(),
+              resourceService: context.read<CloudResourceService>(),
+            );
             return vm;
           },
         ),

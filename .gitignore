@@ -48,3 +48,18 @@ node_modules/
 package.json
 package-lock.json
 generate_icons.mjs
+
+# Claude Code local settings (machine-specific)
+.claude/settings.local.json
+.claude/worktrees/
+
+# Test coverage artifacts
+coverage/
+
+# Release ZIPs (belong in GitHub Releases, not in repo)
+*.zip
+
+# Analysis output files
+analyze_out.txt
+analyze_full.txt
+phase6_start_analysis.txt

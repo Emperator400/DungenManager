@@ -24,6 +24,7 @@ import '../campaign/dm_buch_screen.dart';
 import '../quests/quest_library_screen.dart';
 import '../players/player_list_screen.dart';
 import '../profile/dm_profil_screen.dart';
+import '../resources/resource_library_screen.dart';
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
@@ -53,6 +54,7 @@ const _bereiche = [
   _Bereich(id: 'quests',       label: 'Quest-Bibl.',  icon: Icons.assignment,     color: Color(0xFFC2410C), beschreibung: 'Quests & Missionen'),
   _Bereich(id: 'sounds',       label: 'Sounds',       icon: Icons.music_note,     color: Color(0xFF0891B2), beschreibung: 'Atmosphäre & Musik'),
   _Bereich(id: 'spieler',      label: 'Spieler',       icon: Icons.group,          color: Color(0xFF065F46), beschreibung: 'Spieler & Charaktere'),
+  _Bereich(id: 'ressourcen',   label: 'Ressourcen',   icon: Icons.photo_library,  color: Color(0xFF9D4EDD), beschreibung: 'Bilder & Karten-Bibliothek'),
   _Bereich(id: 'profil',       label: 'DM-Profil',    icon: Icons.person,         color: Color(0xFF6B6B66), beschreibung: 'Account & Cloud-Sync'),
   _Bereich(id: 'einstellungen',label: 'Einstellungen',icon: Icons.settings,       color: Color(0xFF6B6B66), beschreibung: 'App konfigurieren',     disabled: true),
 ];
@@ -139,6 +141,11 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'spieler':
         Navigator.of(context).push(
           MaterialPageRoute<void>(builder: (_) => const PlayerListScreen()),
+        );
+      case 'ressourcen':
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+              builder: (_) => const ResourceLibraryScreen()),
         );
       case 'profil':
         Navigator.of(context).push(

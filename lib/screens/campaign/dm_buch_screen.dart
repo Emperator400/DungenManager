@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:math';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
@@ -50,6 +49,11 @@ import '../../services/multi_stream_sound_service.dart';
 import '../../viewmodels/lan_map_viewmodel.dart';
 import '../session/active_session_screen.dart';
 import '../session/encounter_setup_screen.dart';
+import '../resources/resource_library_screen.dart';
+import '../../services/campaign_sync_service.dart';
+import '../../services/cloud_resource_service.dart';
+import '../../services/resource_service.dart';
+import '../../viewmodels/auth_viewmodel.dart';
 
 // ── ENTRY POINT ───────────────────────────────────────────────────────────────
 
@@ -81,7 +85,14 @@ class _DmBuchScreenState extends State<DmBuchScreen> {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => DmBuchViewModel(campaign: widget.campaign)..init()),
+        ChangeNotifierProvider(
+          create: (ctx) => DmBuchViewModel(
+            campaign: widget.campaign,
+            campaignSyncService: ctx.read<CampaignSyncService>(),
+            cloudResourceService: ctx.read<CloudResourceService>(),
+            syncUser: ctx.read<AuthViewModel>().user,
+          )..init(),
+        ),
         ChangeNotifierProvider.value(value: _lanVm),
       ],
       child: const _DmBuchView(),
@@ -3714,7 +3725,9 @@ class _EditOrtDialogState extends State<_EditOrtDialog> {
                       ),
                       child: Text(
                         _tokenImagePath != null
-                            ? _tokenImagePath!.split(r'\').last.split('/').last
+                            ? ResourceService.isResourceRef(_tokenImagePath)
+                                ? ResourceService.filenameFromRef(_tokenImagePath!)
+                                : _tokenImagePath!.split(r'\').last.split('/').last
                             : 'Kein Bild',
                         style: TextStyle(fontSize: 12, color: _tokenImagePath != null ? C.text : C.textSoft),
                         overflow: TextOverflow.ellipsis,
@@ -3724,13 +3737,8 @@ class _EditOrtDialogState extends State<_EditOrtDialog> {
                   const SizedBox(width: 8),
                   GestureDetector(
                     onTap: () async {
-                      final result = await FilePicker.platform.pickFiles(
-                        type: FileType.image,
-                        allowMultiple: false,
-                      );
-                      if (result != null && result.files.single.path != null) {
-                        setState(() => _tokenImagePath = result.files.single.path);
-                      }
+                      final ref = await pickResource(context);
+                      if (ref != null) setState(() => _tokenImagePath = ref);
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
@@ -4519,7 +4527,11 @@ class _DmBuchMenuBtn extends StatelessWidget {
       ),
       if (vm.campaign.templateId != null) ...[
         const PopupMenuDivider(height: 8),
-        _item(9, Icons.sync, 'Kampagne synchronisieren', loading: vm.isSyncing),
+        _item(9, Icons.sync, 'Vorlage übernehmen', loading: vm.isSyncing),
+      ],
+      if (vm.canSyncToCloud) ...[
+        const PopupMenuDivider(height: 8),
+        _item(10, Icons.cloud_upload_outlined, 'In Cloud speichern', loading: vm.isSyncing),
       ],
     ];
   }
@@ -4608,6 +4620,8 @@ class _DmBuchMenuBtn extends StatelessWidget {
         themeNotifier.toggle();
       case 9:
         _syncFromTemplate(context);
+      case 10:
+        _syncToCloud(context);
     }
   }
 
@@ -4627,6 +4641,16 @@ class _DmBuchMenuBtn extends StatelessWidget {
     final ok = result != null;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(ok ? result.summary : 'Sync fehlgeschlagen'),
+      duration: const Duration(seconds: 3),
+      backgroundColor: ok ? C.green : C.red,
+    ));
+  }
+
+  Future<void> _syncToCloud(BuildContext context) async {
+    final ok = await vm.syncToCloud();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(ok ? 'Erfolgreich in Cloud gespeichert' : 'Cloud-Sync fehlgeschlagen'),
       duration: const Duration(seconds: 3),
       backgroundColor: ok ? C.green : C.red,
     ));
@@ -5954,12 +5978,9 @@ class _VerlaufsGraphViewState extends State<_VerlaufsGraphView> {
   }
 
   Future<void> _pickMap(BuildContext ctx) async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      allowMultiple: false,
-    );
-    if (result != null && result.files.single.path != null && ctx.mounted) {
-      await widget.vm.setVerlaufsKarteImage(result.files.single.path);
+    final ref = await pickResource(ctx);
+    if (ref != null && ctx.mounted) {
+      await widget.vm.setVerlaufsKarteImage(ref);
     }
   }
 
@@ -6064,10 +6085,11 @@ class _VerlaufsGraphViewState extends State<_VerlaufsGraphView> {
                 clipBehavior: Clip.none,
                 children: [
                   // Hintergrund: Karte oder Dot-Grid
-                  if (vm.verlaufsKarteImagePath != null)
+                  if (vm.verlaufsKarteImagePath != null &&
+                      ResourceService.resolveLocalPath(vm.verlaufsKarteImagePath) != null)
                     Positioned.fill(
                       child: Image.file(
-                        File(vm.verlaufsKarteImagePath!),
+                        File(ResourceService.resolveLocalPath(vm.verlaufsKarteImagePath)!),
                         fit: BoxFit.contain,
                         errorBuilder: (_, __, ___) =>
                             ColoredBox(color: C.bgPanel),
@@ -6905,8 +6927,9 @@ class _KarteGraphViewState extends State<_KarteGraphView>
 
   void _precacheLayers(List<MapLayer> layers) {
     for (final layer in layers) {
-      if (layer.imagePath == null) continue;
-      precacheImage(FileImage(File(layer.imagePath!)), context);
+      final resolved = ResourceService.resolveLocalPath(layer.imagePath);
+      if (resolved == null) continue;
+      precacheImage(FileImage(File(resolved)), context);
     }
   }
 
@@ -7050,12 +7073,9 @@ class _KarteGraphViewState extends State<_KarteGraphView>
   }
 
   Future<void> _pickMap(BuildContext ctx) async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      allowMultiple: false,
-    );
-    if (result != null && result.files.single.path != null && ctx.mounted) {
-      await widget.vm.setCurrentLevelMapImage(result.files.single.path);
+    final ref = await pickResource(ctx);
+    if (ref != null && ctx.mounted) {
+      await widget.vm.setCurrentLevelMapImage(ref);
     }
   }
 
@@ -7279,21 +7299,21 @@ class _KarteGraphViewState extends State<_KarteGraphView>
                     // Hintergrund (Karte + Layer oder Dot-Grid)
                     Positioned.fill(
                       child: IgnorePointer(
-                        child: vm.currentMapImagePath != null
+                        child: ResourceService.resolveLocalPath(vm.currentMapImagePath) != null
                             ? Stack(
                                 fit: StackFit.expand,
                                 children: [
                                   Image.file(
-                                    File(vm.currentMapImagePath!),
+                                    File(ResourceService.resolveLocalPath(vm.currentMapImagePath)!),
                                     fit: BoxFit.contain,
                                     frameBuilder: (ctx, child, frame, sync) =>
                                         (sync || frame != null) ? child : CustomPaint(painter: _GraphGridPainter(C)),
                                     errorBuilder: (_, __, ___) => ColoredBox(color: C.bgPanel),
                                   ),
                                   for (final layer in vm.currentLevelLayers)
-                                    if (layer.isVisible && layer.imagePath != null)
+                                    if (layer.isVisible && ResourceService.resolveLocalPath(layer.imagePath) != null)
                                       Image.file(
-                                        File(layer.imagePath!),
+                                        File(ResourceService.resolveLocalPath(layer.imagePath)!),
                                         fit: BoxFit.contain,
                                         gaplessPlayback: true,
                                         errorBuilder: (_, __, ___) => const SizedBox.shrink(),
@@ -7408,10 +7428,10 @@ class _KarteGraphViewState extends State<_KarteGraphView>
                                       ),
                                   ],
                                 ),
-                                child: ort.tokenImagePath != null
+                                child: ResourceService.resolveLocalPath(ort.tokenImagePath) != null
                                     ? ClipOval(
                                         child: Image.file(
-                                          File(ort.tokenImagePath!),
+                                          File(ResourceService.resolveLocalPath(ort.tokenImagePath)!),
                                           fit: BoxFit.cover,
                                           errorBuilder: (_, __, ___) => ColoredBox(
                                             color: tokenColor,
@@ -7931,10 +7951,8 @@ class _LayerRow extends StatelessWidget {
   }
 
   Future<void> _pickImage(BuildContext context) async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.image, allowMultiple: false);
-    if (result != null && result.files.single.path != null) {
-      await vm.setLayerImage(layer, result.files.single.path);
-    }
+    final ref = await pickResource(context);
+    if (ref != null) await vm.setLayerImage(layer, ref);
   }
 
   Future<void> _confirmDelete(BuildContext context) async {

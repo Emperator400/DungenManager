@@ -9,6 +9,7 @@ import '../models/campaign.dart';
 import '../services/campaign_service.dart';
 import '../services/campaign_sync_service.dart';
 import '../services/campaign_template_export_import_service.dart';
+import '../services/cloud_resource_service.dart';
 import '../services/uuid_service.dart';
 
 class SyncConflict {
@@ -94,6 +95,7 @@ class CampaignViewModel extends ChangeNotifier {
   DateTime? get lastSyncedAt => _lastSyncedAt;
 
   CampaignSyncService? _syncService;
+  CloudResourceService? _resourceSyncService;
   AppUser? _syncUser;
   final Set<String> _syncedIds = {};
   final Set<String> _pendingSyncIds = {};
@@ -633,8 +635,13 @@ class CampaignViewModel extends ChangeNotifier {
 
   /// Bindet den eingeloggten User und den Sync-Service ein.
   /// Wird vom ProxyProvider bei jeder Auth-Änderung aufgerufen.
-  void bindCloudSync(AppUser? user, CampaignSyncService service) {
+  void bindCloudSync(
+    AppUser? user,
+    CampaignSyncService service, {
+    CloudResourceService? resourceService,
+  }) {
     _syncService = service;
+    _resourceSyncService = resourceService;
     final wasLoggedIn = _syncUser != null;
     _syncUser = user;
     if (wasLoggedIn && user == null) {
@@ -686,6 +693,9 @@ class CampaignViewModel extends ChangeNotifier {
 
     final conflicts = <SyncConflict>[];
     try {
+      // Ressourcen-Ordner synchronisieren (Manifest verhindert Re-Upload)
+      await _resourceSyncService?.syncResources(user.uid);
+
       final cloudCampaigns = await syncService.downloadCampaigns(user.uid);
 
       // Cloud → Lokal

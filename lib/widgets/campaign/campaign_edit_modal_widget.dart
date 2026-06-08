@@ -1,10 +1,11 @@
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/campaign.dart';
+import '../../screens/resources/resource_library_screen.dart';
+import '../../services/resource_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/color_utils.dart';
 import '../../viewmodels/campaign_viewmodel.dart';
@@ -387,7 +388,8 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
       );
 
   Widget _buildImagePicker(AppColorsExtension C) {
-    final hasImage = _coverImagePath != null && File(_coverImagePath!).existsSync();
+    final resolvedCover = ResourceService.resolveLocalPath(_coverImagePath);
+    final hasImage = resolvedCover != null && File(resolvedCover).existsSync();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -408,7 +410,7 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        Image.file(File(_coverImagePath!), fit: BoxFit.cover),
+                        Image.file(File(resolvedCover), fit: BoxFit.cover),
                         Positioned(
                           top: 6, right: 6,
                           child: GestureDetector(
@@ -477,12 +479,8 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
       );
 
   Future<void> _pickCoverImage() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-    );
-    if (result != null && result.files.single.path != null) {
-      setState(() => _coverImagePath = result.files.single.path);
-    }
+    final ref = await pickResource(context);
+    if (ref != null) setState(() => _coverImagePath = ref);
   }
 
   Widget _buildPreview(AppColorsExtension C) {
