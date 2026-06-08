@@ -6,6 +6,8 @@ import '../../services/campaign_sync_service.dart';
 import '../../theme/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/campaign_viewmodel.dart';
+import '../../viewmodels/update_viewmodel.dart';
+import '../../widgets/update_dialog.dart';
 import '../auth/login_screen.dart';
 
 class DmProfilScreen extends StatefulWidget {
@@ -17,6 +19,9 @@ class DmProfilScreen extends StatefulWidget {
 
 class _DmProfilScreenState extends State<DmProfilScreen> {
   String _version = '';
+  int _versionTapCount = 0;
+  bool _devModeVisible = false;
+  bool _includePrereleases = false;
 
   @override
   void initState() {
@@ -27,6 +32,38 @@ class _DmProfilScreenState extends State<DmProfilScreen> {
   Future<void> _loadVersion() async {
     final info = await PackageInfo.fromPlatform();
     if (mounted) setState(() => _version = '${info.version}+${info.buildNumber}');
+  }
+
+  void _onVersionTap() {
+    _versionTapCount++;
+    if (_versionTapCount >= 5 && !_devModeVisible) {
+      setState(() => _devModeVisible = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🛠️ Entwickler-Modus aktiviert'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Future<void> _checkForUpdates({required bool prerelease}) async {
+    final vm = context.read<UpdateViewModel>();
+    final messenger = ScaffoldMessenger.of(context);
+    final hasUpdate = await vm.checkForUpdate(force: true, includePrereleases: prerelease);
+    if (!mounted) return;
+    if (hasUpdate || vm.hasError) {
+      await showUpdateDialogIfNeeded(context, forceShow: true);
+    } else {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(prerelease
+              ? 'Kein Update gefunden (stabil + pre-release)'
+              : 'Kein Update verfügbar — du hast die neueste Version'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   @override
@@ -58,7 +95,13 @@ class _DmProfilScreenState extends State<DmProfilScreen> {
             _buildCloudSyncSection(context, C, auth),
             const SizedBox(height: 20),
           ],
+          _buildUpdatesSection(C),
+          const SizedBox(height: 20),
           _buildAppInfoSection(C),
+          if (_devModeVisible) ...[
+            const SizedBox(height: 20),
+            _buildDevModeSection(C),
+          ],
         ],
       ),
     );
@@ -357,6 +400,31 @@ class _DmProfilScreenState extends State<DmProfilScreen> {
     );
   }
 
+  // ── Updates ───────────────────────────────────────────────────────────────
+
+  Widget _buildUpdatesSection(AppColorsExtension C) {
+    return _Section(
+      C: C,
+      title: 'Updates',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Nach neuen Versionen von DungenManager suchen.',
+            style: TextStyle(fontSize: 12, color: C.textSoft),
+          ),
+          const SizedBox(height: 12),
+          _PrimaryBtn(
+            C: C,
+            label: 'Nach Updates suchen',
+            icon: Icons.system_update_alt_outlined,
+            onTap: () => _checkForUpdates(prerelease: false),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── App-Info ──────────────────────────────────────────────────────────────
 
   Widget _buildAppInfoSection(AppColorsExtension C) {
@@ -365,9 +433,84 @@ class _DmProfilScreenState extends State<DmProfilScreen> {
       title: 'App',
       child: Column(
         children: [
-          _InfoRow(C: C, label: 'Version', value: _version.isEmpty ? '…' : _version),
+          GestureDetector(
+            onTap: _onVersionTap,
+            child: _InfoRow(C: C, label: 'Version', value: _version.isEmpty ? '…' : _version),
+          ),
           Divider(color: C.border, height: 16),
           _InfoRow(C: C, label: 'System', value: 'D&D 5e'),
+        ],
+      ),
+    );
+  }
+
+  // ── Dev Mode ──────────────────────────────────────────────────────────────
+
+  Widget _buildDevModeSection(AppColorsExtension C) {
+    return _Section(
+      C: C,
+      title: '🛠️  Entwickler',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: C.amber.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: C.amber.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, size: 14, color: C.amber),
+                const SizedBox(width: 6),
+                Text(
+                  'Nur für Entwicklung — nicht im Produktivbetrieb nutzen.',
+                  style: TextStyle(fontSize: 11, color: C.amber),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Pre-Release Toggle
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Pre-Releases einschließen',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: C.text)),
+                    const SizedBox(height: 2),
+                    Text('Zeigt auch nicht-stabile Dev-Builds an',
+                        style: TextStyle(fontSize: 11, color: C.textSoft)),
+                  ],
+                ),
+              ),
+              Switch(
+                value: _includePrereleases,
+                onChanged: (v) => setState(() => _includePrereleases = v),
+                activeThumbColor: C.accent,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _PrimaryBtn(
+            C: C,
+            label: _includePrereleases
+                ? 'Nach Pre-Release suchen'
+                : 'Nach stabilem Update suchen',
+            icon: Icons.download_outlined,
+            onTap: () => _checkForUpdates(prerelease: _includePrereleases),
+          ),
+          const SizedBox(height: 8),
+          _ActionRow(
+            C: C,
+            icon: Icons.open_in_browser_outlined,
+            label: 'GitHub Releases öffnen',
+            onTap: () => context.read<UpdateViewModel>().openReleasesPage(),
+          ),
         ],
       ),
     );
