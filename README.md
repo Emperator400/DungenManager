@@ -2,7 +2,7 @@
 
 > A D&D 5e session management app for Dungeon Masters — built with Flutter for Windows, iOS and Android.
 
-![Version](https://img.shields.io/badge/version-1.1.3-blue)
+![Version](https://img.shields.io/badge/version-1.1.4-blue)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20iOS%20%7C%20Android-lightgrey)
 ![Flutter](https://img.shields.io/badge/Flutter-3.x-54C5F8?logo=flutter)
 ![Status](https://img.shields.io/badge/status-active-brightgreen)

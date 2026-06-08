@@ -231,6 +231,15 @@ class UpdateViewModel extends ChangeNotifier {
     }
   }
 
+  /// Lädt das Update herunter und installiert es sofort — ein einziger Schritt.
+  /// Auf Windows: startet PowerShell-Installer und beendet die App.
+  /// Auf anderen Plattformen: öffnet nach dem Download den Ordner.
+  Future<void> downloadAndInstall() async {
+    final ok = await downloadUpdate();
+    if (!ok) return;
+    await installAndRestart();
+  }
+
   /// Bricht einen laufenden Download ab.
   void cancelDownload() {
     _updateService.cancelDownload();
@@ -256,6 +265,12 @@ class UpdateViewModel extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     return downloadUpdate();
+  }
+
+  Future<void> retryAndInstall() async {
+    _errorMessage = null;
+    notifyListeners();
+    await downloadAndInstall();
   }
 
   void reset() {
