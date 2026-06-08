@@ -18,13 +18,11 @@ DungenManager is a digital toolbox for Dungeon Masters running D&D 5e campaigns.
 
 ## Screenshots
 
-| Campaign Hub | DM Book & Map | Active Session |
-|:---:|:---:|:---:|
-| *(coming soon)* | *(coming soon)* | *(coming soon)* |
+| Campaign Hub | Hero Sheet |
+|:---:|:---:|
+| ![Campaign Hub](docs/screenshots/campaign_hub.png) | ![Hero Sheet](docs/screenshots/herro_sheet.png) |
 
-| Hero Sheet | Encounter Tracker | Resource Library |
-|:---:|:---:|:---:|
-| *(coming soon)* | *(coming soon)* | *(coming soon)* |
+More screenshots coming soon.
 
 ---
 

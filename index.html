@@ -452,6 +452,36 @@
       margin: 0;
     }
 
+    /* ─── SCREENSHOTS ──────────────────────────────────────────────────────── */
+    .screenshots-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+      margin-top: 32px;
+    }
+    .screenshot-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      transition: border-color .2s, transform .2s;
+    }
+    .screenshot-card:hover {
+      border-color: var(--border-strong);
+      transform: translateY(-3px);
+    }
+    .screenshot-card img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .screenshot-label {
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--text-mid);
+      border-top: 1px solid var(--border);
+    }
+
     /* ─── FOOTER ────────────────────────────────────────────────────────────── */
     footer {
       border-top: 1px solid var(--border);
@@ -491,6 +521,7 @@
       </a>
 
       <ul class="nav-links">
+        <li><a href="#screenshots">Screenshots</a></li>
         <li><a href="#features">Features</a></li>
         <li><a href="#details">Details</a></li>
         <li><a href="#techstack">Tech-Stack</a></li>
@@ -579,6 +610,29 @@
       </div>
     </div>
   </div>
+
+
+  <!-- ── SCREENSHOTS ──────────────────────────────────────────────────────── -->
+  <section id="screenshots">
+    <div class="container">
+      <div class="section-header">
+        <span class="tag tag-purple">Screenshots</span>
+        <h2>Die App in Aktion</h2>
+        <p>Ein erster Blick auf das Interface — dunkel, übersichtlich, DM-optimiert.</p>
+      </div>
+
+      <div class="screenshots-grid">
+        <div class="screenshot-card">
+          <img src="docs/screenshots/campaign_hub.png" alt="Kampagnen-Hub — Übersicht aller Kampagnen" loading="lazy" />
+          <div class="screenshot-label">📖 Kampagnen-Hub</div>
+        </div>
+        <div class="screenshot-card">
+          <img src="docs/screenshots/herro_sheet.png" alt="Helden-Charakterbogen" loading="lazy" />
+          <div class="screenshot-label">🧙 Helden-Charakterbogen</div>
+        </div>
+      </div>
+    </div>
+  </section>
 
 
   <!-- ── FEATURES ──────────────────────────────────────────────────────────── -->
@@ -789,13 +843,14 @@
           </div>
         </div>
 
-        <!-- Offline / Local -->
-        <div class="bento-card">
-          <div class="big-icon">🔒</div>
-          <h3>100% Lokal</h3>
-          <p>Alle Daten bleiben auf deinem Gerät. Keine Cloud, keine Accounts, kein Abo – vollständig offline nutzbar.</p>
-          <div style="margin-top:16px">
-            <span class="tag tag-green">✓ Offline-First</span>
+        <!-- Cloud Sync -->
+        <div class="bento-card bento-glow-blue">
+          <div class="big-icon">☁️</div>
+          <h3>Cloud Sync</h3>
+          <p>Kampagnen, Karten und Bilder werden via Firebase auf allen Geräten synchron gehalten. Bilder werden dedupliziert — gleiches Bild wird nur einmal hochgeladen.</p>
+          <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+            <span class="tag tag-blue">✓ Offline-First</span>
+            <span class="tag tag-green">☁️ Firebase Sync</span>
           </div>
         </div>
 
@@ -845,6 +900,11 @@
           <div class="tech-icon">📐</div>
           <h3>Clean Architecture</h3>
           <p>UI → ViewModel → Service → Repository → DB</p>
+        </div>
+        <div class="tech-card">
+          <div class="tech-icon">🔥</div>
+          <h3>Firebase</h3>
+          <p>Firestore + Storage für Cloud Sync &amp; Authentifizierung</p>
         </div>
         <div class="tech-card">
           <div class="tech-icon">📊</div>
