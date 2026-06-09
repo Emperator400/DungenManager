@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -13,6 +14,7 @@ import '../../widgets/ui_components/shared/app_icon.dart';
 import '../../widgets/update_dialog.dart';
 
 import '../../utils/color_utils.dart';
+import '../../viewmodels/auth_viewmodel.dart';
 import '../bestiary/bestiary_screen.dart';
 import '../audio/sound_library_screen.dart';
 import '../campaign/campaign_selection_screen.dart';
@@ -21,7 +23,8 @@ import '../lore/lore_keeper_screen.dart';
 import '../campaign/dm_buch_screen.dart';
 import '../quests/quest_library_screen.dart';
 import '../players/player_list_screen.dart';
-import '../profile/dm_profile_screen.dart';
+import '../profile/dm_profil_screen.dart';
+import '../resources/resource_library_screen.dart';
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
@@ -51,7 +54,8 @@ const _bereiche = [
   _Bereich(id: 'quests',       label: 'Quest-Bibl.',  icon: Icons.assignment,     color: Color(0xFFC2410C), beschreibung: 'Quests & Missionen'),
   _Bereich(id: 'sounds',       label: 'Sounds',       icon: Icons.music_note,     color: Color(0xFF0891B2), beschreibung: 'Atmosphäre & Musik'),
   _Bereich(id: 'spieler',      label: 'Spieler',       icon: Icons.group,          color: Color(0xFF065F46), beschreibung: 'Spieler & Charaktere'),
-  _Bereich(id: 'profil',       label: 'DM-Profil',    icon: Icons.person,         color: Color(0xFF7C3AED), beschreibung: 'Dein Profil & Daten'),
+  _Bereich(id: 'ressourcen',   label: 'Ressourcen',   icon: Icons.photo_library,  color: Color(0xFF9D4EDD), beschreibung: 'Bilder & Karten-Bibliothek'),
+  _Bereich(id: 'profil',       label: 'DM-Profil',    icon: Icons.person,         color: Color(0xFF7C3AED), beschreibung: 'Account & Profil'),
   _Bereich(id: 'einstellungen',label: 'Einstellungen',icon: Icons.settings,       color: Color(0xFF6B6B66), beschreibung: 'App konfigurieren',     disabled: true),
 ];
 
@@ -138,9 +142,13 @@ class _HomeScreenState extends State<HomeScreen> {
         Navigator.of(context).push(
           MaterialPageRoute<void>(builder: (_) => const PlayerListScreen()),
         );
+      case 'ressourcen':
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const ResourceLibraryScreen()),
+        );
       case 'profil':
         Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const DmProfileScreen()),
+          MaterialPageRoute<void>(builder: (_) => const DmProfilScreen()),
         );
     }
   }
@@ -159,10 +167,17 @@ class _HomeScreenState extends State<HomeScreen> {
     ).then((_) => _loadLastCampaign());
   }
 
+  void _openProfil(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const DmProfilScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final C = context.appColors;
     final selected = _bereiche.where((b) => b.id == _selectedId).firstOrNull;
+    final auth = context.watch<AuthViewModel>();
 
     return Scaffold(
       backgroundColor: C.bg,
@@ -171,13 +186,31 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Begrüßung
-                  Text(
-                    'Willkommen zurück',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.4, color: C.text),
+                  // Begrüßung + Account-Button
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              auth.isLoggedIn
+                                  ? 'Willkommen, ${auth.user!.displayName ?? auth.user!.email ?? 'DM'}'
+                                  : 'Willkommen zurück',
+                              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.4, color: C.text),
+                            ),
+                            const SizedBox(height: 4),
+                            Text('Was möchtest du heute vorbereiten?', style: TextStyle(fontSize: 13, color: C.textSoft)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Auf Desktop im AppTitleBar — auf Mobil hier anzeigen
+                      if (!Platform.isWindows && !Platform.isMacOS && !Platform.isLinux)
+                        _AccountChip(auth: auth, C: C, onTap: () => _openProfil(context)),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text('Was möchtest du heute vorbereiten?', style: TextStyle(fontSize: 13, color: C.textSoft)),
                   const SizedBox(height: 24),
 
                   // Schnellstart
@@ -488,6 +521,117 @@ class _SchnellstartEmpty extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── ACCOUNT CHIP ─────────────────────────────────────────────────────────────
+
+class _AccountChip extends StatelessWidget {
+  const _AccountChip({required this.auth, required this.C, required this.onTap});
+
+  final AuthViewModel auth;
+  final AppColorsExtension C;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (auth.isLoggedIn) {
+      final user = auth.user!;
+      return GestureDetector(
+        onTap: () => _showAccountMenu(context),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: C.bgPanel,
+            border: Border.all(color: C.border),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 12,
+                backgroundColor: C.accent,
+                child: Text(
+                  user.initials,
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                user.displayName ?? user.email ?? 'Account',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: C.text),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.expand_more, size: 16, color: C.textSoft),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: C.bgPanel,
+          border: Border.all(color: C.border),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.person_outline, size: 16, color: C.textSoft),
+            const SizedBox(width: 5),
+            Text('Anmelden', style: TextStyle(fontSize: 12, color: C.textSoft)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAccountMenu(BuildContext context) {
+    final user = auth.user!;
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) {
+        final C = ctx.appColors;
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: C.accent,
+                child: Text(
+                  user.initials,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(user.displayName ?? 'Kein Name', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: C.text)),
+              if (user.email != null)
+                Text(user.email!, style: TextStyle(fontSize: 12, color: C.textSoft)),
+              const SizedBox(height: 16),
+              Divider(color: C.border),
+              ListTile(
+                leading: Icon(Icons.logout, color: C.text),
+                title: Text('Abmelden', style: TextStyle(color: C.text)),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  ctx.read<AuthViewModel>().signOut();
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
     );
   }
 }

@@ -406,10 +406,13 @@ class EditSceneViewModel extends ChangeNotifier {
 
   /// ===== QUEST METHODEN =====
 
-  /// Lädt alle verfügbaren Quests
+  /// Lädt verfügbare Quests — gefiltert nach Kampagne wenn möglich
   Future<void> loadAvailableQuests() async {
     try {
-      final quests = await _questRepository.findAll();
+      final campaignId = _scene?.campaignId;
+      final quests = campaignId != null && campaignId.isNotEmpty
+          ? await _questRepository.findByCampaign(campaignId)
+          : await _questRepository.findAll();
       _availableQuests = quests;
       notifyListeners();
     } catch (e) {

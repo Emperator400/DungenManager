@@ -211,10 +211,16 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          title: const Text('Kampf planen'),
-          actions: [
+  Widget build(BuildContext context) {
+    final C = context.appColors;
+    return Scaffold(
+      backgroundColor: C.bg,
+      appBar: AppBar(
+        backgroundColor: C.bgPanel,
+        foregroundColor: C.text,
+        elevation: 0,
+        title: Text('Kampf planen', style: TextStyle(color: C.text, fontSize: 16, fontWeight: FontWeight.w600)),
+        actions: [
             IconButton(
               icon: const Icon(Icons.info_outline),
               onPressed: () {
@@ -242,14 +248,15 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
         body: _buildBody(),
         bottomNavigationBar: _buildBottomBar(),
       );
+  }
 
   Widget _buildBody() {
+    final C = context.appColors;
     if (_viewModel.isLoading && _viewModel.availableCharacters.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
     if (_viewModel.errorMessage != null && _viewModel.availableCharacters.isEmpty) {
-      final C = context.appColors;
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -278,7 +285,7 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
                 flex: 2,
                 child: _buildAvailableList(),
               ),
-              const VerticalDivider(width: 16),
+              VerticalDivider(width: 1, thickness: 1, color: C.border),
               Expanded(
                 flex: 3,
                 child: _buildSelectedList(),
@@ -307,10 +314,10 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
             children: [
               Icon(Icons.music_note, color: C.green, size: 20),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 'Verknüpfte Sounds',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: C.text,
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),
@@ -343,7 +350,7 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
                         _currentPlayingSoundId == sound.id && _isPlaying
                             ? Icons.pause
                             : Icons.play_arrow,
-                        color: Colors.white,
+                        color: C.text,
                         size: 16,
                       ),
                       onPressed: () => _togglePlayPause(sound.id, sound.filePath),
@@ -353,8 +360,8 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
                       width: 100,
                       child: Text(
                         sound.name,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: C.text,
                           fontSize: 12,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -396,34 +403,49 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
     );
   }
 
-  Widget _buildEncounterInfo() => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'Kampf-Titel',
-                border: OutlineInputBorder(),
-                hintText: 'z.B. Der grüne Drache',
-              ),
-              onChanged: (value) => _viewModel.setEncounterTitle(value),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Beschreibung (optional)',
-                border: OutlineInputBorder(),
-                hintText: 'z.B. Ein wilder Drache greift die Helden an...',
-              ),
-              maxLines: 2,
-              onChanged: (value) => _viewModel.setEncounterDescription(value),
-            ),
-          ],
-        ),
-      );
+  Widget _buildEncounterInfo() {
+    final C = context.appColors;
+    InputDecoration _fieldDecoration({required String label, required String hint}) =>
+        InputDecoration(
+          labelText: label,
+          hintText: hint,
+          labelStyle: TextStyle(color: C.textSoft, fontSize: 13),
+          hintStyle: TextStyle(color: C.textSoft, fontSize: 13),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(6),
+            borderSide: BorderSide(color: C.borderStrong),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(6),
+            borderSide: BorderSide(color: C.accent, width: 1.5),
+          ),
+          filled: true,
+          fillColor: C.bgActive,
+        );
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: _titleController,
+            style: TextStyle(color: C.text),
+            decoration: _fieldDecoration(label: 'Kampf-Titel', hint: 'z.B. Der grüne Drache'),
+            onChanged: (value) => _viewModel.setEncounterTitle(value),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _descriptionController,
+            style: TextStyle(color: C.text),
+            decoration: _fieldDecoration(label: 'Beschreibung (optional)', hint: 'z.B. Ein wilder Drache greift die Helden an...'),
+            maxLines: 2,
+            onChanged: (value) => _viewModel.setEncounterDescription(value),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildAvailableList() => Column(
         children: [
@@ -508,56 +530,65 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
         ? _viewModel.playerById[character.playerId]
         : null;
     final playerColor = player != null ? _parseHexColor(player.color) : null;
-    return Card(
-        color: C.accent,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: (playerColor ?? Colors.white).withValues(alpha: 0.2),
-                child: Text(
-                  character.name.isNotEmpty ? character.name[0].toUpperCase() : '?',
-                  style: TextStyle(
-                    color: playerColor ?? Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    final stripeColor = playerColor ?? C.accent;
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: C.accentSoft,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: C.accent.withValues(alpha: 0.3)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(7),
+        child: IntrinsicHeight(child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(width: 4, color: stripeColor),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
                   children: [
-                    Text(
-                      character.name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: stripeColor.withValues(alpha: 0.25),
+                      child: Text(
+                        character.name.isNotEmpty ? character.name[0].toUpperCase() : '?',
+                        style: TextStyle(
+                          color: C.text,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
-                    Text(
-                      [
-                        '${character.className} Lvl ${character.level}',
-                        if (player != null) player.name,
-                      ].join(' · '),
-                      style: TextStyle(
-                        color: playerColor != null
-                            ? playerColor.withValues(alpha: 0.9)
-                            : Colors.white70,
-                        fontSize: 12,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            character.name,
+                            style: TextStyle(color: C.text, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            [
+                              '${character.className} Lvl ${character.level}',
+                              if (player != null) player.name,
+                            ].join(' · '),
+                            style: TextStyle(color: C.textMid, fontSize: 12),
+                          ),
+                        ],
                       ),
                     ),
+                    if (!isDragging) Icon(Icons.add_circle_outline, color: C.accent),
                   ],
                 ),
               ),
-              if (!isDragging) const Icon(Icons.add_circle_outline, color: Colors.white),
-            ],
-          ),
-        ),
-      );
+            ),
+          ],
+        )),
+      ),
+    );
   }
 
   static Color _parseHexColor(String hex) {
@@ -608,7 +639,7 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
               label: const Text('Bestiarium öffnen'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: C.accent,
-                foregroundColor: Colors.white,
+                foregroundColor: C.text,
               ),
             ),
           ],
@@ -649,60 +680,70 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
     final count = _viewModel.getMonsterCount(monster.id);
 
     final C = context.appColors;
-    return Card(
-      color: C.red,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: C.redSoft,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: C.red.withValues(alpha: 0.3)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(7),
+        child: IntrinsicHeight(child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.shield, color: Colors.white),
-                if (count > 0 && !isDragging)
-                  Positioned(
-                    right: -8,
-                    top: -8,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        count.toString(),
-                        style: TextStyle(
-                          color: C.red,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(width: 16),
+            Container(width: 4, color: C.red),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    monster.name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Icon(Icons.shield, color: C.red),
+                        if (count > 0 && !isDragging)
+                          Positioned(
+                            right: -8,
+                            top: -8,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: C.redSoft,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: C.red.withValues(alpha: 0.5)),
+                              ),
+                              child: Text(
+                                count.toString(),
+                                style: TextStyle(color: C.red, fontSize: 10, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                  ),
-                  Text(
-                    '$typeText CR $crText',
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            monster.name,
+                            style: TextStyle(color: C.text, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            '$typeText CR $crText',
+                            style: TextStyle(color: C.textMid, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (!isDragging) Icon(Icons.add_circle_outline, color: C.red),
+                  ],
+                ),
               ),
             ),
-            if (!isDragging) const Icon(Icons.add_circle_outline, color: Colors.white),
           ],
-        ),
+        )),
       ),
     );
   }
@@ -720,9 +761,13 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              const Text(
+              Text(
                 'Im Kampf',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: C.text,
+                ),
               ),
               const Spacer(),
               // Alle würfeln Button
@@ -761,11 +806,17 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
             builder: (context, candidateData, rejectedData) {
               final innerC = context.appColors;
               return Container(
+              margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
               decoration: BoxDecoration(
                 color: candidateData.isNotEmpty
                     ? innerC.amber.withValues(alpha: 0.2)
-                    : innerC.bgHover,
+                    : innerC.bg,
                 borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: candidateData.isNotEmpty
+                      ? innerC.amber.withValues(alpha: 0.5)
+                      : innerC.borderStrong,
+                ),
               ),
               child: selectedCharacters.isEmpty && selectedMonsters.isEmpty
                   ? Center(
@@ -823,16 +874,20 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: C.accent.withValues(alpha: 0.3),
+        color: C.accentSoft,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: C.accent,
-          width: 1,
-        ),
+        border: Border.all(color: C.accent.withValues(alpha: 0.35)),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(7),
+        child: IntrinsicHeight(child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(width: 4, color: C.accent),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Column(
           children: [
             // Erste Zeile: Position, Name, Initiative, Entfernen
             Row(
@@ -842,14 +897,15 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
                   width: 28,
                   height: 28,
                   decoration: BoxDecoration(
-                    color: C.bgActive,
+                    color: C.accent.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
+                    border: Border.all(color: C.accent.withValues(alpha: 0.4)),
                   ),
                   child: Center(
                     child: Text(
                       '#$position',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: C.accent,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                       ),
@@ -867,15 +923,15 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
                     children: [
                       Text(
                         character.name,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: C.text,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
                       ),
                       Text(
                         '${character.className} Lvl ${character.level}',
-                        style: TextStyle(color: C.textSoft, fontSize: 12),
+                        style: TextStyle(color: C.textMid, fontSize: 12),
                       ),
                     ],
                   ),
@@ -920,13 +976,17 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
               Wrap(
                 spacing: 6,
                 runSpacing: 4,
-                children: character.attackList.take(4).map((attack) => 
-                  _buildAttackChip(attack.name, attack.totalDamage)
+                children: character.attackList.take(4).map((attack) =>
+                  _buildAttackChip(attack.name, attack.totalDamage, attackBonus: attack.formattedAttackBonus)
                 ).toList(),
               ),
             ],
           ],
-        ),
+                ),
+              ),
+            ),
+          ],
+        )),
       ),
     );
   }
@@ -944,33 +1004,38 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: C.red.withValues(alpha: 0.3),
+        color: C.redSoft,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: C.red,
-          width: 1,
-        ),
+        border: Border.all(color: C.red.withValues(alpha: 0.35)),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(7),
+        child: IntrinsicHeight(child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Erste Zeile: Position, Name, Initiative, Entfernen
-            Row(
+            Container(width: 4, color: C.red),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Column(
+                  children: [
+                    // Erste Zeile: Position, Name, Initiative, Entfernen
+                    Row(
               children: [
                 // Position
                 Container(
                   width: 28,
                   height: 28,
                   decoration: BoxDecoration(
-                    color: C.bgActive,
+                    color: C.red.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
+                    border: Border.all(color: C.red.withValues(alpha: 0.4)),
                   ),
                   child: Center(
                     child: Text(
                       '#$position',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: C.red,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                       ),
@@ -988,15 +1053,15 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
                     children: [
                       Text(
                         monster.name,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: C.text,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
                       ),
                       Text(
                         '$typeText CR $crText',
-                        style: TextStyle(color: C.textSoft, fontSize: 12),
+                        style: TextStyle(color: C.textMid, fontSize: 12),
                       ),
                     ],
                   ),
@@ -1041,13 +1106,17 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
               Wrap(
                 spacing: 6,
                 runSpacing: 4,
-                children: monster.attackList.take(4).map((attack) => 
-                  _buildAttackChip(attack.name, attack.totalDamage)
+                children: monster.attackList.take(4).map((attack) =>
+                  _buildAttackChip(attack.name, attack.totalDamage, attackBonus: attack.formattedAttackBonus)
                 ).toList(),
               ),
             ],
           ],
         ),
+      ),
+            ),
+          ],
+        )),
       ),
     );
   }
@@ -1087,7 +1156,7 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: C.bgActive,
+        color: C.text.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
@@ -1100,9 +1169,14 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
     );
   }
 
-  /// Helper für Attack-Chips
-  Widget _buildAttackChip(String name, String damage) {
+  /// Helper für Attack-Chips (mit Angriffsbonus falls vorhanden)
+  Widget _buildAttackChip(String name, String damage, {String? attackBonus}) {
     final C = context.appColors;
+    final label = [
+      name,
+      if (attackBonus != null && attackBonus.isNotEmpty) attackBonus,
+      if (damage.isNotEmpty) damage,
+    ].join('  ');
     final padding = EdgeInsets.symmetric(horizontal: 6, vertical: 2);
 
     return Container(
@@ -1113,7 +1187,7 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
         border: Border.all(color: C.accent.withValues(alpha: 0.5)),
       ),
       child: Text(
-        damage.isNotEmpty ? '$name ($damage)' : name,
+        label,
         style: TextStyle(
           color: C.accent,
           fontSize: 9,
@@ -1156,7 +1230,7 @@ class _EncounterSetupScreenState extends State<EncounterSetupScreen> {
       text: initiativeSet ? initiative.toString() : '',
     );
     final textColor = initiativeSet ? C.amber : C.textMid;
-    final fillColor = C.bgActive;
+    final fillColor = C.bgPanel;
 
     return Row(
       mainAxisSize: MainAxisSize.min,

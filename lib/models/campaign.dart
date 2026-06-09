@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import '../services/uuid_service.dart';
 import '../utils/model_parsing_helper.dart';
@@ -404,6 +406,9 @@ class Campaign {
   final List<VerlaufsEintrag> verlaufsplan;
   final String? verlaufsKarteImagePath;
   final String? karteImagePath;
+  final String? coverImagePath;
+  /// Ob diese Kampagne beim Cloud-Sync hochgeladen wird. Lokal-only — wird nicht synchronisiert.
+  final bool syncEnabled;
 
   /// Tabellenname für die Datenbank
   static const String tableName = 'campaigns';
@@ -434,6 +439,8 @@ class Campaign {
     this.verlaufsplan = const [],
     this.verlaufsKarteImagePath,
     this.karteImagePath,
+    this.coverImagePath,
+    this.syncEnabled = true,
   });
 
   /// Factory für neue Kampagnen mit automatisch generierter ID
@@ -446,6 +453,7 @@ class Campaign {
     CampaignSettings? settings,
     String accentColor = '#7c3aed',
     String system = 'D&D 5e',
+    String? coverImagePath,
   }) {
     final now = DateTime.now();
     return Campaign(
@@ -461,6 +469,7 @@ class Campaign {
       stats: const CampaignStats(),
       accentColor: accentColor,
       system: system,
+      coverImagePath: coverImagePath,
     );
   }
 
@@ -594,6 +603,8 @@ class Campaign {
         verlaufsplan: VerlaufsEintrag.listFromJson(map['verlaufsplan'] as String?),
         verlaufsKarteImagePath: map['verlaufs_karte_image_path'] as String?,
         karteImagePath: map['karte_image_path'] as String?,
+        coverImagePath: map['cover_image_path'] as String?,
+        syncEnabled: (map['sync_enabled'] as int? ?? 1) == 1,
       );
     } catch (e) {
       debugPrint('Fehler beim Parsen der Kampagne: $e');
@@ -711,6 +722,8 @@ class Campaign {
       'verlaufsplan': verlaufsplan.isEmpty ? null : VerlaufsEintrag.listToJson(verlaufsplan),
       'verlaufs_karte_image_path': verlaufsKarteImagePath,
       'karte_image_path': karteImagePath,
+      'cover_image_path': coverImagePath,
+      'sync_enabled': syncEnabled ? 1 : 0,
     };
   }
 
@@ -741,6 +754,8 @@ class Campaign {
     List<VerlaufsEintrag>? verlaufsplan,
     Object? verlaufsKarteImagePath = _sentinel,
     Object? karteImagePath = _sentinel,
+    Object? coverImagePath = _sentinel,
+    bool? syncEnabled,
   }) {
     return Campaign(
       id: id ?? this.id,
@@ -772,6 +787,10 @@ class Campaign {
       karteImagePath: karteImagePath == _sentinel
           ? this.karteImagePath
           : karteImagePath as String?,
+      coverImagePath: coverImagePath == _sentinel
+          ? this.coverImagePath
+          : coverImagePath as String?,
+      syncEnabled: syncEnabled ?? this.syncEnabled,
     );
   }
 
@@ -883,5 +902,112 @@ class Campaign {
   // Legacy-Methode für Tests (Abwärtskompatibilität)
   static List<String> parseStringListForTest(String? value) {
     return StringListParser.parseStringListForTest(value);
+  }
+
+  // ── Cloud-Sync Serialisierung ─────────────────────────────────────────────
+
+  /// Serialisiert die Kampagne als JSON-String für Firestore.
+  String toCloudJson() => jsonEncode({
+        'id': id,
+        'title': title,
+        'description': description,
+        'status': status.name,
+        'type': type.name,
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt.toIso8601String(),
+        'startedAt': startedAt?.toIso8601String(),
+        'completedAt': completedAt?.toIso8601String(),
+        'dungeonMasterId': dungeonMasterId,
+        'isFavorite': isFavorite,
+        'lastOpenedAt': lastOpenedAt?.toIso8601String(),
+        'playerCharacterIds': playerCharacterIds,
+        'questIds': questIds,
+        'wikiEntryIds': wikiEntryIds,
+        'sessionIds': sessionIds,
+        'accentColor': accentColor,
+        'system': system,
+        'isTemplate': isTemplate,
+        'templateId': templateId,
+        'verlaufsplan': verlaufsplan.isEmpty ? null : VerlaufsEintrag.listToJson(verlaufsplan),
+        'verlaufsKarteImagePath': verlaufsKarteImagePath,
+        'karteImagePath': karteImagePath,
+        'coverImagePath': coverImagePath,
+        // Settings (flattened)
+        'maxPlayerLevel': settings.maxPlayerLevel,
+        'startingLevel': settings.startingLevel,
+        'partySize': settings.partySize,
+        'availableMonsters': settings.availableMonsters,
+        'availableSpells': settings.availableSpells,
+        'availableItems': settings.availableItems,
+        'availableNpcs': settings.availableNpcs,
+        'allowCustomContent': settings.allowCustomContent,
+        'isPublic': settings.isPublic,
+        'imageUrl': settings.imageUrl,
+        // Stats (flattened)
+        'totalSessions': stats.totalSessions,
+        'totalQuests': stats.totalQuests,
+        'completedQuests': stats.completedQuests,
+        'totalCharacters': stats.totalCharacters,
+        'totalExperienceAwarded': stats.totalExperienceAwarded,
+        'totalGoldAwarded': stats.totalGoldAwarded,
+        'totalPlayTimeMs': stats.totalPlayTime.inMilliseconds,
+      });
+
+  /// Deserialisiert eine Kampagne aus einem Firestore JSON-String.
+  factory Campaign.fromCloudJson(String json) {
+    final m = jsonDecode(json) as Map<String, dynamic>;
+    return Campaign(
+      id: m['id'] as String,
+      title: m['title'] as String? ?? '',
+      description: m['description'] as String? ?? '',
+      status: CampaignStatus.values.firstWhere(
+        (e) => e.name == m['status'],
+        orElse: () => CampaignStatus.planning,
+      ),
+      type: CampaignType.values.firstWhere(
+        (e) => e.name == m['type'],
+        orElse: () => CampaignType.homebrew,
+      ),
+      createdAt: DateTime.parse(m['createdAt'] as String),
+      updatedAt: DateTime.parse(m['updatedAt'] as String),
+      startedAt: m['startedAt'] != null ? DateTime.tryParse(m['startedAt'] as String) : null,
+      completedAt: m['completedAt'] != null ? DateTime.tryParse(m['completedAt'] as String) : null,
+      dungeonMasterId: m['dungeonMasterId'] as String?,
+      isFavorite: m['isFavorite'] as bool? ?? false,
+      lastOpenedAt: m['lastOpenedAt'] != null ? DateTime.tryParse(m['lastOpenedAt'] as String) : null,
+      playerCharacterIds: (m['playerCharacterIds'] as List?)?.cast<String>() ?? [],
+      questIds: (m['questIds'] as List?)?.cast<String>() ?? [],
+      wikiEntryIds: (m['wikiEntryIds'] as List?)?.cast<String>() ?? [],
+      sessionIds: (m['sessionIds'] as List?)?.cast<String>() ?? [],
+      accentColor: m['accentColor'] as String? ?? '#7c3aed',
+      system: m['system'] as String? ?? 'D&D 5e',
+      isTemplate: m['isTemplate'] as bool? ?? false,
+      templateId: m['templateId'] as String?,
+      verlaufsplan: VerlaufsEintrag.listFromJson(m['verlaufsplan'] as String?),
+      verlaufsKarteImagePath: m['verlaufsKarteImagePath'] as String?,
+      karteImagePath: m['karteImagePath'] as String?,
+      coverImagePath: m['coverImagePath'] as String?,
+      settings: CampaignSettings(
+        maxPlayerLevel: m['maxPlayerLevel'] as int? ?? 20,
+        startingLevel: m['startingLevel'] as int? ?? 1,
+        partySize: m['partySize'] as String? ?? '4-5',
+        availableMonsters: (m['availableMonsters'] as List?)?.cast<String>() ?? [],
+        availableSpells: (m['availableSpells'] as List?)?.cast<String>() ?? [],
+        availableItems: (m['availableItems'] as List?)?.cast<String>() ?? [],
+        availableNpcs: (m['availableNpcs'] as List?)?.cast<String>() ?? [],
+        allowCustomContent: m['allowCustomContent'] as bool? ?? true,
+        isPublic: m['isPublic'] as bool? ?? false,
+        imageUrl: m['imageUrl'] as String?,
+      ),
+      stats: CampaignStats(
+        totalSessions: m['totalSessions'] as int? ?? 0,
+        totalQuests: m['totalQuests'] as int? ?? 0,
+        completedQuests: m['completedQuests'] as int? ?? 0,
+        totalCharacters: m['totalCharacters'] as int? ?? 0,
+        totalExperienceAwarded: m['totalExperienceAwarded'] as int? ?? 0,
+        totalGoldAwarded: (m['totalGoldAwarded'] as num?)?.toDouble() ?? 0.0,
+        totalPlayTime: Duration(milliseconds: m['totalPlayTimeMs'] as int? ?? 0),
+      ),
+    );
   }
 }

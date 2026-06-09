@@ -1,20 +1,25 @@
 import 'package:flutter/foundation.dart';
 
 import '../database/core/database_connection.dart';
+import '../database/repositories/map_layer_model_repository.dart';
 import '../database/repositories/ort_model_repository.dart';
 import '../database/repositories/scene_model_repository.dart';
+import '../models/map_layer.dart';
 import '../models/ort.dart';
 import '../models/scene.dart';
 
 class OrtService {
   final OrtModelRepository _ortRepo;
   final SceneModelRepository _sceneRepo;
+  final MapLayerModelRepository _layerRepo;
 
   OrtService({
     OrtModelRepository? ortRepo,
     SceneModelRepository? sceneRepo,
+    MapLayerModelRepository? layerRepo,
   })  : _ortRepo = ortRepo ?? OrtModelRepository(DatabaseConnection.instance),
-        _sceneRepo = sceneRepo ?? SceneModelRepository(DatabaseConnection.instance);
+        _sceneRepo = sceneRepo ?? SceneModelRepository(DatabaseConnection.instance),
+        _layerRepo = layerRepo ?? MapLayerModelRepository(DatabaseConnection.instance);
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
@@ -48,6 +53,18 @@ class OrtService {
 
   Future<List<Scene>> getScenesForOrt(String ortId) =>
       _sceneRepo.findByOrtId(ortId);
+
+  // ── LAYER ────────────────────────────────────────────────────────────────
+
+  Future<List<MapLayer>> getLayersForContext(String campaignId, String? ortId) =>
+      _layerRepo.findByContext(campaignId, ortId);
+
+  Future<MapLayer> createLayer(MapLayer layer) => _layerRepo.create(layer);
+
+  Future<MapLayer> updateLayer(MapLayer layer) =>
+      _layerRepo.update(layer.copyWith(updatedAt: DateTime.now()));
+
+  Future<void> deleteLayer(String layerId) => _layerRepo.delete(layerId);
 
   // ── REIHENFOLGE ───────────────────────────────────────────────────────────
 

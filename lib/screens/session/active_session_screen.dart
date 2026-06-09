@@ -26,6 +26,7 @@ import '../../widgets/active_session/hero_list_section.dart';
 import 'encounter_setup_screen.dart';
 import '../scenes/edit_scene_screen.dart';
 import '../../widgets/dm_buch/lore_keeper_picker_dialog.dart';
+import '../companion/lan_map_controller_screen.dart';
 
 class ActiveSessionScreen extends StatefulWidget {
   final Session session;
@@ -178,6 +179,34 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
             child: Text(
               viewModel.campaign.title,
               style: TextStyle(fontSize: 11, color: C.textMid),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Companion button
+          GestureDetector(
+            onTap: () => _startCompanion(context, viewModel),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              decoration: BoxDecoration(
+                color: C.accent.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(7),
+                border: Border.all(color: C.accent.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.group, size: 13, color: C.accent),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Companion',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: C.accent,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -1554,6 +1583,16 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
             child: const Text('Löschen'),
           ),
         ],
+      ),
+    );
+  }
+
+  // ─── COMPANION ────────────────────────────────────────────────────────────
+
+  Future<void> _startCompanion(BuildContext context, ActiveSessionViewModel vm) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => const LanMapControllerScreen(),
       ),
     );
   }

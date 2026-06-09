@@ -288,6 +288,7 @@ class CampaignTemplateExportImportService {
         campaignId: newCampaignId,
         status: QuestStatus.active,
         linkedWikiEntryIds: _remapIds(q.linkedWikiEntryIds, idMap),
+        templateQuestId: q.id,
       ));
     }
 
@@ -327,9 +328,11 @@ class CampaignTemplateExportImportService {
         await _sceneRepository.create(sc.copyWith(
           id: newSceneId,
           sessionId: newSessionId,
+          ortId: sc.ortId != null ? idMap[sc.ortId] : null,
           linkedQuestIds: _remapIds(sc.linkedQuestIds, idMap),
           linkedWikiEntryIds: _remapIds(sc.linkedWikiEntryIds, idMap),
           linkedCharacterIds: [],
+          templateSceneId: sc.id,
         ));
       }
 

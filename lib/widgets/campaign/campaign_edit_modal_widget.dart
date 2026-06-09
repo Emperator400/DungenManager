@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/campaign.dart';
+import '../../screens/resources/resource_library_screen.dart';
+import '../../services/resource_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/color_utils.dart';
 import '../../viewmodels/campaign_viewmodel.dart';
@@ -65,6 +69,8 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
   late CampaignStatus _status;
   late String _system;
   late String _accentColor;
+  String? _coverImagePath;
+  late bool _syncEnabled;
   Campaign? _templateSource;
 
   bool get _isNew => widget.campaign == null;
@@ -72,11 +78,13 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
   @override
   void initState() {
     super.initState();
-    _nameCtrl    = TextEditingController(text: widget.campaign?.title ?? '');
-    _descCtrl    = TextEditingController(text: widget.campaign?.description ?? '');
-    _status      = widget.campaign?.status ?? CampaignStatus.planning;
-    _system      = widget.campaign?.system ?? 'D&D 5e';
-    _accentColor = widget.campaign?.accentColor ?? '#7c3aed';
+    _nameCtrl        = TextEditingController(text: widget.campaign?.title ?? '');
+    _descCtrl        = TextEditingController(text: widget.campaign?.description ?? '');
+    _status          = widget.campaign?.status ?? CampaignStatus.planning;
+    _system          = widget.campaign?.system ?? 'D&D 5e';
+    _accentColor     = widget.campaign?.accentColor ?? '#7c3aed';
+    _coverImagePath  = widget.campaign?.coverImagePath;
+    _syncEnabled     = widget.campaign?.syncEnabled ?? true;
   }
 
   @override
@@ -126,6 +134,10 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
                           _buildSystemStatusRow(C),
                           const SizedBox(height: 14),
                           _buildColorPicker(C),
+                          const SizedBox(height: 14),
+                          _buildImagePicker(C),
+                          const SizedBox(height: 14),
+                          _buildSyncToggle(C),
                         ],
                         const SizedBox(height: 14),
                         _buildPreview(C),
@@ -375,6 +387,102 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
         ],
       );
 
+  Widget _buildImagePicker(AppColorsExtension C) {
+    final resolvedCover = ResourceService.resolveLocalPath(_coverImagePath);
+    final hasImage = resolvedCover != null && File(resolvedCover).existsSync();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _Label('Titelbild', C),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: _pickCoverImage,
+          child: Container(
+            height: 80,
+            decoration: BoxDecoration(
+              color: C.bgHover,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: C.border),
+            ),
+            child: hasImage
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(7),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.file(File(resolvedCover), fit: BoxFit.cover),
+                        Positioned(
+                          top: 6, right: 6,
+                          child: GestureDetector(
+                            onTap: () => setState(() => _coverImagePath = null),
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.black54,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Icon(Icons.close, size: 12, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add_photo_alternate_outlined, size: 20, color: C.textSoft),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Bild auswählen',
+                        style: TextStyle(fontSize: 13, color: C.textSoft),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSyncToggle(AppColorsExtension C) => Row(
+        children: [
+          Icon(
+            _syncEnabled ? Icons.cloud_outlined : Icons.cloud_off_outlined,
+            size: 16,
+            color: _syncEnabled ? C.textMid : C.textSoft.withValues(alpha: 0.5),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Cloud-Sync',
+                  style: TextStyle(fontSize: 13, color: C.text),
+                ),
+                Text(
+                  _syncEnabled
+                      ? 'Wird bei der Synchronisierung hochgeladen'
+                      : 'Wird nicht hochgeladen',
+                  style: TextStyle(fontSize: 11, color: C.textSoft),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: _syncEnabled,
+            onChanged: (v) => setState(() => _syncEnabled = v),
+            activeThumbColor: C.accent,
+          ),
+        ],
+      );
+
+  Future<void> _pickCoverImage() async {
+    final ref = await pickResource(context);
+    if (ref != null) setState(() => _coverImagePath = ref);
+  }
+
   Widget _buildPreview(AppColorsExtension C) {
     final title = _nameCtrl.text.trim();
     final statusStyle = _kStatusCfg[_status]!;
@@ -565,6 +673,7 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
           accentColor: _accentColor,
           system: _system,
           status: _status,
+          coverImagePath: _coverImagePath,
         );
       }
     } else {
@@ -576,6 +685,8 @@ class _CampaignEditModalState extends State<_CampaignEditModal> {
           system: _system,
           status: _status,
           updatedAt: DateTime.now(),
+          coverImagePath: _coverImagePath,
+          syncEnabled: _syncEnabled,
         ),
       );
     }

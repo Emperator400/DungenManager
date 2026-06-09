@@ -1,7 +1,7 @@
 name: dungen_manager
 description: Dungeon Manager – D&D 5e Session-Management App
 publish_to: 'none'
-version: 1.1.2+12
+version: 1.1.4+14
 
 environment:
   # KORREKTUR: Wir erlauben jede Dart-Version ab 3.0.0. Deine Version 3.9.2 passt da perfekt rein.
@@ -40,20 +40,34 @@ dependencies:
   # App-Version aus pubspec.yaml lesen
   package_info_plus: ^8.0.0
 
+  # QR Code
+  qr_flutter: ^4.1.0
+
   # MCP Server dependencies
   json_rpc_2: ^3.0.2
+
+  # Firebase
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.0
+  cloud_firestore: ^5.4.0
+  firebase_storage: ^12.3.0
+
+  # Session-Persistenz (Windows-Auth-Token speichern)
+  shared_preferences: ^2.3.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  integration_test: # <--- DIESE ZEILE HINZUFÜGEN
+  integration_test:
     sdk: flutter
 
   flutter_lints: ^3.0.0
+  mocktail: ^0.3.0
 
 flutter:
   uses-material-design: true
 
   assets:
     - assets/images/
+    - assets/lan/

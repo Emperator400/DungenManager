@@ -14,246 +14,120 @@ class EnhancedCampaignFilterChipsWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final C = context.appColors;
-    return Card(
-      elevation: 1,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Filter',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 8),
-            _buildSearchField(context, C),
-            const SizedBox(height: 12),
-            _buildSortOptions(context, C),
-            const SizedBox(height: 8),
-            _buildActiveFiltersRow(context, C),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSearchField(BuildContext context, AppColorsExtension C) =>
-      TextField(
-        decoration: InputDecoration(
-          hintText: 'Kampagnen durchsuchen...',
-          prefixIcon: const Icon(Icons.search, size: 18),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          filled: true,
-          fillColor: C.textMid.withValues(alpha: 0.08),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          hintStyle: const TextStyle(fontSize: 13),
-        ),
-        onChanged: viewModel.searchCampaigns,
-      );
-
-  Widget _buildSortOptions(BuildContext context, AppColorsExtension C) =>
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Sortierung',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 6,
-            runSpacing: 3,
-            children: [
-              _buildSortChip(
-                context,
-                C,
-                'Name',
-                viewModel.sortOption == CampaignSortOption.name,
-                () => viewModel.setSortOption(CampaignSortOption.name),
-              ),
-              _buildSortChip(
-                context,
-                C,
-                'Erstellungsdatum',
-                viewModel.sortOption == CampaignSortOption.createdDate,
-                () => viewModel.setSortOption(CampaignSortOption.createdDate),
-              ),
-              _buildSortChip(
-                context,
-                C,
-                'Zuletzt gespielt',
-                viewModel.sortOption == CampaignSortOption.lastActive,
-                () => viewModel.setSortOption(CampaignSortOption.lastActive),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Icon(
-                viewModel.sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                size: 16,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                viewModel.sortAscending ? 'Aufsteigend' : 'Absteigend',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontSize: 11,
-                ),
-              ),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: () =>
-                    viewModel.setSortAscending(ascending: !viewModel.sortAscending),
-                icon: Icon(
-                  viewModel.sortAscending
-                      ? Icons.keyboard_arrow_up
-                      : Icons.keyboard_arrow_down,
-                  size: 16,
-                ),
-                label: Text(
-                  viewModel.sortAscending ? 'Absteigend' : 'Aufsteigend',
-                  style: const TextStyle(fontSize: 11),
-                ),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              ),
-            ],
-          ),
-        ],
-      );
-
-  Widget _buildSortChip(
-    BuildContext context,
-    AppColorsExtension C,
-    String label,
-    bool isSelected,
-    VoidCallback onTap,
-  ) =>
-      GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? C.accent.withValues(alpha: 0.9)
-                : C.textMid.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected
-                  ? C.accent.withValues(alpha: 0.3)
-                  : C.textMid.withValues(alpha: 0.15),
-              width: 0.5,
-            ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: C.accent.withValues(alpha: 0.2),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
-                    )
-                  ]
-                : null,
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.white : C.textMid,
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            ),
-          ),
-        ),
-      );
-
-  Widget _buildActiveFiltersRow(BuildContext context, AppColorsExtension C) {
-    if (viewModel.searchQuery.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
     return Row(
       children: [
+        // ── Suchfeld ────────────────────────────────────────────────────────
         Expanded(
-          child: Wrap(
-            spacing: 6,
-            runSpacing: 3,
-            children: [
-              if (viewModel.searchQuery.isNotEmpty)
-                _buildActiveFilterChip(
-                  context,
-                  C,
-                  'Suche: ${viewModel.searchQuery}',
-                  () => viewModel.searchCampaigns(''),
+          child: SizedBox(
+            height: 32,
+            child: TextField(
+              onChanged: viewModel.searchCampaigns,
+              style: TextStyle(fontSize: 12, color: C.text),
+              decoration: InputDecoration(
+                hintText: 'Suchen…',
+                hintStyle: TextStyle(fontSize: 12, color: C.textSoft),
+                prefixIcon: Icon(Icons.search, size: 14, color: C.textSoft),
+                prefixIconConstraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                suffixIcon: viewModel.searchQuery.isNotEmpty
+                    ? GestureDetector(
+                        onTap: () => viewModel.searchCampaigns(''),
+                        child: Icon(Icons.close, size: 13, color: C.textSoft),
+                      )
+                    : null,
+                suffixIconConstraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                filled: true,
+                fillColor: C.bgHover,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(7),
+                  borderSide: BorderSide(color: C.border),
                 ),
-            ],
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(7),
+                  borderSide: BorderSide(color: C.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(7),
+                  borderSide: BorderSide(color: C.accent),
+                ),
+              ),
+            ),
           ),
         ),
-        TextButton.icon(
-          onPressed: () => viewModel.searchCampaigns(''),
-          icon: const Icon(Icons.clear_all, size: 14),
-          label: const Text('Löschen', style: TextStyle(fontSize: 11)),
-          style: TextButton.styleFrom(
-            foregroundColor: C.red,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            minimumSize: Size.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        const SizedBox(width: 10),
+        // ── Sortier-Chips ────────────────────────────────────────────────────
+        _SortChip(
+          label: 'Name',
+          selected: viewModel.sortOption == CampaignSortOption.name,
+          C: C,
+          onTap: () => viewModel.setSortOption(CampaignSortOption.name),
+        ),
+        const SizedBox(width: 4),
+        _SortChip(
+          label: 'Datum',
+          selected: viewModel.sortOption == CampaignSortOption.createdDate,
+          C: C,
+          onTap: () => viewModel.setSortOption(CampaignSortOption.createdDate),
+        ),
+        const SizedBox(width: 4),
+        _SortChip(
+          label: 'Aktiv',
+          selected: viewModel.sortOption == CampaignSortOption.lastActive,
+          C: C,
+          onTap: () => viewModel.setSortOption(CampaignSortOption.lastActive),
+        ),
+        const SizedBox(width: 6),
+        // ── Richtungs-Toggle ─────────────────────────────────────────────────
+        GestureDetector(
+          onTap: () => viewModel.setSortAscending(ascending: !viewModel.sortAscending),
+          child: Tooltip(
+            message: viewModel.sortAscending ? 'Aufsteigend' : 'Absteigend',
+            child: Icon(
+              viewModel.sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+              size: 14,
+              color: C.textSoft,
+            ),
           ),
         ),
       ],
     );
   }
+}
 
-  Widget _buildActiveFilterChip(
-    BuildContext context,
-    AppColorsExtension C,
-    String label,
-    VoidCallback onRemove,
-  ) =>
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: Theme.of(context).primaryColor.withValues(alpha: 0.9),
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Theme.of(context).primaryColor.withValues(alpha: 0.2),
-              blurRadius: 3,
-              offset: const Offset(0, 1),
-            )
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-              ),
+class _SortChip extends StatelessWidget {
+  const _SortChip({
+    required this.label,
+    required this.selected,
+    required this.C,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final AppColorsExtension C;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+          decoration: BoxDecoration(
+            color: selected ? C.accent.withValues(alpha: 0.12) : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: selected ? C.accent.withValues(alpha: 0.4) : C.border,
             ),
-            const SizedBox(width: 6),
-            GestureDetector(
-              onTap: onRemove,
-              child: const Icon(
-                Icons.close,
-                size: 14,
-                color: Colors.white,
-              ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              color: selected ? C.accent : C.textSoft,
             ),
-          ],
+          ),
         ),
       );
 }

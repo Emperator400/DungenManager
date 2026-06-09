@@ -116,13 +116,62 @@ class DatabaseMigration {
   // Subkarten-Hierarchie
   await _addParentOrtIdColumn(db);
 
+  // Token-Bild für OrtType.token
+  await _addTokenImagePathColumn(db);
+
   // Szenen als Map-Marker: session_id nullable + campaign_id
   await _makeSceneSessionIdNullable(db);
+
+  // Karten-Layer (Overlay-Ebenen pro Karte)
+  await _createMapLayersTable(db);
+
+  // Wiki-Verlinkungen und Verbindungen für Orte
+  await _addOrtLinkColumns(db);
 
   // DM-Profil (Singleton)
   await _createDmProfileTable(db);
 
   debugPrint('Database migration completed successfully');
+  }
+
+  Future<void> _createMapLayersTable(Database db) async {
+    final tables = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='map_layers'",
+    );
+    if (tables.isNotEmpty) {
+      debugPrint('map_layers Tabelle existiert bereits — übersprungen');
+      return;
+    }
+    await db.execute('''
+      CREATE TABLE map_layers (
+        id TEXT PRIMARY KEY,
+        campaign_id TEXT NOT NULL,
+        ort_id TEXT,
+        name TEXT NOT NULL DEFAULT '',
+        image_path TEXT,
+        is_visible INTEGER NOT NULL DEFAULT 1,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_map_layers_context ON map_layers(campaign_id, ort_id)',
+    );
+    debugPrint('map_layers Tabelle erstellt');
+  }
+
+  Future<void> _addOrtLinkColumns(Database db) async {
+    final cols = await db.rawQuery("PRAGMA table_info('orte')");
+    final names = cols.map((c) => c['name'] as String).toSet();
+    if (!names.contains('linked_wiki_entry_ids')) {
+      await db.execute('ALTER TABLE orte ADD COLUMN linked_wiki_entry_ids TEXT');
+      debugPrint('Added linked_wiki_entry_ids column to orte');
+    }
+    if (!names.contains('connected_ort_ids')) {
+      await db.execute('ALTER TABLE orte ADD COLUMN connected_ort_ids TEXT');
+      debugPrint('Added connected_ort_ids column to orte');
+    }
   }
 
   Future<void> _makeSceneSessionIdNullable(Database db) async {
@@ -210,6 +259,15 @@ class DatabaseMigration {
     }
   }
 
+  Future<void> _addTokenImagePathColumn(Database db) async {
+    final cols  = await db.rawQuery("PRAGMA table_info('orte')");
+    final names = cols.map((c) => c['name'] as String).toSet();
+    if (!names.contains('token_image_path')) {
+      await db.execute('ALTER TABLE orte ADD COLUMN token_image_path TEXT');
+      debugPrint('Added token_image_path column to orte');
+    }
+  }
+
   Future<void> _addParentOrtIdColumn(Database db) async {
     final cols = await db.rawQuery("PRAGMA table_info('orte')");
     final names = cols.map((c) => c['name'] as String).toSet();
@@ -256,7 +314,8 @@ class DatabaseMigration {
         memory TEXT,
         template_ort_id TEXT,
         map_x REAL,
-        map_y REAL
+        map_y REAL,
+        is_hidden INTEGER NOT NULL DEFAULT 0
       )
     ''');
     await db.execute(

@@ -30,6 +30,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
   late final EncounterTrackerViewModel _viewModel;
   final Map<String, int> _initiativeValues = {};
   final Map<String, TextEditingController> _initiativeControllers = {};
+  final Map<String, GlobalKey> _participantKeys = {};
 
   @override
   void initState() {
@@ -141,10 +142,10 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
               children: [
                 Text(
                   widget.encounterTitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: C.text,
                   ),
                 ),
                 Text(
@@ -157,8 +158,8 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
         ],
       ),
       backgroundColor: C.bgPanel,
-      foregroundColor: Colors.white,
-      elevation: 4,
+      foregroundColor: C.text,
+      elevation: 0,
       actions: [
         IconButton(
           icon: Icon(Icons.casino, color: C.amber),
@@ -258,12 +259,13 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
     required String label,
     required Color color,
   }) {
+    final C = context.appColors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.2),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -272,8 +274,8 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
           const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: C.text,
               fontWeight: FontWeight.bold,
               fontSize: 12,
             ),
@@ -318,9 +320,10 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
   }) {
     final C = context.appColors;
     final isPlayer = participant.type == ParticipantType.player;
-    final cardColor = isPlayer ? C.accent : C.red;
+    final stripeColor = isPlayer ? C.accent : C.red;
 
     return GestureDetector(
+      key: _participantKeys.putIfAbsent(participant.id, () => GlobalKey()),
       onLongPress: () => _showParticipantContextMenu(participant, viewModel),
       onSecondaryTapDown: (details) => _showParticipantContextMenuAt(
         participant,
@@ -334,28 +337,31 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
           vertical: isActive ? 6 : 4,
         ),
         decoration: BoxDecoration(
-          color: cardColor.withValues(alpha: isActive ? 0.8 : 0.6),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isActive ? C.amber : cardColor.withValues(alpha: 0.5),
-            width: isActive ? 3 : 1,
-          ),
+          color: C.bgHover,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: isActive ? C.amber : C.borderStrong),
           boxShadow: isActive
-              ? [
-                  BoxShadow(
-                    color: C.amber.withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    spreadRadius: 2,
-                  ),
-                ]
+              ? [BoxShadow(color: C.amber.withValues(alpha: 0.2), blurRadius: 8)]
               : null,
         ),
-        child: Column(
-          children: [
-            _buildCardHeader(participant, initiative, isPlayer, cardColor),
-            _buildHpSection(participant, viewModel, cardColor),
-            _buildConditionsSection(participant, viewModel, cardColor),
-          ],
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(7),
+          child: IntrinsicHeight(child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(width: 4, color: stripeColor),
+              Expanded(
+                child: Column(
+                  children: [
+                    _buildCardHeader(participant, initiative, isPlayer, stripeColor),
+                    _buildHpSection(participant, viewModel, stripeColor),
+                    _buildConditionsSection(participant, viewModel, stripeColor),
+                    _buildAbilitiesSection(participant),
+                  ],
+                ),
+              ),
+            ],
+          )),
         ),
       ),
     );
@@ -365,142 +371,133 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
     EncounterParticipant participant,
     int? initiative,
     bool isPlayer,
-    Color cardColor,
+    Color stripeColor,
   ) {
     final C = context.appColors;
     final character = _viewModel.getCharacterForParticipant(participant);
     final creature = _viewModel.getCreatureForParticipant(participant);
-    int? armorClass;
+    final armorClass = character?.armorClass ?? creature?.armorClass;
+
+    // Creature-Infos (Typ, Größe, CR, Speed)
+    String? creatureSubtitle;
+    String? crText;
+    String? speedText;
+    if (creature != null) {
+      final parts = [creature.size, creature.type].where((s) => s != null && s.isNotEmpty).toList();
+      if (parts.isNotEmpty) creatureSubtitle = parts.join(' ');
+      if (creature.challengeRating != null) crText = '${creature.challengeRating}';
+      if (creature.speed.isNotEmpty) speedText = creature.speed;
+    }
+    // PC-Infos (Speed, Passive Wahrnehmung)
+    int? pcSpeed;
+    int? passivePerc;
     if (character != null) {
-      armorClass = character.armorClass;
-    } else if (creature != null) {
-      armorClass = creature.armorClass;
+      pcSpeed = character.speed;
+      passivePerc = character.passivePerception;
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
+              // Initiativ-Kreis
               Container(
-                width: 50,
-                height: 50,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.3),
+                  color: C.bgActive,
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: C.amber.withValues(alpha: 0.5),
-                    width: 2,
-                  ),
+                  border: Border.all(color: stripeColor.withValues(alpha: 0.5), width: 2),
                 ),
                 child: Center(
                   child: initiative != null
                       ? Text(
                           initiative.toString(),
-                          style: TextStyle(
-                            color: C.amber,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: TextStyle(color: C.amber, fontSize: 18, fontWeight: FontWeight.bold),
                         )
                       : IconButton(
-                          icon: Icon(Icons.casino, color: C.amber, size: 20),
+                          icon: Icon(Icons.casino, color: C.amber, size: 18),
                           onPressed: () => _showInitiativeDialog(participant),
                           tooltip: 'Initiative setzen',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
                         ),
                 ),
               ),
               const SizedBox(width: 12),
+              // Name + Untertitel
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      participant.name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            participant.name,
+                            style: TextStyle(color: C.text, fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        if (participant.isDead)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: C.red, borderRadius: BorderRadius.circular(6)),
+                            child: Text('TOT', style: TextStyle(color: C.text, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        Icon(
-                          isPlayer ? Icons.person : Icons.shield,
-                          color: Colors.white70,
-                          size: 14,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          isPlayer ? 'Held' : 'Gegner',
-                          style: const TextStyle(color: Colors.white70, fontSize: 12),
-                        ),
-                        if (participant.isDead) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: C.red,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Text(
-                              'TOT',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
+                        Icon(isPlayer ? Icons.person : Icons.shield, color: C.textMid, size: 12),
+                        const SizedBox(width: 3),
+                        Text(isPlayer ? 'Held' : 'Gegner', style: TextStyle(color: C.textMid, fontSize: 11)),
+                        if (creatureSubtitle != null) ...[
+                          Text('  ·  ', style: TextStyle(color: C.textSoft, fontSize: 11)),
+                          Flexible(child: Text(creatureSubtitle, style: TextStyle(color: C.textSoft, fontSize: 11))),
                         ],
                       ],
                     ),
                   ],
                 ),
               ),
+              // Rechte Seite: HP + AC + Extra-Badges
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: C.green.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: C.green.withValues(alpha: 0.5)),
-                        ),
-                        child: Text(
-                          'HP: ${participant.currentHp}/${participant.maxHp}',
-                          style: TextStyle(
-                            color: C.green,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
+                      _statBadge('HP', '${participant.currentHp}/${participant.maxHp}', C.green),
                       if (armorClass != null) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: C.amber.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: C.amber.withValues(alpha: 0.5)),
-                          ),
-                          child: Text(
-                            'AC: $armorClass',
-                            style: TextStyle(
-                              color: C.amber,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+                        const SizedBox(width: 4),
+                        _statBadge('AC', '$armorClass', C.amber),
                       ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Creature: CR + Speed
+                      if (crText != null) ...[
+                        _statBadge('CR', crText, C.amber),
+                        const SizedBox(width: 4),
+                      ],
+                      if (speedText != null) ...[
+                        _statBadge('Bew.', speedText, C.textMid),
+                        const SizedBox(width: 4),
+                      ],
+                      // PC: Speed + Passive Wahrnehmung
+                      if (pcSpeed != null) ...[
+                        _statBadge('Bew.', '$pcSpeed ft', C.textMid),
+                        const SizedBox(width: 4),
+                      ],
+                      if (passivePerc != null)
+                        _statBadge('Passiv', '$passivePerc', C.textMid),
                     ],
                   ),
                 ],
@@ -515,6 +512,19 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
       ),
     );
   }
+
+  Widget _statBadge(String label, String value, Color color) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Text(
+          '$label: $value',
+          style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
+        ),
+      );
 
   static const Map<String, String> _skillAbilities = {
     'Akrobatik': 'DEX',
@@ -639,7 +649,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
         statChips.add(_buildSkillChip(skill, _getSkillBonus(skill, character)));
       }
       for (final attack in character.attackList.take(3)) {
-        statChips.add(_buildAttackChip(attack.name, attack.totalDamage));
+        statChips.add(_buildAttackChip(attack.name, attack.totalDamage, bonus: attack.formattedAttackBonus));
       }
     } else if (creature != null) {
       statChips.addAll([
@@ -651,7 +661,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
         _buildAbilityChip('CHA', creature.charisma),
       ]);
       for (final attack in creature.attackList.take(3)) {
-        statChips.add(_buildAttackChip(attack.name, attack.totalDamage));
+        statChips.add(_buildAttackChip(attack.name, attack.totalDamage, bonus: attack.formattedAttackBonus));
       }
     }
     return Wrap(spacing: 6, runSpacing: 4, children: statChips);
@@ -673,7 +683,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.4),
+        color: C.bgActive,
         borderRadius: BorderRadius.circular(4),
         border: Border.all(color: textColor.withValues(alpha: 0.5)),
       ),
@@ -705,8 +715,9 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
     );
   }
 
-  Widget _buildAttackChip(String name, String damage) {
+  Widget _buildAttackChip(String name, String damage, {String? bonus}) {
     final C = context.appColors;
+    final label = [name, if (bonus != null && bonus.isNotEmpty) bonus, if (damage.isNotEmpty) damage].join('  ');
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
@@ -714,13 +725,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
         borderRadius: BorderRadius.circular(4),
         border: Border.all(color: C.accent.withValues(alpha: 0.5)),
       ),
-      child: Text(
-        damage.isNotEmpty ? '$name ($damage)' : name,
-        style: TextStyle(
-          color: C.accent,
-          fontSize: 9,
-        ),
-      ),
+      child: Text(label, style: TextStyle(color: C.accent, fontSize: 9)),
     );
   }
 
@@ -792,7 +797,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
         border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
       child: IconButton(
-        icon: Icon(icon, color: Colors.white, size: 18),
+        icon: Icon(icon, color: color, size: 18),
         onPressed: onPressed,
         tooltip: tooltip,
         constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
@@ -807,16 +812,17 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
     Color cardColor,
   ) {
     if (participant.conditions.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.fromLTRB(12, 8, 12, 12),
+      final C = context.appColors;
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
         child: Row(
           children: [
-            Icon(Icons.info_outline, color: Colors.white38, size: 14),
-            SizedBox(width: 6),
+            Icon(Icons.info_outline, color: C.textSoft, size: 14),
+            const SizedBox(width: 6),
             Text(
               'Keine Zustände',
               style: TextStyle(
-                color: Colors.white38,
+                color: C.textSoft,
                 fontStyle: FontStyle.italic,
                 fontSize: 12,
               ),
@@ -837,35 +843,80 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
     );
   }
 
+  Widget _buildAbilitiesSection(EncounterParticipant participant) {
+    final creature = _viewModel.getCreatureForParticipant(participant);
+    if (creature == null) return const SizedBox.shrink();
+
+    final abilities = creature.specialAbilities?.trim() ?? '';
+    final legendary = creature.legendaryActions?.trim() ?? '';
+    if (abilities.isEmpty && legendary.isEmpty) return const SizedBox.shrink();
+
+    final C = context.appColors;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: C.bgActive,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: C.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (abilities.isNotEmpty) ...[
+            Row(children: [
+              Icon(Icons.auto_fix_high, size: 12, color: C.amber),
+              const SizedBox(width: 4),
+              Text('Fähigkeiten', style: TextStyle(color: C.amber, fontSize: 11, fontWeight: FontWeight.w600)),
+            ]),
+            const SizedBox(height: 4),
+            Text(abilities, style: TextStyle(color: C.textMid, fontSize: 11, height: 1.4)),
+          ],
+          if (abilities.isNotEmpty && legendary.isNotEmpty) const SizedBox(height: 8),
+          if (legendary.isNotEmpty) ...[
+            Row(children: [
+              Icon(Icons.star, size: 12, color: C.amber),
+              const SizedBox(width: 4),
+              Text('Legendäre Aktionen', style: TextStyle(color: C.amber, fontSize: 11, fontWeight: FontWeight.w600)),
+            ]),
+            const SizedBox(height: 4),
+            Text(legendary, style: TextStyle(color: C.textMid, fontSize: 11, height: 1.4)),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildConditionChip(
     String condition,
     EncounterParticipant participant,
     EncounterTrackerViewModel viewModel,
   ) {
+    final C = context.appColors;
     return GestureDetector(
       onTap: () => viewModel.removeCondition(participant.id, condition),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: const Color(0xFF7C3AED).withValues(alpha: 0.4),
+          color: C.accent.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF7C3AED).withValues(alpha: 0.6)),
+          border: Border.all(color: C.accent.withValues(alpha: 0.4)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(_getConditionIcon(condition), color: Colors.white, size: 14),
+            Icon(_getConditionIcon(condition), color: C.accent, size: 14),
             const SizedBox(width: 4),
             Text(
               condition,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: C.accent,
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(width: 4),
-            const Icon(Icons.close, color: Colors.white70, size: 12),
+            Icon(Icons.close, color: C.textSoft, size: 12),
           ],
         ),
       ),
@@ -909,7 +960,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
       ),
       child: FloatingActionButton.extended(
         heroTag: 'encounter_next_turn',
-        onPressed: viewModel.nextTurn,
+        onPressed: () => _nextTurnAndScroll(viewModel),
         backgroundColor: Colors.transparent,
         elevation: 0,
         icon: Icon(Icons.arrow_forward, color: C.bg),
@@ -919,6 +970,23 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
         ),
       ),
     );
+  }
+
+  void _nextTurnAndScroll(EncounterTrackerViewModel viewModel) {
+    viewModel.nextTurn();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final activeId = viewModel.currentParticipant?.id;
+      if (activeId == null) return;
+      final key = _participantKeys[activeId];
+      if (key?.currentContext != null) {
+        Scrollable.ensureVisible(
+          key!.currentContext!,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+          alignment: 0.1,
+        );
+      }
+    });
   }
 
   void _showInitiativeDialog(EncounterParticipant participant) {
@@ -956,7 +1024,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
                     borderSide: BorderSide(color: C.amber, width: 2),
                   ),
                 ),
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: C.text),
               ),
             ),
             const SizedBox(width: 8),
@@ -1021,11 +1089,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
             const SizedBox(width: 8),
             Text(
               'Schaden für ${participant.name}',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: C.text),
             ),
           ],
         ),
@@ -1040,7 +1104,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
             enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: C.red)),
             focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: C.red, width: 2)),
           ),
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(color: C.text),
         ),
         actions: [
           TextButton(
@@ -1055,7 +1119,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: C.red,
-              foregroundColor: Colors.white,
+              foregroundColor: C.text,
             ),
             child: const Text('Schaden anwenden'),
           ),
@@ -1080,11 +1144,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
             const SizedBox(width: 8),
             Text(
               'Heilung für ${participant.name}',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: C.text),
             ),
           ],
         ),
@@ -1099,7 +1159,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
             enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: C.green)),
             focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: C.green, width: 2)),
           ),
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(color: C.text),
         ),
         actions: [
           TextButton(
@@ -1114,7 +1174,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: C.green,
-              foregroundColor: Colors.white,
+              foregroundColor: C.text,
             ),
             child: const Text('Heilen'),
           ),
@@ -1139,11 +1199,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
             Expanded(
               child: Text(
                 'Zustände für ${participant.name}',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: C.text),
               ),
             ),
           ],
@@ -1161,17 +1217,17 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
                 title: Text(
                   conditionName,
                   style: TextStyle(
-                    color: hasCondition ? C.amber : Colors.white,
+                    color: hasCondition ? C.amber : C.text,
                     fontWeight: hasCondition ? FontWeight.bold : FontWeight.normal,
                   ),
                 ),
                 subtitle: Text(
                   _getConditionDescription(conditionName),
-                  style: const TextStyle(color: Colors.white54, fontSize: 11),
+                  style: TextStyle(color: C.textSoft, fontSize: 11),
                 ),
                 secondary: Icon(
                   _getConditionIcon(conditionName),
-                  color: hasCondition ? C.amber : Colors.white54,
+                  color: hasCondition ? C.amber : C.textSoft,
                 ),
                 value: hasCondition,
                 activeColor: C.amber,
@@ -1244,7 +1300,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
             children: [
               ListTile(
                 leading: Icon(Icons.flash_on, color: C.red),
-                title: const Text('Schaden', style: TextStyle(color: Colors.white)),
+                title: Text('Schaden', style: TextStyle(color: C.text)),
                 onTap: () {
                   Navigator.pop(context);
                   _showDamageDialog(participant, viewModel);
@@ -1252,7 +1308,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
               ),
               ListTile(
                 leading: Icon(Icons.healing, color: C.green),
-                title: const Text('Heilung', style: TextStyle(color: Colors.white)),
+                title: Text('Heilung', style: TextStyle(color: C.text)),
                 onTap: () {
                   Navigator.pop(context);
                   _showHealDialog(participant, viewModel);
@@ -1260,7 +1316,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
               ),
               ListTile(
                 leading: Icon(Icons.shield, color: C.accent),
-                title: const Text('Zustände', style: TextStyle(color: Colors.white)),
+                title: Text('Zustände', style: TextStyle(color: C.text)),
                 onTap: () {
                   Navigator.pop(context);
                   _showConditionsDialog(participant, viewModel);
@@ -1268,7 +1324,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
               ),
               ListTile(
                 leading: Icon(Icons.casino, color: C.amber),
-                title: const Text('Initiative setzen', style: TextStyle(color: Colors.white)),
+                title: Text('Initiative setzen', style: TextStyle(color: C.text)),
                 onTap: () {
                   Navigator.pop(context);
                   _showInitiativeDialog(participant);
@@ -1277,7 +1333,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
               if (participant.isAlive)
                 ListTile(
                   leading: Icon(Icons.dangerous, color: C.red),
-                  title: const Text('Töten (HP auf 0)', style: TextStyle(color: Colors.white)),
+                  title: Text('Töten (HP auf 0)', style: TextStyle(color: C.text)),
                   onTap: () async {
                     Navigator.pop(context);
                     await viewModel.setHp(participant.id, 0);
@@ -1286,7 +1342,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
               if (participant.isDead)
                 ListTile(
                   leading: Icon(Icons.refresh, color: C.green),
-                  title: const Text('Wiederbeleben', style: TextStyle(color: Colors.white)),
+                  title: Text('Wiederbeleben', style: TextStyle(color: C.text)),
                   onTap: () async {
                     Navigator.pop(context);
                     await viewModel.setHp(participant.id, participant.maxHp);
@@ -1359,21 +1415,21 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
           children: [
             Icon(Icons.stop_circle, color: C.red),
             const SizedBox(width: 8),
-            const Text(
+            Text(
               'Kampf beenden',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: C.text),
             ),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(resultText, style: const TextStyle(fontSize: 14, color: Colors.white)),
+            Text(resultText, style: TextStyle(fontSize: 14, color: C.text)),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.black26,
+                color: C.bgActive,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
@@ -1381,14 +1437,14 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildSummaryItem('Helden', viewModel.alivePlayersCount, C.accent),
-                      _buildSummaryItem('Gegner', viewModel.aliveEnemiesCount, C.red),
+                      _buildSummaryItem('Helden', viewModel.alivePlayersCount, C.accent, C),
+                      _buildSummaryItem('Gegner', viewModel.aliveEnemiesCount, C.red, C),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Runden: ${viewModel.roundCounter}',
-                    style: const TextStyle(color: Colors.white70),
+                    style: TextStyle(color: C.textMid),
                   ),
                 ],
               ),
@@ -1410,7 +1466,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: C.green,
-              foregroundColor: Colors.white,
+              foregroundColor: C.text,
             ),
             child: const Text('Kampf beenden'),
           ),
@@ -1419,14 +1475,14 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
     );
   }
 
-  Widget _buildSummaryItem(String label, int count, Color color) {
+  Widget _buildSummaryItem(String label, int count, Color color, AppColorsExtension C) {
     return Column(
       children: [
         Text(
           count.toString(),
           style: TextStyle(color: color, fontSize: 24, fontWeight: FontWeight.bold),
         ),
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        Text(label, style: TextStyle(color: C.textMid, fontSize: 12)),
       ],
     );
   }
@@ -1448,7 +1504,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
             const SizedBox(height: 8),
             Text(
               error,
-              style: const TextStyle(fontSize: 14, color: Colors.white70),
+              style: TextStyle(fontSize: 14, color: C.textMid),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -1458,7 +1514,7 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
               label: const Text('Erneut versuchen'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: C.accent,
-                foregroundColor: Colors.white,
+                foregroundColor: C.text,
               ),
             ),
           ],
@@ -1468,20 +1524,21 @@ class _EncounterTrackerScreenState extends State<EncounterTrackerScreen> {
   }
 
   Widget _buildEmptyWidget() {
-    return const Center(
+    final C = context.appColors;
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.group_off, color: Colors.white38, size: 64),
-          SizedBox(height: 16),
+          Icon(Icons.group_off, color: C.textSoft, size: 64),
+          const SizedBox(height: 16),
           Text(
             'Keine Teilnehmer',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white70),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: C.textMid),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
             'Dieser Encounter hat keine Teilnehmer.',
-            style: TextStyle(fontSize: 13, color: Colors.white54),
+            style: TextStyle(fontSize: 13, color: C.textSoft),
           ),
         ],
       ),

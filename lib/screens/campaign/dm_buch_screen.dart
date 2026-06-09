@@ -1,13 +1,13 @@
 import 'dart:io';
 import 'dart:math';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/campaign.dart';
 import '../../models/encounter.dart';
+import '../../models/map_layer.dart';
 import '../../models/ort.dart';
 import '../../models/scene.dart';
 import '../../models/player.dart';
@@ -33,6 +33,7 @@ import '../characters/edit_pc_screen.dart';
 import '../lore/lore_keeper_screen.dart';
 import '../../database/repositories/creature_model_repository.dart';
 import '../../database/repositories/encounter_model_repository.dart';
+import '../../database/repositories/encounter_participant_model_repository.dart';
 import '../../database/repositories/quest_model_repository.dart';
 import '../../database/repositories/scene_model_repository.dart';
 import '../../database/repositories/sound_model_repository.dart';
@@ -40,20 +41,60 @@ import '../../database/repositories/wiki_entry_model_repository.dart';
 import '../../viewmodels/edit_scene_viewmodel.dart';
 import '../quests/edit_quest_screen.dart';
 import '../scenes/edit_scene_screen.dart';
+import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+
+import '../../models/companion_map_state.dart';
 import '../../services/multi_stream_sound_service.dart';
+import '../../viewmodels/lan_map_viewmodel.dart';
 import '../session/active_session_screen.dart';
+import '../session/encounter_setup_screen.dart';
+import '../resources/resource_library_screen.dart';
+import '../../services/campaign_sync_service.dart';
+import '../../services/cloud_resource_service.dart';
+import '../../services/resource_service.dart';
+import '../../viewmodels/auth_viewmodel.dart';
 
 // ── ENTRY POINT ───────────────────────────────────────────────────────────────
 
-class DmBuchScreen extends StatelessWidget {
+class DmBuchScreen extends StatefulWidget {
   const DmBuchScreen({super.key, required this.campaign});
 
   final Campaign campaign;
 
   @override
+  State<DmBuchScreen> createState() => _DmBuchScreenState();
+}
+
+class _DmBuchScreenState extends State<DmBuchScreen> {
+  late final LanMapViewModel _lanVm;
+
+  @override
+  void initState() {
+    super.initState();
+    _lanVm = LanMapViewModel(); // auto-starts server in constructor
+  }
+
+  @override
+  void dispose() {
+    _lanVm.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => DmBuchViewModel(campaign: campaign)..init(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (ctx) => DmBuchViewModel(
+            campaign: widget.campaign,
+            campaignSyncService: ctx.read<CampaignSyncService>(),
+            cloudResourceService: ctx.read<CloudResourceService>(),
+            syncUser: ctx.read<AuthViewModel>().user,
+          )..init(),
+        ),
+        ChangeNotifierProvider.value(value: _lanVm),
+      ],
       child: const _DmBuchView(),
     );
   }
@@ -102,7 +143,6 @@ class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final C = context.appColors;
-    final themeNotifier = context.watch<ThemeNotifier>();
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -125,10 +165,10 @@ class _TopBar extends StatelessWidget {
                   Container(width: 1, height: 18, color: C.border),
                   const SizedBox(width: 10),
 
-                  // Logo + Kampagnen-Name
+                  // Logo + Kampagnen-Name + DM-Tools Menü
                   const AppLogo(size: 18),
                   const SizedBox(width: 8),
-                  Expanded(
+                  Flexible(
                     child: Text(
                       vm.campaign.title,
                       style: TextStyle(
@@ -139,24 +179,63 @@ class _TopBar extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-
-                  // Modus-Toggle
-                  _ModeToggle(vm: vm, C: C),
                   const SizedBox(width: 8),
-
-                  // Sync-Button (nur für Kopie-Kampagnen)
-                  if (vm.campaign.templateId != null) ...[
-                    _SyncBtn(vm: vm, C: C),
-                    const SizedBox(width: 4),
-                  ],
-
-                  // Dark/Light Toggle
-                  _TopBarIconBtn(
-                    icon: themeNotifier.isDark
-                        ? AppIconName.sun
-                        : AppIconName.moon,
-                    C: C,
-                    onTap: () => themeNotifier.toggle(),
+                  _DmBuchMenuBtn(vm: vm, C: C),
+                  const SizedBox(width: 6),
+                  Consumer<LanMapViewModel>(
+                    builder: (context, lanVm, _) {
+                      final isActive    = lanVm.paintMode == 'viewport';
+                      final hasViewport = lanVm.viewportNorm != null;
+                      final color = isActive
+                          ? C.accent
+                          : hasViewport
+                              ? C.textMid
+                              : C.textSoft;
+                      return Tooltip(
+                        message: 'Spieler-Sichtfeld steuern – Viewport aktivieren und auf der Karte positionieren',
+                        child: GestureDetector(
+                          onTap: () {
+                            if (isActive) {
+                              lanVm.setPaintMode('reveal');
+                              lanVm.clearViewport();
+                            } else {
+                              if (vm.currentMapImagePath != null) {
+                                lanVm.setImage(vm.currentMapImagePath!);
+                              }
+                              lanVm.setPaintMode('viewport');
+                              if (lanVm.viewportNorm == null) {
+                                lanVm.moveViewportTo(const Offset(0.5, 0.5));
+                              }
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: isActive
+                                  ? C.accent.withValues(alpha: 0.10)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: isActive
+                                    ? C.accent.withValues(alpha: 0.35)
+                                    : C.border.withValues(alpha: hasViewport ? 0.8 : 0.35),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.crop_free, size: 12, color: color),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Viewport',
+                                  style: TextStyle(fontSize: 11, color: color),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -167,77 +246,6 @@ class _TopBar extends StatelessWidget {
       ],
     );
   }
-}
-
-class _ModeToggle extends StatelessWidget {
-  const _ModeToggle({required this.vm, required this.C});
-
-  final DmBuchViewModel vm;
-  final AppColorsExtension C;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: C.bgHover,
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: C.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _ModeBtn(
-            label: 'Vorbereitung',
-            active: vm.mode == DmBuchMode.vorbereitung,
-            C: C,
-            onTap: () => vm.setMode(DmBuchMode.vorbereitung),
-          ),
-          _ModeBtn(
-            label: 'Live',
-            active: vm.mode == DmBuchMode.live,
-            C: C,
-            onTap: () => vm.setMode(DmBuchMode.live),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ModeBtn extends StatelessWidget {
-  const _ModeBtn({
-    required this.label,
-    required this.active,
-    required this.C,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool active;
-  final AppColorsExtension C;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: active ? C.bgPanel : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-            border: active ? Border.all(color: C.border) : null,
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-              color: active ? C.text : C.textMid,
-            ),
-          ),
-        ),
-      );
 }
 
 // ── LEFT PANE ─────────────────────────────────────────────────────────────────
@@ -695,6 +703,7 @@ class _OrtCardState extends State<_OrtCard> {
       case OrtType.wilderness: return C.amber;
       case OrtType.region:     return AppColors.typGeschichte;
       case OrtType.other:      return C.textSoft;
+      case OrtType.token:      return const Color(0xFF9b59b6);
     }
   }
 
@@ -1709,6 +1718,7 @@ class _TypeTag extends StatelessWidget {
       case OrtType.wilderness: return C.amber;
       case OrtType.region:     return AppColors.typGeschichte;
       case OrtType.other:      return C.textSoft;
+      case OrtType.token:      return const Color(0xFF9b59b6);
     }
   }
 
@@ -1814,6 +1824,7 @@ class _OrtDetail extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 6),
                 child: _SceneMarkerCard(
                   scene: scene,
+                  campaign: vm.campaign,
                   C: C,
                   onEdit: () => _openSceneEditor(context, scene),
                   onToggleDone: () => vm.toggleSceneCompleted(scene),
@@ -2110,6 +2121,7 @@ class _OrtDetail extends StatelessWidget {
       case OrtType.wilderness: return C.amber;
       case OrtType.region:     return AppColors.typGeschichte;
       case OrtType.other:      return C.textSoft;
+      case OrtType.token:      return const Color(0xFF9b59b6);
     }
   }
 
@@ -2272,6 +2284,7 @@ class _OrtDetail extends StatelessWidget {
 class _SceneMarkerCard extends StatelessWidget {
   const _SceneMarkerCard({
     required this.scene,
+    required this.campaign,
     required this.C,
     required this.onEdit,
     required this.onToggleDone,
@@ -2279,6 +2292,7 @@ class _SceneMarkerCard extends StatelessWidget {
   });
 
   final Scene scene;
+  final Campaign campaign;
   final AppColorsExtension C;
   final VoidCallback onEdit;
   final VoidCallback onToggleDone;
@@ -2369,8 +2383,8 @@ class _SceneMarkerCard extends StatelessWidget {
                 ),
                 // Action buttons (icon-only to avoid overflow)
                 _IconBtn(
-                  icon: scene.isCompleted ? Icons.replay : Icons.check_circle_outline,
-                  color: scene.isCompleted ? C.textSoft : C.green,
+                  icon: scene.isCompleted ? Icons.replay : Icons.radio_button_unchecked,
+                  color: scene.isCompleted ? C.textSoft : C.textMid,
                   onTap: onToggleDone,
                 ),
                 _IconBtn(icon: Icons.edit_outlined, color: C.accent, onTap: onEdit),
@@ -2381,7 +2395,7 @@ class _SceneMarkerCard extends StatelessWidget {
             collapsedBackgroundColor: Colors.transparent,
             iconColor: C.textMid,
             collapsedIconColor: C.textMid,
-            children: [_SceneExpandedContent(scene: scene, C: C)],
+            children: [_SceneExpandedContent(scene: scene, campaign: campaign, C: C)],
           ),
         ),
       ),
@@ -2468,9 +2482,10 @@ class _ResolvedSceneData {
 }
 
 class _SceneExpandedContent extends StatefulWidget {
-  const _SceneExpandedContent({required this.scene, required this.C});
+  const _SceneExpandedContent({required this.scene, required this.campaign, required this.C});
 
   final Scene scene;
+  final Campaign campaign;
   final AppColorsExtension C;
 
   @override
@@ -2505,6 +2520,44 @@ class _SceneExpandedContentState extends State<_SceneExpandedContent> {
       final channelId = await _soundService.addSound(sound, autoPlay: true, isLooping: true);
       if (channelId != null && mounted) setState(() => _soundPlaying.add(sound.id));
     }
+  }
+
+  Future<void> _startCombat() async {
+    final scene = _scene;
+    String? title;
+    String? description;
+    final characterIds = List<String>.from(scene.linkedCharacterIds);
+    List<String> monsterIds = const [];
+
+    if (scene.linkedEncounterId != null) {
+      final db = DatabaseConnection.instance;
+      final encounter = await EncounterModelRepository(db).findById(scene.linkedEncounterId!);
+      if (encounter != null) {
+        title = encounter.title;
+        description = encounter.description;
+        final participants =
+            await EncounterParticipantModelRepository(db).findByEncounter(encounter.id);
+        for (final p in participants.where((p) => p.characterId != null)) {
+          if (!characterIds.contains(p.characterId!)) characterIds.add(p.characterId!);
+        }
+        monsterIds =
+            participants.where((p) => p.creatureId != null).map((p) => p.creatureId!).toList();
+      }
+    }
+
+    if (!mounted) return;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (ctx) => EncounterSetupScreen(
+          campaign: widget.campaign,
+          scene: scene,
+          encounterTitle: title,
+          preselectedDescription: description,
+          preselectedCharacterIds: characterIds,
+          preselectedMonsterIds: monsterIds,
+        ),
+      ),
+    );
   }
 
   Future<void> _load() async {
@@ -2593,24 +2646,82 @@ class _SceneExpandedContentState extends State<_SceneExpandedContent> {
     return result;
   }
 
+  Future<void> _updateQuestStatus(Quest quest, QuestStatus newStatus) async {
+    if (quest.status == newStatus) return;
+    try {
+      final repo = QuestModelRepository(DatabaseConnection.instance);
+      final updated = await repo.updateStatus(quest.id, newStatus);
+      if (!mounted) return;
+      setState(() {
+        _data = _data == null
+            ? null
+            : _ResolvedSceneData(
+                encounter: _data!.encounter,
+                quests: _data!.quests.map((q) => q.id == quest.id ? updated : q).toList(),
+                wikiEntries: _data!.wikiEntries,
+                sounds: _data!.sounds,
+                characters: _data!.characters,
+              );
+      });
+    } catch (e) {
+      debugPrint('[_SceneExpandedContent] Quest status update failed: $e');
+    }
+  }
+
+  Widget _buildQuestCard(Quest quest) {
+    final statusColor = _questStatusColor(quest.status, C);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      decoration: BoxDecoration(
+        color: statusColor.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(width: 7, height: 7, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
+              const SizedBox(width: 7),
+              Expanded(child: Text(quest.title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: C.text))),
+              Text(_questStatusLabel(quest.status), style: TextStyle(fontSize: 10, color: statusColor)),
+            ],
+          ),
+          const SizedBox(height: 7),
+          Row(
+            children: [
+              _QuestStatusBtn(label: 'Aktiv',       icon: Icons.play_circle_outline,   color: C.green,  isSelected: quest.status == QuestStatus.active,    onTap: () => _updateQuestStatus(quest, QuestStatus.active)),
+              const SizedBox(width: 4),
+              _QuestStatusBtn(label: 'Erledigt',    icon: Icons.check_circle_outline,  color: C.accent, isSelected: quest.status == QuestStatus.completed, onTap: () => _updateQuestStatus(quest, QuestStatus.completed)),
+              const SizedBox(width: 4),
+              _QuestStatusBtn(label: 'Aufgegeben',  icon: Icons.remove_circle_outline, color: C.red, isSelected: quest.status == QuestStatus.abandoned,  onTap: () => _updateQuestStatus(quest, QuestStatus.abandoned)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Color _questStatusColor(QuestStatus status, AppColorsExtension C) => switch (status) {
+    QuestStatus.active    => C.green,
+    QuestStatus.completed => C.accent,
+    QuestStatus.failed    => C.red,
+    QuestStatus.abandoned => C.red,
+    QuestStatus.onHold    => C.amber,
+  };
+
+  static String _questStatusLabel(QuestStatus status) => switch (status) {
+    QuestStatus.active    => 'Aktiv',
+    QuestStatus.completed => 'Erledigt',
+    QuestStatus.failed    => 'Fehlgeschlagen',
+    QuestStatus.abandoned => 'Aufgegeben',
+    QuestStatus.onHold    => 'Pausiert',
+  };
+
   @override
   Widget build(BuildContext context) {
-    final hasContent = _scene.description.isNotEmpty ||
-        _scene.linkedCharacterIds.isNotEmpty ||
-        _scene.linkedWikiEntryIds.isNotEmpty ||
-        _scene.linkedSoundIds.isNotEmpty ||
-        _scene.linkedQuestIds.isNotEmpty ||
-        _scene.linkedEncounterId != null ||
-        _scene.complexity != null ||
-        _scene.estimatedDuration != null;
-
-    if (!hasContent) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-        child: Text('Keine weiteren Details', style: TextStyle(fontSize: 12, color: C.textSoft)),
-      );
-    }
-
     final data = _data;
 
     return Container(
@@ -2670,11 +2781,9 @@ class _SceneExpandedContentState extends State<_SceneExpandedContent> {
                 : data.quests.isEmpty
                     ? Text('${_scene.linkedQuestIds.length} verknüpft',
                         style: TextStyle(fontSize: 11, color: C.textSoft))
-                    : Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
+                    : Column(
                         children: data.quests
-                            .map((q) => _LinkChip(icon: Icons.flag_outlined, label: q.title, color: C.amber))
+                            .map((q) => _buildQuestCard(q))
                             .toList(),
                       ),
           ],
@@ -2769,6 +2878,31 @@ class _SceneExpandedContentState extends State<_SceneExpandedContent> {
               ],
             ),
           ],
+
+          // ── Kampf starten ─────────────────────────────────────────────────
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: _startCombat,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: C.red.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: C.red.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.gavel, size: 13, color: C.red),
+                  const SizedBox(width: 5),
+                  Text(
+                    'Kampf starten',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: C.red),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -2822,6 +2956,42 @@ class _LinkChip extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      );
+}
+
+class _QuestStatusBtn extends StatelessWidget {
+  const _QuestStatusBtn({required this.label, required this.icon, required this.color, required this.isSelected, required this.onTap});
+
+  final String label;
+  final IconData icon;
+  final Color color;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            decoration: BoxDecoration(
+              color: isSelected ? color.withValues(alpha: 0.18) : Colors.transparent,
+              borderRadius: BorderRadius.circular(5),
+              border: Border.all(color: isSelected ? color : color.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 11, color: isSelected ? color : color.withValues(alpha: 0.6)),
+                const SizedBox(width: 3),
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: isSelected ? color : color.withValues(alpha: 0.6)),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -3014,6 +3184,7 @@ class _ConnectedOrtRow extends StatelessWidget {
       case OrtType.wilderness: return C.amber;
       case OrtType.region:     return AppColors.typGeschichte;
       case OrtType.other:      return C.textSoft;
+      case OrtType.token:      return const Color(0xFF9b59b6);
     }
   }
 }
@@ -3476,6 +3647,7 @@ class _EditOrtDialogState extends State<_EditOrtDialog> {
   late final TextEditingController _nameCtrl;
   late final TextEditingController _descCtrl;
   late OrtType _type;
+  String? _tokenImagePath;
 
   @override
   void initState() {
@@ -3483,6 +3655,7 @@ class _EditOrtDialogState extends State<_EditOrtDialog> {
     _nameCtrl = TextEditingController(text: widget.ort.name);
     _descCtrl = TextEditingController(text: widget.ort.description);
     _type = widget.ort.type;
+    _tokenImagePath = widget.ort.tokenImagePath;
   }
 
   @override
@@ -3536,6 +3709,55 @@ class _EditOrtDialogState extends State<_EditOrtDialog> {
               C: C,
               onChanged: (t) => setState(() => _type = t),
             ),
+            if (_type == OrtType.token) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: C.bgHover,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: C.border),
+                      ),
+                      child: Text(
+                        _tokenImagePath != null
+                            ? ResourceService.isResourceRef(_tokenImagePath)
+                                ? ResourceService.filenameFromRef(_tokenImagePath!)
+                                : _tokenImagePath!.split(r'\').last.split('/').last
+                            : 'Kein Bild',
+                        style: TextStyle(fontSize: 12, color: _tokenImagePath != null ? C.text : C.textSoft),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () async {
+                      final ref = await pickResource(context);
+                      if (ref != null) setState(() => _tokenImagePath = ref);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: C.accent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: C.accent.withValues(alpha: 0.3)),
+                      ),
+                      child: Icon(Icons.image_outlined, size: 16, color: C.accent),
+                    ),
+                  ),
+                  if (_tokenImagePath != null) ...[
+                    const SizedBox(width: 6),
+                    GestureDetector(
+                      onTap: () => setState(() => _tokenImagePath = null),
+                      child: Icon(Icons.close, size: 16, color: C.textSoft),
+                    ),
+                  ],
+                ],
+              ),
+            ],
             const SizedBox(height: 10),
             TextField(
               controller: _descCtrl,
@@ -3560,6 +3782,7 @@ class _EditOrtDialogState extends State<_EditOrtDialog> {
                       name: name,
                       type: _type,
                       description: _descCtrl.text.trim(),
+                      tokenImagePath: _tokenImagePath,
                     ));
                     if (context.mounted) Navigator.of(context).pop();
                   },
@@ -3766,55 +3989,669 @@ class _TypeDropdown extends StatelessWidget {
       );
 }
 
-// ── SYNC BUTTON ───────────────────────────────────────────────────────────────
+// ── LIVE VIEW DIALOG ─────────────────────────────────────────────────────────
 
-class _SyncBtn extends StatelessWidget {
-  const _SyncBtn({required this.vm, required this.C});
+class _LiveViewDialog extends StatelessWidget {
+  const _LiveViewDialog({required this.lanVm});
+
+  final LanMapViewModel lanVm;
+
+  Offset get _norm => lanVm.viewportNorm ?? const Offset(0.5, 0.5);
+
+  @override
+  Widget build(BuildContext context) {
+    final C = context.appColors;
+    return ListenableBuilder(
+      listenable: lanVm,
+      builder: (context, _) => Dialog(
+        backgroundColor: C.bgPanel,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: C.border),
+        ),
+        child: SizedBox(
+          width: 360,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildHeader(context, C),
+              Divider(height: 1, color: C.border),
+              _buildConnection(context, C),
+              Divider(height: 1, color: C.border),
+              _buildMapArea(C),
+              Divider(height: 1, color: C.border),
+              _buildPaintModeRow(C),
+              Divider(height: 1, color: C.border),
+              _buildFogRow(C),
+              Divider(height: 1, color: C.border),
+              _buildZoomRow(C),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, AppColorsExtension C) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 13, 12, 13),
+        child: Row(
+          children: [
+            Icon(Icons.wifi_tethering, size: 14, color: C.accent),
+            const SizedBox(width: 8),
+            Text('Karte teilen',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.text)),
+            const Spacer(),
+            GestureDetector(
+              onTap: () => lanVm.isRunning ? lanVm.stopServer() : lanVm.startServer(),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: lanVm.isRunning
+                      ? C.green.withValues(alpha: 0.12)
+                      : C.accent.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(5),
+                  border: Border.all(
+                    color: lanVm.isRunning
+                        ? C.green.withValues(alpha: 0.40)
+                        : C.accent.withValues(alpha: 0.30),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: lanVm.isRunning ? C.green : C.textSoft,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      lanVm.isRunning ? 'Aktiv' : 'Starten',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: lanVm.isRunning ? C.green : C.accent,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(Icons.close, size: 15, color: C.textSoft),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _buildConnection(BuildContext context, AppColorsExtension C) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          children: [
+            // QR code
+            if (lanVm.isRunning)
+              QrImageView(
+                data: lanVm.lanUrl,
+                size: 64,
+                backgroundColor: Colors.white,
+                eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: Colors.black),
+                dataModuleStyle: const QrDataModuleStyle(
+                  dataModuleShape: QrDataModuleShape.square,
+                  color: Colors.black,
+                ),
+              )
+            else
+              const SizedBox(
+                width: 64,
+                height: 64,
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      if (!lanVm.isRunning) return;
+                      Clipboard.setData(ClipboardData(text: lanVm.lanUrl));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('URL kopiert'), duration: Duration(seconds: 1)),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: C.bgHover,
+                        borderRadius: BorderRadius.circular(5),
+                        border: Border.all(color: C.border),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              lanVm.isRunning ? lanVm.lanUrl : 'Server startet…',
+                              style: const TextStyle(fontSize: 10, fontFamily: 'monospace'),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(Icons.copy, size: 11, color: C.textSoft),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: lanVm.clientCount > 0 ? C.green : C.textSoft,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text('${lanVm.clientCount} Zuschauer verbunden',
+                          style: TextStyle(fontSize: 11, color: C.textMid)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+
+  // Interactive map: tap/drag paints fog cells (reveal/cover mode) or moves viewport.
+  Widget _buildMapArea(AppColorsExtension C) {
+    if (lanVm.imagePath == null) {
+      return Container(
+        height: 160,
+        color: C.bgHover,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.map_outlined, size: 36, color: C.textSoft),
+              const SizedBox(height: 8),
+              Text('Keine Karte geladen', style: TextStyle(fontSize: 12, color: C.textSoft)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        const h = 220.0;
+        final isPaintMode = lanVm.paintMode == 'reveal' || lanVm.paintMode == 'cover';
+        final norm = _norm;
+
+        void paintAt(Offset localPos) {
+          final col = (localPos.dx / w * 20).floor().clamp(0, 19);
+          final row = (localPos.dy / h * 20).floor().clamp(0, 19);
+          lanVm.paintCell(row * 20 + col);
+        }
+
+        return SizedBox(
+          height: h,
+          child: GestureDetector(
+            onTapUp: (d) {
+              if (isPaintMode) {
+                paintAt(d.localPosition);
+              } else {
+                lanVm.moveViewportTo(Offset(
+                  (d.localPosition.dx / w).clamp(0.0, 1.0),
+                  (d.localPosition.dy / h).clamp(0.0, 1.0),
+                ));
+              }
+            },
+            onPanUpdate: (d) {
+              if (isPaintMode) {
+                paintAt(d.localPosition);
+              } else {
+                lanVm.moveViewportTo(Offset(
+                  (_norm.dx + d.delta.dx / w).clamp(0.0, 1.0),
+                  (_norm.dy + d.delta.dy / h).clamp(0.0, 1.0),
+                ));
+              }
+            },
+            child: Stack(
+              clipBehavior: Clip.hardEdge,
+              children: [
+                Positioned.fill(
+                  child: Image.file(
+                    File(lanVm.imagePath!),
+                    fit: BoxFit.fill,
+                    gaplessPlayback: true,
+                  ),
+                ),
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _DialogFogPainter(
+                      revealedCells: Set.unmodifiable(lanVm.revealedCells),
+                      fogEnabled: lanVm.fogEnabled,
+                    ),
+                  ),
+                ),
+                if (!isPaintMode) ...[
+                  // Crosshair — vertical line
+                  Positioned(
+                    left: norm.dx * w - 1,
+                    top: 0,
+                    bottom: 0,
+                    child: Container(width: 1, color: Colors.white.withValues(alpha: 0.55)),
+                  ),
+                  // Crosshair — horizontal line
+                  Positioned(
+                    top: norm.dy * h - 1,
+                    left: 0,
+                    right: 0,
+                    child: Container(height: 1, color: Colors.white.withValues(alpha: 0.55)),
+                  ),
+                  // Centre dot
+                  Positioned(
+                    left: norm.dx * w - 5,
+                    top: norm.dy * h - 5,
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.9),
+                        border: Border.all(color: Colors.black45),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPaintModeRow(AppColorsExtension C) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        child: Row(
+          children: [
+            Text('Modus:', style: TextStyle(fontSize: 11, color: C.textMid)),
+            const SizedBox(width: 8),
+            _ZoomPill(
+              label: 'Viewport',
+              active: lanVm.paintMode != 'reveal' && lanVm.paintMode != 'cover',
+              C: C,
+              onTap: () => lanVm.setPaintMode('token'),
+            ),
+            const SizedBox(width: 4),
+            _ZoomPill(
+              label: 'Enthüllen',
+              active: lanVm.paintMode == 'reveal',
+              C: C,
+              onTap: () => lanVm.setPaintMode('reveal'),
+            ),
+            const SizedBox(width: 4),
+            _ZoomPill(
+              label: 'Decken',
+              active: lanVm.paintMode == 'cover',
+              C: C,
+              onTap: () => lanVm.setPaintMode('cover'),
+            ),
+          ],
+        ),
+      );
+
+  Widget _buildFogRow(AppColorsExtension C) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        child: Row(
+          children: [
+            Text('Nebel:', style: TextStyle(fontSize: 11, color: C.textMid)),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: lanVm.toggleFog,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                width: 32,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: lanVm.fogEnabled ? C.accent : C.bgHover,
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(color: lanVm.fogEnabled ? C.accent : C.border),
+                ),
+                child: Align(
+                  alignment: lanVm.fogEnabled ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.all(2),
+                    child: Container(
+                      width: 14,
+                      height: 14,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const Spacer(),
+            GestureDetector(
+              onTap: lanVm.revealAll,
+              child: Text('Alles', style: TextStyle(fontSize: 11, color: C.textMid)),
+            ),
+            const SizedBox(width: 14),
+            GestureDetector(
+              onTap: lanVm.coverAll,
+              child: Text('Alles decken', style: TextStyle(fontSize: 11, color: C.textMid)),
+            ),
+          ],
+        ),
+      );
+
+  Widget _buildZoomRow(AppColorsExtension C) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          children: [
+            Text('Zoom:', style: TextStyle(fontSize: 11, color: C.textMid)),
+            const SizedBox(width: 8),
+            for (final z in [0.5, 1.0, 2.0, 4.0]) ...[
+              _ZoomPill(
+                label: z < 1 ? '${(z * 100).toInt()}%' : '${z.toInt()}×',
+                active: lanVm.broadcastScale == z,
+                C: C,
+                onTap: () {
+                  if (lanVm.viewportNorm == null) {
+                    lanVm.moveViewportTo(const Offset(0.5, 0.5));
+                  }
+                  lanVm.setBroadcastScale(z);
+                },
+              ),
+              const SizedBox(width: 4),
+            ],
+            const Spacer(),
+            GestureDetector(
+              onTap: lanVm.clearViewport,
+              child: Text('Reset', style: TextStyle(fontSize: 11, color: C.textSoft)),
+            ),
+          ],
+        ),
+      );
+}
+
+class _ZoomPill extends StatelessWidget {
+  const _ZoomPill({
+    required this.label,
+    required this.active,
+    required this.C,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool active;
+  final AppColorsExtension C;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+          decoration: BoxDecoration(
+            color: active ? C.accent.withValues(alpha: 0.12) : C.bgHover,
+            borderRadius: BorderRadius.circular(5),
+            border: Border.all(
+              color: active ? C.accent.withValues(alpha: 0.4) : C.border,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: active ? C.accent : C.textMid,
+              fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+        ),
+      );
+}
+
+class _DialogFogPainter extends CustomPainter {
+  const _DialogFogPainter({required this.revealedCells, required this.fogEnabled});
+
+  final Set<int> revealedCells;
+  final bool fogEnabled;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (!fogEnabled) return;
+    const cols = 20;
+    const rows = 20;
+    final cw = size.width / cols;
+    final ch = size.height / rows;
+    final paint = Paint()..color = const Color(0xD9000000);
+    for (var r = 0; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        if (!revealedCells.contains(r * cols + c)) {
+          canvas.drawRect(Rect.fromLTWH(c * cw, r * ch, cw, ch), paint);
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DialogFogPainter old) =>
+      old.revealedCells != revealedCells || old.fogEnabled != fogEnabled;
+}
+
+// ── DM-TOOLS MENÜ BUTTON ─────────────────────────────────────────────────────
+
+class _DmBuchMenuBtn extends StatelessWidget {
+  const _DmBuchMenuBtn({required this.vm, required this.C});
 
   final DmBuchViewModel vm;
   final AppColorsExtension C;
 
   @override
   Widget build(BuildContext context) {
-    if (vm.isSyncing) {
-      return SizedBox(
-        width: 30,
-        height: 30,
-        child: Center(
-          child: SizedBox(
-            width: 14,
-            height: 14,
-            child: CircularProgressIndicator(
-              strokeWidth: 1.5,
-              color: C.textMid,
-            ),
-          ),
+    final themeNotifier = context.watch<ThemeNotifier>();
+    return PopupMenuButton<int>(
+      offset: const Offset(0, 36),
+      color: C.bgPanel,
+      elevation: 6,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: C.border),
+      ),
+      tooltip: '',
+      itemBuilder: (ctx) => _buildMenuItems(ctx, themeNotifier),
+      onSelected: (value) => _onSelected(context, value, themeNotifier),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: C.accent.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: C.accent.withValues(alpha: 0.25)),
         ),
-      );
-    }
-    return Tooltip(
-      message: 'Änderungen aus Vorlage übernehmen',
-      child: _TopBarIconBtn(
-        icon: AppIconName.refresh,
-        C: C,
-        onTap: () async {
-          final count = await vm.syncFromTemplate();
-          if (!context.mounted) return;
-          final msg = count == null
-              ? 'Sync fehlgeschlagen'
-              : count == 0
-                  ? 'Alles aktuell – keine Änderungen'
-                  : '$count Marker aktualisiert';
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(msg),
-              duration: const Duration(seconds: 3),
-              backgroundColor: count == null ? C.red : C.green,
-            ),
-          );
-        },
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.wifi_tethering, size: 12, color: C.accent),
+            const SizedBox(width: 4),
+            Text('Teilen', style: TextStyle(fontSize: 11, color: C.accent)),
+            const SizedBox(width: 3),
+            Icon(Icons.expand_more, size: 12, color: C.accent),
+          ],
+        ),
       ),
     );
+  }
+
+  List<PopupMenuEntry<int>> _buildMenuItems(BuildContext ctx, ThemeNotifier themeNotifier) {
+    final lanVm = ctx.read<LanMapViewModel>();
+    final scale = lanVm.broadcastScale;
+    final scaleLabel = '${scale.toStringAsFixed(1)}×';
+    return [
+      _item(1, Icons.wifi_tethering, 'Karte teilen'),
+      const PopupMenuDivider(height: 8),
+      _item(2, Icons.edit_calendar_outlined, 'Modus: Vorbereitung',
+          active: vm.mode == DmBuchMode.vorbereitung),
+      _item(3, Icons.play_circle_outline, 'Modus: Live',
+          active: vm.mode == DmBuchMode.live),
+      const PopupMenuDivider(height: 8),
+      _item(4, Icons.zoom_in, 'Zoom +', subtitle: scaleLabel),
+      _item(5, Icons.zoom_out, 'Zoom −', subtitle: scaleLabel),
+      _item(6, Icons.center_focus_strong_outlined, 'Karte zentrieren'),
+      _item(7, Icons.location_disabled_outlined, 'Viewport zurücksetzen'),
+      const PopupMenuDivider(height: 8),
+      _item(
+        8,
+        themeNotifier.isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+        themeNotifier.isDark ? 'Helles Design' : 'Dunkles Design',
+      ),
+      if (vm.campaign.templateId != null) ...[
+        const PopupMenuDivider(height: 8),
+        _item(9, Icons.sync, 'Vorlage übernehmen', loading: vm.isSyncing),
+      ],
+      if (vm.canSyncToCloud) ...[
+        const PopupMenuDivider(height: 8),
+        _item(10, Icons.cloud_upload_outlined, 'In Cloud speichern', loading: vm.isSyncing),
+      ],
+    ];
+  }
+
+  PopupMenuItem<int> _item(
+    int value,
+    IconData icon,
+    String label, {
+    bool active = false,
+    bool loading = false,
+    String? subtitle,
+  }) =>
+      PopupMenuItem<int>(
+        value: value,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        child: Row(
+          children: [
+            Container(
+              width: 18,
+              height: 18,
+              decoration: BoxDecoration(
+                color: C.bgHover,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Center(
+                child: Text(
+                  '$value',
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: C.textSoft,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            if (loading)
+              SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 1.5, color: C.textMid),
+              )
+            else
+              Icon(icon, size: 14, color: active ? C.accent : C.textMid),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: active ? C.accent : C.text,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+            ),
+            if (subtitle != null)
+              Text(subtitle, style: TextStyle(fontSize: 10, color: C.textSoft)),
+            if (active)
+              Icon(Icons.check, size: 12, color: C.accent),
+          ],
+        ),
+      );
+
+  void _onSelected(BuildContext context, int value, ThemeNotifier themeNotifier) {
+    final lanVm = context.read<LanMapViewModel>();
+    switch (value) {
+      case 1:
+        final lanVm = context.read<LanMapViewModel>();
+        showDialog<void>(
+          context: context,
+          builder: (_) => _LiveViewDialog(lanVm: lanVm),
+        );
+      case 2:
+        vm.setMode(DmBuchMode.vorbereitung);
+      case 3:
+        vm.setMode(DmBuchMode.live);
+      case 4:
+        _zoomIn(lanVm);
+      case 5:
+        _zoomOut(lanVm);
+      case 6:
+        lanVm.moveViewportTo(const Offset(0.5, 0.5));
+      case 7:
+        lanVm.clearViewport();
+      case 8:
+        themeNotifier.toggle();
+      case 9:
+        _syncFromTemplate(context);
+      case 10:
+        _syncToCloud(context);
+    }
+  }
+
+  void _zoomIn(LanMapViewModel lanVm) {
+    if (lanVm.viewportNorm == null) lanVm.moveViewportTo(const Offset(0.5, 0.5));
+    lanVm.setBroadcastScale(lanVm.broadcastScale + 1.0);
+  }
+
+  void _zoomOut(LanMapViewModel lanVm) {
+    if (lanVm.viewportNorm == null) lanVm.moveViewportTo(const Offset(0.5, 0.5));
+    lanVm.setBroadcastScale(lanVm.broadcastScale - 1.0);
+  }
+
+  Future<void> _syncFromTemplate(BuildContext context) async {
+    final result = await vm.syncFromTemplate();
+    if (!context.mounted) return;
+    final ok = result != null;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(ok ? result.summary : 'Sync fehlgeschlagen'),
+      duration: const Duration(seconds: 3),
+      backgroundColor: ok ? C.green : C.red,
+    ));
+  }
+
+  Future<void> _syncToCloud(BuildContext context) async {
+    final ok = await vm.syncToCloud();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(ok ? 'Erfolgreich in Cloud gespeichert' : 'Cloud-Sync fehlgeschlagen'),
+      duration: const Duration(seconds: 3),
+      backgroundColor: ok ? C.green : C.red,
+    ));
   }
 }
 
@@ -4607,6 +5444,7 @@ class _NotInPlanOrtRowState extends State<_NotInPlanOrtRow> {
       case OrtType.wilderness: return C.amber;
       case OrtType.region:     return AppColors.typGeschichte;
       case OrtType.other:      return C.textSoft;
+      case OrtType.token:      return const Color(0xFF9b59b6);
     }
   }
 
@@ -5138,12 +5976,9 @@ class _VerlaufsGraphViewState extends State<_VerlaufsGraphView> {
   }
 
   Future<void> _pickMap(BuildContext ctx) async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      allowMultiple: false,
-    );
-    if (result != null && result.files.single.path != null && ctx.mounted) {
-      await widget.vm.setVerlaufsKarteImage(result.files.single.path);
+    final ref = await pickResource(ctx);
+    if (ref != null && ctx.mounted) {
+      await widget.vm.setVerlaufsKarteImage(ref);
     }
   }
 
@@ -5248,10 +6083,11 @@ class _VerlaufsGraphViewState extends State<_VerlaufsGraphView> {
                 clipBehavior: Clip.none,
                 children: [
                   // Hintergrund: Karte oder Dot-Grid
-                  if (vm.verlaufsKarteImagePath != null)
+                  if (vm.verlaufsKarteImagePath != null &&
+                      ResourceService.resolveLocalPath(vm.verlaufsKarteImagePath) != null)
                     Positioned.fill(
                       child: Image.file(
-                        File(vm.verlaufsKarteImagePath!),
+                        File(ResourceService.resolveLocalPath(vm.verlaufsKarteImagePath)!),
                         fit: BoxFit.contain,
                         errorBuilder: (_, __, ___) =>
                             ColoredBox(color: C.bgPanel),
@@ -5512,6 +6348,7 @@ class _VerlaufsMapNodeState extends State<_VerlaufsMapNode> {
       case OrtType.wilderness: return C.amber;
       case OrtType.region:     return AppColors.typGeschichte;
       case OrtType.other:      return C.textSoft;
+      case OrtType.token:      return const Color(0xFF9b59b6);
     }
   }
 
@@ -6035,14 +6872,19 @@ class _KarteGraphViewState extends State<_KarteGraphView>
   static const double _nodeH = 28;
   static const double _detailPanelW = 341.0;
 
-  final TransformationController _tc = TransformationController();
+  final TransformationController _tc    = TransformationController();
   final Map<String, Offset> _positions = {};
   final Map<String, Offset> _dragPos = {};
 
   bool _connectMode = false;
   String? _connectSource;
-
   bool _scenePlaceMode = false;
+  bool _showLayerPanel = false;
+
+  // Local copy of the last synced layers list — needed because old.vm and
+  // widget.vm point to the same ViewModel object in didUpdateWidget, so
+  // direct comparison of old.vm.currentLevelLayers always returns equal.
+  List<MapLayer> _syncedLayers = const [];
 
   String? _lastSelectedOrtId;
   BoxConstraints? _constraints;
@@ -6052,6 +6894,7 @@ class _KarteGraphViewState extends State<_KarteGraphView>
 
   int _lastMapDepth = 1;
   double _pinScale = 1.0;
+  String _lastTokenSig = '';
 
   @override
   void initState() {
@@ -6062,18 +6905,80 @@ class _KarteGraphViewState extends State<_KarteGraphView>
       vsync: this,
       duration: const Duration(milliseconds: 320),
     )..addListener(_onFlyTick);
+    _tc.addListener(_onGraphTcChange);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final lanVm = context.read<LanMapViewModel>();
+      final path = widget.vm.currentMapImagePath;
+      if (path != null) lanVm.setImage(path);
+      _syncTokenOrte(lanVm);
+      _syncLayers(lanVm);
+    });
+  }
+
+  void _syncLayers(LanMapViewModel lanVm) {
+    final layers = widget.vm.currentLevelLayers;
+    _syncedLayers = layers;
+    lanVm.setLayers(layers);
+    _precacheLayers(layers);
+  }
+
+  void _precacheLayers(List<MapLayer> layers) {
+    for (final layer in layers) {
+      final resolved = ResourceService.resolveLocalPath(layer.imagePath);
+      if (resolved == null) continue;
+      precacheImage(FileImage(File(resolved)), context);
+    }
+  }
+
+  // Triggers rebuild of viewport rect when DM pans/zooms the graph view
+  void _onGraphTcChange() {
+    if (!mounted) return;
+    if (context.read<LanMapViewModel>().viewportNorm != null) setState(() {});
+  }
+
+  String _tokenSig(List<Ort> orte) => orte
+      .where((o) => o.type == OrtType.token && o.mapX != null && o.mapY != null)
+      .map((o) => '${o.id}:${o.mapX}:${o.mapY}:${o.name}')
+      .join('|');
+
+  void _syncTokenOrte(LanMapViewModel lanVm) {
+    final tokenOrte = widget.vm.currentLevelOrte
+        .where((o) => o.type == OrtType.token)
+        .toList();
+    final sig = _tokenSig(tokenOrte);
+    if (sig == _lastTokenSig) return;
+    _lastTokenSig = sig;
+    // Defer so notifyListeners() doesn't fire during a build phase.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) lanVm.syncOrtTokens(tokenOrte);
+    });
   }
 
   @override
   void didUpdateWidget(_KarteGraphView old) {
     super.didUpdateWidget(old);
 
+    if (old.vm.currentMapImagePath != widget.vm.currentMapImagePath) {
+      final path = widget.vm.currentMapImagePath;
+      if (path != null) context.read<LanMapViewModel>().setImage(path);
+    }
+
+    // Compare against local _syncedLayers because old.vm == widget.vm (same object).
+    if (!identical(_syncedLayers, widget.vm.currentLevelLayers)) {
+      _syncLayers(context.read<LanMapViewModel>());
+    }
+
     // Wenn die Kartenebene gewechselt hat, Positionen neu initialisieren
     if (widget.vm.mapStackDepth != _lastMapDepth) {
       _lastMapDepth = widget.vm.mapStackDepth;
       _lastSelectedOrtId = null;
+      _lastTokenSig = '';
       _dragPos.clear();
       _initPositions(widget.vm.currentLevelOrte);
+      final lanVm = context.read<LanMapViewModel>();
+      _syncTokenOrte(lanVm);
+      _syncLayers(lanVm);
       return;
     }
 
@@ -6099,6 +7004,8 @@ class _KarteGraphViewState extends State<_KarteGraphView>
     } else if (sel == null) {
       _lastSelectedOrtId = null;
     }
+
+    _syncTokenOrte(context.read<LanMapViewModel>());
   }
 
   void _initPositions(List<Ort> orte) {
@@ -6164,12 +7071,9 @@ class _KarteGraphViewState extends State<_KarteGraphView>
   }
 
   Future<void> _pickMap(BuildContext ctx) async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      allowMultiple: false,
-    );
-    if (result != null && result.files.single.path != null && ctx.mounted) {
-      await widget.vm.setCurrentLevelMapImage(result.files.single.path);
+    final ref = await pickResource(ctx);
+    if (ref != null && ctx.mounted) {
+      await widget.vm.setCurrentLevelMapImage(ref);
     }
   }
 
@@ -6250,6 +7154,67 @@ class _KarteGraphViewState extends State<_KarteGraphView>
     }
   }
 
+  // ── Camera view ─────────────────────────────────────────────────────────
+
+  // Returns the Rect where the image is displayed when using BoxFit.contain.
+  static Rect _camContainRect(Size imageSize, Size canvas) {
+    final imgAr = imageSize.width / imageSize.height;
+    final canAr = canvas.width  / canvas.height;
+    final double w, h;
+    if (imgAr > canAr) {
+      w = canvas.width;
+      h = canvas.width / imgAr;
+    } else {
+      h = canvas.height;
+      w = canvas.height * imgAr;
+    }
+    return Rect.fromLTWH(
+      (canvas.width  - w) / 2,
+      (canvas.height - h) / 2,
+      w, h,
+    );
+  }
+
+  Widget _buildServerChip(BuildContext context, LanMapViewModel lanVm, AppColorsExtension C) {
+    if (!lanVm.isRunning) {
+      return const SizedBox.shrink();
+    }
+    return GestureDetector(
+      onTap: () => showDialog<void>(
+        context: context,
+        builder: (_) => _QrDialog(
+          lanUrl:   lanVm.lanUrl,
+          localUrl: lanVm.localhostUrl,
+          emuUrl:   lanVm.emulatorUrl,
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.65),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.wifi_tethering, size: 13, color: C.green),
+            const SizedBox(width: 6),
+            Text(
+              lanVm.serverUrl,
+              style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: Colors.white),
+            ),
+            const SizedBox(width: 8),
+            Icon(Icons.people_outline, size: 13, color: C.textSoft),
+            const SizedBox(width: 3),
+            Text('${lanVm.clientCount}', style: TextStyle(fontSize: 11, color: C.textSoft)),
+            const SizedBox(width: 8),
+            Icon(Icons.qr_code, size: 13, color: C.textMid),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _onNodeTap(Ort ort) async {
     final vm = widget.vm;
     if (_scenePlaceMode) {
@@ -6286,7 +7251,8 @@ class _KarteGraphViewState extends State<_KarteGraphView>
 
   @override
   Widget build(BuildContext context) {
-    final vm = widget.vm;
+    final vm    = widget.vm;
+    final lanVm = context.watch<LanMapViewModel>();
     final C = context.appColors;
     final isVorbereitung = vm.mode == DmBuchMode.vorbereitung;
     final orte = vm.currentLevelOrte;
@@ -6294,9 +7260,9 @@ class _KarteGraphViewState extends State<_KarteGraphView>
 
     return LayoutBuilder(builder: (context, constraints) {
       _constraints = constraints;
-      // Canvas = Viewport: proportional wie BoxFit.contain beim Kartenbild
       _cW = constraints.maxWidth;
       _cH = constraints.maxHeight;
+
 
       // Bruchteile → Canvas-Pixel für Anzeige
       final positions = <String, Offset>{
@@ -6328,16 +7294,29 @@ class _KarteGraphViewState extends State<_KarteGraphView>
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    // Hintergrund (Karte oder Dot-Grid)
+                    // Hintergrund (Karte + Layer oder Dot-Grid)
                     Positioned.fill(
                       child: IgnorePointer(
-                        child: vm.currentMapImagePath != null
-                            ? Image.file(
-                                File(vm.currentMapImagePath!),
-                                fit: BoxFit.contain,
-                                frameBuilder: (ctx, child, frame, sync) =>
-                                    (sync || frame != null) ? child : CustomPaint(painter: _GraphGridPainter(C)),
-                                errorBuilder: (_, __, ___) => ColoredBox(color: C.bgPanel),
+                        child: ResourceService.resolveLocalPath(vm.currentMapImagePath) != null
+                            ? Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Image.file(
+                                    File(ResourceService.resolveLocalPath(vm.currentMapImagePath)!),
+                                    fit: BoxFit.contain,
+                                    frameBuilder: (ctx, child, frame, sync) =>
+                                        (sync || frame != null) ? child : CustomPaint(painter: _GraphGridPainter(C)),
+                                    errorBuilder: (_, __, ___) => ColoredBox(color: C.bgPanel),
+                                  ),
+                                  for (final layer in vm.currentLevelLayers)
+                                    if (layer.isVisible && ResourceService.resolveLocalPath(layer.imagePath) != null)
+                                      Image.file(
+                                        File(ResourceService.resolveLocalPath(layer.imagePath)!),
+                                        fit: BoxFit.contain,
+                                        gaplessPlayback: true,
+                                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                                      ),
+                                ],
                               )
                             : CustomPaint(painter: _GraphGridPainter(C)),
                       ),
@@ -6360,7 +7339,7 @@ class _KarteGraphViewState extends State<_KarteGraphView>
                     ),
 
                     // Pins — im selben Koordinatensystem wie der Canvas
-                    for (final ort in orte)
+                    for (final ort in orte.where((o) => o.type != OrtType.token))
                       Positioned(
                         left: positions[ort.id]!.dx - _nodeW * _pinScale / 2,
                         top: positions[ort.id]!.dy - _nodeH * _pinScale / 2,
@@ -6392,10 +7371,246 @@ class _KarteGraphViewState extends State<_KarteGraphView>
                           ),
                         ),
                       ),
+
+                    // Token-Ort-Pins — kleiner Kreis-Marker, direkt auf der Karte
+                    for (final ort in orte.where((o) => o.type == OrtType.token && positions.containsKey(o.id)))
+                      ...() {
+                        const tokenColor = Color(0xFF9b59b6);
+                        const pinD = 22.0;
+                        final scaled = pinD * _pinScale;
+                        final isSelected = vm.selectedOrt?.id == ort.id;
+                        final label = ort.name.length > 2
+                            ? ort.name.substring(0, 2).toUpperCase()
+                            : ort.name.toUpperCase();
+                        final cx = positions[ort.id]!.dx;
+                        final cy = positions[ort.id]!.dy;
+                        return [
+                          // Circle pin
+                          Positioned(
+                            left: cx - scaled / 2,
+                            top:  cy - scaled / 2,
+                            width: scaled,
+                            height: scaled,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => _onNodeTap(ort),
+                              onPanUpdate: (isVorbereitung && !_connectMode && !ort.mapPositionLocked)
+                                  ? (d) => _onPanUpdate(ort, d)
+                                  : null,
+                              onPanEnd: (isVorbereitung && !_connectMode && !ort.mapPositionLocked)
+                                  ? (_) => _onPanEnd(ort)
+                                  : null,
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 120),
+                                decoration: BoxDecoration(
+                                  color: ort.tokenImagePath != null
+                                      ? Colors.transparent
+                                      : tokenColor,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? Colors.white
+                                        : Colors.white.withValues(alpha: 0.45),
+                                    width: isSelected ? 2.0 : 1.0,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.4),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                    if (isSelected)
+                                      BoxShadow(
+                                        color: tokenColor.withValues(alpha: 0.5),
+                                        blurRadius: 8,
+                                      ),
+                                  ],
+                                ),
+                                child: ResourceService.resolveLocalPath(ort.tokenImagePath) != null
+                                    ? ClipOval(
+                                        child: Image.file(
+                                          File(ResourceService.resolveLocalPath(ort.tokenImagePath)!),
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => ColoredBox(
+                                            color: tokenColor,
+                                            child: Center(child: Text(label,
+                                              style: TextStyle(color: Colors.white, fontSize: 8 * _pinScale, fontWeight: FontWeight.w700, height: 1.0))),
+                                          ),
+                                        ),
+                                      )
+                                    : Center(
+                                        child: Text(label,
+                                          style: TextStyle(color: Colors.white, fontSize: 8 * _pinScale, fontWeight: FontWeight.w700, height: 1.0)),
+                                      ),
+                              ),
+                            ),
+                          ),
+                          // Size slider — appears below the circle when selected
+                          if (isSelected)
+                            Positioned(
+                              left: cx - 50 * _pinScale,
+                              top:  cy + scaled / 2 + 4,
+                              width:  100 * _pinScale,
+                              height:  28 * _pinScale,
+                              child: _TokenSizeSlider(
+                                key: ValueKey(ort.id),
+                                initialSize: lanVm.tokenOrtSize(ort.id),
+                                onSizeChanged: (v) => lanVm.setTokenOrtSize(ort.id, v),
+                              ),
+                            ),
+                        ];
+                      }(),
                   ],
                 ),
               ),
             ),
+          ),
+
+          // Tokens aus dem LAN-Server — über den Pins, im Bildschirmkoordinatenraum
+          // ort_-prefixed tokens are rendered as map pins above; skip them here.
+          ...() {
+            final imgSize = lanVm.imageNaturalSize;
+            final tokens  = lanVm.tokens.where((t) => !t.id.startsWith('ort_')).toList();
+            if (imgSize == null || tokens.isEmpty) return <Widget>[];
+            final canvasSize = Size(_cW, _cH);
+            final imgRect = _camContainRect(imgSize, canvasSize);
+            const cols = 20, rows = 20;
+            final cw = imgRect.width  / cols;
+            final ch = imgRect.height / rows;
+            // Convert from content coords → screen coords via the TC matrix
+            return tokens.map((t) {
+              final contentPt = Offset(imgRect.left + t.x * cw + cw / 2, imgRect.top + t.y * ch + ch / 2);
+              final screenPt  = MatrixUtils.transformPoint(_tc.value, contentPt);
+              final size = cw * _pinScale * 0.7;
+              return Positioned(
+                left: screenPt.dx - size / 2,
+                top:  screenPt.dy - size / 2,
+                width: size, height: size,
+                child: IgnorePointer(child: _CamTokenDot(token: t, size: size)),
+              );
+            }).toList();
+          }(),
+
+          // Viewport-Rechteck — zeigt Spieler-Sichtfeld auf der Karte
+          if (lanVm.viewportNorm != null && lanVm.imageNaturalSize != null &&
+              vm.currentMapImagePath != null)
+            () {
+              final imgSize    = lanVm.imageNaturalSize!;
+              final norm       = lanVm.viewportNorm!;
+              final canvasSize = Size(_cW, _cH);
+              final imgRect    = _camContainRect(imgSize, canvasSize);
+
+              // Größe des Spieler-Sichtfelds in Content-Pixeln
+              // Nutzt die echte Browser-Canvas-Größe (per WS gemeldet, Default 1280×720)
+              final playerSize = lanVm.playerCanvasSize;
+              final s  = lanVm.broadcastScale;
+              final rW = (playerSize.width  / s) * (imgRect.width  / imgSize.width);
+              final rH = (playerSize.height / s) * (imgRect.height / imgSize.height);
+
+              final contentCenter = Offset(
+                imgRect.left + norm.dx * imgRect.width,
+                imgRect.top  + norm.dy * imgRect.height,
+              );
+              final contentRect = Rect.fromCenter(
+                center: contentCenter, width: rW, height: rH,
+              );
+
+              // Content → Screen-Koordinaten via TC-Matrix
+              final tl  = MatrixUtils.transformPoint(_tc.value, contentRect.topLeft);
+              final br  = MatrixUtils.transformPoint(_tc.value, contentRect.bottomRight);
+              final scr = Rect.fromPoints(tl, br);
+              final tcS = _tc.value.getMaxScaleOnAxis();
+
+              return Positioned(
+                left:   scr.left,
+                top:    scr.top,
+                width:  scr.width.abs(),
+                height: scr.height.abs(),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onPanUpdate: lanVm.paintMode == 'viewport' ? (d) {
+                    final newNorm = Offset(
+                      (norm.dx + d.delta.dx / (tcS * imgRect.width)).clamp(0.0, 1.0),
+                      (norm.dy + d.delta.dy / (tcS * imgRect.height)).clamp(0.0, 1.0),
+                    );
+                    lanVm.moveViewportTo(newNorm);
+                  } : null,
+                  onSecondaryTapUp: (d) {
+                    final pos = d.globalPosition;
+                    showMenu<int>(
+                      context: context,
+                      position: RelativeRect.fromLTRB(pos.dx, pos.dy, pos.dx + 1, pos.dy + 1),
+                      items: [
+                        PopupMenuItem<int>(
+                          value: 1,
+                          child: Row(
+                            children: [
+                              const Icon(Icons.zoom_in, size: 14),
+                              const SizedBox(width: 8),
+                              Text('Zoom +  →  ${(lanVm.broadcastScale + 0.5).toStringAsFixed(1)}×'),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem<int>(
+                          value: 2,
+                          enabled: lanVm.broadcastScale > 0.5,
+                          child: Row(
+                            children: [
+                              const Icon(Icons.zoom_out, size: 14),
+                              const SizedBox(width: 8),
+                              Text('Zoom −  →  ${(lanVm.broadcastScale - 0.5).clamp(0.5, 10.0).toStringAsFixed(1)}×'),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ).then((value) {
+                      if (value == 1) lanVm.setBroadcastScale(lanVm.broadcastScale + 0.5);
+                      if (value == 2) lanVm.setBroadcastScale(lanVm.broadcastScale - 0.5);
+                    });
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: lanVm.paintMode == 'viewport'
+                            ? Colors.blueAccent
+                            : Colors.blueAccent.withValues(alpha: 0.6),
+                        width: lanVm.paintMode == 'viewport' ? 2.5 : 1.5,
+                      ),
+                      color: Colors.blueAccent.withValues(
+                        alpha: lanVm.paintMode == 'viewport' ? 0.12 : 0.05,
+                      ),
+                    ),
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: Container(
+                        margin: const EdgeInsets.all(3),
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.blueAccent.withValues(alpha: 0.75),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.videocam, size: 10, color: Colors.white),
+                            SizedBox(width: 3),
+                            Text(
+                              'Spieler',
+                              style: TextStyle(fontSize: 9, color: Colors.white),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }(),
+
+          // Server-Chip (oben mittig)
+          Positioned(
+            top: 8, left: 0, right: 0,
+            child: Center(child: _buildServerChip(context, lanVm, C)),
           ),
 
           // UI-Overlays (Bildschirmkoordinaten, außerhalb des Viewers)
@@ -6436,6 +7651,32 @@ class _KarteGraphViewState extends State<_KarteGraphView>
                     onTap: () => vm.setCurrentLevelMapImage(null),
                     C: C,
                   ),
+                  const SizedBox(height: 4),
+                  _GraphMapBtn(
+                    icon: Icons.layers_outlined,
+                    label: 'Layer',
+                    active: _showLayerPanel,
+                    onTap: () => setState(() => _showLayerPanel = !_showLayerPanel),
+                    C: C,
+                  ),
+                  if (lanVm.paintMode == 'viewport') ...[
+                    const SizedBox(height: 4),
+                    _GraphMapBtn(
+                      icon: Icons.zoom_in,
+                      label: 'Spieler-Zoom +',
+                      onTap: () => lanVm.setBroadcastScale(lanVm.broadcastScale + 0.5),
+                      C: C,
+                    ),
+                    const SizedBox(height: 2),
+                    _GraphMapBtn(
+                      icon: Icons.zoom_out,
+                      label: 'Spieler-Zoom −',
+                      onTap: lanVm.broadcastScale > 0.5
+                          ? () => lanVm.setBroadcastScale(lanVm.broadcastScale - 0.5)
+                          : null,
+                      C: C,
+                    ),
+                  ],
                 ],
                 const SizedBox(height: 8),
                 _GraphMapBtn(
@@ -6534,9 +7775,202 @@ class _KarteGraphViewState extends State<_KarteGraphView>
                 ),
               ),
             ),
+
+          // Layer-Panel
+          if (_showLayerPanel)
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: _LayerPanel(vm: vm, C: C),
+            ),
         ],
       );
     });
+  }
+}
+
+// ── LAYER PANEL ───────────────────────────────────────────────────────────────
+
+class _LayerPanel extends StatelessWidget {
+  const _LayerPanel({required this.vm, required this.C});
+
+  final DmBuchViewModel vm;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) {
+    final layers = vm.currentLevelLayers;
+    return Container(
+      width: 240,
+      decoration: BoxDecoration(
+        color: C.bgPanel,
+        border: Border(right: BorderSide(color: C.border)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 12, offset: const Offset(2, 0))],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: C.bgHover,
+              border: Border(bottom: BorderSide(color: C.border)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.layers_outlined, size: 15, color: C.accent),
+                const SizedBox(width: 8),
+                Text('Karten-Layer', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.text)),
+                const Spacer(),
+                Tooltip(
+                  message: 'Layer hinzufügen',
+                  child: GestureDetector(
+                    onTap: () => _addLayer(context),
+                    child: Icon(Icons.add, size: 18, color: C.accent),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: layers.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        'Noch keine Layer.\nTippe auf + um einen hinzuzufügen.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 12, color: C.textSoft),
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    itemCount: layers.length,
+                    separatorBuilder: (_, __) => Divider(height: 1, color: C.border),
+                    itemBuilder: (_, i) => _LayerRow(layer: layers[i], vm: vm, C: C),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _addLayer(BuildContext context) async {
+    final nameController = TextEditingController();
+    final C = this.C;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: C.bgPanel,
+        title: Text('Neuer Layer', style: TextStyle(color: C.text, fontSize: 15)),
+        content: TextField(
+          controller: nameController,
+          autofocus: true,
+          style: TextStyle(color: C.text),
+          decoration: InputDecoration(
+            hintText: 'Layer-Name',
+            hintStyle: TextStyle(color: C.textSoft),
+            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: C.border)),
+            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: C.accent)),
+          ),
+          onSubmitted: (_) => Navigator.pop(ctx, true),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Abbrechen', style: TextStyle(color: C.textSoft))),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Erstellen', style: TextStyle(color: C.accent)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && nameController.text.trim().isNotEmpty) {
+      await vm.createLayer(nameController.text.trim());
+    }
+  }
+}
+
+class _LayerRow extends StatelessWidget {
+  const _LayerRow({required this.layer, required this.vm, required this.C});
+
+  final MapLayer layer;
+  final DmBuchViewModel vm;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => vm.toggleLayerVisibility(layer),
+            child: Icon(
+              layer.isVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+              size: 18,
+              color: layer.isVisible ? C.accent : C.textSoft,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _pickImage(context),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    layer.name,
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: C.text),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (layer.imagePath != null)
+                    Text(
+                      layer.imagePath!.split(Platform.pathSeparator).last,
+                      style: TextStyle(fontSize: 10, color: C.textSoft),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    )
+                  else
+                    Text('Kein Bild – tippen zum Laden', style: TextStyle(fontSize: 10, color: C.textSoft)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: () => _confirmDelete(context),
+            child: Icon(Icons.delete_outline, size: 16, color: C.textSoft),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickImage(BuildContext context) async {
+    final ref = await pickResource(context);
+    if (ref != null) await vm.setLayerImage(layer, ref);
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final C = this.C;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: C.bgPanel,
+        title: Text('Layer löschen?', style: TextStyle(color: C.text, fontSize: 15)),
+        content: Text('"${layer.name}" wird unwiderruflich entfernt.', style: TextStyle(color: C.textSoft, fontSize: 13)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Abbrechen', style: TextStyle(color: C.textSoft))),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Löschen', style: TextStyle(color: C.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await vm.deleteLayer(layer);
   }
 }
 
@@ -6636,6 +8070,7 @@ class _KarteMapNodeState extends State<_KarteMapNode> {
       case OrtType.wilderness: return C.amber;
       case OrtType.region:     return AppColors.typGeschichte;
       case OrtType.other:      return C.textSoft;
+      case OrtType.token:      return const Color(0xFF9b59b6);
     }
   }
 
@@ -6712,6 +8147,10 @@ class _KarteMapNodeState extends State<_KarteMapNode> {
             if (widget.ort.mapPositionLocked) ...[
               const SizedBox(width: 3),
               Icon(Icons.lock_outline, size: 9, color: C.textSoft.withValues(alpha: 0.7)),
+            ],
+            if (ort.type == OrtType.token) ...[
+              const SizedBox(width: 3),
+              Icon(Icons.wifi_tethering, size: 9, color: dotColor.withValues(alpha: 0.9)),
             ],
             if (widget.sceneCount > 0) ...[
               const SizedBox(width: 4),
@@ -6850,6 +8289,7 @@ class _KarteOrtPickerDialogState extends State<_KarteOrtPickerDialog> {
       case OrtType.wilderness: return C.amber;
       case OrtType.region:     return AppColors.typGeschichte;
       case OrtType.other:      return C.textSoft;
+      case OrtType.token:      return const Color(0xFF9b59b6);
     }
   }
 
@@ -6980,6 +8420,212 @@ class _KarteOrtPickerDialogState extends State<_KarteOrtPickerDialog> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _CamTokenDot extends StatelessWidget {
+  final MapToken token;
+  final double size;
+
+  const _CamTokenDot({required this.token, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    Color color;
+    try {
+      color = Color(int.parse('0xFF${token.color.replaceFirst('#', '')}'));
+    } catch (_) {
+      color = Colors.red;
+    }
+    return Container(
+      width: size, height: size,
+      decoration: BoxDecoration(
+        color: color, shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 1.5),
+        boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 4)],
+      ),
+      child: Center(
+        child: Text(
+          token.label.length > 2
+              ? token.label.substring(0, 2).toUpperCase()
+              : token.label.toUpperCase(),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: size * 0.35,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QrDialog extends StatelessWidget {
+  const _QrDialog({
+    required this.lanUrl,
+    required this.localUrl,
+    required this.emuUrl,
+  });
+  final String lanUrl;
+  final String localUrl;
+  final String emuUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (lanUrl.isNotEmpty) ...[
+              QrImageView(
+                data: lanUrl,
+                size: 200,
+                backgroundColor: Colors.white,
+                eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: Colors.black),
+                dataModuleStyle: const QrDataModuleStyle(
+                  dataModuleShape: QrDataModuleShape.square,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SelectableText(
+                lanUrl,
+                style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: Colors.black87),
+                textAlign: TextAlign.center,
+              ),
+              Text(
+                'WLAN-Gäste – QR-Code scannen',
+                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+              const Divider(height: 24, color: Color(0xFFDDDDDD)),
+            ],
+            _QrUrlRow(label: 'Gleicher PC', url: localUrl),
+            const SizedBox(height: 6),
+            _QrUrlRow(label: 'Android-Emulator', url: emuUrl),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QrUrlRow extends StatelessWidget {
+  const _QrUrlRow({required this.label, required this.url});
+  final String label;
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '$label: ',
+          style: TextStyle(fontSize: 11, color: Colors.grey[700], fontWeight: FontWeight.w600),
+        ),
+        SelectableText(
+          url,
+          style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: Colors.black87),
+        ),
+      ],
+    );
+  }
+}
+
+// ── TOKEN SIZE SLIDER ─────────────────────────────────────────────────────────
+// StatefulWidget keeps local drag state so rebuilds from Provider don't interrupt
+// the gesture. Only broadcasts to ViewModel on drag end.
+
+class _TokenSizeSlider extends StatefulWidget {
+  const _TokenSizeSlider({
+    super.key,
+    required this.initialSize,
+    required this.onSizeChanged,
+  });
+
+  final double initialSize;
+  final ValueChanged<double> onSizeChanged;
+
+  @override
+  State<_TokenSizeSlider> createState() => _TokenSizeSliderState();
+}
+
+class _TokenSizeSliderState extends State<_TokenSizeSlider> {
+  late double _value;
+
+  @override
+  void initState() {
+    super.initState();
+    _value = widget.initialSize;
+  }
+
+  @override
+  void didUpdateWidget(_TokenSizeSlider old) {
+    super.didUpdateWidget(old);
+    // Sync when the selected ort changes (key forces new instance, but guard anyway)
+    if (old.initialSize != widget.initialSize) _value = widget.initialSize;
+  }
+
+  void _step(double delta) {
+    final v = (_value + delta).clamp(0.5, 4.0);
+    setState(() => _value = v);
+    widget.onSizeChanged(v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final C = context.appColors;
+    return Container(
+      decoration: BoxDecoration(
+        color: C.bgPanel.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: C.border.withValues(alpha: 0.6)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 5)],
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => _step(-0.5),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              child: Icon(Icons.remove, size: 11, color: C.textSoft),
+            ),
+          ),
+          Expanded(
+            child: SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 2.5,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+                activeTrackColor: const Color(0xFF9b59b6),
+                inactiveTrackColor: const Color(0xFF9b59b6).withValues(alpha: 0.25),
+                thumbColor: const Color(0xFF9b59b6),
+                overlayColor: const Color(0xFF9b59b6).withValues(alpha: 0.15),
+              ),
+              child: Slider(
+                value: _value,
+                min: 0.5,
+                max: 4.0,
+                divisions: 7,
+                onChanged: (v) => setState(() => _value = v),
+                onChangeEnd: widget.onSizeChanged,
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => _step(0.5),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              child: Icon(Icons.add, size: 11, color: C.textSoft),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -43,6 +43,7 @@ class Scene {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? ortId;
+  final String? templateSceneId;
 
   Scene({
     String? id,
@@ -65,6 +66,7 @@ class Scene {
     DateTime? createdAt,
     DateTime? updatedAt,
     this.ortId,
+    this.templateSceneId,
   })  : id = id ?? UuidService().generateId(),
         linkedWikiEntryIds = linkedWikiEntryIds ?? [],
         linkedQuestIds = linkedQuestIds ?? [],
@@ -97,6 +99,7 @@ class Scene {
     DateTime? createdAt,
     DateTime? updatedAt,
     Object? ortId = _sentinel,
+    Object? templateSceneId = _sentinel,
   }) {
     return Scene(
       id: id ?? this.id,
@@ -119,6 +122,7 @@ class Scene {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
       ortId: ortId == _sentinel ? this.ortId : ortId as String?,
+      templateSceneId: templateSceneId == _sentinel ? this.templateSceneId : templateSceneId as String?,
     );
   }
 
@@ -323,6 +327,7 @@ class Scene {
       'created_at': createdAt.millisecondsSinceEpoch,
       'updated_at': updatedAt.millisecondsSinceEpoch,
       'ort_id': ortId,
+      'template_scene_id': templateSceneId,
     };
   }
 
@@ -362,6 +367,7 @@ class Scene {
         createdAt: ModelParsingHelper.safeDateTime(map, 'created_at', ModelParsingHelper.safeDateTime(map, 'createdAt', DateTime.now())),
         updatedAt: ModelParsingHelper.safeDateTime(map, 'updated_at', ModelParsingHelper.safeDateTime(map, 'updatedAt', DateTime.now())),
         ortId: map['ort_id'] as String?,
+        templateSceneId: map['template_scene_id'] as String?,
       );
     } catch (e) {
       return Scene(

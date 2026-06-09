@@ -1,11 +1,22 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../database/repositories/campaign_model_repository.dart';
 import '../database/repositories/player_character_model_repository.dart';
+import '../models/app_user.dart';
 import '../models/campaign.dart';
 import '../services/campaign_service.dart';
+import '../services/campaign_sync_service.dart';
 import '../services/campaign_template_export_import_service.dart';
+import '../services/cloud_resource_service.dart';
 import '../services/uuid_service.dart';
+
+class SyncConflict {
+  final Campaign local;
+  final Campaign cloud;
+  const SyncConflict({required this.local, required this.cloud});
+}
 
 enum CampaignViewMode {
   overview,
@@ -74,7 +85,28 @@ class CampaignViewModel extends ChangeNotifier {
   String? _error;
   String? get error => _error;
 
+  bool _isSyncing = false;
+  bool get isSyncing => _isSyncing;
+
+  String? _syncError;
+  String? get syncError => _syncError;
+
+  DateTime? _lastSyncedAt;
+  DateTime? get lastSyncedAt => _lastSyncedAt;
+
+  CampaignSyncService? _syncService;
+  CloudResourceService? _resourceSyncService;
+  AppUser? _syncUser;
+  final Set<String> _syncedIds = {};
+  final Set<String> _pendingSyncIds = {};
+  final Set<String> _downloadedIds = {};
+
   bool get hasActiveFilters => _searchQuery.isNotEmpty;
+
+  bool isSynced(String campaignId) => _syncedIds.contains(campaignId);
+  bool isPendingSync(String campaignId) => _pendingSyncIds.contains(campaignId);
+  /// True wenn diese Kampagne beim letzten Sync aus der Cloud heruntergeladen wurde.
+  bool isDownloadedFromCloud(String campaignId) => _downloadedIds.contains(campaignId);
 
   List<Campaign>? _cachedFilteredCampaigns;
   bool _isCacheValid = false;
@@ -197,6 +229,7 @@ class CampaignViewModel extends ChangeNotifier {
     String accentColor = '#7c3aed',
     String system = 'D&D 5e',
     CampaignStatus status = CampaignStatus.planning,
+    String? coverImagePath,
   }) async {
     debugPrint('🔄 [CampaignViewModel] createCampaign() aufgerufen: $title');
     _setLoading(true);
@@ -209,6 +242,7 @@ class CampaignViewModel extends ChangeNotifier {
         accentColor: accentColor,
         system: system,
         status: status,
+        coverImagePath: coverImagePath,
       );
 
       if (_campaignRepo != null) {
@@ -216,12 +250,12 @@ class CampaignViewModel extends ChangeNotifier {
         debugPrint('✅ [CampaignViewModel] Kampagne gespeichert: ${savedCampaign.title}');
         _campaigns.insert(0, savedCampaign);
         _invalidateFilteredCache();
+        notifyListeners();
+        debugPrint('🔔 [CampaignViewModel] notifyListeners() nach createCampaign()');
+        unawaited(_autoUpload(savedCampaign));
       } else {
         throw Exception('CampaignModelRepository nicht verfügbar');
       }
-
-      notifyListeners();
-      debugPrint('🔔 [CampaignViewModel] notifyListeners() nach createCampaign()');
     } catch (e) {
       debugPrint('❌ [CampaignViewModel] Exception in createCampaign(): $e');
       _setError('Fehler beim Erstellen der Kampagne: $e');
@@ -255,6 +289,7 @@ class CampaignViewModel extends ChangeNotifier {
       }
 
       notifyListeners();
+      unawaited(_autoUpload(updatedCampaign));
     } catch (e) {
       _setError('Fehler beim Aktualisieren der Kampagne: $e');
     } finally {
@@ -281,6 +316,7 @@ class CampaignViewModel extends ChangeNotifier {
 
       _invalidateFilteredCache();
       notifyListeners();
+      unawaited(_autoDelete(campaign.id));
     } catch (e) {
       _setError('Fehler beim Löschen der Kampagne: $e');
     } finally {
@@ -314,6 +350,7 @@ class CampaignViewModel extends ChangeNotifier {
 
       _invalidateFilteredCache();
       notifyListeners();
+      _autoUpload(savedCampaign);
     } catch (e) {
       _setError('Fehler beim Duplizieren der Kampagne: $e');
     } finally {
@@ -595,6 +632,144 @@ class CampaignViewModel extends ChangeNotifier {
     }
 
     return _ascendingOrder ? result : -result;
+  }
+
+  /// Bindet den eingeloggten User und den Sync-Service ein.
+  /// Wird vom ProxyProvider bei jeder Auth-Änderung aufgerufen.
+  void bindCloudSync(
+    AppUser? user,
+    CampaignSyncService service, {
+    CloudResourceService? resourceService,
+  }) {
+    _syncService = service;
+    _resourceSyncService = resourceService;
+    final wasLoggedIn = _syncUser != null;
+    _syncUser = user;
+    if (wasLoggedIn && user == null) {
+      _syncedIds.clear();
+      _pendingSyncIds.clear();
+      notifyListeners();
+    }
+  }
+
+  Future<void> _autoUpload(Campaign campaign) async {
+    final user = _syncUser;
+    final service = _syncService;
+    if (user == null || service == null) return;
+    _pendingSyncIds.add(campaign.id);
+    notifyListeners();
+    try {
+      await service.uploadCampaign(campaign, user.uid);
+      _pendingSyncIds.remove(campaign.id);
+      _syncedIds.add(campaign.id);
+    } catch (e) {
+      _pendingSyncIds.remove(campaign.id);
+      debugPrint('[CampaignViewModel] Auto-Upload fehlgeschlagen: $e');
+    }
+    notifyListeners();
+  }
+
+  Future<void> _autoDelete(String campaignId) async {
+    final user = _syncUser;
+    final service = _syncService;
+    if (user == null || service == null) return;
+    _syncedIds.remove(campaignId);
+    notifyListeners();
+    try {
+      await service.deleteCampaign(campaignId, user.uid);
+    } catch (e) {
+      debugPrint('[CampaignViewModel] Auto-Delete fehlgeschlagen: $e');
+    }
+  }
+
+  /// Synchronisiert lokale Kampagnen mit Firestore.
+  /// Konfliktlösung: die Version mit dem neueren [updatedAt]-Zeitstempel gewinnt.
+  /// Synchronisiert mit der Cloud. Gibt erkannte Konflikte zurück (gleiche ID,
+  /// Cloud neuer als Lokal) — diese werden NICHT automatisch überschrieben.
+  Future<List<SyncConflict>> syncWithCloud(AppUser user, CampaignSyncService syncService) async {
+    if (_isSyncing) return [];
+    _isSyncing = true;
+    _syncError = null;
+    notifyListeners();
+
+    final conflicts = <SyncConflict>[];
+    try {
+      // Ressourcen-Ordner synchronisieren (Manifest verhindert Re-Upload)
+      await _resourceSyncService?.syncResources(user.uid);
+
+      final cloudCampaigns = await syncService.downloadCampaigns(user.uid);
+
+      // Cloud → Lokal
+      final conflictIds = <String>{};
+      for (final cloud in cloudCampaigns) {
+        if (_campaignRepo == null) continue;
+        final existing = await _campaignRepo!.findById(cloud.id);
+        if (existing == null) {
+          final saved = await _campaignRepo!.create(cloud);
+          _campaigns.insert(0, saved);
+          _downloadedIds.add(saved.id);
+        } else if (cloud.updatedAt.isAfter(existing.updatedAt)) {
+          // Cloud ist neuer → Nutzer entscheidet; lokale Version NICHT hochladen
+          conflictIds.add(cloud.id);
+          conflicts.add(SyncConflict(local: existing, cloud: cloud));
+        }
+      }
+
+      // Lokal → Cloud: alle lokalen Kampagnen hochladen (außer Konflikte + deaktiviert)
+      for (final local in _campaigns) {
+        if (conflictIds.contains(local.id)) continue;
+        if (!local.syncEnabled) continue;
+        await syncService.uploadCampaign(local, user.uid);
+      }
+
+      for (final c in _campaigns) {
+        _syncedIds.add(c.id);
+      }
+      _pendingSyncIds.clear();
+      _invalidateFilteredCache();
+      _lastSyncedAt = DateTime.now();
+      debugPrint('[CampaignViewModel] Sync abgeschlossen, ${conflicts.length} Konflikte');
+    } catch (e) {
+      _syncError = e.toString().replaceFirst('Exception: ', '');
+      debugPrint('[CampaignViewModel] Sync-Fehler: $e');
+    } finally {
+      _isSyncing = false;
+      notifyListeners();
+    }
+    return conflicts;
+  }
+
+  /// Löst Konflikte auf. [useCloud] = true → Cloud-Version übernehmen.
+  Future<void> resolveConflicts(
+    List<SyncConflict> conflicts,
+    bool useCloud,
+    CampaignSyncService syncService,
+    AppUser user,
+  ) async {
+    if (_campaignRepo == null) return;
+    for (final conflict in conflicts) {
+      if (useCloud) {
+        final saved = await _campaignRepo!.update(conflict.cloud);
+        final idx = _campaigns.indexWhere((c) => c.id == conflict.local.id);
+        if (idx != -1) _campaigns[idx] = saved;
+      } else {
+        // Lokale Version gewinnt → in Cloud hochladen
+        await syncService.uploadCampaign(conflict.local, user.uid);
+      }
+    }
+    _invalidateFilteredCache();
+    notifyListeners();
+  }
+
+  /// Schaltet den Cloud-Sync für eine Kampagne ein oder aus.
+  Future<void> toggleSyncEnabled(Campaign campaign) async {
+    if (_campaignRepo == null) return;
+    final updated = campaign.copyWith(syncEnabled: !campaign.syncEnabled);
+    final saved = await _campaignRepo!.update(updated);
+    final idx = _campaigns.indexWhere((c) => c.id == saved.id);
+    if (idx != -1) _campaigns[idx] = saved;
+    _invalidateFilteredCache();
+    notifyListeners();
   }
 
   @override

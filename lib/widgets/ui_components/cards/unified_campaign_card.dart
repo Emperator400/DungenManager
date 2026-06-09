@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../../models/campaign.dart';
+import '../../../services/resource_service.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/dnd_theme.dart';
 import '../../../utils/color_utils.dart';
 import '../../../viewmodels/campaign_viewmodel.dart';
 import '../../../widgets/ui_components/shared/app_icon.dart';
@@ -60,6 +64,7 @@ class _CampaignCardContentState extends State<_CampaignCardContent> {
   Widget build(BuildContext context) {
     final C = context.appColors;
     final stats = c.viewModel.getStatsForCampaign(c.campaign.id);
+    final cardColor = ColorUtils.fromHex(c.campaign.accentColor) ?? C.accent;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -69,135 +74,75 @@ class _CampaignCardContentState extends State<_CampaignCardContent> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           color: _hovered ? C.bgHover : C.bgPanel,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
               // Farbstreifen
-              Builder(builder: (context) {
-                final cardColor = ColorUtils.fromHex(c.campaign.accentColor) ?? C.accent;
-                return Container(height: 3, color: cardColor);
-              }),
-
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Avatar
-                        Builder(builder: (context) {
-                          final cardColor = ColorUtils.fromHex(c.campaign.accentColor) ?? C.accent;
-                          return _Avatar(
-                            letter: c.campaign.title.isNotEmpty
-                                ? c.campaign.title[0].toUpperCase()
-                                : '?',
-                            color: cardColor,
-                            bg: cardColor.withValues(alpha: 0.15),
-                          );
-                        }),
-                        const SizedBox(width: 10),
-                        // Titel + Status
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                c.campaign.title,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: C.text,
-                                  height: 1.2,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  _StatusBadge(
-                                    status: c.campaign.statusDescription,
-                                    C: C,
-                                  ),
-                                  if (c.campaign.isTemplate) ...[
-                                    const SizedBox(width: 5),
-                                    _TemplateBadge(C: C),
-                                  ],
-                                  if (c.campaign.templateId != null) ...[
-                                    const SizedBox(width: 5),
-                                    _CopyBadge(C: C),
-                                  ],
-                                ],
-                              ),
-                            ],
+              Container(width: 3, height: 52, color: cardColor),
+              const SizedBox(width: 10),
+              // Avatar
+              _Avatar(
+                letter: c.campaign.title.isNotEmpty ? c.campaign.title[0].toUpperCase() : '?',
+                color: cardColor,
+                bg: cardColor.withValues(alpha: 0.15),
+                coverImagePath: c.campaign.coverImagePath,
+              ),
+              const SizedBox(width: 10),
+              // Titel + Meta
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 9),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Zeile 1: Titel + Badges
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              c.campaign.title,
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.text),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                        // Aktionen (bei Hover)
-                        if (_hovered || _popupOpen) ...[
-                          _IconBtn(
-                            C: C,
-                            icon: AppIconName.edit,
-                            onTap: c.onEdit,
-                          ),
-                          const SizedBox(width: 2),
-                          _PopupBtn(
-                            card: c,
-                            C: C,
-                            onOpenStateChanged: _onPopupOpenState,
-                          ),
+                          _StatusBadge(status: c.campaign.statusDescription, C: C),
+                          if (c.campaign.isTemplate) ...[const SizedBox(width: 4), _TemplateBadge(C: C)],
+                          if (c.campaign.templateId != null) ...[const SizedBox(width: 4), _CopyBadge(C: C)],
                         ],
-                      ],
-                    ),
-
-                    // Beschreibung
-                    if (c.campaign.description.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        c.campaign.description,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: C.textMid,
-                          height: 1.5,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      // Zeile 2: Meta
+                      Row(
+                        children: [
+                          _MetaChip(icon: AppIconName.user,   value: '${stats['heroCount'] ?? 0}',    C: C),
+                          const SizedBox(width: 8),
+                          _MetaChip(icon: AppIconName.play,   value: '${stats['sessionCount'] ?? 0}', C: C),
+                          const SizedBox(width: 8),
+                          _MetaChip(icon: AppIconName.scroll, value: '${stats['questCount'] ?? 0}',   C: C),
+                          const Spacer(),
+                          _CloudStatusIcon(
+                            isSynced: c.viewModel.isSynced(c.campaign.id),
+                            isPending: c.viewModel.isPendingSync(c.campaign.id),
+                            isDownloaded: c.viewModel.isDownloadedFromCloud(c.campaign.id),
+                            isSyncDisabled: !c.campaign.syncEnabled,
+                            C: C,
+                          ),
+                          Text(_formatDate(c.campaign.createdAt), style: TextStyle(fontSize: 10, color: C.textSoft)),
+                        ],
                       ),
                     ],
-
-                    // Meta-Zeile
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        _MetaChip(
-                          icon: AppIconName.user,
-                          value: '${stats['heroCount'] ?? 0}',
-                          C: C,
-                        ),
-                        const SizedBox(width: 10),
-                        _MetaChip(
-                          icon: AppIconName.play,
-                          value: '${stats['sessionCount'] ?? 0}',
-                          C: C,
-                        ),
-                        const SizedBox(width: 10),
-                        _MetaChip(
-                          icon: AppIconName.scroll,
-                          value: '${stats['questCount'] ?? 0}',
-                          C: C,
-                        ),
-                        const Spacer(),
-                        Text(
-                          _formatDate(c.campaign.createdAt),
-                          style: TextStyle(fontSize: 10, color: C.textSoft),
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
               ),
+              // Aktionen (bei Hover)
+              if (_hovered || _popupOpen) ...[
+                _IconBtn(C: C, icon: AppIconName.edit, onTap: c.onEdit),
+                const SizedBox(width: 2),
+                _PopupBtn(card: c, C: C, onOpenStateChanged: _onPopupOpenState),
+                const SizedBox(width: 6),
+              ] else
+                const SizedBox(width: 12),
             ],
           ),
         ),
@@ -379,32 +324,47 @@ class _Avatar extends StatelessWidget {
     required this.letter,
     required this.color,
     required this.bg,
+    this.coverImagePath,
   });
 
   final String letter;
   final Color color;
   final Color bg;
+  final String? coverImagePath;
 
   @override
-  Widget build(BuildContext context) => Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: bg,
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Center(
-          child: Text(
-            letter,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: color,
+  Widget build(BuildContext context) {
+    final resolvedCover = ResourceService.resolveLocalPath(coverImagePath);
+    final hasImage = resolvedCover != null && File(resolvedCover).existsSync();
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: hasImage
+          ? SizedBox(
+              width: 28,
+              height: 28,
+              child: Image.file(File(resolvedCover), fit: BoxFit.cover),
+            )
+          : Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: bg,
+                border: Border.all(color: color.withValues(alpha: 0.3)),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Center(
+                child: Text(
+                  letter,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
-      );
+    );
+  }
 }
 
 class _StatusBadge extends StatelessWidget {
@@ -500,6 +460,64 @@ class _IconBtn extends StatelessWidget {
 
 String _formatDate(DateTime date) =>
     '${date.day}.${date.month}.${date.year}';
+
+class _CloudStatusIcon extends StatelessWidget {
+  const _CloudStatusIcon({
+    required this.isSynced,
+    required this.isPending,
+    required this.isDownloaded,
+    required this.isSyncDisabled,
+    required this.C,
+  });
+
+  final bool isSynced;
+  final bool isPending;
+  final bool isDownloaded;
+  final bool isSyncDisabled;
+  final AppColorsExtension C;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isSyncDisabled) {
+      return Padding(
+        padding: const EdgeInsets.only(right: 5),
+        child: Tooltip(
+          message: 'Sync deaktiviert',
+          child: Icon(Icons.cloud_off_outlined, size: 12, color: C.textSoft.withValues(alpha: 0.4)),
+        ),
+      );
+    }
+    if (isPending) {
+      return Padding(
+        padding: const EdgeInsets.only(right: 5),
+        child: SizedBox(
+          width: 10,
+          height: 10,
+          child: CircularProgressIndicator(strokeWidth: 1.5, color: C.textSoft),
+        ),
+      );
+    }
+    if (isDownloaded) {
+      return Padding(
+        padding: const EdgeInsets.only(right: 5),
+        child: Tooltip(
+          message: 'Aus Cloud synchronisiert',
+          child: Icon(Icons.cloud_download_outlined, size: 12, color: DnDTheme.infoBlue),
+        ),
+      );
+    }
+    if (isSynced) {
+      return Padding(
+        padding: const EdgeInsets.only(right: 5),
+        child: Tooltip(
+          message: 'Synchronisiert',
+          child: Icon(Icons.cloud_done_outlined, size: 12, color: C.textSoft),
+        ),
+      );
+    }
+    return const SizedBox.shrink();
+  }
+}
 
 // ── TEMPLATE / COPY BADGES ────────────────────────────────────────────────────
 

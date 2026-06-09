@@ -4,6 +4,7 @@ import '../../../models/inventory_item.dart';
 import '../../../models/item.dart';
 import '../../../theme/app_theme.dart';
 import '../../character_editor/item_color_helper.dart';
+import '../resource_image.dart';
 
 class UnifiedItemCard extends StatelessWidget {
   const UnifiedItemCard({
@@ -91,17 +92,12 @@ class UnifiedItemCard extends StatelessWidget {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(isCompact ? 6 : 8),
-            child: item.imageUrl.isNotEmpty
-                ? Image.network(
-                    item.imageUrl,
-                    width: isCompact ? 32 : 40,
-                    height: isCompact ? 32 : 40,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _fallbackIcon(item),
-                    loadingBuilder: (_, child, progress) =>
-                        progress == null ? child : _fallbackIcon(item),
-                  )
-                : _fallbackIcon(item),
+            child: buildResourceImage(
+              ref: item.imageUrl.isNotEmpty ? item.imageUrl : null,
+              fallback: _fallbackIcon(item),
+              width: isCompact ? 32 : 40,
+              height: isCompact ? 32 : 40,
+            ),
           ),
         ),
       );

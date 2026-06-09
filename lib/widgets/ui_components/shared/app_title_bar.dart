@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
+import '../../../screens/profile/dm_profil_screen.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/theme_notifier.dart';
+import '../../../viewmodels/auth_viewmodel.dart';
 import '../../../viewmodels/update_viewmodel.dart';
 import '../../update_dialog.dart';
 import 'app_logo.dart';
@@ -82,7 +84,7 @@ class _AppTitleBarState extends State<AppTitleBar> with WindowListener {
                         const AppLogo(size: 26),
                         const SizedBox(width: 8),
                         Text(
-                          'DungenManager',
+                          'DungeonManager',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -99,6 +101,19 @@ class _AppTitleBarState extends State<AppTitleBar> with WindowListener {
             builder: (_, vm, __) => _UpdateBtn(
               hasUpdate: vm.hasUpdateAvailable,
               onTap: () => _onUpdateTap(vm),
+            ),
+          ),
+          // Account Button
+          Consumer<AuthViewModel>(
+            builder: (_, auth, __) => _AccountBtn(
+              auth: auth,
+              onTap: () {
+                final ctx = widget.navigatorKey.currentContext;
+                if (ctx == null) return;
+                Navigator.of(ctx).push(
+                  MaterialPageRoute<void>(builder: (_) => const DmProfilScreen()),
+                );
+              },
             ),
           ),
           // Dark / Light Mode Toggle
@@ -224,6 +239,53 @@ class _WindowButtonState extends State<_WindowButton> {
           height: 48,
           color: _isHovered ? hoverBg : Colors.transparent,
           child: Icon(widget.icon, size: 14, color: iconColor),
+        ),
+      ),
+    );
+  }
+}
+
+class _AccountBtn extends StatefulWidget {
+  const _AccountBtn({required this.auth, required this.onTap});
+
+  final AuthViewModel auth;
+  final VoidCallback onTap;
+
+  @override
+  State<_AccountBtn> createState() => _AccountBtnState();
+}
+
+class _AccountBtnState extends State<_AccountBtn> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final C = context.appColors;
+    final loggedIn = widget.auth.isLoggedIn;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 80),
+          width: 46,
+          height: 48,
+          color: _hovered ? C.bgHover : Colors.transparent,
+          child: Center(
+            child: loggedIn
+                ? CircleAvatar(
+                    radius: 11,
+                    backgroundColor: C.accent,
+                    child: Text(
+                      widget.auth.user!.initials,
+                      style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white),
+                    ),
+                  )
+                : Icon(Icons.person_outline, size: 16, color: _hovered ? C.text : C.textSoft),
+          ),
         ),
       ),
     );

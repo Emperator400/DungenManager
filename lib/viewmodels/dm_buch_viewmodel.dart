@@ -8,7 +8,9 @@ import '../database/repositories/quest_model_repository.dart';
 import '../database/repositories/session_model_repository.dart';
 import '../database/repositories/scene_model_repository.dart';
 import '../database/repositories/wiki_entry_model_repository.dart';
+import '../models/app_user.dart';
 import '../models/campaign.dart';
+import '../models/map_layer.dart';
 import '../models/scene.dart';
 import '../models/ort.dart';
 import '../models/player_character.dart';
@@ -18,6 +20,9 @@ import '../models/session.dart';
 import '../models/verlaufs_eintrag.dart';
 import '../models/wiki_entry.dart';
 export '../models/wiki_entry.dart' show WikiEntry, WikiEntryType;
+import '../services/campaign_sync_service.dart';
+import '../services/campaign_template_sync_service.dart';
+import '../services/cloud_resource_service.dart';
 import '../services/ort_service.dart';
 
 enum DmBuchMode { vorbereitung, live }
@@ -36,6 +41,9 @@ class DmBuchViewModel extends ChangeNotifier {
   final WikiEntryModelRepository _wikiRepo;
   final CampaignModelRepository _campaignRepo;
   final PlayerCharacterModelRepository _pcRepo;
+  final CampaignSyncService? _campaignSyncService;
+  final CloudResourceService? _cloudResourceService;
+  AppUser? _syncUser;
 
   DmBuchViewModel({
     required Campaign campaign,
@@ -47,6 +55,9 @@ class DmBuchViewModel extends ChangeNotifier {
     WikiEntryModelRepository? wikiRepo,
     CampaignModelRepository? campaignRepo,
     PlayerCharacterModelRepository? pcRepo,
+    CampaignSyncService? campaignSyncService,
+    CloudResourceService? cloudResourceService,
+    AppUser? syncUser,
   })  : _campaign = campaign,
         _ortService = ortService ?? OrtService(),
         _ortRepo = ortRepo ?? OrtModelRepository(DatabaseConnection.instance),
@@ -55,7 +66,10 @@ class DmBuchViewModel extends ChangeNotifier {
         _sceneRepo = sceneRepo ?? SceneModelRepository(DatabaseConnection.instance),
         _wikiRepo = wikiRepo ?? WikiEntryModelRepository(DatabaseConnection.instance),
         _campaignRepo = campaignRepo ?? CampaignModelRepository(DatabaseConnection.instance),
-        _pcRepo = pcRepo ?? PlayerCharacterModelRepository(DatabaseConnection.instance);
+        _pcRepo = pcRepo ?? PlayerCharacterModelRepository(DatabaseConnection.instance),
+        _campaignSyncService = campaignSyncService,
+        _cloudResourceService = cloudResourceService,
+        _syncUser = syncUser;
 
   // ── STATE ──────────────────────────────────────────────────────────────────
 
@@ -66,7 +80,7 @@ class DmBuchViewModel extends ChangeNotifier {
   DmBuchLeftTab get leftTab => _leftTab;
 
   List<Ort> _orte = [];
-  List<Ort> get orte => _orte;
+  List<Ort> get orte => _orte.where((o) => !o.isHidden).toList();
 
   // Subkarten-Navigation: null = Weltkarte, String = ID des Eltern-Ortes
   final List<String?> _mapStack = [null];
@@ -74,7 +88,7 @@ class DmBuchViewModel extends ChangeNotifier {
   int get mapStackDepth => _mapStack.length;
 
   List<Ort> get currentLevelOrte =>
-      _orte.where((o) => o.parentOrtId == currentMapParentId).toList();
+      _orte.where((o) => !o.isHidden && o.parentOrtId == currentMapParentId).toList();
 
   bool hasChildren(String ortId) =>
       _orte.any((o) => o.parentOrtId == ortId);
@@ -92,6 +106,7 @@ class DmBuchViewModel extends ChangeNotifier {
     _mapStack.add(ort.id);
     _selectedOrt = null;
     _selectedOrtSessions = [];
+    _loadCurrentLevelLayers().then((_) => notifyListeners());
     notifyListeners();
   }
 
@@ -102,6 +117,7 @@ class DmBuchViewModel extends ChangeNotifier {
     }
     _selectedOrt = null;
     _selectedOrtSessions = [];
+    _loadCurrentLevelLayers().then((_) => notifyListeners());
     notifyListeners();
   }
 
@@ -144,6 +160,11 @@ class DmBuchViewModel extends ChangeNotifier {
   String? _error;
   String? get error => _error;
 
+  // ── LAYER ─────────────────────────────────────────────────────────────────
+
+  List<MapLayer> _currentLevelLayers = [];
+  List<MapLayer> get currentLevelLayers => _currentLevelLayers;
+
   // ── INIT ───────────────────────────────────────────────────────────────────
 
   Future<void> init() async {
@@ -152,7 +173,7 @@ class DmBuchViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       await Future.wait([_loadOrte(), _loadQuests(), _loadWikiEntries(), _loadCharacters()]);
-      await _loadSceneCounts();
+      await Future.wait([_loadSceneCounts(), _loadCurrentLevelLayers()]);
     } catch (e) {
       _error = 'Fehler beim Laden: $e';
     } finally {
@@ -520,16 +541,42 @@ class DmBuchViewModel extends ChangeNotifier {
   bool _isSyncing = false;
   bool get isSyncing => _isSyncing;
 
-  /// Synchronisiert Definitions-Felder (Name, Typ, Beschreibung) von der Vorlage.
-  /// Gibt die Anzahl aktualisierter Orte zurück, oder null bei Fehler.
-  Future<int?> syncFromTemplate() async {
+  bool get canSyncToCloud =>
+      _campaignSyncService != null && _cloudResourceService != null && _syncUser != null;
+
+  /// Lädt diese Kampagne + den Ressourcen-Ordner in die Cloud hoch.
+  /// Gibt true zurück wenn erfolgreich.
+  Future<bool> syncToCloud() async {
+    final user = _syncUser;
+    final syncSvc = _campaignSyncService;
+    final resSvc = _cloudResourceService;
+    if (user == null || syncSvc == null || resSvc == null) return false;
+    _isSyncing = true;
+    notifyListeners();
+    try {
+      await resSvc.syncResources(user.uid);
+      await syncSvc.uploadCampaign(_campaign, user.uid);
+      return true;
+    } catch (e) {
+      debugPrint('[DmBuchViewModel] syncToCloud error: $e');
+      return false;
+    } finally {
+      _isSyncing = false;
+      notifyListeners();
+    }
+  }
+
+  /// Synchronisiert Orte, Szenen und Quests von der Vorlage in diese Kopie.
+  /// Gibt eine Zusammenfassung zurück, oder null bei Fehler.
+  Future<TemplateSyncResult?> syncFromTemplate() async {
     if (campaign.templateId == null) return null;
     _isSyncing = true;
     notifyListeners();
     try {
-      final result = await _ortService.syncFromTemplate(campaign.templateId!);
+      final syncService = CampaignTemplateSyncService();
+      final result = await syncService.syncFromTemplate(campaign.id, campaign.templateId!);
       await _loadOrte();
-      return result.updated;
+      return result;
     } catch (e) {
       debugPrint('[DmBuchViewModel] syncFromTemplate error: $e');
       return null;
@@ -781,6 +828,58 @@ class DmBuchViewModel extends ChangeNotifier {
       await _ortRepo.update(updated);
       notifyListeners();
     }
+  }
+
+  // ── LAYER-METHODEN ────────────────────────────────────────────────────────
+
+  Future<void> _loadCurrentLevelLayers() async {
+    _currentLevelLayers = await _ortService.getLayersForContext(
+      _campaign.id,
+      currentMapParentId,
+    );
+  }
+
+  Future<void> createLayer(String name) async {
+    final layer = MapLayer.create(
+      campaignId: _campaign.id,
+      ortId: currentMapParentId,
+      name: name,
+      sortOrder: _currentLevelLayers.length,
+    );
+    final created = await _ortService.createLayer(layer);
+    _currentLevelLayers = [..._currentLevelLayers, created];
+    notifyListeners();
+  }
+
+  Future<void> setLayerImage(MapLayer layer, String? path) async {
+    final updated = await _ortService.updateLayer(
+      layer.copyWith(imagePath: path),
+    );
+    _replaceLayer(updated);
+    notifyListeners();
+  }
+
+  Future<void> toggleLayerVisibility(MapLayer layer) async {
+    final updated = await _ortService.updateLayer(
+      layer.copyWith(isVisible: !layer.isVisible),
+    );
+    _replaceLayer(updated);
+    notifyListeners();
+  }
+
+  Future<void> deleteLayer(MapLayer layer) async {
+    await _ortService.deleteLayer(layer.id);
+    _currentLevelLayers =
+        _currentLevelLayers.where((l) => l.id != layer.id).toList();
+    notifyListeners();
+  }
+
+  void _replaceLayer(MapLayer updated) {
+    final idx = _currentLevelLayers.indexWhere((l) => l.id == updated.id);
+    if (idx == -1) return;
+    final copy = List<MapLayer>.from(_currentLevelLayers);
+    copy[idx] = updated;
+    _currentLevelLayers = copy;
   }
 
   Future<void> addVerlaufsConnection(String fromId, String toId) async {
